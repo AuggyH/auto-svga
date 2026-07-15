@@ -178,13 +178,36 @@ class MultiFormatDesktopPreviewSession {
 
   async applyReplacement(input) {
     const session = await this.ensureSession();
-    return this.publicResult(await session.applyReplacement({
+    const kind = input?.kind === "text" ? "text" : "image";
+    const value = String(input?.value ?? "");
+    const result = await session.applyReplacement({
       gate: MULTIFORMAT_DESKTOP_GATE,
       requestId: this.nextRequestId("replacement"),
       targetId: String(input?.targetId ?? ""),
-      kind: input?.kind === "text" ? "text" : "image",
-      value: String(input?.value ?? "")
-    }));
+      kind,
+      value
+    });
+    const publicResult = this.publicResult(result);
+    const lastAction = publicResult?.model?.replacement?.lastAction;
+    const acceptedRuntimeTargetId = typeof lastAction?.runtimeTargetId === "string"
+      ? lastAction.runtimeTargetId.trim()
+      : "";
+    if (
+      lastAction?.type === "applyReplacement"
+      && lastAction.status === "accepted"
+      && acceptedRuntimeTargetId
+      && value
+    ) {
+      return {
+        ...publicResult,
+        replacementRuntimeValue: {
+          kind,
+          targetId: acceptedRuntimeTargetId,
+          value
+        }
+      };
+    }
+    return publicResult;
   }
 
   async resetReplacement(input = {}) {

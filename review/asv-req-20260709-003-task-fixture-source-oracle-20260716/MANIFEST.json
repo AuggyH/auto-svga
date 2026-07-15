@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "packet": "asv-req-20260709-003-task-fixture-source-oracle-20260716",
+  "generatedAt": "2026-07-16T00:00:00Z",
+  "sourceBase": "04de162a7425b2e7b00969d2579b15ba2d1f379c",
+  "productDiffSha256": "451d5dd128c2405caab1e8c03a0f3807b8a29fa6675044d560df0ac9541df87e",
+  "members": [
+    {
+      "path": "review/asv-req-20260709-003-task-fixture-source-oracle-20260716/README.md",
+      "byteLength": 406,
+      "sha256": "2c4d36f9acf7b4acbd5c48ec7fccc3b69d90917970655f9ae292523fb0cafd18"
+    },
+    {
+      "path": "review/asv-req-20260709-003-task-fixture-source-oracle-20260716/REVIEW_PACKET.md",
+      "byteLength": 3041,
+      "sha256": "48e14bd6b0eeeb8f4a281d39f17ae564aa6a309f90ce4e6e5ddc1d530331235d"
+    },
+    {
+      "path": "review/asv-req-20260709-003-task-fixture-source-oracle-20260716/VALIDATION_SUMMARY.json",
+      "byteLength": 2389,
+      "sha256": "e825388be57b09ada3a4af7383ee1b9a95819e7aa934cb9ba1ff7b22c45593e5"
+    }
+  ]
+}

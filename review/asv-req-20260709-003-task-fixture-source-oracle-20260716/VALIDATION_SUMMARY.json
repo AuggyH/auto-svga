@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "reviewPacket": "asv-req-20260709-003-task-fixture-source-oracle-20260716",
+  "status": "implementation-ready-pending-pm-review",
+  "baseSource": "04de162a7425b2e7b00969d2579b15ba2d1f379c",
+  "productDiffSha256": "451d5dd128c2405caab1e8c03a0f3807b8a29fa6675044d560df0ac9541df87e",
+  "sourceOnlyProof": {
+    "preCommitSha256": "50bc4110340e65cec8aad2523bbcb85a33581e4311e4201ee4caf2ca98cec0b8",
+    "finalExactHeadProof": "reported in PM handoff after commit",
+    "electronLaunched": false,
+    "foregroundUsed": false,
+    "runtimePixelPlayback": false
+  },
+  "validations": [
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/multiformat-desktop-session.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/scripts/multiformat-task-runtime-fixtures.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/scripts/run-multiformat-task-fixture-source-oracle.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/tests/multiformat-task-fixture-source-oracle.test.mjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/multiformat-task-fixture-source-oracle.test.mjs",
+      "status": "passed",
+      "tests": "2/2"
+    },
+    {
+      "command": "node --test --test-name-pattern \"0\\.2 host replacement picker|VAP real-runtime proofs require canonical replacement authority|desktop session\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed",
+      "tests": "5/5"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed"
+    },
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "tests": "538/538"
+    },
+    {
+      "command": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:design-system-check",
+      "status": "passed"
+    }
+  ],
+  "boundaries": {
+    "electronLaunched": false,
+    "autoSvgalaunched": false,
+    "foregroundUsed": false,
+    "installedAppMutated": false,
+    "packagingRouted": false,
+    "qaRouted": false,
+    "codeReviewRouted": false,
+    "ownerMaterialMutated": false,
+    "pathRedacted": true
+  }
+}
