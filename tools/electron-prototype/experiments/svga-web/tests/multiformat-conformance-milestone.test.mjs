@@ -580,6 +580,173 @@ test("owner issue projection uses a closed Chinese vocabulary for known and unkn
   assert.doesNotMatch(ownerOutput, /Users\/alice|layers\.0\.xp|internal\.json|Embedded image/iu);
 });
 
+test("owner right-panel projection is descriptor-only and allowlisted at every nested boundary", () => {
+  let getterCalls = 0;
+  let coercionCalls = 0;
+  const accessorIssue = {};
+  Object.defineProperty(accessorIssue, "code", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return "missing_resource";
+    }
+  });
+  const coercibleFeature = {
+    toString() {
+      coercionCalls += 1;
+      return "expression";
+    },
+    [Symbol.toPrimitive]() {
+      coercionCalls += 1;
+      return "expression";
+    }
+  };
+  const source = {
+    facts: [{ id: "format", label: "Format", value: "LOTTIE", status: "pass", rawPath: "/Users/alice/fact.json" }],
+    assets: [{
+      id: "cover",
+      name: "cover.png",
+      kind: "image",
+      sizeBytes: 1536,
+      dimensions: "320 x 180",
+      resolutionStatus: "available",
+      replaceable: true,
+      rawPath: "/Users/alice/cover.png"
+    }],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      format: "lottie",
+      rawPath: "/Users/alice/inventory.json",
+      groups: [{
+        id: "image_resources",
+        label: "Images",
+        status: "available",
+        rawPath: "/Users/alice/group.json",
+        items: [{
+          id: "cover",
+          label: "cover.png",
+          groupId: "image_resources",
+          kind: "image",
+          source: "asset",
+          status: "replaceable",
+          replaceable: true,
+          runtimeTargetId: "cover",
+          detail: ["320 x 180"],
+          pathRedacted: true,
+          rawPath: "/Users/alice/item.png"
+        }]
+      }]
+    },
+    unsupportedFeatures: [
+      { feature: "expression", path: "layers.0.xp", severity: "warning" },
+      { feature: ["expression"], path: "/Users/alice/array.json", severity: "warning" },
+      { feature: new String("expression"), path: "/Users/alice/boxed.json", severity: "warning" },
+      { feature: coercibleFeature, path: "/Users/alice/coercible.json", severity: "warning" },
+      { feature: Symbol("expression"), path: "/Users/alice/symbol.json", severity: "warning" }
+    ],
+    issues: [
+      { code: "missing_resource", message: "known", severity: "error" },
+      { code: ["missing_resource"], message: "/Users/alice/array.json", severity: "error" },
+      { code: new String("missing_resource"), message: "/Users/alice/boxed.json", severity: "error" },
+      accessorIssue,
+      { code: 42, message: "/Users/alice/numeric.json", severity: "error" }
+    ],
+    rawPath: "/Users/alice/right-panel.json",
+    diagnostics: { feature: "expression", path: "/Users/alice/diagnostics.json" }
+  };
+  Object.defineProperty(source, "accessorPath", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return "/Users/alice/accessor.json";
+    }
+  });
+  [
+    [source.assetInventory, "inventoryAccessor"],
+    [source.assetInventory.groups[0], "groupAccessor"],
+    [source.assets[0], "assetAccessor"],
+    [source.assetInventory.groups[0].items[0], "itemAccessor"]
+  ].forEach(([record, key]) => {
+    Object.defineProperty(record, key, {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return `/Users/alice/${key}.json`;
+      }
+    });
+  });
+
+  let projection;
+  assert.doesNotThrow(() => {
+    projection = projectMultiFormatRightPanel({ detectedFormat: "lottie", rightPanel: source });
+  });
+
+  assert.equal(getterCalls, 0);
+  assert.equal(coercionCalls, 0);
+  assert.deepEqual(Object.keys(projection).sort(), [
+    "assetInventory",
+    "assets",
+    "facts",
+    "issues",
+    "unsupportedFeatures"
+  ]);
+  assert.deepEqual(Object.keys(projection.facts[0]).sort(), ["id", "label", "status", "value"]);
+  assert.deepEqual(Object.keys(projection.assets[0]).sort(), [
+    "dimensions",
+    "fileSize",
+    "id",
+    "kind",
+    "name",
+    "ownerKind",
+    "replaceable",
+    "resolutionStatus"
+  ]);
+  assert.deepEqual(Object.keys(projection.assetInventory).sort(), [
+    "capabilityMarkers",
+    "format",
+    "groups",
+    "pathRedacted",
+    "schemaVersion",
+    "summary"
+  ]);
+  assert.deepEqual(Object.keys(projection.assetInventory.groups[0]).sort(), [
+    "count",
+    "id",
+    "items",
+    "label",
+    "replaceableCount",
+    "status"
+  ]);
+  assert.deepEqual(Object.keys(projection.assetInventory.groups[0].items[0]).sort(), [
+    "detail",
+    "groupId",
+    "id",
+    "kind",
+    "label",
+    "pathRedacted",
+    "replaceable",
+    "runtimeTargetId",
+    "source",
+    "status"
+  ]);
+  assert.deepEqual(projection.issues.map(({ code, message }) => ({ code, message })), [
+    { code: "missing_resource", message: "预览所需资源缺失。" },
+    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" },
+    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" },
+    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" },
+    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" }
+  ]);
+  assert.deepEqual(projection.unsupportedFeatures.map(({ message }) => message), [
+    "暂不支持：表达式",
+    "当前文件包含暂不支持的内容。",
+    "当前文件包含暂不支持的内容。",
+    "当前文件包含暂不支持的内容。",
+    "当前文件包含暂不支持的内容。"
+  ]);
+  assert.doesNotMatch(JSON.stringify(projection), /Users\/alice|rawPath|accessorPath|diagnostics|layers\.0\.xp/iu);
+});
+
 test("multi-format UI reuses shared rows and keeps unavailable Edit explicitly disabled", () => {
   const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
   const modulesSource = source("web/short-term-macos.modules.css");
