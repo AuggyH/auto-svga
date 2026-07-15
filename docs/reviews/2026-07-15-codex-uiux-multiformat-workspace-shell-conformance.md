@@ -30,16 +30,21 @@ authority, package, or installed application was added by this milestone.
 
 ### Code Review repair
 
-The repair closes both findings from governance review `e1795ce7`:
+The first repair closes `UIUX-MF-SHELL-CR-002` from governance review
+`e1795ce7`:
 
-- `UIUX-MF-SHELL-CR-001`: owner-visible issues, unsupported features, and
-  issue inventory rows now use an explicit closed Chinese vocabulary. Unknown
-  codes, messages, feature names, and paths collapse to fixed generic Chinese
-  copy; raw input is not forwarded.
 - `UIUX-MF-SHELL-CR-002`: chooser Cancel preserves the active document, while
   an accepted Open attempt that fails revokes the old model/source/selection,
   runtime replacements, command state, and SVGA legacy delegation before the
   failure state renders.
+
+`UIUX-MF-SHELL-CR-001` remained open after re-review governance `839fb6ef`.
+The root-cause repair is now implemented at
+`5f6f1b781f5d9d3e8c33fc5f6b90c3123368be88`: every right-panel projection
+record is constructed from an empty object through a fixed schema; upstream
+records are never spread, and trusted identities are read only from own data
+descriptors as exact primitive strings. The finding remains open until
+independent Code Re-review accepts this successor.
 
 The authority cleanup repair is
 `8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034`. The exact final product repair
@@ -53,7 +58,54 @@ renderer-owned fixed copy.
 Its validation byte record is
 `review/uiux-multiformat-workspace-shell-conformance-20260715/VALIDATION_SUMMARY.json`
 with SHA-256
-`9b2e11b958273ba0de08c643de6f83c68144daeed2dab34f7b2f54d4a64b81c6`.
+`4dc7df0259079c7484cce4033cf7c26c2cb2c4c78479a675a687d1914a99767e`.
+
+### Active Finding Ledger And Repair Health
+
+| Finding | Round | Reviewed head | Outcome | Current status | Latest evidence | Attempted fix | Why it did not close | Recovery work package |
+|---|---:|---|---|---|---|---|---|---|
+| `UIUX-MF-SHELL-CR-001` | 2 | `3aa0143f397d7117d576000c364b78bbd8982c78` | Changes Requested | Root-cause repair implemented at `5f6f1b78`; pending independent re-review | Failure-first reproduced `Cannot convert a Symbol value to a string`; repaired nested matrix produces exact key sets with zero getter/coercion calls and no raw paths | Closed all five right-panel projection levels with descriptor-only reads and fixed output schemas | The prior repair treated one controller helper as the full trust boundary; the separate right-panel projector retained coercion and open-ended spreads | Return one exact Fix Ready successor to independent re-review |
+| `UIUX-MF-SHELL-CR-002` | 2 | `3aa0143f397d7117d576000c364b78bbd8982c78` | Closed at source boundary | Closed for this repair; downstream installed validation separate | Cancel and accepted-failure composed regressions cover active SVGA/Lottie/VAP authority | Split Cancel from accepted Open failure and revoke prior authority only for the latter | N/A | Preserve unchanged while repairing CR-001 |
+
+Root-cause hypothesis: the renderer has two independent owner-copy trust
+boundaries. The previous repair secured terminal failure copy but left the
+right-panel projector operating as a permissive sanitizer over upstream
+objects. A permissive sanitizer cannot prove field closure when it starts with
+object spread or evaluates values through coercion.
+
+Failure-first scenario: project a right-panel model containing arrays,
+accessors, boxed/coercible values, symbols/numerics, and raw fields at source,
+inventory, group, asset, and item levels. The current source must fail because
+it executes accessors, assigns trusted localized meaning to non-string values,
+or serializes unreviewed fields.
+
+Repair contract:
+
+1. Construct every owner-visible projection record from an empty object with
+   an explicit immutable schema; do not spread upstream records.
+2. Read trusted strings only from own data descriptors and accept only exact
+   primitive strings. Execute no getter, `toString`, `Symbol.toPrimitive`,
+   array, or template coercion.
+3. Map unknown or malformed identity to fixed renderer-owned generic copy or
+   omit the record according to the existing visible contract.
+4. Preserve the closed CR-002 Cancel and accepted-Open-failure transitions.
+
+Success stop: the original reviewer probes and the full nested mutation matrix
+produce only enumerated output keys, fixed localized copy, zero raw path or
+technical-field serialization, and zero getter/coercion execution while the
+existing SVGA/Lottie/VAP workflows stay green.
+
+Failure stop: stop this repair if any unreviewed field survives, any accessor
+or coercion executes, or closure would require host placement, target-scoped
+Reset integration, new product vocabulary, foreground evidence, or cross-lane
+source selection.
+
+Repair outcome: success stop reached at source and regression boundaries.
+Arrays, boxed strings, coercible objects, symbols, numerics, accessors, and
+extra fields at right-panel, inventory, group, asset, and item levels either
+map to fixed product copy or are omitted. Exact output key sets are asserted,
+getter/coercion invocation counts remain zero, and raw message/path/additional
+fields are absent. No failure-stop dependency was crossed.
 
 ## 2. Git state
 
@@ -62,6 +114,7 @@ with SHA-256
 - Original milestone head: `1ca67dce21a185559a7821ccf746747cb4c09273`
 - Authority repair head: `8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034`
 - Final product repair head: `2247303be8a58049c7600ea77a37fd42c78d57f5`
+- Root-cause projector repair head: `5f6f1b781f5d9d3e8c33fc5f6b90c3123368be88`
 - Final handoff head: the docs-only descendant reported in the Fix Ready
   callback
 
@@ -119,16 +172,25 @@ PASS 4/4
 
 node --test \
   tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs
-PASS 26/26
+PASS 27/27
+
+node --test --test-name-pattern \
+  "owner issue projection|owner right-panel projection" \
+  tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs
+PASS 2/2; exact nested schema, zero getter/coercion, and raw-field probes
 
 npm run desktop:short-term:design-system-check
 PASS
 
 npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test
-PASS 112/112
+PASS 113/113
 
 git diff --check
 PASS
+
+privacy/raw-field scan
+PASS: no projector record spread, untrusted global String/template coercion,
+or rawPath/extraPath/diagnostics/additionalFields forwarding
 ```
 
 The isolated worktree had no dependency directories. Validation temporarily
@@ -166,7 +228,9 @@ both symlinks were removed after the checks. No lockfile was modified.
 
 ## 8. Next steps
 
-1. Independent Code Review of the bundled UI/UX source and interaction changes.
+1. Independent Code Re-review of root-cause projector repair `5f6f1b78` and
+   its docs-only handoff descendant; `UIUX-MF-SHELL-CR-001` remains open until
+   that disposition.
 2. After the separate Reset successor is source-approved, inspect and reconcile
    its per-row Reset semantics without duplicating host authority in UI code.
 3. Redesign the foreground placement validation ladder, then run one coordinated
@@ -178,6 +242,8 @@ both symlinks were removed after the checks. No lockfile was modified.
 
 - Authority repair commit: `8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034`
 - Owner-copy boundary repair commit: `2247303be8a58049c7600ea77a37fd42c78d57f5`
+- Right-panel projection root-cause repair commit:
+  `5f6f1b781f5d9d3e8c33fc5f6b90c3123368be88`
 - Handoff commit: recorded in the Fix Ready callback
 - Branch: `codex/uiux-multiformat-r12-conformance-20260715`
 - Tag: none
@@ -214,6 +280,12 @@ Repair retrospective:
   while preventing stale file commands after intake failure.
 - One two-test failure-first slice plus the existing bundled suites was enough;
   no foreground or package loop was needed.
+- The second review exposed a boundary-map failure, not a missing regex. The
+  durable repair enumerates output records at every nesting level and tests
+  malicious values through the composed projector rather than another helper.
+- Validation cost was kept to one bundled cycle. A local hygiene scan initially
+  misclassified `ownString()` as global `String()`; correcting the scan pattern
+  avoided turning a checker false positive into source churn.
 
 ## 11. Token usage
 
