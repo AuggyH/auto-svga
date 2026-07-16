@@ -352,7 +352,7 @@ test("host-opened SVGA delegates established save, optimize, and rename workflow
       model: {
         detectedFormat: "svga",
         displayName: "SVGA-A",
-        status: "previewReady"
+        status: "playing"
       },
       svgaSource: {
         displayName: "SVGA-A",
@@ -367,6 +367,7 @@ test("host-opened SVGA delegates established save, optimize, and rename workflow
   assert.deepEqual(calls.map(([name]) => name), ["load", "refresh", "save", "optimize", "rename"]);
   assert.equal(calls[0][1].sourceId, "sha256:svga-source");
   assert.deepEqual(Array.from(calls[0][1].bytes), [1, 2, 3]);
+  assert.equal(calls[0][1].startPlayback, true);
 });
 
 test("drag intake keeps host path authority and does not serialize renderer bytes", () => {
@@ -817,7 +818,7 @@ test("composed SVGA playback exposes and cleans an exact primary-player identity
   assert.match(playbackSurfaceSource, /runtimePlaybackFrame/u);
   assert.match(playbackSurfaceSource, /runtimePlaybackState/u);
   assert.match(fileSurfaceSource, /renderFailureMessage\(nodes, ""\)/u);
-  assert.match(source("web/multiformat-desktop-preview-controller.mjs"), /startPlayback: false/u);
+  assert.match(source("web/multiformat-desktop-preview-controller.mjs"), /startPlayback: result\.model\.status === "playing"/u);
   assert.match(source("web/multiformat-desktop-preview-controller.mjs"), /delete mount\.dataset\.runtimePlaybackProgress/u);
   assert.match(proofSource, /format: "svga",[\s\S]*?expectedCanvas: "primary"/u);
   assert.match(proofSource, /#primaryCanvas\[data-runtime-player="svga-web"\]/u);

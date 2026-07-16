@@ -101,8 +101,8 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
     session.openLocalFilePath(fixtureSet.files.lottiePath, "fileButton"),
     "lottie_external_opened"
   );
-  if (opened.model.detectedFormat !== "lottie" || opened.model.status !== "previewReady") {
-    throw new Error("Task external-image Lottie did not reach previewReady.");
+  if (opened.model.detectedFormat !== "lottie" || opened.model.status !== "playing") {
+    throw new Error("Task external-image Lottie did not start playback after open.");
   }
   const ownerSnapshot = await requireOwnerSnapshot(opened, "lottie");
   assertOwnerInventoryProjection(ownerSnapshot, {
@@ -273,8 +273,8 @@ async function proveVapFlow({ session, fixtureSet, replacementDataUri, signals }
     session.openLocalFilePath(fixtureSet.files.vapPath, "fileButton"),
     "vap_fusion_opened"
   );
-  if (opened.model.detectedFormat !== "vap" || opened.model.status !== "previewReady") {
-    throw new Error("Task fusion VAP did not reach previewReady.");
+  if (opened.model.detectedFormat !== "vap" || opened.model.status !== "playing") {
+    throw new Error("Task fusion VAP did not start playback after open.");
   }
   const ownerSnapshot = await requireOwnerSnapshot(opened, "vap");
   assertOwnerInventoryProjection(ownerSnapshot, {

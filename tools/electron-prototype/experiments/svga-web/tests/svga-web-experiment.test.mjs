@@ -2112,7 +2112,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.equal(svga.status, "opened");
     assert.equal(svga.pathRedacted, true);
     assert.equal(svga.model.detectedFormat, "svga");
-    assert.equal(svga.model.status, "previewReady");
+    assert.equal(svga.model.status, "playing");
     assert.notEqual(svga.model.status, "launch");
     assert.notEqual(svga.model.status, "loading");
     const svgaRuntime = await session.prepareRuntimePreview({
@@ -2132,7 +2132,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.equal(lottie.status, "opened");
     assert.equal(lottie.pathRedacted, true);
     assert.equal(lottie.model.detectedFormat, "lottie");
-    assert.equal(lottie.model.status, "previewReady");
+    assert.equal(lottie.model.status, "playing");
     assert.notEqual(lottie.model.status, "launch");
     assert.notEqual(lottie.model.status, "loading");
     assert.equal(lottie.lifecycle.lottieLoads, 1);
@@ -2171,7 +2171,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.equal(vap.status, "opened");
     assert.equal(vap.pathRedacted, true);
     assert.equal(vap.model.detectedFormat, "vap");
-    assert.equal(vap.model.status, "previewReady");
+    assert.equal(vap.model.status, "playing");
     assert.notEqual(vap.model.status, "launch");
     assert.notEqual(vap.model.status, "loading");
     assert.equal(vap.lifecycle.vapLoads, 1);
@@ -2179,7 +2179,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     const vapSidecar = await withTerminalTestDeadline(session.openLocalFilePath(vapSidecarPath, "fileButton"), "vap-sidecar");
     assert.equal(vapSidecar.status, "opened");
     assert.equal(vapSidecar.model.detectedFormat, "vap");
-    assert.equal(vapSidecar.model.status, "previewReady");
+    assert.equal(vapSidecar.model.status, "playing");
     assert.equal(vapSidecar.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
     assert.equal(vapSidecar.lifecycle.vapLoads, 2);
     assert.equal(vapSidecar.lifecycle.objectUrlsCreated, 2);
@@ -2281,12 +2281,12 @@ test("0.2 host-owned drag intake preserves embedded, adjacent, absent, and Lotti
     }));
 
     const embedded = await session.openLocalFilePath(embeddedVapPath, "dragDrop");
-    assert.equal(embedded.model.status, "previewReady");
+    assert.equal(embedded.model.status, "playing");
     assert.equal(embedded.model.detectedFormat, "vap");
     assert.equal(embedded.model.openedFrom, "dragDrop");
 
     const adjacent = await session.openLocalFilePath(adjacentVapPath, "dragDrop");
-    assert.equal(adjacent.model.status, "previewReady");
+    assert.equal(adjacent.model.status, "playing");
     assert.equal(adjacent.model.detectedFormat, "vap");
     assert.equal(adjacent.model.openedFrom, "dragDrop");
 
@@ -2300,7 +2300,7 @@ test("0.2 host-owned drag intake preserves embedded, adjacent, absent, and Lotti
     ), true, JSON.stringify(isolated.model.rightPanel.issues));
 
     const lottie = await session.openLocalFilePath(lottiePath, "dragDrop");
-    assert.equal(lottie.model.status, "previewReady");
+    assert.equal(lottie.model.status, "playing");
     assert.equal(lottie.model.detectedFormat, "lottie");
     const lottieRuntime = await session.prepareRuntimePreview({
       sourceId: lottie.sourceId,
@@ -2396,7 +2396,7 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP sta
       session.openLocalFilePath(lottiePath, "fileOpenEvent"),
       "installed-file-open-lottie"
     );
-    assert.equal(lottie.model.status, "previewReady");
+    assert.equal(lottie.model.status, "playing");
     assert.equal(lottie.model.openedFrom, "fileOpenEvent");
     assert.equal(lottie.model.detectedFormat, "lottie");
     assert.equal(lottie.model.rightPanel.lottieTexts.length, 1);
@@ -2415,7 +2415,7 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP sta
       session.openLocalFilePath(vapPath, "fileOpenEvent"),
       "installed-file-open-vap"
     );
-    assert.equal(vap.model.status, "previewReady");
+    assert.equal(vap.model.status, "playing");
     assert.equal(vap.model.openedFrom, "fileOpenEvent");
     assert.equal(vap.model.detectedFormat, "vap");
     assert.equal(vap.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
@@ -2435,7 +2435,7 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP sta
       session.openLocalFilePath(overLimitVapPath, "fileOpenEvent"),
       "installed-file-open-vap-over-limit"
     );
-    assert.equal(overLimitVap.model.status, "previewReady");
+    assert.equal(overLimitVap.model.status, "playing");
     assert.equal(overLimitVap.model.detectedFormat, "vap");
     assert.equal(overLimitVap.model.rightPanel.issues.some((issue) =>
       issue.code === "owner_issue"
@@ -2516,7 +2516,7 @@ test("0.2 installed file-open source keeps bounded embedded-image Lottie playabl
     assert.equal(result.pathRedacted, true);
     assert.equal(result.model.openedFrom, "fileOpenEvent");
     assert.equal(result.model.detectedFormat, "lottie");
-    assert.equal(result.model.status, "previewReady");
+    assert.equal(result.model.status, "playing");
     assert.equal(result.model.rightPanel.assets.length, 2);
     assert.equal(result.model.rightPanel.assets.every((asset) => asset.replaceable === false), true);
     assert.equal(result.model.rightPanel.assetInventory.summary.imageCount, 2);
@@ -3534,18 +3534,19 @@ test("0.2 first-launch file-open survives delayed renderer-ready flush and late 
     await flushRuntimeMountPromises();
 
     assert.equal(state.view, "preview");
-    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.status, "playing");
     assert.equal(state.model.openedFrom, "fileOpenEvent");
     assert.equal(state.model.detectedFormat, "lottie");
     assert.equal(state.model.rightPanel.lottieTexts.length, 1);
     assert.equal(lottieCalls.length, 1);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    assert.equal(runtimeEvents.includes("lottie:play"), true);
 
     controller.initialize();
     await flushRuntimeMountPromises();
 
     assert.equal(state.view, "preview");
-    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.status, "playing");
     assert.equal(state.model.openedFrom, "fileOpenEvent");
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     assert.notEqual(state.view, "launch");
@@ -3720,7 +3721,7 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     const lottie = await session.openLocalFilePath(lottiePath, "fileOpenEvent");
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "installed-lottie", result: lottie }), true);
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.status, "playing");
     assert.equal(state.model.openedFrom, "fileOpenEvent");
     assert.equal(state.model.rightPanel.lottieTexts.length, 1);
     assert.equal(state.model.rightPanel.assets.some((asset) => asset.id === "avatar" && asset.replaceable), true);
@@ -3730,37 +3731,38 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.match(lottieCalls[0].animationData.assets[0].p, /^data:image\/png;base64,/);
     assert.equal(lottieCalls[0].animationData.assets[0].u, "");
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    assert.equal(runtimeEvents.includes("lottie:play"), true);
 
     await controller.handlers.togglePrimaryPlayback();
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "playing");
+    assert.equal(state.model.status, "paused");
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     await controller.handlers.togglePrimaryPlayback();
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "paused");
+    assert.equal(state.model.status, "playing");
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
 
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "installed-vap" }), true);
     const vap = await session.openLocalFilePath(vapPath, "fileOpenEvent");
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "installed-vap", result: vap }), true);
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.status, "playing");
     assert.equal(state.model.detectedFormat, "vap");
     assert.equal(state.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
     assert.equal(vapCalls.length > 0, true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
-    const vapPreviewPauseCount = runtimeEvents.filter((event) => event === "vap:pause").length;
+    const vapPreviewPlayCount = runtimeEvents.filter((event) => event === "vap:play").length;
     vapVideos.at(-1)?.dispatchEvent("playing");
     await flushRuntimeMountPromises();
-    assert.equal(runtimeEvents.filter((event) => event === "vap:pause").length > vapPreviewPauseCount, true);
+    assert.equal(runtimeEvents.filter((event) => event === "vap:play").length > vapPreviewPlayCount, true);
     const vapOpenCallCount = vapCalls.length;
     await controller.handlers.togglePrimaryPlayback();
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "playing");
+    assert.equal(state.model.status, "paused");
     assert.equal(vapCalls.length, vapOpenCallCount);
     await controller.handlers.togglePrimaryPlayback();
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "paused");
+    assert.equal(state.model.status, "playing");
     assert.equal(vapCalls.length, vapOpenCallCount);
     assert.equal(runtimeEvents.filter((event) => event === "vap:destroy").length, 0);
 
@@ -3768,7 +3770,7 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     const vapFusion = await session.openLocalFilePath(vapFusionPath, "fileOpenEvent");
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "installed-vap-fusion", result: vapFusion }), true);
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.status, "playing");
     assert.equal(state.model.rightPanel.vapFusionTexts.some((entry) => entry.srcTag === "title"), true);
     assert.equal(state.model.rightPanel.vapFusionImages.some((entry) => entry.srcTag === "badge"), true);
     assert.equal(state.model.rightPanel.issues.some((entry) =>

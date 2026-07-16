@@ -471,7 +471,7 @@ export function createMultiFormatDesktopPreviewController({
         displayName: result.svgaSource.displayName || result.model.displayName || "local.svga",
         sourceId: result.sourceId || "",
         openedFromHost: true,
-        startPlayback: false
+        startPlayback: result.model.status === "playing"
       });
       await svgaController.handlers.refreshRecentFiles?.();
       return;

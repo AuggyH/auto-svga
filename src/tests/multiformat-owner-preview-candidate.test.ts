@@ -159,7 +159,7 @@ test("owner-visible 0.2 candidate applies and resets Lottie image and text runti
     displayName: localPath
   });
 
-  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.status, "playing");
   assert.equal(opened.detectedFormat, "lottie");
   assert.equal(opened.productVersion, "0.2.0-alpha.2");
   assert.equal(opened.rightPanel.lottieTexts[0]?.initialText, "Hello");
@@ -309,7 +309,7 @@ test("owner-visible 0.2 candidate rejects ambiguous Lottie image and text identi
     source: "fileButton",
     localPath
   });
-  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.status, "playing");
   assert.equal(loadCalls.length, 1);
 
   for (const kind of ["image", "text"] as const) {
@@ -622,7 +622,7 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   });
 
   assert.equal(opened.detectedFormat, "vap");
-  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.status, "playing");
   assert.equal(opened.rightPanel.vapFusionImages[0]?.srcTag, "avatar");
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
   assert.equal(opened.rightPanel.assetInventory.summary.audioVideoCount, 2);
@@ -682,7 +682,7 @@ test("owner-visible 0.2 candidate resets one VAP fusion target without clearing 
     source: "menuOpen",
     localPath
   });
-  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.status, "playing");
   const imageTargetId = opened.rightPanel.vapFusionImages[0]?.resourceId ?? "";
   const textTargetId = opened.rightPanel.vapFusionTexts[0]?.resourceId ?? "";
   assert.ok(imageTargetId);
@@ -925,7 +925,7 @@ test("owner-visible oversized VAP remains playable with a truthful Canvas warnin
     localPath
   });
 
-  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.status, "playing");
   assert.equal(opened.detectedFormat, "vap");
   assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.value, "750 x 1624");
   assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.status, "warning");
@@ -1027,7 +1027,7 @@ test("owner-visible 0.2 candidate delegates SVGA imageKey replacement without ch
     localPath
   });
 
-  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.status, "playing");
   assert.equal(opened.detectedFormat, "svga");
   assert.equal(opened.rightPanel.assets[0]?.id, "img_frame");
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);

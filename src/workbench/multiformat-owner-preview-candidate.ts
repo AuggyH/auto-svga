@@ -324,8 +324,12 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       }
     };
 
-    const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput(this.currentOpen, this.replacements));
+    let workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput(this.currentOpen, this.replacements));
     if (!this.isActive(generation)) return this.getModel();
+    if (workspaceModel.status === "ready") {
+      workspaceModel = await this.workspace.play();
+      if (!this.isActive(generation)) return this.getModel();
+    }
     this.resetSourceDependencies = resetSourceDependenciesFromWorkspace(workspaceModel);
     this.model = modelFromWorkspace(workspaceModel, this.replacements, undefined);
     return this.getModel();
