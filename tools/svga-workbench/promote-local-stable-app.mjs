@@ -6,7 +6,6 @@ import {
   fsyncSync,
   lstatSync,
   mkdirSync,
-  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -370,13 +369,19 @@ function appPayloadMatches(identity, expected) {
     && identity.runtimeClosure?.missingEntries?.length === 0;
 }
 
-function defaultPromotionStagingRoot() {
-  const stagingRoot = mkdtempSync(path.join("/private/tmp", `auto-svga-promote-${process.pid}-`));
-  const resolved = realpathSync.native(stagingRoot);
-  if (!resolved.startsWith("/private/tmp/auto-svga-promote-")) {
-    throw new Error(`Promotion staging root is outside /private/tmp: ${resolved}`);
+function defaultPromotionStagedAppPath(targetParent, operationId) {
+  assertSafeRollbackIdValue(operationId, "promotion operation id");
+  assertRealDirectory(targetParent, "Promotion target parent");
+  const stagedApp = path.join(targetParent, `.Auto-SVGA.promote-${operationId}.stage.app`);
+  const resolvedTargetParent = realpathSync.native(targetParent);
+  const resolvedStageParent = realpathSync.native(path.dirname(stagedApp));
+  if (resolvedStageParent !== resolvedTargetParent) {
+    throw new Error(`Promotion staged app must share target parent: ${stagedApp}`);
   }
-  return stagingRoot;
+  if (existsSync(stagedApp)) {
+    throw new Error(`Promotion staging app already exists: ${stagedApp}`);
+  }
+  return stagedApp;
 }
 
 function findPromotionResidue(targetParent) {
@@ -642,7 +647,7 @@ function promotionInstallDependencies(overrides = {}) {
     clearQuarantine: (appBundle) => run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", appBundle], { stdio: "ignore" }),
     copyBundle: (source, destination) => run("/usr/bin/ditto", [source, destination], { stdio: "inherit" }),
     createOperationId: defaultPromotionOperationId,
-    createStagingRoot: defaultPromotionStagingRoot,
+    createStagedAppPath: defaultPromotionStagedAppPath,
     inspectBundle: inspectAppBundle,
     promotionTransactionPaths: defaultPromotionTransactionPaths,
     preflightDestination: assertDestinationWritable,
@@ -749,6 +754,7 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
   const journalPath = transactionPaths.journalPath;
   const exchangeManifestPath = transactionPaths.manifestPath;
   let stagingRoot;
+  let stagedApp;
   let journal;
   let journalCreated = false;
   let transactionCompleted = false;
@@ -759,11 +765,16 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     assertNoPromotionTransactionResidue({ journalPath, manifestPath: exchangeManifestPath });
 
     const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp);
-    stagingRoot = resolvedDependencies.createStagingRoot();
-    if (!path.isAbsolute(stagingRoot)) throw new Error(`Promotion staging root must be absolute: ${stagingRoot}`);
-    assertRealDirectory(stagingRoot, "Promotion staging root");
-    const stagedApp = path.join(stagingRoot, "Auto SVGA.app");
+    resolvedDependencies.preflightDestination(targetParent);
+    assertNoPromotionResidue(targetParent);
+
+    stagedApp = resolvedDependencies.createStagedAppPath(targetParent, operationId);
+    if (!path.isAbsolute(stagedApp)) throw new Error(`Promotion staged app must be absolute: ${stagedApp}`);
+    if (path.dirname(stagedApp) !== targetParent) {
+      throw new Error(`Promotion staged app must share target parent: ${stagedApp}`);
+    }
     if (existsSync(stagedApp)) throw new Error(`Promotion staging app already exists: ${stagedApp}`);
+    stagingRoot = stagedApp;
 
     resolvedDependencies.copyBundle(sourceApp, stagedApp);
     resolvedDependencies.clearQuarantine(stagedApp);
@@ -771,8 +782,7 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     const stagedIdentity = resolvedDependencies.inspectBundle(stagedApp);
     assertSameAppPayload(sourceIdentity, stagedIdentity, "Staged candidate");
 
-    resolvedDependencies.preflightDestination(targetParent);
-    assertNoPromotionResidue(targetParent);
+    resolvedDependencies.checkpoint("after-staged-candidate-validation");
     const installedBefore = existsSync(target) ? resolvedDependencies.inspectBundle(target) : null;
     const previousBefore = existsSync(backupTarget) ? resolvedDependencies.inspectBundle(backupTarget) : null;
     journal = buildPromotionJournal({

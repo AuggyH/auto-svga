@@ -146,6 +146,9 @@ function assertBundleBinding(appPath, expected) {
 }
 
 function swapFixtureDirectories(left, right) {
+  if (path.dirname(left) !== path.dirname(right)) {
+    throw new Error("fixture atomic swap paths must share one parent directory");
+  }
   const temporary = path.join(path.dirname(left), `.swap-${process.pid}-${Date.now()}`);
   renameSync(left, temporary);
   renameSync(right, left);
@@ -153,7 +156,7 @@ function swapFixtureDirectories(left, right) {
 }
 
 function promoteFixtureDependencies(fixture, overrides = {}) {
-  const stagingRoot = path.join(fixture.root, "promotion-stage");
+  const stagingRoot = path.join(fixture.root, ".Auto-SVGA.promote-ASV-TEST-PROMOTION-001.stage.app");
   const promotionJournalPath = path.join(fixture.root, "evidence", "promotion-journal.json");
   const promotionManifestPath = path.join(fixture.root, "evidence", "promotion-manifest.json");
   return {
@@ -162,8 +165,9 @@ function promoteFixtureDependencies(fixture, overrides = {}) {
     clearQuarantine: () => {},
     copyBundle: (source, destination) => cpSync(source, destination, { recursive: true }),
     createOperationId: () => "ASV-TEST-PROMOTION-001",
-    createStagingRoot: () => {
-      mkdirSync(stagingRoot);
+    createStagedAppPath: (targetParent, operationId) => {
+      assert.equal(targetParent, fixture.root);
+      assert.equal(operationId, "ASV-TEST-PROMOTION-001");
       return stagingRoot;
     },
     promotionTransactionPaths: () => ({
@@ -180,7 +184,7 @@ function promoteFixtureDependencies(fixture, overrides = {}) {
 }
 
 function stagedPromotionApp(dependencies) {
-  return path.join(dependencies.stagingRoot, "Auto SVGA.app");
+  return dependencies.stagingRoot;
 }
 
 function recoverPromotionFixture(dependencies, overrides = {}) {
@@ -311,7 +315,7 @@ test("inspect is behaviorally read-only for installed, previous, and candidate a
   }
 });
 
-test("promotion stages and validates under task-owned private tmp before installing", () => {
+test("promotion stages and validates as a target-parent sibling before installing", () => {
   const fixture = makeRollbackFixture();
   try {
     const installedBefore = fixtureInspector(fixture.target);
@@ -321,7 +325,8 @@ test("promotion stages and validates under task-owned private tmp before install
     const dependencies = promoteFixtureDependencies(fixture, {
       copyBundle: (source, destination) => {
         assert.equal(source, fixture.candidate);
-        assert.ok(destination.startsWith("/private/tmp/"), "candidate staging must stay under /private/tmp");
+        assert.equal(path.dirname(destination), fixture.root, "candidate staging must share the target parent");
+        assert.ok(path.basename(destination).startsWith(".Auto-SVGA.promote-"), "candidate staging must use promotion residue naming");
         assertBundleBinding(fixture.target, installedBefore);
         assertBundleBinding(fixture.previous, previousBefore);
         cpSync(source, destination, { recursive: true });
@@ -350,8 +355,8 @@ test("promotion stages and validates under task-owned private tmp before install
     assertPromotionManifest(dependencies, candidateBefore, installedBefore);
     assertPromotionTransactionClean(dependencies);
     assert.deepEqual(events, [
-      "copy",
       "destination-preflight",
+      "copy",
       "swap:Auto SVGA.app",
       "swap:Auto SVGA.previous.app"
     ]);
@@ -394,6 +399,62 @@ test("promotion staging-copy and destination denials fail closed before owner-ap
   }
 });
 
+test("promotion rejects cross-parent staged apps before copying or exchanging", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    let copied = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      createStagedAppPath: () => path.join(fixture.root, "outside-stage", "Auto SVGA.app"),
+      copyBundle: () => {
+        copied = true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /must share target parent/);
+    assert.equal(copied, false, "cross-parent staged app must fail before copy");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
+    assert.equal(existsSync(dependencies.promotionJournalPath), false, "cross-parent rejection must not publish a journal");
+    assert.equal(existsSync(path.join(fixture.root, "outside-stage")), false, "cross-parent rejection must not create staging residue");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion cleans same-parent staged app when interrupted before journal publication", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    const dependencies = promoteFixtureDependencies(fixture, {
+      checkpoint: (phase) => {
+        if (phase === "after-staged-candidate-validation") {
+          throw new Error("simulated crash before promotion journal");
+        }
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /crash before promotion journal/);
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
+    assert.equal(existsSync(dependencies.stagingRoot), false, "pre-journal crash must remove same-parent staged app");
+    assert.equal(existsSync(dependencies.promotionJournalPath), false, "pre-journal crash must not publish a journal");
+    assert.equal(existsSync(dependencies.promotionManifestPath), false, "pre-journal crash must not publish a manifest");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("promotion requires an existing real target parent before source inspection or staging", () => {
   const fixture = makeRollbackFixture();
   try {
@@ -406,9 +467,9 @@ test("promotion requires an existing real target parent before source inspection
         inspected = true;
         return fixtureInspector(fixture.candidate);
       },
-      createStagingRoot: () => {
+      createStagedAppPath: () => {
         staged = true;
-        return path.join(fixture.root, "promotion-stage");
+        return path.join(fixture.root, ".Auto-SVGA.promote-missing-parent.stage.app");
       }
     });
 
@@ -434,9 +495,9 @@ test("promotion refuses pre-existing staging or journal residue before copying",
     writeFileSync(path.join(fixture.root, ".Auto-SVGA.promote-stale.journal.json"), "{}");
     let stagingRequested = false;
     const dependencies = promoteFixtureDependencies(fixture, {
-      createStagingRoot: () => {
+      createStagedAppPath: () => {
         stagingRequested = true;
-        return path.join(fixture.root, "promotion-stage");
+        return dependencies.stagingRoot;
       }
     });
 
@@ -465,7 +526,7 @@ test("promotion refuses transaction journal or manifest residue before staging",
       let stagingRequested = false;
       const guardedDependencies = {
         ...dependencies,
-        createStagingRoot: () => {
+        createStagedAppPath: () => {
           stagingRequested = true;
           return dependencies.stagingRoot;
         }
