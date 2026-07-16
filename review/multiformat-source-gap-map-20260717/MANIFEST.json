@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "sealed",
+  "task": "multiformat-source-gap-map",
+  "baseHead": "510f843e3591e50889851cf7e8599a138f08848d",
+  "branch": "codex/0.2-multiformat-source-gap-map-20260717",
+  "productDiffSha256": "2ab98faa2190f5465f80249fb7a76c884ad840afb54a29f9bdcad7882f5d2cfd",
+  "members": [
+    {
+      "path": "review/multiformat-source-gap-map-20260717/README.md",
+      "sizeBytes": 523,
+      "sha256": "3bee4e210bc9febb7dafa72c2dc6c1fbd41c4d8dd61c4b0b3af0ba7eaf6fc399"
+    },
+    {
+      "path": "review/multiformat-source-gap-map-20260717/REVIEW_PACKET.md",
+      "sizeBytes": 1279,
+      "sha256": "b3176cfc057a6d21788f9a4a5176ac61dd95110f9f9e023c732a1640e91614f8"
+    },
+    {
+      "path": "review/multiformat-source-gap-map-20260717/VALIDATION_SUMMARY.md",
+      "sizeBytes": 1174,
+      "sha256": "98c8b7f7c0277c5c1c8f387ad14db530b62caf372f53c5ee5372fd77bd640980"
+    },
+    {
+      "path": "docs/reviews/2026-07-17-codex-multiformat-source-gap-map.md",
+      "sizeBytes": 4569,
+      "sha256": "1ab906e6cab34c12e46d53f35fc2e6cbe7a21949680e9763f9a8dc8aafb6d093"
+    }
+  ]
+}

@@ -18,6 +18,10 @@ const {
   readTaskRuntimeFixtureContract
 } = require("../scripts/multiformat-task-runtime-fixtures.cjs");
 const {
+  ROW_STATUS,
+  validateSourceGapMap
+} = require("../scripts/run-multiformat-source-gap-map.cjs");
+const {
   assertOwnerInventoryProjection,
   requireOwnerSnapshot
 } = require("../scripts/run-multiformat-task-fixture-source-oracle.cjs");
@@ -129,6 +133,96 @@ test("task-owned source oracle binds external-image Lottie and fusion VAP withou
   } finally {
     await rm(path.dirname(result.proofOutputPath), { recursive: true, force: true });
   }
+});
+
+test("source gap map separates source-closed rows from runtime and owner-material gates", async () => {
+  const gapMapScript = path.join(experimentRoot, "scripts/run-multiformat-source-gap-map.cjs");
+  const output = execFileSync(process.execPath, [gapMapScript], {
+    cwd: path.resolve(experimentRoot, "../../../.."),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  }).trim();
+  const result = JSON.parse(output);
+  assert.equal(result.status, "passed");
+  assert.match(result.proofPath, /multiformat-source-gap-map\.json$/u);
+
+  const proof = JSON.parse(readFileSync(result.proofPath, "utf8"));
+  try {
+    assert.equal(proof.status, "passed");
+    assert.equal(proof.pathRedacted, true);
+    assert.equal(proof.boundaries.electronLaunched, false);
+    assert.equal(proof.boundaries.foregroundUsed, false);
+    assert.equal(proof.boundaries.ownerMaterialUsed, false);
+    assert.equal(proof.boundaries.qaRouted, false);
+    assert.equal(proof.boundaries.packagingRouted, false);
+
+    validateSourceGapMap(proof);
+    const rows = new Map(proof.rows.map((row) => [row.id, row]));
+    assert.equal(rows.get("external_image_lottie_task_fixture_source_oracle").status, ROW_STATUS.SOURCE_CLOSED);
+    assert.equal(rows.get("fusion_capable_vap_task_fixture_source_oracle").status, ROW_STATUS.SOURCE_CLOSED);
+    assert.equal(rows.get("lottie_vap_cross_source_replacement_isolation").status, ROW_STATUS.SOURCE_CLOSED_PENDING_REVIEW);
+    assert.equal(rows.get("distinct_second_dpr_acceptance_artifact").status, ROW_STATUS.SOURCE_CLOSED_PENDING_REVIEW);
+    assert.equal(rows.get("real_external_image_lottie_owner_material").status, ROW_STATUS.RUNTIME_QA_REQUIRED);
+    assert.equal(rows.get("real_fusion_capable_vap_owner_material").status, ROW_STATUS.RUNTIME_QA_REQUIRED);
+
+    assert.equal(rows.get("external_image_lottie_task_fixture_source_oracle").installedMatrixReadiness.sourceSideClosed, true);
+    assert.equal(rows.get("real_external_image_lottie_owner_material").installedMatrixReadiness.sourceSideClosed, false);
+    assert.equal(rows.get("real_external_image_lottie_owner_material").installedMatrixReadiness.requiresRuntimeOrOwnerMaterialQa, true);
+    assert.equal(rows.get("real_fusion_capable_vap_owner_material").installedMatrixReadiness.requiresRuntimeOrOwnerMaterialQa, true);
+    assert.deepEqual(
+      rows.get("lottie_vap_cross_source_replacement_isolation").sourceEvidence.testNames,
+      [
+        "0.2 accepted Lottie and VAP source reopen clears stale renderer replacement authority",
+        "0.2 delayed Lottie and VAP Apply completion cannot cross a successful source reopen",
+        "0.2 delayed Lottie and VAP image Apply completion cannot publish after source reopen"
+      ]
+    );
+
+    assert.doesNotMatch(JSON.stringify(proof), /\/Users\/huangtengxin|external-image-lottie\.json|fusion-vap\.mp4|replacement\.png/u);
+  } finally {
+    await rm(path.dirname(result.proofPath), { recursive: true, force: true });
+  }
+});
+
+test("source gap map rejects ambiguous or malformed row plans", () => {
+  const base = {
+    schemaVersion: 1,
+    status: "passed",
+    pathRedacted: true,
+    rows: [
+      ...[
+        "external_image_lottie_task_fixture_source_oracle",
+        "fusion_capable_vap_task_fixture_source_oracle",
+        "lottie_vap_cross_source_replacement_isolation",
+        "distinct_second_dpr_acceptance_artifact",
+        "real_external_image_lottie_owner_material",
+        "real_fusion_capable_vap_owner_material"
+      ].map((id) => ({
+        id,
+        status: id.startsWith("real_") ? ROW_STATUS.RUNTIME_QA_REQUIRED : ROW_STATUS.SOURCE_CLOSED,
+        installedMatrixReadiness: {
+          sourceSideClosed: !id.startsWith("real_"),
+          requiresRuntimeOrOwnerMaterialQa: id.startsWith("real_")
+        }
+      }))
+    ]
+  };
+
+  validateSourceGapMap(base);
+  assert.throws(() => validateSourceGapMap({
+    ...base,
+    rows: [...base.rows, { ...base.rows[0] }]
+  }), /duplicated/u);
+  assert.throws(() => validateSourceGapMap({
+    ...base,
+    rows: base.rows.map((row) => row.id === "real_external_image_lottie_owner_material"
+      ? { ...row, status: ROW_STATUS.SOURCE_CLOSED }
+      : row)
+  }), /source-closed|runtime-required/u);
+  assert.throws(() => validateSourceGapMap({
+    ...base,
+    rows: base.rows.filter((row) => row.id !== "fusion_capable_vap_task_fixture_source_oracle")
+  }), /missing required row/u);
 });
 
 test("task fixture source oracle rejects adversarial owner snapshot envelopes", async () => {
