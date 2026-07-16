@@ -1430,10 +1430,14 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   const chooseSource = controller.slice(chooseStart, applyStart);
   const applySource = controller.slice(applyStart, controller.indexOf("async function resetImageReplacement", applyStart + 1));
   assert.match(chooseSource, /bridge\.chooseMultiFormatReplacementImage/);
-  assert.match(chooseSource, /sourceId: state\.sourceId/);
+  assert.match(chooseSource, /const sourceId = state\.sourceId \|\| ""/);
+  assert.match(chooseSource, /sourceId,/);
+  assert.match(chooseSource, /runtimeReplacementAuthorityIsCurrent\(sourceId, authorityGeneration\)/);
   assert.match(controller, /function acceptedRuntimeReplacementValue[\s\S]*result\?\.replacementRuntimeValue/);
   assert.match(chooseSource, /runtimeValue\.targetId/);
-  assert.match(applySource, /sourceId: state\.sourceId/);
+  assert.match(applySource, /const sourceId = state\.sourceId \|\| ""/);
+  assert.match(applySource, /sourceId,/);
+  assert.match(applySource, /runtimeReplacementAuthorityIsCurrent\(sourceId, authorityGeneration\)/);
   assert.match(applySource, /runtimeValue\.targetId/);
   assert.doesNotMatch(controller, /runtimeReplacementImageTargetId/);
   assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
@@ -4092,6 +4096,275 @@ test("0.2 Lottie and VAP text intents cannot publish a delayed Apply after retur
       assert.equal(orderedFinalInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
       assert.equal(orderedFinalInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
       assert.equal(bridge.prepareInputs.at(-1).replacements.active.at(-1).valuePreview, latestChangedValue);
+    }
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    globalThis.Vap = originalVap;
+    globalThis.URL = originalUrl;
+  }
+});
+
+test("0.2 accepted Lottie and VAP source reopen clears stale renderer replacement authority", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const originalVap = globalThis.Vap;
+  const originalUrl = globalThis.URL;
+  globalThis.lottie = {
+    loadAnimation() {
+      return { play() {}, pause() {}, destroy() {}, goToAndStop() {} };
+    }
+  };
+  globalThis.Vap = {
+    canWebGL() { return true; },
+    default() {
+      return { on() { return this; }, play() { return this; }, pause() {}, destroy() {}, setTime() {} };
+    }
+  };
+  globalThis.URL = {
+    createObjectURL() { return "blob:open-isolation"; },
+    revokeObjectURL() {}
+  };
+
+  try {
+    for (const fixture of [
+      { format: "lottie", textKey: "text:1", sourceValue: "Original greeting", changedValue: "stale-from-source-a" },
+      { format: "vap", textKey: "title", sourceValue: "VAP 融合文字", changedValue: "过期来源 A" }
+    ]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      const documentRef = createMultiFormatControllerTestDocument(nodes);
+      globalThis.document = documentRef;
+      const bridge = createMultiFormatRuntimeMountTestBridge();
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+      controller.initialize();
+
+      bridge.markOpened(fixture.format);
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${fixture.format}-source-a` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${fixture.format}-source-a`,
+        result: createRuntimeMountOpenResult(fixture.format, { sourceId: `${fixture.format}:source-a` })
+      }), true);
+      await flushRuntimeMountPromises();
+
+      controller.handlers.selectImageKey("avatar");
+      await controller.handlers.applyReplacementFile({
+        type: "image/png",
+        async arrayBuffer() {
+          return Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 9, 9, 9]).buffer;
+        }
+      });
+      await controller.handlers.updateRuntimeText(fixture.textKey, fixture.changedValue);
+      await flushRuntimeMountPromises();
+
+      assert.equal(state.textPreviewValues[fixture.textKey], fixture.changedValue);
+      assert.deepEqual(
+        bridge.prepareInputs.at(-1).replacements.active.map((record) => `${record.kind}:${record.targetId}`).sort(),
+        [`image:avatar`, `text:${fixture.textKey}`].sort()
+      );
+
+      bridge.markOpened(fixture.format);
+      const prepareCountBeforeSourceB = bridge.prepareInputs.length;
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${fixture.format}-source-b` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${fixture.format}-source-b`,
+        result: createRuntimeMountOpenResult(fixture.format, { sourceId: `${fixture.format}:source-b` })
+      }), true);
+      await flushRuntimeMountPromises();
+
+      const sourceBPrepare = bridge.prepareInputs.slice(prepareCountBeforeSourceB)
+        .find((input) => input.sourceId === `${fixture.format}:source-b`);
+      assert.ok(sourceBPrepare, `${fixture.format} source B must prepare runtime`);
+      assert.deepEqual(sourceBPrepare.replacements.active, [], `${fixture.format} source B host replacement model must be clean`);
+      assert.equal(sourceBPrepare.replacements.runtimeValues, undefined, `${fixture.format} source B must not inherit source A runtime values`);
+      assert.deepEqual(state.textPreviewValues, {}, `${fixture.format} source B must not inherit visible text preview values`);
+      const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.equal(input.value, fixture.sourceValue);
+      assert.equal(input.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    }
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    globalThis.Vap = originalVap;
+    globalThis.URL = originalUrl;
+  }
+});
+
+test("0.2 delayed Lottie and VAP Apply completion cannot cross a successful source reopen", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const originalVap = globalThis.Vap;
+  const originalUrl = globalThis.URL;
+  globalThis.lottie = {
+    loadAnimation() {
+      return { play() {}, pause() {}, destroy() {}, goToAndStop() {} };
+    }
+  };
+  globalThis.Vap = {
+    canWebGL() { return true; },
+    default() {
+      return { on() { return this; }, play() { return this; }, pause() {}, destroy() {}, setTime() {} };
+    }
+  };
+  globalThis.URL = {
+    createObjectURL() { return "blob:delayed-open-isolation"; },
+    revokeObjectURL() {}
+  };
+
+  try {
+    for (const fixture of [
+      { format: "lottie", textKey: "text:1", sourceValue: "Original greeting", changedValue: "delayed-source-a" },
+      { format: "vap", textKey: "title", sourceValue: "VAP 融合文字", changedValue: "延迟来源 A" }
+    ]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      const documentRef = createMultiFormatControllerTestDocument(nodes);
+      globalThis.document = documentRef;
+      const bridge = createMultiFormatRuntimeMountTestBridge();
+      const applyReplacement = bridge.applyMultiFormatReplacement.bind(bridge);
+      const pendingApplies = [];
+      bridge.applyMultiFormatReplacement = (input) => new Promise((resolve) => {
+        pendingApplies.push({ input, resolve: () => resolve(applyReplacement(input)) });
+      });
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+      controller.initialize();
+
+      bridge.markOpened(fixture.format);
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${fixture.format}-delayed-a` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${fixture.format}-delayed-a`,
+        result: createRuntimeMountOpenResult(fixture.format, { sourceId: `${fixture.format}:delayed-a` })
+      }), true);
+      await flushRuntimeMountPromises();
+
+      const mutation = controller.handlers.updateRuntimeText(fixture.textKey, fixture.changedValue);
+      await flushRuntimeMountPromises();
+      assert.equal(pendingApplies.length, 1, `${fixture.format} source A changed text must dispatch Apply`);
+      assert.equal(state.textPreviewValues[fixture.textKey], fixture.changedValue);
+
+      bridge.markOpened(fixture.format);
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${fixture.format}-delayed-b` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${fixture.format}-delayed-b`,
+        result: createRuntimeMountOpenResult(fixture.format, { sourceId: `${fixture.format}:delayed-b` })
+      }), true);
+      await flushRuntimeMountPromises();
+      const prepareCountAfterSourceB = bridge.prepareInputs.length;
+
+      pendingApplies.shift().resolve();
+      await mutation;
+      await flushRuntimeMountPromises();
+
+      assert.equal(bridge.prepareInputs.length, prepareCountAfterSourceB, `${fixture.format} delayed source A Apply must not remount source B`);
+      assert.deepEqual(state.textPreviewValues, {}, `${fixture.format} delayed source A Apply must not restore visible text state`);
+      const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.equal(input.value, fixture.sourceValue);
+      assert.equal(input.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    }
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    globalThis.Vap = originalVap;
+    globalThis.URL = originalUrl;
+  }
+});
+
+test("0.2 delayed Lottie and VAP image Apply completion cannot publish after source reopen", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const originalVap = globalThis.Vap;
+  const originalUrl = globalThis.URL;
+  globalThis.lottie = {
+    loadAnimation() {
+      return { play() {}, pause() {}, destroy() {}, goToAndStop() {} };
+    }
+  };
+  globalThis.Vap = {
+    canWebGL() { return true; },
+    default() {
+      return { on() { return this; }, play() { return this; }, pause() {}, destroy() {}, setTime() {} };
+    }
+  };
+  globalThis.URL = {
+    createObjectURL() { return "blob:delayed-image-open-isolation"; },
+    revokeObjectURL() {}
+  };
+
+  try {
+    for (const format of ["lottie", "vap"]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      const documentRef = createMultiFormatControllerTestDocument(nodes);
+      globalThis.document = documentRef;
+      const bridge = createMultiFormatRuntimeMountTestBridge();
+      const applyReplacement = bridge.applyMultiFormatReplacement.bind(bridge);
+      const pendingApplies = [];
+      bridge.applyMultiFormatReplacement = (input) => new Promise((resolve) => {
+        pendingApplies.push({ input, resolve: () => resolve(applyReplacement(input)) });
+      });
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+      controller.initialize();
+
+      bridge.markOpened(format);
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${format}-image-a` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${format}-image-a`,
+        result: createRuntimeMountOpenResult(format, { sourceId: `${format}:image-a` })
+      }), true);
+      await flushRuntimeMountPromises();
+
+      controller.handlers.selectImageKey("avatar");
+      const mutation = controller.handlers.applyReplacementFile({
+        type: "image/png",
+        async arrayBuffer() {
+          return Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 7, 7, 7]).buffer;
+        }
+      });
+      await flushRuntimeMountPromises();
+      assert.equal(pendingApplies.length, 1, `${format} source A image Apply must dispatch`);
+
+      bridge.markOpened(format);
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${format}-image-b` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${format}-image-b`,
+        result: createRuntimeMountOpenResult(format, { sourceId: `${format}:image-b` })
+      }), true);
+      await flushRuntimeMountPromises();
+      const prepareCountAfterSourceB = bridge.prepareInputs.length;
+
+      pendingApplies.shift().resolve();
+      await mutation;
+      await flushRuntimeMountPromises();
+
+      assert.equal(bridge.prepareInputs.length, prepareCountAfterSourceB, `${format} delayed source A image Apply must not remount source B`);
+      assert.equal(state.sourceId, `${format}:image-b`);
+      assert.equal(state.model.replacement.dirty, false);
+      assert.deepEqual(state.model.replacement.active, []);
+      assert.deepEqual(state.textPreviewValues, {});
     }
   } finally {
     globalThis.document = originalDocument;

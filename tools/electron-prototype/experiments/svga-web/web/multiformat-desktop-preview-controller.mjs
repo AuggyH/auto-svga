@@ -83,6 +83,7 @@ export function createMultiFormatDesktopPreviewController({
   let svgaPlaybackModulePromise;
   let runtimeReplacementValues = new Map();
   let publicRuntimeReplacementTargets = new Map();
+  let runtimeReplacementAuthorityGeneration = 0;
   let runtimeTextMutationGeneration = 0;
   let runtimeTextMutationSequence = 0;
   let runtimeTextMutationIntents = new Map();
@@ -318,11 +319,14 @@ export function createMultiFormatDesktopPreviewController({
     if (svgaWorkflowActive()) return svgaController.handlers.chooseReplacementImage?.(imageKey);
     if (!imageKey) return;
     state.selectedImageKey = imageKey;
+    const sourceId = state.sourceId || "";
+    const authorityGeneration = runtimeReplacementAuthorityGeneration;
     const result = await bridge.chooseMultiFormatReplacementImage?.({
       targetId: imageKey,
-      sourceId: state.sourceId,
+      sourceId,
       kind: "image"
     });
+    if (!runtimeReplacementAuthorityIsCurrent(sourceId, authorityGeneration)) return;
     if (!result || result.status === "cancelled") {
       renderCommandState();
       return;
@@ -350,20 +354,25 @@ export function createMultiFormatDesktopPreviewController({
   async function applyReplacementFile(file) {
     if (svgaWorkflowActive()) return svgaController.handlers.applyReplacementFile?.(file);
     if (!file || !state.selectedImageKey) return;
+    const sourceId = state.sourceId || "";
+    const selectedImageKey = state.selectedImageKey;
+    const authorityGeneration = runtimeReplacementAuthorityGeneration;
     const dataUri = await fileToDataUri(file);
+    if (!runtimeReplacementAuthorityIsCurrent(sourceId, authorityGeneration)) return;
     const result = await bridge.applyMultiFormatReplacement({
-      targetId: state.selectedImageKey,
-      sourceId: state.sourceId,
+      targetId: selectedImageKey,
+      sourceId,
       kind: "image",
       value: dataUri
     });
+    if (!runtimeReplacementAuthorityIsCurrent(sourceId, authorityGeneration)) return;
     const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
     if (replacementActionAccepted(result) && !runtimeValue) {
       showFailure({ code: "replacement_preview_failed" });
       return;
     }
     if (runtimeValue) {
-      setPublicRuntimeReplacementTarget(result, "image", state.selectedImageKey, runtimeValue.targetId);
+      setPublicRuntimeReplacementTarget(result, "image", selectedImageKey, runtimeValue.targetId);
       setRuntimeReplacementValue(
         "image",
         runtimeValue.targetId,
@@ -565,7 +574,20 @@ export function createMultiFormatDesktopPreviewController({
       editReason: "当前格式仅支持预览"
     });
     applyTabState("overview");
+    clearRuntimeReplacementAuthorityForAcceptedOpen();
     applyHostResult(result);
+  }
+
+  function clearRuntimeReplacementAuthorityForAcceptedOpen() {
+    runtimeReplacementAuthorityGeneration += 1;
+    invalidateRuntimeTextMutations();
+    clearRuntimeReplacementValues();
+    state.textPreviewValues = {};
+  }
+
+  function runtimeReplacementAuthorityIsCurrent(sourceId, generation) {
+    return generation === runtimeReplacementAuthorityGeneration
+      && sourceId === (state.sourceId || "");
   }
 
   function setLoading(copy) {

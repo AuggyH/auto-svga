@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "sealed",
+  "task": "multiformat-open-isolation-repair",
+  "baseHead": "2fc1eda2043754c7bc62e4ed767aa4bdca4c820b",
+  "branch": "codex/0.2-multiformat-open-isolation-repair-20260716",
+  "productDiffSha256": "7c7ffda4094ac025d9cf9478390d4e30a9f42b8c1e5ff97a7f0cf2fabccb2a48",
+  "members": [
+    {
+      "path": "review/multiformat-open-isolation-repair-20260716/README.md",
+      "sizeBytes": 917,
+      "sha256": "15833adf62700e7426298e975128c90a003e857c105f2f325839b4eb5f5495c5"
+    },
+    {
+      "path": "review/multiformat-open-isolation-repair-20260716/REVIEW_PACKET.md",
+      "sizeBytes": 1634,
+      "sha256": "8dbe014cd35068ed6b27d01a9b20772f6f1576072b593964703d1b4fc6a9abf5"
+    },
+    {
+      "path": "review/multiformat-open-isolation-repair-20260716/VALIDATION_SUMMARY.md",
+      "sizeBytes": 1445,
+      "sha256": "bc56217349351f54d00403c150f3498a7c0c619e435f25d92ad51ab46936d920"
+    },
+    {
+      "path": "docs/reviews/2026-07-16-codex-multiformat-open-isolation-repair.md",
+      "sizeBytes": 4511,
+      "sha256": "710476194171d488825f39f7b22fa60556ee3af5004028e8073613b21fbb8e3b"
+    }
+  ]
+}
