@@ -295,7 +295,15 @@ class MultiFormatDesktopPreviewSession {
   }
 
   async applySvgaImageReplacement(modules, input) {
-    const binding = this.activeSvgaSourceBinding(input?.workspaceModel);
+    let binding;
+    try {
+      binding = this.activeSvgaSourceBinding(input?.workspaceModel);
+    } catch {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_changed",
+        "SVGA replacement source changed after Open; reopen the file before replacing an image."
+      );
+    }
     if (!binding) {
       return rejectedSvgaReplacement(
         "svga_replacement_source_stale",
@@ -375,6 +383,14 @@ class MultiFormatDesktopPreviewSession {
         "SVGA replacement source changed while the replacement was being prepared."
       );
     }
+    try {
+      verifySourceBinding(binding, MULTIFORMAT_MAX_DROPPED_BYTES);
+    } catch {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_changed",
+        "SVGA replacement source changed while the replacement was being prepared."
+      );
+    }
     let postApplySourceSha256;
     try {
       postApplySourceSha256 = sha256Bytes(readBoundedFileBuffer(binding.filePath, MULTIFORMAT_MAX_DROPPED_BYTES));
@@ -410,7 +426,15 @@ class MultiFormatDesktopPreviewSession {
   }
 
   async resetSvgaImageReplacement(modules, input) {
-    const binding = this.activeSvgaSourceBinding(input?.workspaceModel);
+    let binding;
+    try {
+      binding = this.activeSvgaSourceBinding(input?.workspaceModel);
+    } catch {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_changed",
+        "SVGA replacement source changed after Open; reopen the file before Reset."
+      );
+    }
     const preview = this.svgaReplacementPreview;
     if (!binding || !preview || preview.sourceId !== binding.sourceId || preview.session.model.dirty !== true) {
       return rejectedSvgaReplacement(
@@ -448,6 +472,7 @@ class MultiFormatDesktopPreviewSession {
   activeSvgaSourceBinding(workspaceModel) {
     if (workspaceModel?.detectedFormat !== "svga" || !/^[a-f0-9]{24}$/iu.test(this.activeSourceId)) return undefined;
     if (this.sourceStore?.get(this.activeSourceId) !== this.activeSourceBinding?.filePath) return undefined;
+    verifySourceBinding(this.activeSourceBinding, MULTIFORMAT_MAX_DROPPED_BYTES);
     return this.activeSourceBinding;
   }
 
@@ -1438,10 +1463,12 @@ function createSourceBinding(filePath, requestId, maxBytes) {
         requestId,
         dev: before.dev,
         ino: before.ino,
+        nlink: before.nlink,
         size: before.size,
         sha256: sourceSha256,
         parentDev: parent.dev,
         parentIno: parent.ino,
+        parentRealPath: parent.realPath,
         adjacentVapcSha256: adjacentVapc?.sha256 ?? ""
       }))
       .digest("hex");
@@ -1449,8 +1476,10 @@ function createSourceBinding(filePath, requestId, maxBytes) {
       sourceId: createHash("sha256").update(`${requestId}:${identityHash}`).digest("hex").slice(0, 24),
       requestId,
       filePath: normalizedPath,
+      type: "file",
       dev: before.dev,
       ino: before.ino,
+      nlink: before.nlink,
       size: before.size,
       sha256: sourceSha256,
       parent,
@@ -1467,10 +1496,13 @@ function verifySourceBinding(binding, maxBytes) {
   if (
     current.dev !== binding.dev
     || current.ino !== binding.ino
+    || current.type !== binding.type
+    || current.nlink !== binding.nlink
     || current.size !== binding.size
     || current.sha256 !== binding.sha256
     || current.parent.dev !== binding.parent.dev
     || current.parent.ino !== binding.parent.ino
+    || current.parent.realPath !== binding.parent.realPath
     || !sameOptionalAdjacentBinding(current.adjacentVapc, binding.adjacentVapc)
   ) {
     throw new Error("Source identity changed after Open.");
@@ -1536,7 +1568,7 @@ function readBoundedDescriptorBuffer(fd, expectedSize, maxBytes) {
 function directoryIdentity(directoryPath) {
   const stat = statSync(directoryPath);
   if (!stat.isDirectory()) throw new Error("Expected a source directory.");
-  return { filePath: directoryPath, dev: stat.dev, ino: stat.ino };
+  return { filePath: directoryPath, realPath: realpathSync(directoryPath), dev: stat.dev, ino: stat.ino };
 }
 
 function ancestorDirectoryIdentities(sourceDirectory, resourcePath) {
@@ -1552,7 +1584,10 @@ function ancestorDirectoryIdentities(sourceDirectory, resourcePath) {
 
 function sameIdentityList(left, right) {
   return left.length === right.length && left.every((item, index) =>
-    item.dev === right[index].dev && item.ino === right[index].ino && item.filePath === right[index].filePath
+    item.dev === right[index].dev
+    && item.ino === right[index].ino
+    && item.filePath === right[index].filePath
+    && item.realPath === right[index].realPath
   );
 }
 

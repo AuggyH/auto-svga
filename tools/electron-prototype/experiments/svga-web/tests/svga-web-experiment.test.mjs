@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
-import { copyFile, link, mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
@@ -2590,6 +2590,104 @@ test("0.2 desktop session rejects source mutation and stale source IDs before ru
     assert.doesNotMatch(JSON.stringify({ mutatedApply, mutatedReset, staleAfterOtherOpen }), /auto-svga-source-authority-|\/Users\//u);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 desktop session rejects same-byte SVGA source identity replacement before Apply, Reset, and async Apply publication", async () => {
+  const sourceBytes = await createReplaceableWideSvgaFixture();
+  const replacementDataUri = `data:image/png;base64,${(await createTestPng([0, 255, 0, 255])).toString("base64")}`;
+
+  async function createOpenedSession(rootPrefix = "auto-svga-source-identity-") {
+    const sessionRoot = await mkdtemp(path.join(os.tmpdir(), rootPrefix));
+    const session = createMultiFormatDesktopPreviewSession({
+      repoRoot,
+      sessionRoot,
+      sourceStore: new Map(),
+      openTimeoutMs: 1000
+    });
+    const svgaPath = path.join(sessionRoot, "identity.svga");
+    await writeFile(svgaPath, sourceBytes);
+    const opened = await session.openLocalFilePath(svgaPath, "fileButton");
+    assert.equal(opened.model.status, "playing");
+    return { sessionRoot, session, svgaPath, opened };
+  }
+
+  const beforeApply = await createOpenedSession();
+  try {
+    await replaceFileWithSameBytesAndNewInode(beforeApply.svgaPath, sourceBytes);
+    const result = await beforeApply.session.applyReplacement({
+      sourceId: beforeApply.opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image",
+      value: replacementDataUri
+    });
+    assert.equal(result.model.replacement.lastAction.status, "blocked");
+    assert.equal(result.model.replacement.lastAction.diagnostic.code, "svga_replacement_source_changed");
+  } finally {
+    await rm(beforeApply.sessionRoot, { recursive: true, force: true });
+  }
+
+  const beforeReset = await createOpenedSession();
+  try {
+    const applied = await beforeReset.session.applyReplacement({
+      sourceId: beforeReset.opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image",
+      value: replacementDataUri
+    });
+    assert.equal(applied.model.replacement.lastAction.status, "accepted");
+    await replaceFileWithSameBytesAndNewInode(beforeReset.svgaPath, sourceBytes);
+    const result = await beforeReset.session.resetReplacement({
+      sourceId: beforeReset.opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image"
+    });
+    assert.equal(result.model.replacement.lastAction.status, "blocked");
+    assert.equal(result.model.replacement.lastAction.diagnostic.code, "svga_replacement_source_changed");
+  } finally {
+    await rm(beforeReset.sessionRoot, { recursive: true, force: true });
+  }
+
+  const duringApply = await createOpenedSession();
+  try {
+    const originalApply = duringApply.session.applySvgaImageReplacement.bind(duringApply.session);
+    duringApply.session.applySvgaImageReplacement = async (modules, input) => {
+      const patchedModules = {
+        ...modules,
+        async applyShortTermImageReplacementPreview(...args) {
+          const result = await modules.applyShortTermImageReplacementPreview(...args);
+          await replaceFileWithSameBytesAndNewInode(duringApply.svgaPath, sourceBytes);
+          return result;
+        }
+      };
+      return originalApply(patchedModules, input);
+    };
+    const result = await duringApply.session.applyReplacement({
+      sourceId: duringApply.opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image",
+      value: replacementDataUri
+    });
+    assert.equal(result.model.replacement.lastAction.status, "blocked");
+    assert.equal(result.model.replacement.lastAction.diagnostic.code, "svga_replacement_source_changed");
+  } finally {
+    await rm(duringApply.sessionRoot, { recursive: true, force: true });
+  }
+
+  const parentSwap = await createOpenedSession("auto-svga-source-parent-");
+  try {
+    await replaceParentWithSameBytesAndNewIdentity(path.dirname(parentSwap.svgaPath), path.basename(parentSwap.svgaPath), sourceBytes);
+    const result = await parentSwap.session.applyReplacement({
+      sourceId: parentSwap.opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image",
+      value: replacementDataUri
+    });
+    assert.equal(result.model.replacement.lastAction.status, "blocked");
+    assert.equal(result.model.replacement.lastAction.diagnostic.code, "svga_replacement_source_changed");
+    assert.doesNotMatch(JSON.stringify(result), /auto-svga-source-(?:identity|parent)-|\/Users\//u);
+  } finally {
+    await rm(parentSwap.sessionRoot, { recursive: true, force: true });
   }
 });
 
@@ -7413,6 +7511,25 @@ function lottieFixtureJson(imagePath) {
     layers: [{ ind: 1, ty: 2, refId: "image_0" }],
     assets: [{ id: "image_0", u: "", p: imagePath, w: 1, h: 1 }]
   });
+}
+
+async function replaceFileWithSameBytesAndNewInode(filePath, bytes) {
+  const before = await stat(filePath);
+  const replacementPath = `${filePath}.same-byte-replacement`;
+  await writeFile(replacementPath, bytes);
+  await rename(replacementPath, filePath);
+  const after = await stat(filePath);
+  assert.notEqual(`${after.dev}:${after.ino}`, `${before.dev}:${before.ino}`);
+}
+
+async function replaceParentWithSameBytesAndNewIdentity(directoryPath, fileName, bytes) {
+  const before = await stat(directoryPath);
+  const swappedPath = `${directoryPath}.swapped`;
+  await rename(directoryPath, swappedPath);
+  await mkdir(directoryPath, { recursive: true });
+  await writeFile(path.join(directoryPath, fileName), bytes);
+  const after = await stat(directoryPath);
+  assert.notEqual(`${after.dev}:${after.ino}`, `${before.dev}:${before.ino}`);
 }
 
 async function createTestPng(rgba) {
