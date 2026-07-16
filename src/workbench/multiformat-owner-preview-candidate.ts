@@ -327,7 +327,24 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     let workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput(this.currentOpen, this.replacements));
     if (!this.isActive(generation)) return this.getModel();
     if (workspaceModel.status === "ready") {
-      workspaceModel = await this.workspace.play();
+      try {
+        workspaceModel = await this.workspace.play();
+      } catch (error) {
+        if (!this.isActive(generation)) return this.getModel();
+        const readyModel = this.workspace.getModel();
+        workspaceModel = {
+          ...readyModel,
+          status: "playbackFailed",
+          issues: [
+            ...readyModel.issues,
+            issue("playback_failure", "Owner-visible multi-format preview autoplay failed.", "error", {
+              reason: "autoplay_play_rejected",
+              cause: redactLocalPathsFromError(error, "autoplay failed", [this.currentOpen.localPath])
+            }, this.currentOpen.localPath)
+          ],
+          playback: playbackState("error", readyModel.playback.durationMs)
+        };
+      }
       if (!this.isActive(generation)) return this.getModel();
     }
     this.resetSourceDependencies = resetSourceDependenciesFromWorkspace(workspaceModel);

@@ -1175,6 +1175,313 @@ test("owner-visible 0.2 candidate prevents stale replacement renderer mutation a
   assertNoLocalPaths(finalModel);
 });
 
+test("owner-visible daily-use chain preserves facts, actions, replacement, reset, and reopen isolation across formats", async () => {
+  const svgaPath = "/Users/designer/private/daily-frame.svga";
+  const lottiePath = "/Users/designer/private/daily-card.json";
+  const vapPath = "/Users/designer/private/daily-fusion.mp4";
+  const lottieLoadCalls: LottieSvgLoadOptions[] = [];
+  const vapRuntime = fakeVapRuntime();
+  const svgaControllerCalls: string[] = [];
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host: memoryHost({
+      [svgaPath]: svgaHintBytes(),
+      [lottiePath]: minimalLottie({
+        assets: [{ id: "avatar", p: "avatar.png", w: 20, h: 20 }],
+        layers: [
+          { ind: 1, ty: 2, nm: "Avatar", refId: "avatar" },
+          { ind: 2, ty: 5, nm: "Title", t: { d: { k: [{ s: { t: "Hello" } }] } } }
+        ]
+      }),
+      [`${lottiePath}::avatar.png`]: Uint8Array.from([1, 2, 3]),
+      [vapPath]: validVapBytes(fusionImageTextConfig())
+    }),
+    lottieTarget: { container: { id: "lottie-daily" } },
+    lottieRendererLoader: async () => fakeLottieRenderer(lottieLoadCalls),
+    vapTarget: { id: "vap-daily" },
+    vapHostReadiness: readyVapHost(),
+    vapRuntimeLoader: async () => vapRuntime.constructor,
+    svgaAdapter: new FakeSvgaAdapter(),
+    svgaPlaybackAdapter: new FakePlaybackAdapter(),
+    svgaPlaybackTarget: { id: "svga-daily" },
+    svgaReplacementController: {
+      async applyImage(input) {
+        svgaControllerCalls.push(`apply:${input.targetId}`);
+        return {
+          accepted: true,
+          message: "SVGA replacement preview remounted.",
+          playerAction: "remountPreview",
+          playback: playbackState("ready", 2_000)
+        };
+      },
+      async reset() {
+        svgaControllerCalls.push("reset");
+        return {
+          accepted: true,
+          message: "SVGA replacement preview reset.",
+          playerAction: "remountSource",
+          playback: playbackState("ready", 2_000)
+        };
+      }
+    }
+  });
+
+  const svga = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-open-svga",
+    source: "fileButton",
+    localPath: svgaPath
+  });
+  assertDailyOpenSurface(svga, {
+    format: "svga",
+    factIds: ["format", "dimensions", "duration", "layers", "assets", "replaceable"],
+    inventoryGroups: ["image_resources"],
+    imageTargets: ["img_frame"],
+    textTargets: []
+  });
+  assert.equal(session.pause().status, "paused");
+  assert.equal((await session.play()).status, "playing");
+  const svgaApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-svga-replace",
+    targetId: "img_frame",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(svgaApplied.replacement.dirty, true);
+  assert.equal(svgaApplied.replacement.active[0]?.targetId, "img_frame");
+  const svgaReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-svga-reset",
+    targetId: "img_frame",
+    kind: "image"
+  });
+  assert.equal(svgaReset.replacement.dirty, false);
+  assert.deepEqual(svgaControllerCalls, ["apply:img_frame", "reset"]);
+
+  const lottie = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-open-lottie",
+    source: "dragDrop",
+    localPath: lottiePath
+  });
+  assertDailyOpenSurface(lottie, {
+    format: "lottie",
+    factIds: ["format", "dimensions", "duration", "layers", "assets", "replaceable"],
+    inventoryGroups: ["image_resources", "text_candidates"],
+    imageTargets: ["avatar"],
+    textTargets: ["text:2"]
+  });
+  assert.equal(lottie.replacement.dirty, false);
+  assert.equal(session.pause().status, "paused");
+  assert.equal((await session.play()).status, "playing");
+  const lottieTextApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-lottie-text",
+    targetId: "text:2",
+    kind: "text",
+    value: "Welcome"
+  });
+  assert.equal(lottieTextApplied.replacement.active[0]?.targetId, "text:2");
+  const lottieImageApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-lottie-image",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.deepEqual(lottieImageApplied.replacement.active.map(({ targetId }) => targetId), ["text:2", "avatar"]);
+  const lottieTextReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-lottie-reset-text",
+    targetId: "text:2",
+    kind: "text"
+  });
+  assert.deepEqual(lottieTextReset.replacement.active.map(({ targetId }) => targetId), ["avatar"]);
+  const lottieImageReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-lottie-reset-image",
+    targetId: "avatar",
+    kind: "image"
+  });
+  assert.equal(lottieImageReset.replacement.dirty, false);
+  assert.equal(lottieText(lottieLoadCalls.at(-1)?.animationData, 2), "Hello");
+
+  const vap = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-open-vap",
+    source: "menuOpen",
+    localPath: vapPath
+  });
+  assertDailyOpenSurface(vap, {
+    format: "vap",
+    factIds: ["format", "dimensions", "duration", "layers", "assets", "replaceable", "videoCodec", "audio"],
+    inventoryGroups: ["vap_fusion_images", "vap_fusion_texts", "audio_video_media", "unsupported_or_missing"],
+    imageTargets: ["vap_fusion_1"],
+    textTargets: ["vap_fusion_2"]
+  });
+  assert.equal(vap.replacement.dirty, false);
+  assert.equal(session.pause().status, "paused");
+  assert.equal((await session.play()).status, "playing");
+  const vapTextApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-vap-text",
+    targetId: "vap_fusion_2",
+    kind: "text",
+    value: "Replacement title"
+  });
+  assert.equal(vapTextApplied.replacement.lastAction?.runtimeTargetId, "title");
+  const vapImageApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-vap-image",
+    targetId: "vap_fusion_1",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.deepEqual(vapImageApplied.replacement.active.map(({ targetId }) => targetId), ["title", "avatar"]);
+  assert.equal(vapRuntime.configs.at(-1)?.title, "Replacement title");
+  assert.equal(vapRuntime.configs.at(-1)?.avatar, "data:image/png;base64,QUJD");
+  const vapTextReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-vap-reset-text",
+    targetId: "vap_fusion_2",
+    kind: "text"
+  });
+  assert.deepEqual(vapTextReset.replacement.active.map(({ targetId }) => targetId), ["avatar"]);
+  assert.equal(vapRuntime.configs.at(-1)?.title, undefined);
+  assert.equal(vapRuntime.configs.at(-1)?.avatar, "data:image/png;base64,QUJD");
+  const vapImageReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-vap-reset-image",
+    targetId: "vap_fusion_1",
+    kind: "image"
+  });
+  assert.equal(vapImageReset.replacement.dirty, false);
+  assert.equal(vapRuntime.configs.at(-1)?.avatar, undefined);
+  assert.equal(vapRuntime.configs.at(-1)?.title, undefined);
+  assertNoLocalPaths(vapImageReset);
+});
+
+test("owner-visible open autoplay failure revokes prior replacement authority and recovers on the new source", async () => {
+  const lottiePath = "/Users/designer/private/prior-card.json";
+  const svgaPath = "/Users/designer/private/recovery-frame.svga";
+  const lottieLoadCalls: LottieSvgLoadOptions[] = [];
+  const failingAdapter = new OneShotPlayRejectingPlaybackAdapter();
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host: memoryHost({
+      [lottiePath]: minimalLottie({
+        assets: [{ id: "avatar", p: "avatar.png", w: 20, h: 20 }],
+        layers: [{ ind: 1, ty: 2, nm: "Avatar", refId: "avatar" }]
+      }),
+      [`${lottiePath}::avatar.png`]: Uint8Array.from([1, 2, 3]),
+      [svgaPath]: svgaHintBytes()
+    }),
+    lottieTarget: { container: { id: "prior-lottie" } },
+    lottieRendererLoader: async () => fakeLottieRenderer(lottieLoadCalls),
+    svgaAdapter: new FakeSvgaAdapter(),
+    svgaPlaybackAdapter: failingAdapter,
+    svgaPlaybackTarget: { id: "new-svga" }
+  });
+
+  await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-prior-lottie",
+    source: "fileButton",
+    localPath: lottiePath
+  });
+  const priorReplacement = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "prior-replace",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(priorReplacement.replacement.dirty, true);
+
+  const failedOpen = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-svga-play-fails",
+    source: "fileOpenEvent",
+    localPath: svgaPath
+  });
+
+  assert.equal(failedOpen.status, "playbackFailed");
+  assert.equal(failedOpen.requestId, "open-svga-play-fails");
+  assert.equal(failedOpen.detectedFormat, "svga");
+  assert.equal(failedOpen.commands.play, false);
+  assert.equal(failedOpen.commands.recover, true);
+  assert.equal(failedOpen.commands.replace, true);
+  assert.equal(failedOpen.replacement.dirty, false);
+  assert.equal(failedOpen.replacement.resetEnabled, false);
+  assert.deepEqual(failedOpen.replacement.active, []);
+  assert.equal(failedOpen.rightPanel.issues.at(-1)?.code, "playback_failure");
+  assert.equal(failedOpen.rightPanel.issues.at(-1)?.message, "文件预览播放出现问题。");
+  assertNoLocalPaths(failedOpen);
+
+  const recovered = await session.recoverPlayback();
+  assert.equal(recovered.status, "previewReady");
+  assert.equal(recovered.detectedFormat, "svga");
+  assert.equal(recovered.replacement.dirty, false);
+  const resumed = await session.play();
+  assert.equal(resumed.status, "playing");
+  assert.equal(resumed.detectedFormat, "svga");
+  assert.equal(lottieLoadCalls.length, 2);
+  assertNoLocalPaths(resumed);
+});
+
+test("owner-visible open catches a rejected workspace.play without leaking stale source authority", async () => {
+  const lottiePath = "/Users/designer/private/autoplay-reject-card.json";
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host: memoryHost({
+      [lottiePath]: minimalLottie({
+        assets: [{ id: "avatar", p: "avatar.png", w: 20, h: 20 }],
+        layers: [{ ind: 1, ty: 2, nm: "Avatar", refId: "avatar" }]
+      }),
+      [`${lottiePath}::avatar.png`]: Uint8Array.from([1, 2, 3])
+    }),
+    lottieTarget: { container: { id: "autoplay-reject" } },
+    lottieRendererLoader: async () => fakeLottieRenderer(loadCalls)
+  });
+  const internal = session as unknown as {
+    workspace: {
+      play(): Promise<unknown>;
+      recoverPlayback(): Promise<unknown>;
+    };
+  };
+  const originalPlay = internal.workspace.play.bind(internal.workspace);
+  internal.workspace.play = async () => {
+    throw new Error("Autoplay rejected for /Users/designer/private/autoplay-reject-card.json");
+  };
+
+  const failed = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-workspace-play-reject",
+    source: "fileOpenEvent",
+    localPath: lottiePath
+  });
+
+  assert.equal(failed.status, "playbackFailed");
+  assert.equal(failed.detectedFormat, "lottie");
+  assert.equal(failed.requestId, "open-workspace-play-reject");
+  assert.equal(failed.commands.play, false);
+  assert.equal(failed.commands.recover, true);
+  assert.equal(failed.replacement.dirty, false);
+  assert.deepEqual(failed.replacement.active, []);
+  assert.equal(failed.rightPanel.issues.at(-1)?.code, "playback_failure");
+  assert.equal(failed.rightPanel.issues.at(-1)?.message, "文件预览播放出现问题。");
+  assert.equal(loadCalls.length, 1);
+  assertNoLocalPaths(failed);
+
+  internal.workspace.play = originalPlay;
+  const recovered = await session.recoverPlayback();
+  assert.equal(recovered.status, "previewReady");
+  assert.equal(recovered.detectedFormat, "lottie");
+  const resumed = await session.play();
+  assert.equal(resumed.status, "playing");
+  assert.equal(resumed.replacement.dirty, false);
+  assertNoLocalPaths(resumed);
+});
+
 interface MemoryHost extends HiddenMultiFormatPreviewHost {
   statCalls: number;
   rangeReads: Array<{ localPath: string; offset: number; length: number }>;
@@ -1313,6 +1620,8 @@ class FakePlaybackAdapter implements PlaybackAdapter<unknown> {
 class FakePlaybackSession implements PlaybackSession {
   private state: PlaybackState = playbackState("idle");
 
+  constructor(private readonly options: { rejectPlay?: boolean } = {}) {}
+
   async load(source: MotionAssetSource): Promise<WorkbenchResult<MotionAssetInfo>> {
     this.state = playbackState("ready", 2_000);
     return {
@@ -1330,6 +1639,9 @@ class FakePlaybackSession implements PlaybackSession {
   }
 
   async play(): Promise<void> {
+    if (this.options.rejectPlay) {
+      throw new Error("SVGA playback rejected during open.");
+    }
     this.state = { ...this.state, status: "playing" };
   }
 
@@ -1355,6 +1667,17 @@ class FakePlaybackSession implements PlaybackSession {
 
   dispose(): void {
     this.state = { ...this.state, status: "disposed" };
+  }
+}
+
+class OneShotPlayRejectingPlaybackAdapter implements PlaybackAdapter<unknown> {
+  readonly format = "svga" as const;
+  private remainingFailures = 1;
+
+  createSession(): PlaybackSession {
+    const shouldRejectPlay = this.remainingFailures > 0;
+    if (shouldRejectPlay) this.remainingFailures -= 1;
+    return new FakePlaybackSession({ rejectPlay: shouldRejectPlay });
   }
 }
 
@@ -1589,6 +1912,44 @@ function assertNoLocalPaths(value: unknown): void {
   const serialized = JSON.stringify(value);
   assert.equal(serialized.includes("/Users/designer"), false, serialized);
   assert.equal(serialized.includes("private"), false, serialized);
+}
+
+function assertDailyOpenSurface(
+  model: OwnerVisibleMultiFormatPreviewModel,
+  expected: {
+    format: "svga" | "lottie" | "vap";
+    factIds: string[];
+    inventoryGroups: string[];
+    imageTargets: string[];
+    textTargets: string[];
+  }
+): void {
+  assert.equal(model.status, "playing");
+  assert.equal(model.detectedFormat, expected.format);
+  assert.equal(model.commands.pause, true);
+  assert.equal(model.commands.play, false);
+  assert.equal(model.commands.replace, true);
+  assert.equal(model.commands.resetReplacement, false);
+  assert.equal(model.saveExportSupported, false);
+  assert.equal(model.pathRedacted, true);
+  assert.deepEqual(model.rightPanel.facts.map(({ id }) => id), expected.factIds);
+  assert.deepEqual(
+    model.rightPanel.assetInventory.groups.map(({ id }) => id),
+    expected.inventoryGroups
+  );
+  const snapshot = JSON.parse(model.ownerRightPanelSnapshotEnvelope.snapshotJson) as {
+    imageTargets: Array<{ resourceId?: string; imageKey?: string }>;
+    textTargets: Array<{ textKey?: string; resourceId?: string }>;
+  };
+  assert.deepEqual(
+    snapshot.imageTargets.map(({ resourceId, imageKey }) => resourceId ?? imageKey),
+    expected.imageTargets
+  );
+  assert.deepEqual(
+    snapshot.textTargets.map(({ textKey, resourceId }) => textKey ?? resourceId),
+    expected.textTargets
+  );
+  assertNoLocalPaths(model);
 }
 
 function deferred<T>() {
