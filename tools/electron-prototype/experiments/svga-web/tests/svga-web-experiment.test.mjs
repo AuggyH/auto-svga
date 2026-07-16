@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
@@ -2313,6 +2313,152 @@ test("0.2 host-owned drag intake preserves embedded, adjacent, absent, and Lotti
 
     const serialized = JSON.stringify({ embedded, adjacent, isolated, lottie, lottieRuntime });
     assert.doesNotMatch(serialized, /auto-svga-host-intake-context|\/Users\//u);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 host-owned Lottie intake rejects adjacent image aliases that escape the source root", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-root-bound-"));
+  const externalRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-external-"));
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "root-bound-lottie.json");
+  const aliasedImagePath = path.join(sessionRoot, "avatar.png");
+  const externalImagePath = path.join(externalRoot, "owner-avatar.png");
+
+  try {
+    await writeFile(externalImagePath, Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAFgAI/1C1Z4QAAAABJRU5ErkJggg==",
+      "base64"
+    ));
+    await symlink(externalImagePath, aliasedImagePath);
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.13.0",
+      w: 120,
+      h: 80,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      layers: [{ ind: 1, ty: 2, refId: "image_0" }],
+      assets: [{ id: "image_0", u: "", p: "avatar.png", w: 1, h: 1 }]
+    }));
+
+    const opened = await session.openLocalFilePath(lottiePath, "fileButton");
+    assert.notEqual(opened.model.status, "playing");
+    assert.equal(opened.model.rightPanel.issues.some((issue) =>
+      issue.code === "missing_resource" && issue.pathRedacted === true
+    ), true, JSON.stringify(opened.model.rightPanel.issues));
+
+    const runtime = await session.prepareRuntimePreview({
+      sourceId: opened.sourceId,
+      format: "lottie",
+      requestId: opened.model.requestId,
+      replacements: opened.model.replacement
+    });
+    assert.equal(runtime.status, "failed");
+    assert.equal(runtime.issue.code, "missing_resource");
+    assert.doesNotMatch(JSON.stringify({ opened, runtime }), /auto-svga-lottie-(?:root-bound|external)-|owner-avatar|\/Users\//u);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+    await rm(externalRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 desktop session applies and target-resets a replaceable wide SVGA without mutating source bytes", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-wide-svga-replacement-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 1000
+  });
+  const svgaPath = path.join(sessionRoot, "wide-replaceable.svga");
+  const sourceBytes = await createReplaceableWideSvgaFixture();
+  const sourceSha256 = createHash("sha256").update(sourceBytes).digest("hex");
+  const replacementDataUri = `data:image/png;base64,${(await createTestPng([0, 255, 0, 255])).toString("base64")}`;
+
+  try {
+    await writeFile(svgaPath, sourceBytes);
+    const opened = await session.openLocalFilePath(svgaPath, "fileButton");
+    assert.equal(opened.model.status, "playing");
+    assert.equal(opened.model.detectedFormat, "svga");
+    const ownerSnapshot = JSON.parse(opened.model.ownerRightPanelSnapshotEnvelope.snapshotJson);
+    assert.equal(ownerSnapshot.imageTargets.some((target) =>
+      target.resourceId === "profile_frame"
+    ), true, JSON.stringify(ownerSnapshot.imageTargets));
+
+    const applied = await session.applyReplacement({
+      sourceId: opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image",
+      value: replacementDataUri
+    });
+    assert.equal(applied.model.replacement.lastAction.type, "applyReplacement");
+    assert.equal(applied.model.replacement.lastAction.status, "accepted", JSON.stringify(applied.model.replacement.lastAction));
+    assert.equal(applied.model.replacement.lastAction.publicTargetId, "profile_frame");
+    assert.equal(applied.model.replacement.lastAction.runtimeTargetId, "profile_frame");
+    assert.deepEqual(JSON.parse(applied.model.replacement.lastAction.bindingToken), [
+      opened.model.requestId,
+      "svga",
+      0,
+      "image",
+      "profile_frame",
+      "profile_frame"
+    ]);
+    assert.deepEqual(applied.replacementRuntimeValue, {
+      kind: "image",
+      targetId: "profile_frame",
+      value: replacementDataUri
+    });
+    assert.equal(applied.model.replacement.dirty, true);
+    assert.equal(applied.model.replacement.resetEnabled, true);
+
+    const replacedRuntime = await session.prepareRuntimePreview({
+      sourceId: opened.sourceId,
+      format: "svga",
+      requestId: applied.model.requestId,
+      replacements: applied.model.replacement
+    });
+    assert.equal(replacedRuntime.status, "prepared");
+    assert.notEqual(
+      createHash("sha256").update(Buffer.from(replacedRuntime.svgaBase64, "base64")).digest("hex"),
+      sourceSha256
+    );
+    assert.equal(createHash("sha256").update(await readFile(svgaPath)).digest("hex"), sourceSha256);
+
+    const reset = await session.resetReplacement({
+      sourceId: opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image"
+    });
+    assert.equal(reset.model.replacement.lastAction.type, "resetReplacement");
+    assert.equal(reset.model.replacement.lastAction.status, "accepted");
+    assert.equal(reset.model.replacement.dirty, false);
+    assert.equal(reset.model.replacement.resetEnabled, false);
+
+    const resetRuntime = await session.prepareRuntimePreview({
+      sourceId: opened.sourceId,
+      format: "svga",
+      requestId: reset.model.requestId,
+      replacements: reset.model.replacement
+    });
+    assert.equal(resetRuntime.status, "prepared");
+    assert.equal(
+      createHash("sha256").update(Buffer.from(resetRuntime.svgaBase64, "base64")).digest("hex"),
+      sourceSha256
+    );
+
+    const reopened = await session.openLocalFilePath(svgaPath, "menuOpen");
+    assert.equal(reopened.model.status, "playing");
+    assert.equal(reopened.model.replacement.dirty, false);
+    assert.equal(createHash("sha256").update(await readFile(svgaPath)).digest("hex"), sourceSha256);
+    assert.doesNotMatch(JSON.stringify({ opened, applied, reset, reopened }), /auto-svga-wide-svga-replacement-|\/Users\//u);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
@@ -7008,6 +7154,31 @@ async function createOptimizerFixture() {
   const verificationError = MovieEntity.verify(payload);
   assert.equal(verificationError, null);
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+async function createReplaceableWideSvgaFixture() {
+  const root = await protobuf.load(path.join(repoRoot, "proto/svga.proto"));
+  const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
+  const sourceImage = await createTestPng([255, 0, 0, 255]);
+  const payload = {
+    version: "2.0",
+    params: { viewBoxWidth: 800, viewBoxHeight: 320, fps: 24, frames: 48 },
+    images: { profile_frame: sourceImage },
+    sprites: [{ imageKey: "profile_frame", frames: createOptimizerFrames() }],
+    audios: []
+  };
+  const verificationError = MovieEntity.verify(payload);
+  assert.equal(verificationError, null);
+  return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+async function createTestPng(rgba) {
+  const pngWriter = await import(pathToFileURL(path.join(repoRoot, "dist/utils/png-writer.js")).href);
+  const image = pngWriter.createTransparentImage(2, 2);
+  for (let y = 0; y < 2; y += 1) {
+    for (let x = 0; x < 2; x += 1) pngWriter.setPixel(image, x, y, rgba);
+  }
+  return Buffer.from(pngWriter.encodeRgbaPng(image));
 }
 
 function createOptimizerFrames() {

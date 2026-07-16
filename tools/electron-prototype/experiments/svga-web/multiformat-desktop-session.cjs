@@ -1,7 +1,20 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
-const { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync } = require("node:fs");
+const {
+  closeSync,
+  constants: fsConstants,
+  existsSync,
+  fstatSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readSync,
+  realpathSync,
+  statSync,
+  writeFileSync
+} = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
@@ -10,6 +23,7 @@ const MULTIFORMAT_DESKTOP_GATE = "0.2-owner-visible-multiformat-preview-wp5";
 const MULTIFORMAT_MAX_DROPPED_BYTES = 50 * 1024 * 1024;
 const MULTIFORMAT_MAX_RANGE_BYTES = 262_144;
 const MULTIFORMAT_MAX_RUNTIME_JSON_BYTES = 5 * 1024 * 1024;
+const MULTIFORMAT_MAX_REPLACEMENT_IMAGE_BYTES = 10 * 1024 * 1024;
 const MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 
 const allowedExtensions = new Set([".svga", ".json", ".mp4"]);
@@ -37,6 +51,7 @@ class MultiFormatDesktopPreviewSession {
     this.requestSequence = 0;
     this.objectUrlSequence = 0;
     this.activeSourceId = "";
+    this.svgaReplacementPreview = undefined;
     this.openTimeoutMs = Number.isFinite(Number(options.openTimeoutMs))
       ? Math.max(100, Math.trunc(Number(options.openTimeoutMs)))
       : MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS;
@@ -133,7 +148,7 @@ class MultiFormatDesktopPreviewSession {
         return this.prepareLottieRuntimePreview(normalizedPath, replacements);
       }
       if (format === "svga") {
-        return this.prepareSvgaRuntimePreview(normalizedPath);
+        return this.prepareSvgaRuntimePreview(normalizedPath, sourceId, replacements);
       }
       return await this.prepareVapRuntimePreview(normalizedPath, replacements);
     } catch (error) {
@@ -161,6 +176,7 @@ class MultiFormatDesktopPreviewSession {
       case "loop":
         return this.publicResult(session.setLoop(input.loop !== false));
       case "dispose":
+        this.svgaReplacementPreview = undefined;
         return this.publicResult(session.dispose());
       case "model":
       default:
@@ -255,8 +271,174 @@ class MultiFormatDesktopPreviewSession {
         new modules.Sha256ResourceHasher()
       ),
       svgaPlaybackAdapter: createHeadlessPlaybackAdapter("svga"),
-      svgaPlaybackTarget: { role: "desktop-source-contract-svga-target" }
+      svgaPlaybackTarget: { role: "desktop-source-contract-svga-target" },
+      svgaReplacementController: this.createSvgaReplacementController(modules)
     });
+  }
+
+  createSvgaReplacementController(modules) {
+    return {
+      applyImage: async (input) => this.applySvgaImageReplacement(modules, input),
+      reset: async (input) => this.resetSvgaImageReplacement(modules, input)
+    };
+  }
+
+  async applySvgaImageReplacement(modules, input) {
+    const binding = this.activeSvgaSourceBinding(input?.workspaceModel);
+    if (!binding) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_stale",
+        "SVGA replacement requires the active source and workspace generation."
+      );
+    }
+    const targetId = String(input?.targetId ?? "").trim();
+    if (!targetId) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_target_invalid",
+        "SVGA replacement requires one canonical imageKey."
+      );
+    }
+
+    let replacementBytes;
+    try {
+      replacementBytes = decodeRuntimePngDataUri(input?.value);
+    } catch {
+      return rejectedSvgaReplacement(
+        "svga_replacement_image_invalid",
+        "SVGA replacement requires one bounded inline PNG image."
+      );
+    }
+
+    let preview = this.svgaReplacementPreview;
+    let currentSourceBytes;
+    try {
+      currentSourceBytes = readBoundedFileBuffer(binding.filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
+    } catch {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_unavailable",
+        "SVGA replacement source is no longer readable within the bounded input contract."
+      );
+    }
+    const currentSourceSha256 = sha256Bytes(currentSourceBytes);
+    if (
+      preview
+      && (
+        preview.sourceId !== binding.sourceId
+        || preview.filePath !== binding.filePath
+        || preview.session.model.sourceSha256 !== currentSourceSha256
+      )
+    ) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_changed",
+        "SVGA replacement source changed after Open; reopen the file before replacing an image."
+      );
+    }
+    if (!preview) {
+      preview = {
+        sourceId: binding.sourceId,
+        filePath: binding.filePath,
+        session: modules.createShortTermImageReplacementPreviewSession(currentSourceBytes, {
+          sourceName: path.basename(binding.filePath)
+        })
+      };
+    }
+    const activeTargetId = preview.session.model.activeReplacement?.imageKey;
+    if (preview.session.model.dirty && activeTargetId && activeTargetId !== targetId) {
+      return rejectedSvgaReplacement(
+        "svga_single_replacement_target_required",
+        "Reset the active SVGA image replacement before replacing another imageKey."
+      );
+    }
+
+    const applied = await modules.applyShortTermImageReplacementPreview(
+      preview.session,
+      { imageKey: targetId, pngBytes: replacementBytes },
+      { protoPath: path.join(this.repoRoot, "proto/svga.proto") }
+    );
+    if (this.activeSourceId !== binding.sourceId) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_stale",
+        "SVGA replacement source changed while the replacement was being prepared."
+      );
+    }
+    let postApplySourceSha256;
+    try {
+      postApplySourceSha256 = sha256Bytes(readBoundedFileBuffer(binding.filePath, MULTIFORMAT_MAX_DROPPED_BYTES));
+    } catch {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_unavailable",
+        "SVGA replacement source became unreadable while the replacement was being prepared."
+      );
+    }
+    if (postApplySourceSha256 !== currentSourceSha256) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_changed",
+        "SVGA replacement source changed while the replacement was being prepared."
+      );
+    }
+    if (!applied.accepted) {
+      return rejectedSvgaReplacement(
+        applied.workflow?.diagnostic?.code || "svga_replacement_rejected",
+        applied.workflow?.diagnostic?.message || "SVGA replacement did not pass validation."
+      );
+    }
+
+    this.svgaReplacementPreview = {
+      ...preview,
+      session: applied.session
+    };
+    return {
+      accepted: true,
+      message: applied.session.model.lastAction.message,
+      playerAction: "remountPreview",
+      playback: input.workspaceModel?.playback
+    };
+  }
+
+  async resetSvgaImageReplacement(modules, input) {
+    const binding = this.activeSvgaSourceBinding(input?.workspaceModel);
+    const preview = this.svgaReplacementPreview;
+    if (!binding || !preview || preview.sourceId !== binding.sourceId || preview.session.model.dirty !== true) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_reset_not_needed",
+        "SVGA replacement Reset requires the active replaced imageKey."
+      );
+    }
+    let currentSourceSha256;
+    try {
+      currentSourceSha256 = sha256Bytes(readBoundedFileBuffer(binding.filePath, MULTIFORMAT_MAX_DROPPED_BYTES));
+    } catch {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_unavailable",
+        "SVGA replacement source is no longer readable within the bounded input contract."
+      );
+    }
+    if (currentSourceSha256 !== preview.session.model.sourceSha256) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_changed",
+        "SVGA replacement source changed after Open; reopen the file before Reset."
+      );
+    }
+    this.svgaReplacementPreview = {
+      ...preview,
+      session: modules.resetShortTermImageReplacementPreview(preview.session)
+    };
+    return {
+      accepted: true,
+      message: this.svgaReplacementPreview.session.model.lastAction.message,
+      playerAction: "remountSource",
+      playback: input.workspaceModel?.playback
+    };
+  }
+
+  activeSvgaSourceBinding(workspaceModel) {
+    if (workspaceModel?.detectedFormat !== "svga" || !/^[a-f0-9]{24}$/iu.test(this.activeSourceId)) return undefined;
+    const filePath = this.sourceStore?.get(this.activeSourceId);
+    if (!filePath) return undefined;
+    return {
+      sourceId: this.activeSourceId,
+      filePath: normalizeLocalPath(filePath)
+    };
   }
 
   async openWithTerminalDeadline(openPromise, context) {
@@ -370,7 +552,7 @@ class MultiFormatDesktopPreviewSession {
     };
   }
 
-  prepareSvgaRuntimePreview(filePath) {
+  prepareSvgaRuntimePreview(filePath, sourceId, replacements) {
     const stat = statSync(filePath);
     if (!stat.isFile()) {
       return runtimePreviewFailure({
@@ -389,8 +571,21 @@ class MultiFormatDesktopPreviewSession {
       });
     }
     let bytes;
+    let replacementPreviewActive = false;
     try {
-      bytes = readBoundedFileBuffer(filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
+      const preview = this.svgaReplacementPreview;
+      const activeTargetId = preview?.session.model.activeReplacement?.imageKey;
+      replacementPreviewActive = Boolean(
+        preview
+        && preview.sourceId === sourceId
+        && preview.filePath === filePath
+        && preview.session.model.dirty === true
+        && activeTargetId
+        && replacements.activeImageTargetIds.has(activeTargetId)
+      );
+      bytes = replacementPreviewActive
+        ? Buffer.from(preview.session.previewBytes)
+        : readBoundedFileBuffer(filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
     } catch {
       return runtimePreviewFailure({
         format: "svga",
@@ -406,7 +601,16 @@ class MultiFormatDesktopPreviewSession {
       rendererHasFullPath: false,
       runtimeScripts: ["/vendor/svga-web-2.4.4.js"],
       svgaBase64: Buffer.from(bytes).toString("base64"),
-      mediaType: mediaTypeFromPath(filePath)
+      mediaType: mediaTypeFromPath(filePath),
+      replacementPreview: {
+        active: replacementPreviewActive,
+        revision: this.svgaReplacementPreview?.sourceId === sourceId
+          ? this.svgaReplacementPreview.session.model.revision
+          : 0,
+        sourceUnchanged: this.svgaReplacementPreview?.sourceId === sourceId
+          ? this.svgaReplacementPreview.session.model.sourceUnchanged
+          : true
+      }
     };
   }
 
@@ -481,15 +685,19 @@ class MultiFormatDesktopPreviewSession {
         import(moduleUrl("dist/workbench/svga/node-protobuf-inspector.js")),
         import(moduleUrl("dist/hosts/fast-png-alpha-analyzer.js")),
         import(moduleUrl("dist/hosts/sha256-resource-hasher.js")),
-        import(moduleUrl("dist/workbench/vap-inspection.js"))
-      ]).then(([ownerPreview, svgaFormat, svgaInspector, alphaAnalyzer, resourceHasher, vapInspection]) => ({
+        import(moduleUrl("dist/workbench/vap-inspection.js")),
+        import(moduleUrl("dist/workbench/short-term-image-replacement-preview-session.js"))
+      ]).then(([ownerPreview, svgaFormat, svgaInspector, alphaAnalyzer, resourceHasher, vapInspection, svgaReplacement]) => ({
         createOwnerVisibleMultiFormatPreviewCandidate: ownerPreview.createOwnerVisibleMultiFormatPreviewCandidate,
         SvgaFormatAdapter: svgaFormat.SvgaFormatAdapter,
         NodeProtobufSvgaInspector: svgaInspector.NodeProtobufSvgaInspector,
         FastPngAlphaAnalyzer: alphaAnalyzer.FastPngAlphaAnalyzer,
         Sha256ResourceHasher: resourceHasher.Sha256ResourceHasher,
         VapInspectionService: vapInspection.VapInspectionService,
-        VAP_INSPECTION_READINESS_GATE: vapInspection.VAP_INSPECTION_READINESS_GATE
+        VAP_INSPECTION_READINESS_GATE: vapInspection.VAP_INSPECTION_READINESS_GATE,
+        createShortTermImageReplacementPreviewSession: svgaReplacement.createShortTermImageReplacementPreviewSession,
+        applyShortTermImageReplacementPreview: svgaReplacement.applyShortTermImageReplacementPreview,
+        resetShortTermImageReplacementPreview: svgaReplacement.resetShortTermImageReplacementPreview
       }));
     }
     return this.modulesPromise;
@@ -537,16 +745,16 @@ class MultiFormatDesktopPreviewSession {
       },
       async readAdjacentResource(input) {
         const sourcePath = normalizeLocalPath(input?.sourceLocalPath);
-        const resourcePath = resolveAdjacentResource(sourcePath, String(input?.relativePath ?? ""));
-        const stat = statSync(resourcePath);
-        if (!stat.isFile()) throw new Error("Adjacent Lottie resource is not a file.");
         const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, 5 * 1024 * 1024));
-        if (stat.size > maxBytes) throw new Error("Adjacent Lottie resource exceeds the bounded read limit.");
-        const bytes = readFileSync(resourcePath);
+        const read = readRootBoundedAdjacentResource(
+          sourcePath,
+          String(input?.relativePath ?? ""),
+          maxBytes
+        );
         return {
-          bytes: new Uint8Array(bytes),
-          sizeBytes: stat.size,
-          mediaType: mediaTypeFromPath(resourcePath)
+          bytes: new Uint8Array(read.bytes),
+          sizeBytes: read.bytes.byteLength,
+          mediaType: read.mediaType
         };
       },
       async readAdjacentVapcJson(input) {
@@ -581,7 +789,10 @@ class MultiFormatDesktopPreviewSession {
   }
 
   publicResult(model, sourceId = "", sourcePath = "") {
-    if (sourceId) this.activeSourceId = sourceId;
+    if (sourceId) {
+      this.svgaReplacementPreview = undefined;
+      this.activeSourceId = sourceId;
+    }
     const publicSourceId = sourceId || this.activeSourceId;
     const ownerRightPanelSnapshotEnvelope = withOwnerSnapshotSourceId(
       model?.ownerRightPanelSnapshotEnvelope,
@@ -901,11 +1112,16 @@ function normalizeRuntimePreviewReplacements(value) {
   const runtimeValues = Array.isArray(value?.runtimeValues) ? value.runtimeValues : [];
   const image = new Map();
   const text = new Map();
+  const activeImageTargetIds = new Set();
+  const activeTextTargetIds = new Set();
   for (const record of records) {
     const targetId = String(record?.targetId ?? "").trim();
     const kind = record?.kind === "text" ? "text" : record?.kind === "image" ? "image" : "";
     const valuePreview = typeof record?.valuePreview === "string" ? record.valuePreview : "";
-    if (!targetId || !kind || !valuePreview) continue;
+    if (!targetId || !kind) continue;
+    if (kind === "image") activeImageTargetIds.add(targetId);
+    if (kind === "text") activeTextTargetIds.add(targetId);
+    if (!valuePreview) continue;
     if (kind === "image" && isSafeRuntimeImageValue(valuePreview)) image.set(targetId, valuePreview);
     if (kind === "text" && valuePreview.length <= 4000) text.set(targetId, valuePreview);
   }
@@ -917,7 +1133,7 @@ function normalizeRuntimePreviewReplacements(value) {
     if (kind === "image" && isSafeRuntimeImageValue(runtimeValue)) image.set(targetId, runtimeValue);
     if (kind === "text" && runtimeValue.length <= 4000) text.set(targetId, runtimeValue);
   }
-  return { image, text };
+  return { image, text, activeImageTargetIds, activeTextTargetIds };
 }
 
 function inlineLottieRuntimeImageAssets(documentValue, sourcePath, imageReplacements) {
@@ -951,17 +1167,8 @@ function inlineLottieRuntimeImageAssets(documentValue, sourcePath, imageReplacem
     }
     try {
       const normalized = normalizeRuntimeRelativePath(candidate);
-      const resourcePath = resolveAdjacentResource(sourcePath, normalized);
-      const stat = statSync(resourcePath);
-      if (!stat.isFile() || stat.size <= 0 || stat.size > 5 * 1024 * 1024) {
-        return runtimePreviewFailure({
-          format: "lottie",
-          code: "missing_resource",
-          message: "Lottie runtime preview requires bounded readable adjacent image resources.",
-          reason: "bounded_adjacent_image_required"
-        });
-      }
-      const mediaType = mediaTypeFromPath(resourcePath);
+      const read = readRootBoundedAdjacentResource(sourcePath, normalized, 5 * 1024 * 1024);
+      const mediaType = read.mediaType;
       if (!mediaType.startsWith("image/")) {
         return runtimePreviewFailure({
           format: "lottie",
@@ -970,7 +1177,7 @@ function inlineLottieRuntimeImageAssets(documentValue, sourcePath, imageReplacem
           reason: "unsupported_adjacent_image_type"
         });
       }
-      asset.p = `data:${mediaType};base64,${readFileSync(resourcePath).toString("base64")}`;
+      asset.p = `data:${mediaType};base64,${read.bytes.toString("base64")}`;
       asset.u = "";
       asset.e = 1;
     } catch (error) {
@@ -1067,6 +1274,81 @@ function readBoundedFileBuffer(filePath, maxBytes) {
   }
 }
 
+function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes) {
+  const limit = Math.max(0, Math.trunc(Number(maxBytes) || 0));
+  if (limit <= 0) throw new Error("Adjacent resource read limit is invalid.");
+  const resourcePath = resolveAdjacentResource(sourceLocalPath, relativePath);
+  const fd = openSync(resourcePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  try {
+    const before = fstatSync(fd);
+    const pathBefore = statSync(resourcePath);
+    if (
+      !before.isFile()
+      || before.size <= 0
+      || before.size > limit
+      || !sameFileIdentity(before, pathBefore)
+    ) {
+      throw new Error("Adjacent resource is outside the bounded regular-file contract.");
+    }
+    const chunks = [];
+    const scratch = Buffer.allocUnsafe(Math.min(64 * 1024, limit + 1));
+    let totalBytes = 0;
+    while (totalBytes <= limit) {
+      const remaining = limit + 1 - totalBytes;
+      const bytesRead = readSync(fd, scratch, 0, Math.min(scratch.byteLength, remaining), null);
+      if (bytesRead === 0) break;
+      chunks.push(Buffer.from(scratch.subarray(0, bytesRead)));
+      totalBytes += bytesRead;
+    }
+    const after = fstatSync(fd);
+    const pathAfter = statSync(resourcePath);
+    resolveAdjacentResource(sourceLocalPath, relativePath);
+    if (
+      totalBytes <= 0
+      || totalBytes > limit
+      || totalBytes !== before.size
+      || !sameFileIdentity(before, after)
+      || !sameFileIdentity(before, pathAfter)
+      || after.size !== before.size
+    ) {
+      throw new Error("Adjacent resource changed during the bounded read.");
+    }
+    return {
+      bytes: Buffer.concat(chunks, totalBytes),
+      mediaType: mediaTypeFromPath(resourcePath)
+    };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function sameFileIdentity(left, right) {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
+function sha256Bytes(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+function decodeRuntimePngDataUri(value) {
+  const match = /^data:image\/png;base64,([a-z0-9+/]+={0,2})$/iu.exec(String(value ?? "").trim());
+  if (!match) throw new Error("Replacement image must be an inline PNG.");
+  const bytes = Buffer.from(match[1], "base64");
+  if (bytes.byteLength <= 0 || bytes.byteLength > MULTIFORMAT_MAX_REPLACEMENT_IMAGE_BYTES) {
+    throw new Error("Replacement image is outside the bounded input contract.");
+  }
+  return new Uint8Array(bytes);
+}
+
+function rejectedSvgaReplacement(code, message) {
+  return {
+    accepted: false,
+    message,
+    playerAction: "keepCurrentPreview",
+    diagnostic: { code, message }
+  };
+}
+
 function readAdjacentVapcJsonForFile(filePath, maxBytes = MULTIFORMAT_MAX_RANGE_BYTES) {
   if (path.extname(filePath).toLowerCase() !== ".mp4") return undefined;
   const sidecarPath = findAdjacentVapcJsonPath(filePath);
@@ -1141,6 +1423,19 @@ function resolveAdjacentResource(sourceLocalPath, relativePath) {
   const resolved = path.resolve(sourceDir, relativePath);
   if (resolved !== sourceDir && !resolved.startsWith(`${sourceDir}${path.sep}`)) {
     throw new Error("Adjacent Lottie resource path escapes the source directory.");
+  }
+  const sourceRoot = realpathSync(sourceDir);
+  const relativeSegments = path.relative(sourceDir, resolved).split(path.sep).filter(Boolean);
+  let cursor = sourceDir;
+  for (const segment of relativeSegments) {
+    cursor = path.join(cursor, segment);
+    if (lstatSync(cursor).isSymbolicLink()) {
+      throw new Error("Adjacent Lottie resources cannot use symbolic-link aliases.");
+    }
+  }
+  const resolvedRealPath = realpathSync(resolved);
+  if (resolvedRealPath !== sourceRoot && !resolvedRealPath.startsWith(`${sourceRoot}${path.sep}`)) {
+    throw new Error("Adjacent Lottie resource real path escapes the source directory.");
   }
   return resolved;
 }

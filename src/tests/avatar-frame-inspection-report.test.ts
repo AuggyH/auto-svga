@@ -46,7 +46,7 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.assetIntelligence.schemaVersion, 1);
   assert.equal(report.assetIntelligence.summary.resourceCount, 1);
   assert.deepEqual(report.assetIntelligence.findings, []);
-  assert.deepEqual(report.assetIntelligence.resources[0].concepts, ["图片资源", "图层"]);
+  assert.deepEqual(report.assetIntelligence.resources[0].concepts, ["图片资源", "图层", "可替换资源"]);
   assert.equal(report.auditPresentation.statusLabel, "audit.status.pass");
   assert.equal(report.auditPresentation.severityLevel, "success");
   assert.deepEqual(report.auditPresentation.opportunityCards, []);

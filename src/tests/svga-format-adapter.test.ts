@@ -119,6 +119,22 @@ test("SVGA FormatAdapter accepts host-provided encoded resource hashes", async (
   );
 });
 
+test("SVGA FormatAdapter exposes designer-named imageKeys as replaceable without promoting automatic or matte resources", async () => {
+  const bytes = await createNamedReplaceableSvgaFixture();
+  const adapter = new SvgaFormatAdapter(new NodeProtobufSvgaInspector());
+  const result = await adapter.parse(sourceFromBytes("wide-replaceable.svga", bytes));
+
+  assert.ok(result.value);
+  assert.deepEqual(
+    result.value.resources.map(({ id, replaceable }) => ({ id, replaceable: replaceable === true })),
+    [
+      { id: "profile_frame", replaceable: true },
+      { id: "img_001", replaceable: false },
+      { id: "designer_matte", replaceable: false }
+    ]
+  );
+});
+
 test("SVGA FormatAdapter counts match the existing MVP SVGA validator", async () => {
   const bytes = await createSvgaFixture();
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-adapter-"));
@@ -186,6 +202,40 @@ async function createSvgaFixture(): Promise<Uint8Array> {
       {
         imageKey: "img_sweep",
         matteKey: "img_frame",
+        frames: createFrames(24)
+      }
+    ],
+    audios: []
+  };
+  const verificationError = MovieEntity.verify(payload);
+  assert.equal(verificationError, null);
+  return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+async function createNamedReplaceableSvgaFixture(): Promise<Uint8Array> {
+  const root = await protobuf.load(protoPath());
+  const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
+  const payload = {
+    version: "2.0",
+    params: {
+      viewBoxWidth: 800,
+      viewBoxHeight: 320,
+      fps: 24,
+      frames: 48
+    },
+    images: {
+      profile_frame: encodeRgbaPng(createTransparentImage(300, 120)),
+      img_001: encodeRgbaPng(createTransparentImage(48, 48)),
+      designer_matte: encodeRgbaPng(createTransparentImage(300, 120))
+    },
+    sprites: [
+      {
+        imageKey: "profile_frame",
+        frames: createFrames(48)
+      },
+      {
+        imageKey: "img_001",
+        matteKey: "designer_matte",
         frames: createFrames(24)
       }
     ],

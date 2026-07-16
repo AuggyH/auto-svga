@@ -10,6 +10,7 @@ import type {
 } from "../contracts.js";
 import type { EmbeddedImageAlphaAnalyzer } from "../image-alpha-analyzer.js";
 import type { EmbeddedResourceHasher } from "../resource-hasher.js";
+import { isReplaceableImageResource } from "../short-term-product-model.js";
 import { readEmbeddedImageMetadata } from "./image-metadata.js";
 import { classifySvgaResources } from "./resource-classifier.js";
 import type { SvgaBinaryInspector, SvgaMovieInspection } from "./types.js";
@@ -99,6 +100,7 @@ async function toMotionAssetInfo(
   });
   const resources: MotionResourceInfo[] = await Promise.all(imagesWithMetadata.map(async (image) => {
     const classification = classifications.get(image.imageKey);
+    const role = classification?.role ?? "unknown";
     let alphaBounds;
     let contentHash;
     if (alphaAnalyzer) {
@@ -123,7 +125,12 @@ async function toMotionAssetInfo(
       id: image.imageKey,
       name: image.imageKey,
       kind: "image",
-      role: classification?.role ?? "unknown",
+      role,
+      replaceable: isReplaceableImageResource({
+        kind: "image",
+        name: image.imageKey,
+        role
+      }),
       sizeBytes: image.bytes.byteLength,
       dimensions: image.imageMetadata.dimensions,
       alphaBounds,

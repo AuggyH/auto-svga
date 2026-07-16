@@ -421,7 +421,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     };
 
     if (target.format === "svga") {
-      return this.applySvgaReplacement(input, target, generation);
+      return this.applySvgaReplacement(input, selection, generation);
     }
 
     const nextReplacements = cloneReplacementContext(this.replacements);
@@ -658,7 +658,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
 
   private async applySvgaReplacement(
     input: OwnerVisibleMultiFormatPreviewReplacementInput,
-    target: ReplacementTarget,
+    selection: Extract<OwnerVisibleMultiFormatPreviewReplacementSelection, { status: "accepted" }>,
     generation: number
   ): Promise<OwnerVisibleMultiFormatPreviewModel> {
     if (input.kind !== "image") {
@@ -678,7 +678,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     try {
       result = await this.svgaReplacementController.applyImage({
         requestId: input.requestId,
-        targetId: target.runtimeTargetId,
+        targetId: selection.runtimeTargetId,
         value: input.value,
         workspaceModel
       });
@@ -697,7 +697,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     this.replacements.revision += 1;
     this.replacements.active = upsertReplacementRecord(this.replacements.active, {
       format: "svga",
-      targetId: target.runtimeTargetId,
+      targetId: selection.runtimeTargetId,
       kind: "image",
       valuePreview: replacementValuePreview("image", input.value)
     });
@@ -711,7 +711,10 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       requestId: input.requestId,
       type: "applyReplacement",
       status: "accepted",
-      message: result.message
+      message: result.message,
+      publicTargetId: selection.publicTargetId,
+      runtimeTargetId: selection.runtimeTargetId,
+      bindingToken: selection.bindingToken
     }, "previewDirty", result.playerAction ?? "remountPreview");
     return this.getModel();
   }
