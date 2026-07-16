@@ -414,6 +414,13 @@ test("acceptance startup placement proof writes a bounded pre-input artifact", (
     assert.deepEqual(proof.windowBounds, acceptedProofPlacement.bounds);
     assert.equal(proof.selectedDisplay.id, secondary.id);
     assert.equal(proof.primaryDisplay.id, primary.id);
+    assert.deepEqual(proof.displayScale, {
+      selectedScaleFactor: proofSecondary.scaleFactor,
+      primaryScaleFactor: proofPrimary.scaleFactor,
+      scaleFactorDelta: 0,
+      distinctFromPrimary: false,
+      evidenceReady: true
+    });
     assert.equal(proof.containment, true);
     assert.equal(proof.disjointFromPrimary, true);
     assert.equal(proof.placementMode, "acceptance");
@@ -431,6 +438,57 @@ test("acceptance startup placement proof writes a bounded pre-input artifact", (
     assert.equal(proofText.includes("/must/not/appear"), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("acceptance startup placement proof records distinct-DPR readiness for matrix gating", () => {
+  const distinctScaleInput = acceptedProofInput({
+    selectedDisplay: {
+      ...proofSecondary,
+      scaleFactor: 1.5
+    }
+  });
+  const distinct = buildAcceptanceStartupPlacementProof(distinctScaleInput);
+  assert.equal(distinct.status, "accepted");
+  assert.equal(distinct.proof.displayScale.selectedScaleFactor, 1.5);
+  assert.equal(distinct.proof.displayScale.primaryScaleFactor, 2);
+  assert.equal(distinct.proof.displayScale.scaleFactorDelta, 0.5);
+  assert.equal(distinct.proof.displayScale.distinctFromPrimary, true);
+  assert.equal(distinct.proof.displayScale.evidenceReady, true);
+  assert.equal(distinct.proof.passed, true);
+
+  const sameScale = buildAcceptanceStartupPlacementProof(acceptedProofInput());
+  assert.equal(sameScale.status, "accepted");
+  assert.equal(sameScale.proof.displayScale.distinctFromPrimary, false);
+  assert.equal(sameScale.proof.displayScale.evidenceReady, true);
+
+  const rejected = buildAcceptanceStartupPlacementProof(acceptedProofInput({
+    selectedDisplay: {
+      ...proofSecondary,
+      scaleFactor: 1.25
+    },
+    windowBounds: { ...acceptedProofPlacement.bounds, x: acceptedProofPlacement.bounds.x + 1 }
+  }));
+  assert.equal(rejected.status, "rejected");
+  const rejectedRoot = mkdtempSync(path.join(os.tmpdir(), "auto-svga-acceptance-proof-dpr-rejected-"));
+  try {
+    const rejectedWrite = writeAcceptanceStartupPlacementProof(acceptedProofInput({
+      artifactRoot: rejectedRoot,
+      selectedDisplay: {
+        ...proofSecondary,
+        scaleFactor: 1.25
+      },
+      windowBounds: { ...acceptedProofPlacement.bounds, x: acceptedProofPlacement.bounds.x + 1 }
+    }));
+    assert.equal(rejectedWrite.status, "written");
+    assert.equal(rejectedWrite.proof.status, "rejected");
+    assert.equal(rejectedWrite.proof.reason, "acceptance_window_bounds_drift");
+    assert.equal(rejectedWrite.proof.displayScale.selectedScaleFactor, 1.25);
+    assert.equal(rejectedWrite.proof.displayScale.primaryScaleFactor, 2);
+    assert.equal(rejectedWrite.proof.displayScale.distinctFromPrimary, true);
+    assert.equal(rejectedWrite.proof.displayScale.evidenceReady, true);
+  } finally {
+    rmSync(rejectedRoot, { recursive: true, force: true });
   }
 });
 

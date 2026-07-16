@@ -40,6 +40,25 @@ function rectIntersectionArea(a, b) {
   return width * height;
 }
 
+function displayScaleReadiness(selectedDisplay, primaryDisplay) {
+  const selectedScaleFactor = Number.isFinite(selectedDisplay?.scaleFactor) && selectedDisplay.scaleFactor > 0
+    ? selectedDisplay.scaleFactor
+    : undefined;
+  const primaryScaleFactor = Number.isFinite(primaryDisplay?.scaleFactor) && primaryDisplay.scaleFactor > 0
+    ? primaryDisplay.scaleFactor
+    : undefined;
+  const scaleFactorDelta = selectedScaleFactor !== undefined && primaryScaleFactor !== undefined
+    ? Math.abs(selectedScaleFactor - primaryScaleFactor)
+    : undefined;
+  return {
+    selectedScaleFactor,
+    primaryScaleFactor,
+    scaleFactorDelta,
+    distinctFromPrimary: scaleFactorDelta !== undefined ? scaleFactorDelta > 0.0001 : false,
+    evidenceReady: selectedScaleFactor !== undefined && primaryScaleFactor !== undefined
+  };
+}
+
 function snapshotDisplay(display) {
   const id = Number.isSafeInteger(display?.id) ? display.id : undefined;
   const bounds = strictRect(display?.bounds);
@@ -96,6 +115,7 @@ function buildAcceptanceStartupPlacementProof(input) {
   const disjointFromPrimary = selectedDisplay.id !== primaryDisplay.id
     && rectIntersectionArea(windowBounds, primaryDisplay.bounds) === 0;
   if (!disjointFromPrimary) return rejected("acceptance_primary_overlap");
+  const displayScale = displayScaleReadiness(selectedDisplay, primaryDisplay);
 
   const generatedAt = typeof input.generatedAt === "string" ? input.generatedAt : new Date().toISOString();
   const runtimeInstanceId = typeof input.runtimeInstanceId === "string" ? input.runtimeInstanceId : undefined;
@@ -112,6 +132,7 @@ function buildAcceptanceStartupPlacementProof(input) {
     windowBounds,
     selectedDisplay,
     primaryDisplay,
+    displayScale,
     containment,
     disjointFromPrimary,
     runtimeInstanceId,
@@ -136,6 +157,7 @@ function buildAcceptanceStartupPlacementProof(input) {
     windowBounds,
     selectedDisplay,
     primaryDisplay,
+    displayScale,
     runtimeInstanceId,
     productIdentity: proof.productIdentity
   })).digest("hex");
@@ -163,6 +185,7 @@ function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
   const disjointFromPrimary = Boolean(windowBounds && selectedDisplay && primaryDisplay
     && selectedDisplay.id !== primaryDisplay.id
     && rectIntersectionArea(windowBounds, primaryDisplay.bounds) === 0);
+  const displayScale = displayScaleReadiness(selectedDisplay, primaryDisplay);
   const generatedAt = typeof input?.generatedAt === "string" ? input.generatedAt : new Date().toISOString();
   const runtimeInstanceId = typeof input?.runtimeInstanceId === "string" && input.runtimeInstanceId.length > 0
     ? input.runtimeInstanceId
@@ -180,6 +203,7 @@ function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
     windowBounds,
     selectedDisplay,
     primaryDisplay,
+    displayScale,
     containment,
     disjointFromPrimary,
     runtimeInstanceId,
@@ -207,6 +231,7 @@ function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
     windowBounds,
     selectedDisplay,
     primaryDisplay,
+    displayScale,
     runtimeInstanceId,
     productIdentity: proof.productIdentity
   })).digest("hex");

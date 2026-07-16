@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "sealed",
+  "task": "multiformat-dpr-readiness-proof",
+  "baseHead": "8015bd668054fcbc3fd42ce36d43c47c6a7d6a3f",
+  "branch": "codex/0.2-multiformat-material-oracle-readiness-20260717",
+  "productDiffSha256": "4025670e5658c2d4fb2ae5c1f08836810b6c9559c821d94c1fa8065634f0c775",
+  "members": [
+    {
+      "path": "review/multiformat-dpr-readiness-proof-20260717/README.md",
+      "sizeBytes": 888,
+      "sha256": "c485c21bf615c5b750fe1e41e3c5dd664d069d2ca224d86492469650e6ae16dc"
+    },
+    {
+      "path": "review/multiformat-dpr-readiness-proof-20260717/REVIEW_PACKET.md",
+      "sizeBytes": 1235,
+      "sha256": "6fe380649626e096de1fa385dead1956655f39088dd1d2868431ef9ae3b15216"
+    },
+    {
+      "path": "review/multiformat-dpr-readiness-proof-20260717/VALIDATION_SUMMARY.md",
+      "sizeBytes": 1582,
+      "sha256": "5e5393a89c66c52c8e391a89dd1bec4750020600c6c31ddb9a4881f2a1c5aad7"
+    },
+    {
+      "path": "docs/reviews/2026-07-17-codex-multiformat-dpr-readiness-proof.md",
+      "sizeBytes": 4675,
+      "sha256": "2d829fa6d7b7a940b7968d56f1df22858aca6c84178907398d5c27acbb7a7809"
+    }
+  ]
+}
