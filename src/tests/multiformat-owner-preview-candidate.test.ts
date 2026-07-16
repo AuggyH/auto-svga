@@ -1180,7 +1180,10 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
   const lottiePath = "/Users/designer/private/daily-card.json";
   const vapPath = "/Users/designer/private/daily-fusion.mp4";
   const lottieLoadCalls: LottieSvgLoadOptions[] = [];
-  const vapRuntime = fakeVapRuntime();
+  const lottiePlaybackEvents: string[] = [];
+  const vapPlaybackEvents: string[] = [];
+  const svgaPlaybackEvents: string[] = [];
+  const vapRuntime = fakeVapRuntime(vapPlaybackEvents);
   const svgaControllerCalls: string[] = [];
   const session = createOwnerVisibleMultiFormatPreviewCandidate({
     host: memoryHost({
@@ -1196,12 +1199,12 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
       [vapPath]: validVapBytes(fusionImageTextConfig())
     }),
     lottieTarget: { container: { id: "lottie-daily" } },
-    lottieRendererLoader: async () => fakeLottieRenderer(lottieLoadCalls),
+    lottieRendererLoader: async () => fakeLottieRenderer(lottieLoadCalls, lottiePlaybackEvents),
     vapTarget: { id: "vap-daily" },
     vapHostReadiness: readyVapHost(),
     vapRuntimeLoader: async () => vapRuntime.constructor,
     svgaAdapter: new FakeSvgaAdapter(),
-    svgaPlaybackAdapter: new FakePlaybackAdapter(),
+    svgaPlaybackAdapter: new FakePlaybackAdapter(svgaPlaybackEvents),
     svgaPlaybackTarget: { id: "svga-daily" },
     svgaReplacementController: {
       async applyImage(input) {
@@ -1238,8 +1241,16 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     imageTargets: ["img_frame"],
     textTargets: []
   });
-  assert.equal(session.pause().status, "paused");
-  assert.equal((await session.play()).status, "playing");
+  assert.equal(svga.canvas.playback.status, "playing");
+  assert.deepEqual(svgaPlaybackEvents, ["load", "play"]);
+  const pausedSvga = session.pause();
+  assert.equal(pausedSvga.status, "paused");
+  assert.equal(pausedSvga.canvas.playback.status, "paused");
+  assert.deepEqual(svgaPlaybackEvents, ["load", "play", "pause"]);
+  const resumedSvga = await session.play();
+  assert.equal(resumedSvga.status, "playing");
+  assert.equal(resumedSvga.canvas.playback.status, "playing");
+  assert.deepEqual(svgaPlaybackEvents, ["load", "play", "pause", "play"]);
   const svgaApplied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "daily-svga-replace",
@@ -1247,15 +1258,21 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     kind: "image",
     value: "data:image/png;base64,QUJD"
   });
+  assert.equal(svgaApplied.status, "playing");
+  assert.equal(svgaApplied.canvas.playback.status, "ready");
   assert.equal(svgaApplied.replacement.dirty, true);
   assert.equal(svgaApplied.replacement.active[0]?.targetId, "img_frame");
+  assert.equal(svgaPlaybackEvents.filter((event) => event === "play").length, 2);
   const svgaReset = await session.resetReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "daily-svga-reset",
     targetId: "img_frame",
     kind: "image"
   });
+  assert.equal(svgaReset.status, "playing");
+  assert.equal(svgaReset.canvas.playback.status, "ready");
   assert.equal(svgaReset.replacement.dirty, false);
+  assert.equal(svgaPlaybackEvents.filter((event) => event === "play").length, 2);
   assert.deepEqual(svgaControllerCalls, ["apply:img_frame", "reset"]);
 
   const lottie = await session.openLocalCandidate({
@@ -1272,8 +1289,17 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     textTargets: ["text:2"]
   });
   assert.equal(lottie.replacement.dirty, false);
-  assert.equal(session.pause().status, "paused");
-  assert.equal((await session.play()).status, "playing");
+  assert.equal(lottie.canvas.playback.status, "playing");
+  assert.deepEqual(lottiePlaybackEvents, ["play"]);
+  const pausedLottie = session.pause();
+  assert.equal(pausedLottie.status, "paused");
+  assert.equal(pausedLottie.canvas.playback.status, "paused");
+  assert.deepEqual(lottiePlaybackEvents, ["play", "pause"]);
+  const resumedLottie = await session.play();
+  assert.equal(resumedLottie.status, "playing");
+  assert.equal(resumedLottie.canvas.playback.status, "playing");
+  assert.deepEqual(lottiePlaybackEvents, ["play", "pause", "play"]);
+  const lottiePlayCountBeforeReplacement = lottiePlaybackEvents.filter((event) => event === "play").length;
   const lottieTextApplied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "daily-lottie-text",
@@ -1281,6 +1307,7 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     kind: "text",
     value: "Welcome"
   });
+  assert.equal(lottieTextApplied.status, "previewReady");
   assert.equal(lottieTextApplied.replacement.active[0]?.targetId, "text:2");
   const lottieImageApplied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
@@ -1289,13 +1316,16 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     kind: "image",
     value: "data:image/png;base64,QUJD"
   });
+  assert.equal(lottieImageApplied.status, "previewReady");
   assert.deepEqual(lottieImageApplied.replacement.active.map(({ targetId }) => targetId), ["text:2", "avatar"]);
+  assert.equal(lottiePlaybackEvents.filter((event) => event === "play").length, lottiePlayCountBeforeReplacement);
   const lottieTextReset = await session.resetReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "daily-lottie-reset-text",
     targetId: "text:2",
     kind: "text"
   });
+  assert.equal(lottieTextReset.status, "previewReady");
   assert.deepEqual(lottieTextReset.replacement.active.map(({ targetId }) => targetId), ["avatar"]);
   const lottieImageReset = await session.resetReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
@@ -1303,7 +1333,9 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     targetId: "avatar",
     kind: "image"
   });
+  assert.equal(lottieImageReset.status, "previewReady");
   assert.equal(lottieImageReset.replacement.dirty, false);
+  assert.equal(lottiePlaybackEvents.filter((event) => event === "play").length, lottiePlayCountBeforeReplacement);
   assert.equal(lottieText(lottieLoadCalls.at(-1)?.animationData, 2), "Hello");
 
   const vap = await session.openLocalCandidate({
@@ -1320,8 +1352,17 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     textTargets: ["vap_fusion_2"]
   });
   assert.equal(vap.replacement.dirty, false);
-  assert.equal(session.pause().status, "paused");
-  assert.equal((await session.play()).status, "playing");
+  assert.equal(vap.canvas.playback.status, "playing");
+  assert.deepEqual(vapPlaybackEvents, ["play"]);
+  const pausedVap = session.pause();
+  assert.equal(pausedVap.status, "paused");
+  assert.equal(pausedVap.canvas.playback.status, "paused");
+  assert.deepEqual(vapPlaybackEvents, ["play", "pause"]);
+  const resumedVap = await session.play();
+  assert.equal(resumedVap.status, "playing");
+  assert.equal(resumedVap.canvas.playback.status, "playing");
+  assert.deepEqual(vapPlaybackEvents, ["play", "pause", "play"]);
+  const vapPlayCountBeforeReplacement = vapPlaybackEvents.filter((event) => event === "play").length;
   const vapTextApplied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "daily-vap-text",
@@ -1329,6 +1370,7 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     kind: "text",
     value: "Replacement title"
   });
+  assert.equal(vapTextApplied.status, "previewReady");
   assert.equal(vapTextApplied.replacement.lastAction?.runtimeTargetId, "title");
   const vapImageApplied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
@@ -1337,7 +1379,9 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     kind: "image",
     value: "data:image/png;base64,QUJD"
   });
+  assert.equal(vapImageApplied.status, "previewReady");
   assert.deepEqual(vapImageApplied.replacement.active.map(({ targetId }) => targetId), ["title", "avatar"]);
+  assert.equal(vapPlaybackEvents.filter((event) => event === "play").length, vapPlayCountBeforeReplacement);
   assert.equal(vapRuntime.configs.at(-1)?.title, "Replacement title");
   assert.equal(vapRuntime.configs.at(-1)?.avatar, "data:image/png;base64,QUJD");
   const vapTextReset = await session.resetReplacement({
@@ -1346,6 +1390,7 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     targetId: "vap_fusion_2",
     kind: "text"
   });
+  assert.equal(vapTextReset.status, "previewReady");
   assert.deepEqual(vapTextReset.replacement.active.map(({ targetId }) => targetId), ["avatar"]);
   assert.equal(vapRuntime.configs.at(-1)?.title, undefined);
   assert.equal(vapRuntime.configs.at(-1)?.avatar, "data:image/png;base64,QUJD");
@@ -1355,10 +1400,28 @@ test("owner-visible daily-use chain preserves facts, actions, replacement, reset
     targetId: "vap_fusion_1",
     kind: "image"
   });
+  assert.equal(vapImageReset.status, "previewReady");
   assert.equal(vapImageReset.replacement.dirty, false);
+  assert.equal(vapPlaybackEvents.filter((event) => event === "play").length, vapPlayCountBeforeReplacement);
   assert.equal(vapRuntime.configs.at(-1)?.avatar, undefined);
   assert.equal(vapRuntime.configs.at(-1)?.title, undefined);
   assertNoLocalPaths(vapImageReset);
+
+  const playerEventsBeforeInvalidOpen = {
+    svga: [...svgaPlaybackEvents],
+    lottie: [...lottiePlaybackEvents],
+    vap: [...vapPlaybackEvents]
+  };
+  const invalidOpen = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "daily-invalid-open",
+    source: "fileButton",
+    localPath: ""
+  });
+  assert.equal(invalidOpen.status, "failed");
+  assert.deepEqual(svgaPlaybackEvents, playerEventsBeforeInvalidOpen.svga);
+  assert.deepEqual(lottiePlaybackEvents, playerEventsBeforeInvalidOpen.lottie);
+  assert.deepEqual(vapPlaybackEvents, playerEventsBeforeInvalidOpen.vap);
 });
 
 test("owner-visible open autoplay failure revokes prior replacement authority and recovers on the new source", async () => {
@@ -1561,8 +1624,12 @@ function labeledLottieRenderer(label: string, loadLabels: string[]): LottieSvgRe
 class FakeLottieAnimation implements LottieSvgAnimationItem {
   constructor(private readonly events: string[] = []) {}
 
-  play(): void {}
-  pause(): void {}
+  play(): void {
+    this.events.push("play");
+  }
+  pause(): void {
+    this.events.push("pause");
+  }
   destroy(): void {
     this.events.push("destroy");
   }
@@ -1612,17 +1679,23 @@ class FakeSvgaAdapter implements FormatAdapter {
 class FakePlaybackAdapter implements PlaybackAdapter<unknown> {
   readonly format = "svga" as const;
 
+  constructor(private readonly events: string[] = []) {}
+
   createSession(): PlaybackSession {
-    return new FakePlaybackSession();
+    return new FakePlaybackSession({}, this.events);
   }
 }
 
 class FakePlaybackSession implements PlaybackSession {
   private state: PlaybackState = playbackState("idle");
 
-  constructor(private readonly options: { rejectPlay?: boolean } = {}) {}
+  constructor(
+    private readonly options: { rejectPlay?: boolean } = {},
+    private readonly events: string[] = []
+  ) {}
 
   async load(source: MotionAssetSource): Promise<WorkbenchResult<MotionAssetInfo>> {
+    this.events.push("load");
     this.state = playbackState("ready", 2_000);
     return {
       value: {
@@ -1642,10 +1715,12 @@ class FakePlaybackSession implements PlaybackSession {
     if (this.options.rejectPlay) {
       throw new Error("SVGA playback rejected during open.");
     }
+    this.events.push("play");
     this.state = { ...this.state, status: "playing" };
   }
 
   pause(): void {
+    this.events.push("pause");
     this.state = { ...this.state, status: "paused" };
   }
 
@@ -1666,6 +1741,7 @@ class FakePlaybackSession implements PlaybackSession {
   }
 
   dispose(): void {
+    this.events.push("destroy");
     this.state = { ...this.state, status: "disposed" };
   }
 }
@@ -1684,27 +1760,36 @@ class OneShotPlayRejectingPlaybackAdapter implements PlaybackAdapter<unknown> {
 interface FakeVapRuntime {
   constructor: VapRuntimeConstructor;
   configs: VapRuntimeConfig[];
+  events: string[];
 }
 
-function fakeVapRuntime(): FakeVapRuntime {
+function fakeVapRuntime(events: string[] = []): FakeVapRuntime {
   const runtime: FakeVapRuntime = {
     configs: [],
+    events,
     constructor(options) {
       if (!options) throw new Error("VAP runtime config is required.");
       runtime.configs.push(options);
-      return new FakeVapPlayer();
+      return new FakeVapPlayer(runtime.events);
     }
   };
   return runtime;
 }
 
 class FakeVapPlayer implements VapRuntimePlayer {
+  constructor(private readonly events: string[] = []) {}
+
   on(): VapRuntimePlayer {
     return this;
   }
-  destroy(): void {}
-  pause(): void {}
+  destroy(): void {
+    this.events.push("destroy");
+  }
+  pause(): void {
+    this.events.push("pause");
+  }
   play(): VapRuntimePlayer {
+    this.events.push("play");
     return this;
   }
   setTime(): void {}

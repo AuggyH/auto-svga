@@ -2677,6 +2677,10 @@ test("0.2 desktop session rejects same-byte SVGA source identity replacement bef
   const parentSwap = await createOpenedSession("auto-svga-source-parent-");
   try {
     await replaceParentWithSameBytesAndNewIdentity(path.dirname(parentSwap.svgaPath), path.basename(parentSwap.svgaPath), sourceBytes);
+    await assert.rejects(
+      stat(`${path.dirname(parentSwap.svgaPath)}.swapped`),
+      (error) => error?.code === "ENOENT"
+    );
     const result = await parentSwap.session.applyReplacement({
       sourceId: parentSwap.opened.sourceId,
       targetId: "profile_frame",
@@ -7526,10 +7530,14 @@ async function replaceParentWithSameBytesAndNewIdentity(directoryPath, fileName,
   const before = await stat(directoryPath);
   const swappedPath = `${directoryPath}.swapped`;
   await rename(directoryPath, swappedPath);
-  await mkdir(directoryPath, { recursive: true });
-  await writeFile(path.join(directoryPath, fileName), bytes);
-  const after = await stat(directoryPath);
-  assert.notEqual(`${after.dev}:${after.ino}`, `${before.dev}:${before.ino}`);
+  try {
+    await mkdir(directoryPath, { recursive: true });
+    await writeFile(path.join(directoryPath, fileName), bytes);
+    const after = await stat(directoryPath);
+    assert.notEqual(`${after.dev}:${after.ino}`, `${before.dev}:${before.ino}`);
+  } finally {
+    await rm(swappedPath, { recursive: true, force: true });
+  }
 }
 
 async function createTestPng(rgba) {
