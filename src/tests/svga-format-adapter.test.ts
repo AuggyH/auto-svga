@@ -130,7 +130,8 @@ test("SVGA FormatAdapter exposes designer-named imageKeys as replaceable without
     [
       { id: "profile_frame", replaceable: true },
       { id: "img_001", replaceable: false },
-      { id: "designer_matte", replaceable: false }
+      { id: "designer_matte", replaceable: false },
+      { id: "internal_unused_designer_badge", replaceable: false }
     ]
   );
 });
@@ -226,7 +227,8 @@ async function createNamedReplaceableSvgaFixture(): Promise<Uint8Array> {
     images: {
       profile_frame: encodeRgbaPng(createTransparentImage(300, 120)),
       img_001: encodeRgbaPng(createTransparentImage(48, 48)),
-      designer_matte: encodeRgbaPng(createTransparentImage(300, 120))
+      designer_matte: encodeRgbaPng(createTransparentImage(300, 120)),
+      internal_unused_designer_badge: encodeRgbaPng(createTransparentImage(64, 64))
     },
     sprites: [
       {

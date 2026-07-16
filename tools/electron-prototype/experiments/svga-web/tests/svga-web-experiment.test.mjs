@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
@@ -2369,6 +2369,230 @@ test("0.2 host-owned Lottie intake rejects adjacent image aliases that escape th
   }
 });
 
+test("0.2 host-owned Lottie intake rejects hardlink, case, and Unicode adjacent aliases", async () => {
+  const cases = [
+    {
+      id: "hardlink",
+      actualName: "avatar.png",
+      referencedName: "avatar.png",
+      async prepare(sessionRoot, externalRoot) {
+        await writeFile(path.join(externalRoot, "owner-avatar.png"), await createTestPng([255, 0, 0, 255]));
+        await link(path.join(externalRoot, "owner-avatar.png"), path.join(sessionRoot, "avatar.png"));
+      }
+    },
+    {
+      id: "case-alias",
+      actualName: "avatar.png",
+      referencedName: "AVATAR.PNG",
+      async prepare(sessionRoot) {
+        await writeFile(path.join(sessionRoot, "avatar.png"), await createTestPng([0, 255, 0, 255]));
+      }
+    },
+    {
+      id: "unicode-alias",
+      actualName: "café.png",
+      referencedName: "cafe\u0301.png",
+      async prepare(sessionRoot) {
+        await writeFile(path.join(sessionRoot, "café.png"), await createTestPng([0, 0, 255, 255]));
+      }
+    }
+  ];
+
+  for (const variant of cases) {
+    const sessionRoot = await mkdtemp(path.join(os.tmpdir(), `auto-svga-lottie-${variant.id}-`));
+    const externalRoot = await mkdtemp(path.join(os.tmpdir(), `auto-svga-lottie-${variant.id}-external-`));
+    const session = createMultiFormatDesktopPreviewSession({
+      repoRoot,
+      sessionRoot,
+      sourceStore: new Map(),
+      openTimeoutMs: 1000
+    });
+    const lottiePath = path.join(sessionRoot, `${variant.id}.json`);
+
+    try {
+      await variant.prepare(sessionRoot, externalRoot);
+      await writeFile(lottiePath, JSON.stringify({
+        v: "5.13.0",
+        w: 120,
+        h: 80,
+        fr: 30,
+        ip: 0,
+        op: 30,
+        layers: [{ ind: 1, ty: 2, refId: "image_0" }],
+        assets: [{ id: "image_0", u: "", p: variant.referencedName, w: 1, h: 1 }]
+      }));
+
+      const opened = await session.openLocalFilePath(lottiePath, "fileButton");
+      assert.notEqual(opened.model.status, "playing", variant.id);
+      assert.equal(opened.model.rightPanel.issues.some((issue) =>
+        issue.code === "missing_resource" && issue.pathRedacted === true
+      ), true, `${variant.id}: ${JSON.stringify(opened.model.rightPanel.issues)}`);
+      const runtime = await session.prepareRuntimePreview({
+        sourceId: opened.sourceId,
+        format: "lottie",
+        requestId: opened.model.requestId,
+        replacements: opened.model.replacement
+      });
+      assert.equal(runtime.status, "failed", variant.id);
+      assert.equal(runtime.issue.code, "missing_resource", variant.id);
+      assert.doesNotMatch(JSON.stringify({ opened, runtime }), /auto-svga-lottie-|owner-avatar|\/Users\//u);
+    } finally {
+      await rm(sessionRoot, { recursive: true, force: true });
+      await rm(externalRoot, { recursive: true, force: true });
+    }
+  }
+});
+
+test("0.2 host-owned Lottie runtime rejects adjacent resource growth, replacement, and ancestor swap after Open", async () => {
+  const cases = [
+    {
+      id: "growth",
+      async mutate(lottieDir) {
+        await writeFile(path.join(lottieDir, "avatar.png"), Buffer.concat([
+          await createTestPng([255, 0, 0, 255]),
+          Buffer.from([1, 2, 3, 4])
+        ]));
+      }
+    },
+    {
+      id: "replacement",
+      async mutate(lottieDir) {
+        await writeFile(path.join(lottieDir, "avatar.png"), await createTestPng([0, 255, 0, 255]));
+      }
+    },
+    {
+      id: "ancestor-swap",
+      async mutate(lottieDir) {
+        const parent = path.dirname(lottieDir);
+        const swapped = path.join(parent, "asset-root-swapped");
+        await rename(lottieDir, swapped);
+        await mkdir(lottieDir, { recursive: true });
+        await writeFile(path.join(lottieDir, "avatar.png"), await createTestPng([0, 0, 255, 255]));
+        await writeFile(path.join(lottieDir, "external-image-lottie.json"), lottieFixtureJson("avatar.png"));
+      }
+    }
+  ];
+
+  for (const variant of cases) {
+    const sessionRoot = await mkdtemp(path.join(os.tmpdir(), `auto-svga-lottie-mutation-${variant.id}-`));
+    const lottieDir = path.join(sessionRoot, "asset-root");
+    const sourceStore = new Map();
+    const session = createMultiFormatDesktopPreviewSession({
+      repoRoot,
+      sessionRoot,
+      sourceStore,
+      openTimeoutMs: 1000
+    });
+    const lottiePath = path.join(lottieDir, "external-image-lottie.json");
+
+    try {
+      await mkdir(lottieDir, { recursive: true });
+      await writeFile(path.join(lottieDir, "avatar.png"), await createTestPng([255, 0, 0, 255]));
+      await writeFile(lottiePath, lottieFixtureJson("avatar.png"));
+      const opened = await session.openLocalFilePath(lottiePath, "fileButton");
+      assert.equal(opened.model.status, "playing", variant.id);
+
+      await variant.mutate(lottieDir);
+      const runtime = await session.prepareRuntimePreview({
+        sourceId: opened.sourceId,
+        format: "lottie",
+        requestId: opened.model.requestId,
+        replacements: opened.model.replacement
+      });
+      assert.equal(runtime.status, "failed", variant.id);
+      assert.equal(runtime.issue.code, "missing_resource", variant.id);
+      assert.doesNotMatch(JSON.stringify({ opened, runtime }), /auto-svga-lottie-mutation-|\/Users\//u);
+    } finally {
+      await rm(sessionRoot, { recursive: true, force: true });
+    }
+  }
+});
+
+test("0.2 desktop session rejects source mutation and stale source IDs before runtime prepare, apply, and Reset", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-source-authority-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 1000
+  });
+  const svgaPath = path.join(sessionRoot, "authority.svga");
+  const otherSvgaPath = path.join(sessionRoot, "authority-other.svga");
+  const sourceBytes = await createReplaceableWideSvgaFixture();
+  const replacementDataUri = `data:image/png;base64,${(await createTestPng([0, 255, 0, 255])).toString("base64")}`;
+
+  try {
+    await writeFile(svgaPath, sourceBytes);
+    await writeFile(otherSvgaPath, sourceBytes);
+
+    const opened = await session.openLocalFilePath(svgaPath, "fileButton");
+    assert.equal(opened.model.status, "playing");
+    await writeFile(svgaPath, Buffer.concat([Buffer.from(sourceBytes), Buffer.from([1])]));
+    const mutatedApply = await session.applyReplacement({
+      sourceId: opened.sourceId,
+      targetId: "profile_frame",
+      kind: "image",
+      value: replacementDataUri
+    });
+    assert.equal(mutatedApply.model.replacement.lastAction.status, "blocked");
+    assert.equal(mutatedApply.model.replacement.lastAction.diagnostic.code, "svga_replacement_source_changed");
+    const mutatedRuntime = await session.prepareRuntimePreview({
+      sourceId: opened.sourceId,
+      format: "svga",
+      requestId: opened.model.requestId,
+      replacements: opened.model.replacement
+    });
+    assert.equal(mutatedRuntime.status, "failed");
+    assert.equal(mutatedRuntime.issue.code, "missing_resource");
+
+    await writeFile(svgaPath, sourceBytes);
+    const resetOpen = await session.openLocalFilePath(svgaPath, "menuOpen");
+    const applied = await session.applyReplacement({
+      sourceId: resetOpen.sourceId,
+      targetId: "profile_frame",
+      kind: "image",
+      value: replacementDataUri
+    });
+    assert.equal(applied.model.replacement.lastAction.status, "accepted");
+    await writeFile(svgaPath, Buffer.concat([Buffer.from(sourceBytes), Buffer.from([2])]));
+    const mutatedReset = await session.resetReplacement({
+      sourceId: resetOpen.sourceId,
+      targetId: "profile_frame",
+      kind: "image"
+    });
+    assert.equal(mutatedReset.model.replacement.lastAction.status, "blocked");
+    assert.equal(mutatedReset.model.replacement.lastAction.diagnostic.code, "svga_replacement_source_changed");
+
+    await writeFile(svgaPath, sourceBytes);
+    const first = await session.openLocalFilePath(svgaPath, "menuOpen");
+    const second = await session.openLocalFilePath(otherSvgaPath, "menuOpen");
+    assert.notEqual(first.sourceId, second.sourceId);
+    const staleAfterOtherOpen = await session.prepareRuntimePreview({
+      sourceId: first.sourceId,
+      format: "svga",
+      requestId: first.model.requestId,
+      replacements: first.model.replacement
+    });
+    assert.equal(staleAfterOtherOpen.status, "failed");
+    assert.equal(staleAfterOtherOpen.issue.code, "missing_resource");
+
+    const samePathReopen = await session.openLocalFilePath(svgaPath, "menuOpen");
+    assert.notEqual(first.sourceId, samePathReopen.sourceId);
+    const staleAfterSamePathReopen = await session.prepareRuntimePreview({
+      sourceId: first.sourceId,
+      format: "svga",
+      requestId: first.model.requestId,
+      replacements: first.model.replacement
+    });
+    assert.equal(staleAfterSamePathReopen.status, "failed");
+    assert.equal(staleAfterSamePathReopen.issue.code, "missing_resource");
+    assert.doesNotMatch(JSON.stringify({ mutatedApply, mutatedReset, staleAfterOtherOpen }), /auto-svga-source-authority-|\/Users\//u);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
 test("0.2 desktop session applies and target-resets a replaceable wide SVGA without mutating source bytes", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-wide-svga-replacement-"));
   const sourceStore = new Map();
@@ -2392,6 +2616,9 @@ test("0.2 desktop session applies and target-resets a replaceable wide SVGA with
     assert.equal(ownerSnapshot.imageTargets.some((target) =>
       target.resourceId === "profile_frame"
     ), true, JSON.stringify(ownerSnapshot.imageTargets));
+    assert.equal(ownerSnapshot.imageTargets.some((target) =>
+      target.resourceId === "internal_unused_designer_badge"
+    ), false, JSON.stringify(ownerSnapshot.imageTargets));
 
     const applied = await session.applyReplacement({
       sourceId: opened.sourceId,
@@ -7163,13 +7390,29 @@ async function createReplaceableWideSvgaFixture() {
   const payload = {
     version: "2.0",
     params: { viewBoxWidth: 800, viewBoxHeight: 320, fps: 24, frames: 48 },
-    images: { profile_frame: sourceImage },
+    images: {
+      profile_frame: sourceImage,
+      internal_unused_designer_badge: sourceImage
+    },
     sprites: [{ imageKey: "profile_frame", frames: createOptimizerFrames() }],
     audios: []
   };
   const verificationError = MovieEntity.verify(payload);
   assert.equal(verificationError, null);
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+function lottieFixtureJson(imagePath) {
+  return JSON.stringify({
+    v: "5.13.0",
+    w: 120,
+    h: 80,
+    fr: 30,
+    ip: 0,
+    op: 30,
+    layers: [{ ind: 1, ty: 2, refId: "image_0" }],
+    assets: [{ id: "image_0", u: "", p: imagePath, w: 1, h: 1 }]
+  });
 }
 
 async function createTestPng(rgba) {

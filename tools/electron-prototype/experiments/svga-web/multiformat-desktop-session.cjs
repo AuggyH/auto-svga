@@ -10,6 +10,7 @@ const {
   mkdirSync,
   openSync,
   readFileSync,
+  readdirSync,
   readSync,
   realpathSync,
   statSync,
@@ -51,6 +52,9 @@ class MultiFormatDesktopPreviewSession {
     this.requestSequence = 0;
     this.objectUrlSequence = 0;
     this.activeSourceId = "";
+    this.activeSourceBinding = undefined;
+    this.pendingOpenSourceBinding = undefined;
+    this.sourceBindings = new Map();
     this.svgaReplacementPreview = undefined;
     this.openTimeoutMs = Number.isFinite(Number(options.openTimeoutMs))
       ? Math.max(100, Math.trunc(Number(options.openTimeoutMs)))
@@ -70,9 +74,11 @@ class MultiFormatDesktopPreviewSession {
     validateSupportedPath(normalizedPath);
     const requestId = this.nextRequestId(source);
     const displayName = path.basename(normalizedPath);
-    const sourceId = this.rememberSource(normalizedPath);
+    let sourceBinding;
     let model;
     try {
+      sourceBinding = this.rememberSource(normalizedPath, requestId);
+      this.pendingOpenSourceBinding = sourceBinding;
       model = await this.openWithTerminalDeadline(
         (async () => {
           const session = await this.ensureSession();
@@ -101,10 +107,14 @@ class MultiFormatDesktopPreviewSession {
         message: "The 0.2 preview host could not open this local candidate.",
         cause: error
       });
+    } finally {
+      if (this.pendingOpenSourceBinding?.requestId === requestId) {
+        this.pendingOpenSourceBinding = undefined;
+      }
     }
     return this.publicResult(
       model,
-      model?.requestId === requestId ? sourceId : "",
+      model?.requestId === requestId && sourceBinding ? sourceBinding.sourceId : "",
       normalizedPath
     );
   }
@@ -132,8 +142,8 @@ class MultiFormatDesktopPreviewSession {
         reason: "runtime_preview_input_invalid"
       });
     }
-    const filePath = this.sourceStore?.get(sourceId);
-    if (!filePath) {
+    const binding = this.activeSourceBindingForRequest(sourceId);
+    if (!binding) {
       return runtimePreviewFailure({
         format,
         code: "missing_resource",
@@ -141,16 +151,15 @@ class MultiFormatDesktopPreviewSession {
         reason: "runtime_preview_source_missing"
       });
     }
-    const normalizedPath = normalizeLocalPath(filePath);
     const replacements = normalizeRuntimePreviewReplacements(input?.replacements);
     try {
       if (format === "lottie") {
-        return this.prepareLottieRuntimePreview(normalizedPath, replacements);
+        return this.prepareLottieRuntimePreview(binding, replacements);
       }
       if (format === "svga") {
-        return this.prepareSvgaRuntimePreview(normalizedPath, sourceId, replacements);
+        return this.prepareSvgaRuntimePreview(binding, replacements);
       }
-      return await this.prepareVapRuntimePreview(normalizedPath, replacements);
+      return await this.prepareVapRuntimePreview(binding, replacements);
     } catch (error) {
       return runtimePreviewFailure({
         format,
@@ -236,10 +245,12 @@ class MultiFormatDesktopPreviewSession {
     }));
   }
 
-  rememberSource(filePath) {
-    const sourceId = createHash("sha256").update(filePath).digest("hex").slice(0, 24);
+  rememberSource(filePath, requestId) {
+    const binding = createSourceBinding(filePath, requestId, MULTIFORMAT_MAX_DROPPED_BYTES);
+    const sourceId = binding.sourceId;
     this.sourceStore?.set(sourceId, filePath);
-    return sourceId;
+    this.sourceBindings.set(sourceId, binding);
+    return binding;
   }
 
   async ensureSession() {
@@ -320,14 +331,17 @@ class MultiFormatDesktopPreviewSession {
       );
     }
     const currentSourceSha256 = sha256Bytes(currentSourceBytes);
-    if (
-      preview
-      && (
-        preview.sourceId !== binding.sourceId
-        || preview.filePath !== binding.filePath
-        || preview.session.model.sourceSha256 !== currentSourceSha256
-      )
-    ) {
+    if (currentSourceSha256 !== binding.sha256) {
+      return rejectedSvgaReplacement(
+        "svga_replacement_source_changed",
+        "SVGA replacement source changed after Open; reopen the file before replacing an image."
+      );
+    }
+    if (preview && (
+      preview.sourceId !== binding.sourceId
+      || preview.filePath !== binding.filePath
+      || preview.session.model.sourceSha256 !== currentSourceSha256
+    )) {
       return rejectedSvgaReplacement(
         "svga_replacement_source_changed",
         "SVGA replacement source changed after Open; reopen the file before replacing an image."
@@ -370,7 +384,7 @@ class MultiFormatDesktopPreviewSession {
         "SVGA replacement source became unreadable while the replacement was being prepared."
       );
     }
-    if (postApplySourceSha256 !== currentSourceSha256) {
+    if (postApplySourceSha256 !== currentSourceSha256 || postApplySourceSha256 !== binding.sha256) {
       return rejectedSvgaReplacement(
         "svga_replacement_source_changed",
         "SVGA replacement source changed while the replacement was being prepared."
@@ -413,7 +427,7 @@ class MultiFormatDesktopPreviewSession {
         "SVGA replacement source is no longer readable within the bounded input contract."
       );
     }
-    if (currentSourceSha256 !== preview.session.model.sourceSha256) {
+    if (currentSourceSha256 !== preview.session.model.sourceSha256 || currentSourceSha256 !== binding.sha256) {
       return rejectedSvgaReplacement(
         "svga_replacement_source_changed",
         "SVGA replacement source changed after Open; reopen the file before Reset."
@@ -433,12 +447,21 @@ class MultiFormatDesktopPreviewSession {
 
   activeSvgaSourceBinding(workspaceModel) {
     if (workspaceModel?.detectedFormat !== "svga" || !/^[a-f0-9]{24}$/iu.test(this.activeSourceId)) return undefined;
-    const filePath = this.sourceStore?.get(this.activeSourceId);
-    if (!filePath) return undefined;
-    return {
-      sourceId: this.activeSourceId,
-      filePath: normalizeLocalPath(filePath)
-    };
+    if (this.sourceStore?.get(this.activeSourceId) !== this.activeSourceBinding?.filePath) return undefined;
+    return this.activeSourceBinding;
+  }
+
+  activeSourceBindingForRequest(sourceId) {
+    if (!/^[a-f0-9]{24}$/iu.test(sourceId) || sourceId !== this.activeSourceId) return undefined;
+    const binding = this.sourceBindings.get(sourceId);
+    if (!binding || this.activeSourceBinding?.sourceId !== sourceId) return undefined;
+    if (this.sourceStore?.get(sourceId) !== binding.filePath) return undefined;
+    try {
+      verifySourceBinding(binding, MULTIFORMAT_MAX_DROPPED_BYTES);
+      return binding;
+    } catch {
+      return undefined;
+    }
   }
 
   async openWithTerminalDeadline(openPromise, context) {
@@ -476,7 +499,8 @@ class MultiFormatDesktopPreviewSession {
     }).catch(() => {});
   }
 
-  prepareLottieRuntimePreview(filePath, replacements) {
+  prepareLottieRuntimePreview(binding, replacements) {
+    const filePath = binding.filePath;
     const stat = statSync(filePath);
     if (!stat.isFile()) {
       return runtimePreviewFailure({
@@ -525,7 +549,7 @@ class MultiFormatDesktopPreviewSession {
         reason: expressionResult.reason
       });
     }
-    const inlineResult = inlineLottieRuntimeImageAssets(cloned, filePath, replacements.image);
+    const inlineResult = inlineLottieRuntimeImageAssets(cloned, binding, replacements.image);
     if (inlineResult.status === "failed") return inlineResult;
     applyLottieRuntimeTextReplacements(cloned, replacements.text);
     return {
@@ -552,7 +576,9 @@ class MultiFormatDesktopPreviewSession {
     };
   }
 
-  prepareSvgaRuntimePreview(filePath, sourceId, replacements) {
+  prepareSvgaRuntimePreview(binding, replacements) {
+    const filePath = binding.filePath;
+    const sourceId = binding.sourceId;
     const stat = statSync(filePath);
     if (!stat.isFile()) {
       return runtimePreviewFailure({
@@ -586,6 +612,9 @@ class MultiFormatDesktopPreviewSession {
       bytes = replacementPreviewActive
         ? Buffer.from(preview.session.previewBytes)
         : readBoundedFileBuffer(filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
+      if (!replacementPreviewActive && sha256Bytes(bytes) !== binding.sha256) {
+        throw new Error("SVGA source changed after Open.");
+      }
     } catch {
       return runtimePreviewFailure({
         format: "svga",
@@ -614,7 +643,8 @@ class MultiFormatDesktopPreviewSession {
     };
   }
 
-  async prepareVapRuntimePreview(filePath, replacements) {
+  async prepareVapRuntimePreview(binding, replacements) {
+    const filePath = binding.filePath;
     const stat = statSync(filePath);
     if (!stat.isFile()) {
       return runtimePreviewFailure({
@@ -633,8 +663,16 @@ class MultiFormatDesktopPreviewSession {
       });
     }
     const modules = await this.loadModules();
-    const bytes = readFileSync(filePath);
-    const adjacentVapc = readAdjacentVapcJsonForFile(filePath, MULTIFORMAT_MAX_RANGE_BYTES);
+    const bytes = readBoundedFileBuffer(filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
+    if (sha256Bytes(bytes) !== binding.sha256) {
+      return runtimePreviewFailure({
+        format: "vap",
+        code: "parse_precondition",
+        message: "VAP runtime preview source changed after Open.",
+        reason: "vap_source_identity_changed"
+      });
+    }
+    const adjacentVapc = readAdjacentVapcJsonForFile(filePath, MULTIFORMAT_MAX_RANGE_BYTES, binding.adjacentVapc);
     const source = runtimePreviewSource(filePath, bytes, adjacentVapc);
     const fusionParams = vapFusionParamsFromReplacements(replacements);
     const inspection = await new modules.VapInspectionService().inspect(source, {
@@ -708,6 +746,7 @@ class MultiFormatDesktopPreviewSession {
     return {
       async statLocalFile(localPath) {
         const filePath = normalizeLocalPath(localPath);
+        owner.assertCurrentBoundSource(filePath);
         const stat = statSync(filePath);
         if (!stat.isFile()) throw new Error("Local motion source is not a file.");
         return {
@@ -718,6 +757,7 @@ class MultiFormatDesktopPreviewSession {
       },
       async readLocalFileRange(localPath, offset, length) {
         const filePath = normalizeLocalPath(localPath);
+        owner.assertCurrentBoundSource(filePath);
         const safeOffset = Math.max(0, Math.trunc(Number(offset) || 0));
         const safeLength = Math.max(0, Math.min(Math.trunc(Number(length) || 0), MULTIFORMAT_MAX_RANGE_BYTES));
         const buffer = Buffer.alloc(safeLength);
@@ -731,13 +771,14 @@ class MultiFormatDesktopPreviewSession {
       },
       async readLocalFile(input) {
         const filePath = normalizeLocalPath(input?.localPath);
+        owner.assertCurrentBoundSource(filePath);
         const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, MULTIFORMAT_MAX_DROPPED_BYTES));
         const stat = statSync(filePath);
         if (!stat.isFile()) throw new Error("Local motion source is not a file.");
         if (stat.size <= 0 || stat.size > maxBytes) {
           throw new Error("Local motion source is outside the bounded full-read limit.");
         }
-        const bytes = readFileSync(filePath);
+        const bytes = readBoundedFileBuffer(filePath, maxBytes);
         if (bytes.byteLength <= 0 || bytes.byteLength > maxBytes) {
           throw new Error("Local motion source changed outside the bounded full-read limit.");
         }
@@ -746,11 +787,17 @@ class MultiFormatDesktopPreviewSession {
       async readAdjacentResource(input) {
         const sourcePath = normalizeLocalPath(input?.sourceLocalPath);
         const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, 5 * 1024 * 1024));
+        const sourceBinding = owner.boundSourceForLocalPath(sourcePath);
+        if (!sourceBinding) throw new Error("Adjacent resource source is not the active opened candidate.");
+        const relativePath = normalizeRuntimeRelativePath(String(input?.relativePath ?? ""));
+        const existingBinding = sourceBinding.adjacentResources.get(relativePath);
         const read = readRootBoundedAdjacentResource(
           sourcePath,
-          String(input?.relativePath ?? ""),
-          maxBytes
+          relativePath,
+          maxBytes,
+          existingBinding
         );
+        sourceBinding.adjacentResources.set(relativePath, read.binding);
         return {
           bytes: new Uint8Array(read.bytes),
           sizeBytes: read.bytes.byteLength,
@@ -760,7 +807,9 @@ class MultiFormatDesktopPreviewSession {
       async readAdjacentVapcJson(input) {
         const sourcePath = normalizeLocalPath(input?.localPath);
         const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, MULTIFORMAT_MAX_RANGE_BYTES));
-        return readAdjacentVapcJsonForFile(sourcePath, maxBytes);
+        const sourceBinding = owner.boundSourceForLocalPath(sourcePath);
+        if (!sourceBinding) throw new Error("Adjacent VAP config source is not the active opened candidate.");
+        return readAdjacentVapcJsonForFile(sourcePath, maxBytes, sourceBinding.adjacentVapc);
       },
       async createLocalObjectUrl(input) {
         const filePath = normalizeLocalPath(input?.localPath);
@@ -792,6 +841,7 @@ class MultiFormatDesktopPreviewSession {
     if (sourceId) {
       this.svgaReplacementPreview = undefined;
       this.activeSourceId = sourceId;
+      this.activeSourceBinding = this.sourceBindings.get(sourceId);
     }
     const publicSourceId = sourceId || this.activeSourceId;
     const ownerRightPanelSnapshotEnvelope = withOwnerSnapshotSourceId(
@@ -802,7 +852,7 @@ class MultiFormatDesktopPreviewSession {
       ? { ...model, ownerRightPanelSnapshotEnvelope }
       : model;
     const svgaSource = sourceId && sourcePath && model?.detectedFormat === "svga"
-      ? publicSvgaSource(sourcePath)
+      ? publicSvgaSource(this.sourceBindings.get(sourceId) ?? sourcePath)
       : undefined;
     return {
       status: "opened",
@@ -818,6 +868,19 @@ class MultiFormatDesktopPreviewSession {
         note: "Desktop WP6 integrates the formal 0.2 shell and source-side runtime contracts; real-material visual success still requires CR/QA/Packaging evidence."
       }
     };
+  }
+
+  boundSourceForLocalPath(filePath) {
+    const normalizedPath = normalizeLocalPath(filePath);
+    const candidates = [this.pendingOpenSourceBinding, this.activeSourceBinding].filter(Boolean);
+    return candidates.find((binding) => binding.filePath === normalizedPath);
+  }
+
+  assertCurrentBoundSource(filePath) {
+    const binding = this.boundSourceForLocalPath(filePath);
+    if (!binding) throw new Error("Local motion source is not bound to the current open generation.");
+    verifySourceBinding(binding, MULTIFORMAT_MAX_DROPPED_BYTES);
+    return binding;
   }
 }
 
@@ -836,9 +899,11 @@ function withOwnerSnapshotSourceId(envelope, sourceId) {
   };
 }
 
-function publicSvgaSource(filePath) {
+function publicSvgaSource(bindingOrPath) {
   try {
+    const filePath = typeof bindingOrPath === "string" ? bindingOrPath : bindingOrPath.filePath;
     const bytes = readBoundedFileBuffer(filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
+    if (typeof bindingOrPath !== "string" && sha256Bytes(bytes) !== bindingOrPath.sha256) return undefined;
     return {
       displayName: path.basename(filePath),
       bytes: new Uint8Array(bytes),
@@ -1136,7 +1201,7 @@ function normalizeRuntimePreviewReplacements(value) {
   return { image, text, activeImageTargetIds, activeTextTargetIds };
 }
 
-function inlineLottieRuntimeImageAssets(documentValue, sourcePath, imageReplacements) {
+function inlineLottieRuntimeImageAssets(documentValue, sourceBinding, imageReplacements) {
   if (!Array.isArray(documentValue?.assets)) return { status: "ok" };
   for (const asset of documentValue.assets) {
     if (!isRecord(asset) || Array.isArray(asset.layers)) continue;
@@ -1167,7 +1232,14 @@ function inlineLottieRuntimeImageAssets(documentValue, sourcePath, imageReplacem
     }
     try {
       const normalized = normalizeRuntimeRelativePath(candidate);
-      const read = readRootBoundedAdjacentResource(sourcePath, normalized, 5 * 1024 * 1024);
+      const existingBinding = sourceBinding.adjacentResources.get(normalized);
+      const read = readRootBoundedAdjacentResource(
+        sourceBinding.filePath,
+        normalized,
+        5 * 1024 * 1024,
+        existingBinding
+      );
+      sourceBinding.adjacentResources.set(normalized, read.binding);
       const mediaType = read.mediaType;
       if (!mediaType.startsWith("image/")) {
         return runtimePreviewFailure({
@@ -1274,10 +1346,11 @@ function readBoundedFileBuffer(filePath, maxBytes) {
   }
 }
 
-function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes) {
+function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes, expectedBinding) {
   const limit = Math.max(0, Math.trunc(Number(maxBytes) || 0));
   if (limit <= 0) throw new Error("Adjacent resource read limit is invalid.");
   const resourcePath = resolveAdjacentResource(sourceLocalPath, relativePath);
+  const ancestorIdentitiesBefore = ancestorDirectoryIdentities(path.dirname(sourceLocalPath), resourcePath);
   const fd = openSync(resourcePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
   try {
     const before = fstatSync(fd);
@@ -1286,6 +1359,7 @@ function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes
       !before.isFile()
       || before.size <= 0
       || before.size > limit
+      || before.nlink !== 1
       || !sameFileIdentity(before, pathBefore)
     ) {
       throw new Error("Adjacent resource is outside the bounded regular-file contract.");
@@ -1303,6 +1377,7 @@ function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes
     const after = fstatSync(fd);
     const pathAfter = statSync(resourcePath);
     resolveAdjacentResource(sourceLocalPath, relativePath);
+    const ancestorIdentitiesAfter = ancestorDirectoryIdentities(path.dirname(sourceLocalPath), resourcePath);
     if (
       totalBytes <= 0
       || totalBytes > limit
@@ -1310,15 +1385,204 @@ function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes
       || !sameFileIdentity(before, after)
       || !sameFileIdentity(before, pathAfter)
       || after.size !== before.size
+      || !sameIdentityList(ancestorIdentitiesBefore, ancestorIdentitiesAfter)
     ) {
       throw new Error("Adjacent resource changed during the bounded read.");
     }
+    const bytes = Buffer.concat(chunks, totalBytes);
+    const binding = {
+      filePath: resourcePath,
+      relativePath,
+      dev: before.dev,
+      ino: before.ino,
+      nlink: before.nlink,
+      size: before.size,
+      sha256: sha256Bytes(bytes),
+      ancestors: ancestorIdentitiesBefore
+    };
+    if (expectedBinding && !sameAdjacentResourceBinding(expectedBinding, binding)) {
+      throw new Error("Adjacent resource identity changed after Open.");
+    }
     return {
-      bytes: Buffer.concat(chunks, totalBytes),
-      mediaType: mediaTypeFromPath(resourcePath)
+      bytes,
+      mediaType: mediaTypeFromPath(resourcePath),
+      binding
     };
   } finally {
     closeSync(fd);
+  }
+}
+
+function createSourceBinding(filePath, requestId, maxBytes) {
+  const normalizedPath = normalizeLocalPath(filePath);
+  assertExactPathSegments(path.dirname(normalizedPath), path.basename(normalizedPath));
+  const fd = openSync(normalizedPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  try {
+    const before = fstatSync(fd);
+    const pathBefore = statSync(normalizedPath);
+    if (!before.isFile() || before.size <= 0 || before.size > maxBytes || !sameFileIdentity(before, pathBefore)) {
+      throw new Error("Source is outside the bounded regular-file contract.");
+    }
+    const bytes = readBoundedDescriptorBuffer(fd, before.size, maxBytes);
+    const after = fstatSync(fd);
+    const pathAfter = statSync(normalizedPath);
+    if (!sameFileIdentity(before, after) || !sameFileIdentity(before, pathAfter) || after.size !== before.size) {
+      throw new Error("Source identity changed during Open.");
+    }
+    const sourceSha256 = sha256Bytes(bytes);
+    const parent = directoryIdentity(path.dirname(normalizedPath));
+    const adjacentVapc = bindAdjacentVapcForSource(normalizedPath);
+    const identityHash = createHash("sha256")
+      .update(JSON.stringify({
+        filePath: normalizedPath,
+        requestId,
+        dev: before.dev,
+        ino: before.ino,
+        size: before.size,
+        sha256: sourceSha256,
+        parentDev: parent.dev,
+        parentIno: parent.ino,
+        adjacentVapcSha256: adjacentVapc?.sha256 ?? ""
+      }))
+      .digest("hex");
+    return {
+      sourceId: createHash("sha256").update(`${requestId}:${identityHash}`).digest("hex").slice(0, 24),
+      requestId,
+      filePath: normalizedPath,
+      dev: before.dev,
+      ino: before.ino,
+      size: before.size,
+      sha256: sourceSha256,
+      parent,
+      adjacentVapc,
+      adjacentResources: new Map()
+    };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function verifySourceBinding(binding, maxBytes) {
+  const current = createSourceBinding(binding.filePath, binding.requestId, maxBytes);
+  if (
+    current.dev !== binding.dev
+    || current.ino !== binding.ino
+    || current.size !== binding.size
+    || current.sha256 !== binding.sha256
+    || current.parent.dev !== binding.parent.dev
+    || current.parent.ino !== binding.parent.ino
+    || !sameOptionalAdjacentBinding(current.adjacentVapc, binding.adjacentVapc)
+  ) {
+    throw new Error("Source identity changed after Open.");
+  }
+  return true;
+}
+
+function bindAdjacentVapcForSource(filePath) {
+  const sidecarPath = findAdjacentVapcJsonPath(filePath);
+  if (!sidecarPath) return undefined;
+  return readBoundedFileBinding(sidecarPath, MULTIFORMAT_MAX_RANGE_BYTES);
+}
+
+function readBoundedFileBinding(filePath, maxBytes) {
+  const normalizedPath = normalizeLocalPath(filePath);
+  assertExactPathSegments(path.dirname(normalizedPath), path.basename(normalizedPath));
+  const ancestors = ancestorDirectoryIdentities(path.dirname(normalizedPath), normalizedPath);
+  const fd = openSync(normalizedPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  try {
+    const before = fstatSync(fd);
+    const pathBefore = statSync(normalizedPath);
+    if (!before.isFile() || before.size <= 0 || before.size > maxBytes || !sameFileIdentity(before, pathBefore)) {
+      throw new Error("Bound file is outside the regular-file contract.");
+    }
+    const bytes = readBoundedDescriptorBuffer(fd, before.size, maxBytes);
+    const after = fstatSync(fd);
+    const pathAfter = statSync(normalizedPath);
+    if (!sameFileIdentity(before, after) || !sameFileIdentity(before, pathAfter) || after.size !== before.size) {
+      throw new Error("Bound file identity changed during read.");
+    }
+    return {
+      filePath: normalizedPath,
+      dev: before.dev,
+      ino: before.ino,
+      nlink: before.nlink,
+      size: before.size,
+      sha256: sha256Bytes(bytes),
+      ancestors
+    };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function readBoundedDescriptorBuffer(fd, expectedSize, maxBytes) {
+  const limit = Math.max(0, Math.trunc(Number(maxBytes) || 0));
+  const chunks = [];
+  const scratch = Buffer.allocUnsafe(Math.min(64 * 1024, limit + 1));
+  let totalBytes = 0;
+  while (totalBytes <= limit) {
+    const remaining = limit + 1 - totalBytes;
+    const bytesRead = readSync(fd, scratch, 0, Math.min(scratch.byteLength, remaining), null);
+    if (bytesRead === 0) break;
+    chunks.push(Buffer.from(scratch.subarray(0, bytesRead)));
+    totalBytes += bytesRead;
+  }
+  if (totalBytes <= 0 || totalBytes > limit || totalBytes !== expectedSize) {
+    throw new Error("File changed outside the bounded read limit.");
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
+
+function directoryIdentity(directoryPath) {
+  const stat = statSync(directoryPath);
+  if (!stat.isDirectory()) throw new Error("Expected a source directory.");
+  return { filePath: directoryPath, dev: stat.dev, ino: stat.ino };
+}
+
+function ancestorDirectoryIdentities(sourceDirectory, resourcePath) {
+  const relative = path.relative(sourceDirectory, resourcePath).split(path.sep).filter(Boolean);
+  const identities = [directoryIdentity(sourceDirectory)];
+  let cursor = sourceDirectory;
+  for (let index = 0; index < relative.length - 1; index += 1) {
+    cursor = path.join(cursor, relative[index]);
+    identities.push(directoryIdentity(cursor));
+  }
+  return identities;
+}
+
+function sameIdentityList(left, right) {
+  return left.length === right.length && left.every((item, index) =>
+    item.dev === right[index].dev && item.ino === right[index].ino && item.filePath === right[index].filePath
+  );
+}
+
+function sameAdjacentResourceBinding(left, right) {
+  return left.filePath === right.filePath
+    && left.relativePath === right.relativePath
+    && left.dev === right.dev
+    && left.ino === right.ino
+    && left.nlink === right.nlink
+    && left.size === right.size
+    && left.sha256 === right.sha256
+    && sameIdentityList(left.ancestors, right.ancestors);
+}
+
+function sameOptionalAdjacentBinding(left, right) {
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  return left.filePath === right.filePath
+    && left.dev === right.dev
+    && left.ino === right.ino
+    && left.nlink === right.nlink
+    && left.size === right.size
+    && left.sha256 === right.sha256
+    && sameIdentityList(left.ancestors, right.ancestors);
+}
+
+function assertExactPathSegments(rootDirectory, leafName) {
+  const entries = new Set(readdirSync(rootDirectory));
+  if (!entries.has(leafName)) {
+    throw new Error("Path segment must match the filesystem entry exactly.");
   }
 }
 
@@ -1349,14 +1613,16 @@ function rejectedSvgaReplacement(code, message) {
   };
 }
 
-function readAdjacentVapcJsonForFile(filePath, maxBytes = MULTIFORMAT_MAX_RANGE_BYTES) {
+function readAdjacentVapcJsonForFile(filePath, maxBytes = MULTIFORMAT_MAX_RANGE_BYTES, expectedBinding) {
   if (path.extname(filePath).toLowerCase() !== ".mp4") return undefined;
   const sidecarPath = findAdjacentVapcJsonPath(filePath);
   if (!sidecarPath) return undefined;
-  const stat = statSync(sidecarPath);
-  if (!stat.isFile() || stat.size <= 0 || stat.size > maxBytes) return undefined;
+  const binding = readBoundedFileBinding(sidecarPath, maxBytes);
+  if (expectedBinding && !sameOptionalAdjacentBinding(binding, expectedBinding)) {
+    throw new Error("Adjacent VAP config identity changed after Open.");
+  }
   return {
-    bytes: new Uint8Array(readFileSync(sidecarPath)),
+    bytes: new Uint8Array(readBoundedFileBuffer(sidecarPath, maxBytes)),
     displayName: path.basename(sidecarPath)
   };
 }
@@ -1428,6 +1694,7 @@ function resolveAdjacentResource(sourceLocalPath, relativePath) {
   const relativeSegments = path.relative(sourceDir, resolved).split(path.sep).filter(Boolean);
   let cursor = sourceDir;
   for (const segment of relativeSegments) {
+    assertExactPathSegments(cursor, segment);
     cursor = path.join(cursor, segment);
     if (lstatSync(cursor).isSymbolicLink()) {
       throw new Error("Adjacent Lottie resources cannot use symbolic-link aliases.");

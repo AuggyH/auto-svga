@@ -185,8 +185,8 @@ export function isAutomaticImageKey(imageKey: string): boolean {
 
 export function isReplaceableImageResource(resource: Pick<AssetIntelligenceResourceNode, "kind" | "name" | "role">): boolean {
   return resource.kind === "image"
+    && resource.role === "static_image"
     && !isAutomaticImageKey(resource.name)
-    && !["sequence_frame", "baked_sweep_frame", "mask_or_matte"].includes(resource.role);
 }
 
 function factRows(report: AvatarFrameInspectionReport): ShortTermFactRow[] {
