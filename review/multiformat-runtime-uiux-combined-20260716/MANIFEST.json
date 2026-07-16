@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "milestone": "multiformat-runtime-uiux-combined-20260716",
+  "branch": "codex/0.2-multiformat-runtime-uiux-combined-20260716",
+  "baseHead": "77b8991424752c86a4efee3a0d590960a1b8a55b",
+  "productDiffSha256": "2cf76b99f36a8d356a900fdaf7b5e47df99eae7481d3dc755202e183c2808796",
+  "generatedAt": "2026-07-16T15:10:18Z",
+  "members": [
+    {
+      "file": "README.md",
+      "bytes": 331,
+      "sha256": "926a4ee7cccb898d8679c9fd18d94561f55f9ddbd4be049f183083bb899ba8f9"
+    },
+    {
+      "file": "REVIEW_PACKET.md",
+      "bytes": 1876,
+      "sha256": "a9ab31e5bcc94236d3d883236937751b1001280d2a2329ac2af0485929d6d858"
+    },
+    {
+      "file": "VALIDATION_SUMMARY.md",
+      "bytes": 1234,
+      "sha256": "619a910118a6e6af98f241b6199d45947f26740005d2e0aa2d60640d340cc311"
+    }
+  ]
+}

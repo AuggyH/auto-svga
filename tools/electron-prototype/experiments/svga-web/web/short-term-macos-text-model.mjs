@@ -12,6 +12,20 @@ export function runtimeTextOverlayCopy(textElement, textPreview) {
   return `${textElement?.displayName || textElement?.textKey}: ${textPreview}`;
 }
 
+export function runtimeTextReplacementView(textElement, inputValue, options = {}) {
+  const initialValue = typeof textElement?.initialText === "string" ? textElement.initialText : "";
+  const value = typeof inputValue === "string" ? inputValue : "";
+  const sourceEquivalent = value === initialValue
+    || (options.emptyIsSource === true && value === "");
+  return {
+    value,
+    initialValue,
+    hasPreview: !sourceEquivalent,
+    resetDisabled: sourceEquivalent,
+    replacementState: sourceEquivalent ? "source" : "preview"
+  };
+}
+
 export function hasRuntimeTextPreview(textPreviewValues) {
   return Object.values(textPreviewValues || {}).some(Boolean);
 }
@@ -20,12 +34,16 @@ export function runtimeTextListView(model, textPreviewValues) {
   const texts = Array.isArray(model?.texts) ? model.texts : [];
   const images = Array.isArray(model?.images) ? model.images : [];
   return {
-    texts: texts.map((item) => ({
-      ...item,
-      inputValue: runtimeTextInputValue(textPreviewValues, item),
-      placeholder: runtimeTextPlaceholder(item),
-      resetDisabled: !runtimeTextInputValue(textPreviewValues, item)
-    })),
+    texts: texts.map((item) => {
+      const inputValue = runtimeTextInputValue(textPreviewValues, item);
+      const replacement = runtimeTextReplacementView(item, inputValue, { emptyIsSource: true });
+      return {
+        ...item,
+        inputValue,
+        placeholder: runtimeTextPlaceholder(item),
+        resetDisabled: replacement.resetDisabled
+      };
+    }),
     hasTextElements: texts.length > 0,
     hasTextPreview: hasRuntimeTextPreview(textPreviewValues),
     emptyCopy: "",

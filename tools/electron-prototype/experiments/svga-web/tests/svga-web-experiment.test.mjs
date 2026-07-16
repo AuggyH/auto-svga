@@ -2176,13 +2176,6 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.notEqual(vap.model.status, "loading");
     assert.equal(vap.lifecycle.vapLoads, 1);
     assert.equal(vap.lifecycle.objectUrlsCreated, 1);
-    const vapSidecar = await withTerminalTestDeadline(session.openLocalFilePath(vapSidecarPath, "fileButton"), "vap-sidecar");
-    assert.equal(vapSidecar.status, "opened");
-    assert.equal(vapSidecar.model.detectedFormat, "vap");
-    assert.equal(vapSidecar.model.status, "playing");
-    assert.equal(vapSidecar.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
-    assert.equal(vapSidecar.lifecycle.vapLoads, 2);
-    assert.equal(vapSidecar.lifecycle.objectUrlsCreated, 2);
     const vapRuntime = await session.prepareRuntimePreview({
       sourceId: vap.sourceId,
       format: "vap",
@@ -2213,11 +2206,21 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.equal(vapReplacementRuntime.status, "prepared");
     assert.equal(vapReplacementRuntime.fusionParams.title, "Runtime VAP title");
     assert.doesNotMatch(JSON.stringify(vapReplacementRuntime), /\/Users|auto-svga-terminal-session/i);
-    const vapFusionSourceId = session.rememberSource(vapFusionPath);
+    const vapSidecar = await withTerminalTestDeadline(session.openLocalFilePath(vapSidecarPath, "fileButton"), "vap-sidecar");
+    assert.equal(vapSidecar.status, "opened");
+    assert.equal(vapSidecar.model.detectedFormat, "vap");
+    assert.equal(vapSidecar.model.status, "playing");
+    assert.equal(vapSidecar.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
+    assert.equal(vapSidecar.lifecycle.vapLoads, 2);
+    assert.equal(vapSidecar.lifecycle.objectUrlsCreated, 2);
+    const vapFusion = await withTerminalTestDeadline(session.openLocalFilePath(vapFusionPath, "fileButton"), "vap-fusion");
+    assert.equal(vapFusion.status, "opened");
+    assert.equal(vapFusion.model.detectedFormat, "vap");
+    assert.equal(vapFusion.model.status, "playing");
     const vapFusionRuntime = await session.prepareRuntimePreview({
-      sourceId: vapFusionSourceId,
+      sourceId: vapFusion.sourceId,
       format: "vap",
-      requestId: "vap:fusion:replacement",
+      requestId: `${vapFusion.model.requestId}:replacement`,
       replacements: {
         active: [
           {
@@ -3581,6 +3584,169 @@ test("0.2 composed open cancellation preserves active authority while accepted f
   }
 });
 
+test("0.2 right surface keeps normal assets quiet and highlights actionable inventory states", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+
+  try {
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge: {
+        updateShortTermMenuState() {
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        }
+      },
+      nodes,
+      state,
+      svgaController: { handlers: { deactivateForMultiFormat() {}, renderCommandState() {} } }
+    });
+    const ownerRightPanelSnapshotEnvelope = createTestOwnerRightPanelSnapshotEnvelope({
+      facts: [{ id: "format", label: "格式", value: "LOTTIE", status: "pass" }],
+      assetInventory: {
+        schemaVersion: 1,
+        pathRedacted: true,
+        format: "lottie",
+        groups: [
+          {
+            id: "image_resources",
+            label: "图片资源",
+            count: 3,
+            replaceableCount: 1,
+            status: "blocked",
+            items: [
+              {
+                id: "image-ok",
+                label: "背景图片",
+                groupId: "image_resources",
+                kind: "image",
+                source: "asset",
+                status: "available",
+                replaceable: false,
+                detail: ["120 x 80"],
+                pathRedacted: true
+              },
+              {
+                id: "avatar",
+                label: "头像占位",
+                groupId: "image_resources",
+                kind: "image",
+                source: "asset",
+                status: "available",
+                replaceable: true,
+                runtimeTargetId: "avatar",
+                detail: ["120 x 80"],
+                pathRedacted: true
+              },
+              {
+                id: "missing-image",
+                label: "缺失图片",
+                groupId: "image_resources",
+                kind: "image",
+                source: "issue",
+                status: "missing",
+                replaceable: false,
+                detail: ["需要补齐"],
+                issueCode: "missing_resource",
+                severity: "error",
+                pathRedacted: true
+              }
+            ]
+          },
+          {
+            id: "runtime_capabilities",
+            label: "运行能力",
+            count: 2,
+            replaceableCount: 0,
+            status: "warning",
+            items: [
+              {
+                id: "expression",
+                label: "表达式能力",
+                groupId: "runtime_capabilities",
+                kind: "unknown",
+                source: "capability",
+                status: "unsupported",
+                replaceable: false,
+                detail: ["需要复核"],
+                issueCode: "unsupported_feature",
+                severity: "warning",
+                pathRedacted: true
+              },
+              {
+                id: "export-blocked",
+                label: "导出阻断",
+                groupId: "runtime_capabilities",
+                kind: "unknown",
+                source: "issue",
+                status: "blocked",
+                replaceable: false,
+                detail: ["需要处理"],
+                issueCode: "unsupported_feature",
+                severity: "error",
+                pathRedacted: true
+              }
+            ]
+          }
+        ],
+        summary: {
+          totalItems: 5,
+          replaceableItems: 1,
+          imageCount: 3,
+          textCount: 0,
+          sequenceFrameCount: 0,
+          audioVideoCount: 0,
+          unsupportedOrMissingCount: 3
+        },
+        capabilityMarkers: []
+      },
+      issues: [{
+        code: "unsupported_feature",
+        severity: "warning",
+        message: "存在不支持能力",
+        pathRedacted: true
+      }]
+    }, "source:daily-ui");
+    const result = createRuntimeMountOpenResult("lottie", { sourceId: "source:daily-ui" });
+    result.ownerRightPanelSnapshotEnvelope = ownerRightPanelSnapshotEnvelope;
+    result.model.ownerRightPanelSnapshotEnvelope = ownerRightPanelSnapshotEnvelope;
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "daily-ui" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "daily-ui", result }), true);
+
+    const [imageGroup, capabilityGroup] = nodes.assetList.children;
+    const [availableRow, replaceableRow, missingRow] = imageGroup.children[1].children;
+    const [unsupportedRow, blockedRow] = capabilityGroup.children[1].children;
+    assert.equal(availableRow.dataset.status, "available");
+    assert.equal(availableRow.dataset.attention, "false");
+    assert.doesNotMatch(availableRow.innerHTML, />可用</u);
+    assert.match(replaceableRow.innerHTML, /class="badge safe"[^>]*>可替换</u);
+    assert.equal(missingRow.dataset.attention, "true");
+    assert.match(missingRow.innerHTML, /class="badge fail"[^>]*>缺失</u);
+    assert.equal(unsupportedRow.dataset.attention, "true");
+    assert.match(unsupportedRow.innerHTML, /class="badge unsupported"[^>]*>不支持</u);
+    assert.equal(blockedRow.dataset.attention, "true");
+    assert.match(blockedRow.innerHTML, /class="badge fail"[^>]*>阻断</u);
+
+    const [issueRow] = nodes.findingList.children;
+    assert.equal(issueRow.dataset.disposition, "reviewOnly");
+    assert.match(issueRow.innerHTML, /<div><strong>存在不支持能力<\/strong><\/div>/u);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host file-open", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
@@ -3661,11 +3827,49 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.deepEqual(lottieCalls[0].rendererSettings, { runExpressions: false });
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
 
-    controller.handlers.updateRuntimeText("text:1", "Runtime greeting");
+    const lottieInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    assert.ok(lottieInput);
+    assert.equal(lottieInput.value, "Original greeting");
+    assert.equal(lottieInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    assert.equal(lottieInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    lottieInput.focus();
+    lottieInput.value = "Runtime greeting";
+    lottieInput.setSelectionRange(7, 15, "forward");
+    await controller.handlers.updateRuntimeText("text:1", "Runtime greeting");
     await flushRuntimeMountPromises();
+    const lottieChangedInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    assert.equal(documentRef.activeElement, lottieChangedInput);
+    assert.equal(lottieChangedInput.value, "Runtime greeting");
+    assert.equal(lottieChangedInput.selectionStart, 7);
+    assert.equal(lottieChangedInput.selectionEnd, 15);
+    assert.equal(lottieChangedInput.selectionDirection, "forward");
+    assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
+    assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
     assert.equal(lottieCalls.length, 2);
     assert.equal(lottieCalls[1].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["text:1"]);
+
+    lottieChangedInput.value = "Original greeting";
+    lottieChangedInput.setSelectionRange(8, 8, "none");
+    await controller.handlers.updateRuntimeText("text:1", "Original greeting");
+    await flushRuntimeMountPromises();
+    const lottieSourceInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    assert.equal(documentRef.activeElement, lottieSourceInput);
+    assert.equal(lottieSourceInput.value, "Original greeting");
+    assert.equal(lottieSourceInput.selectionStart, 8);
+    assert.equal(lottieSourceInput.selectionEnd, 8);
+    assert.equal(lottieSourceInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    assert.equal(lottieSourceInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
+    assert.equal(bridge.menuStates.at(-1).canResetText, false);
+
+    lottieSourceInput.value = "Runtime greeting";
+    lottieSourceInput.setSelectionRange(16, 16, "none");
+    await controller.handlers.updateRuntimeText("text:1", "Runtime greeting");
+    await flushRuntimeMountPromises();
+    const lottieChangedAgainInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    assert.equal(documentRef.activeElement, lottieChangedAgainInput);
+    assert.equal(lottieChangedAgainInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
 
     controller.handlers.selectImageKey("avatar");
     await controller.handlers.applyReplacementFile({
@@ -3675,9 +3879,9 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
       }
     });
     await flushRuntimeMountPromises();
-    assert.equal(lottieCalls.length, 3);
-    assert.equal(lottieCalls[2].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
-    assert.match(lottieCalls[2].animationData.assets[0].p, /^data:image\/png;base64,/u);
+    assert.equal(lottieCalls.length, 5);
+    assert.equal(lottieCalls[4].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
+    assert.match(lottieCalls[4].animationData.assets[0].p, /^data:image\/png;base64,/u);
     assert.deepEqual(
       bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId).sort(),
       ["avatar", "text:1"]
@@ -3685,17 +3889,24 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
 
     await controller.handlers.resetRuntimeText("text:1");
     await flushRuntimeMountPromises();
-    assert.equal(lottieCalls.length, 4);
-    assert.equal(lottieCalls[3].animationData.layers[0].t.d.k[0].s.t, "Original greeting");
-    assert.match(lottieCalls[3].animationData.assets[0].p, /^data:image\/png;base64,/u);
+    assert.equal(lottieCalls.length, 6);
+    assert.equal(lottieCalls[5].animationData.layers[0].t.d.k[0].s.t, "Original greeting");
+    assert.match(lottieCalls[5].animationData.assets[0].p, /^data:image\/png;base64,/u);
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["avatar"]);
     assert.equal(bridge.menuStates.at(-1).canResetImageReplacement, true);
     assert.equal(bridge.menuStates.at(-1).canResetText, false);
+    const lottieResetInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    assert.equal(documentRef.activeElement, lottieResetInput);
+    assert.equal(lottieResetInput.value, "Original greeting");
+    assert.equal(lottieResetInput.selectionStart, 16);
+    assert.equal(lottieResetInput.selectionEnd, 16);
+    assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
 
     await controller.handlers.resetImageReplacement("avatar");
     await flushRuntimeMountPromises();
-    assert.equal(lottieCalls.length, 5);
-    assert.equal(lottieCalls[4].animationData.assets[0].p, "data:image/png;base64,AQID");
+    assert.equal(lottieCalls.length, 7);
+    assert.equal(lottieCalls[6].animationData.assets[0].p, "data:image/png;base64,AQID");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetImageReplacement, false);
 
@@ -3715,11 +3926,173 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(objectUrls.length, 1);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
 
+    const unrelatedFocus = new FakeDomElement("button");
+    unrelatedFocus.ownerDocument = documentRef;
+    unrelatedFocus.focus();
     controller.handlers.updateRuntimeText("title", "Runtime VAP title");
     await flushRuntimeMountPromises();
     assert.equal(vapCalls.length, 2);
     assert.equal(vapCalls[1].title, "Runtime VAP title");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["title"]);
+    assert.equal(documentRef.activeElement, unrelatedFocus);
+
+    const vapInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="title"]`);
+    assert.equal(vapInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
+    assert.equal(vapInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
+    vapInput.focus();
+    vapInput.setSelectionRange(3, 3, "none");
+    await controller.handlers.resetRuntimeText("title");
+    await flushRuntimeMountPromises();
+    const vapSourceInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="title"]`);
+    assert.equal(documentRef.activeElement, vapSourceInput);
+    assert.equal(vapSourceInput.value, "VAP 融合文字");
+    assert.equal(vapSourceInput.selectionStart, 3);
+    assert.equal(vapSourceInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    assert.equal(vapSourceInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
+    assert.equal(bridge.menuStates.at(-1).canResetText, false);
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    globalThis.Vap = originalVap;
+    globalThis.URL = originalUrl;
+  }
+});
+
+test("0.2 Lottie and VAP text intents cannot publish a delayed Apply after returning to source", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const originalVap = globalThis.Vap;
+  const originalUrl = globalThis.URL;
+  globalThis.lottie = {
+    loadAnimation() {
+      return { play() {}, pause() {}, destroy() {}, goToAndStop() {} };
+    }
+  };
+  globalThis.Vap = {
+    canWebGL() { return true; },
+    default() {
+      return { on() { return this; }, play() { return this; }, pause() {}, destroy() {}, setTime() {} };
+    }
+  };
+  globalThis.URL = {
+    createObjectURL() { return "blob:runtime-text-intent"; },
+    revokeObjectURL() {}
+  };
+
+  try {
+    for (const fixture of [
+      { format: "lottie", textKey: "text:1", sourceValue: "Original greeting", changedValue: "Delayed Lottie" },
+      { format: "vap", textKey: "title", sourceValue: "VAP 融合文字", changedValue: "延迟 VAP" }
+    ]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      const documentRef = createMultiFormatControllerTestDocument(nodes);
+      globalThis.document = documentRef;
+      const bridge = createMultiFormatRuntimeMountTestBridge();
+      const pendingApplies = [];
+      const pendingResets = [];
+      const applyReplacement = bridge.applyMultiFormatReplacement.bind(bridge);
+      const resetReplacement = bridge.resetMultiFormatReplacement.bind(bridge);
+      bridge.applyMultiFormatReplacement = (input) => new Promise((resolve) => {
+        pendingApplies.push({ input, resolve: () => resolve(applyReplacement(input)) });
+      });
+      bridge.resetMultiFormatReplacement = (input) => new Promise((resolve) => {
+        pendingResets.push({ input, resolve: () => resolve(resetReplacement(input)) });
+      });
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+      controller.initialize();
+      bridge.markOpened(fixture.format);
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${fixture.format}-intent-open` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${fixture.format}-intent-open`,
+        result: createRuntimeMountOpenResult(fixture.format)
+      }), true);
+      await flushRuntimeMountPromises();
+
+      controller.handlers.updateRuntimeText(fixture.textKey, fixture.sourceValue);
+      controller.handlers.updateRuntimeText(fixture.textKey, `${fixture.changedValue} skipped`);
+      controller.handlers.updateRuntimeText(fixture.textKey, fixture.sourceValue);
+      await flushRuntimeMountPromises();
+      assert.equal(pendingApplies.length, 0, `${fixture.format} no-wait source -> changed -> source must coalesce before dispatch`);
+      assert.equal(pendingResets.length, 0, `${fixture.format} no-wait source -> changed -> source must not create a needless Reset`);
+
+      const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      input.focus();
+      input.value = fixture.changedValue;
+      input.setSelectionRange(2, Math.min(7, fixture.changedValue.length), "forward");
+      controller.handlers.updateRuntimeText(fixture.textKey, fixture.changedValue);
+      await flushRuntimeMountPromises();
+      assert.equal(pendingApplies.length, 1, `${fixture.format} changed intent must dispatch Apply`);
+
+      const changedInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      changedInput.setSelectionRange(3, 3, "none");
+      const sourceMutation = controller.handlers.resetRuntimeText(fixture.textKey);
+      await flushRuntimeMountPromises();
+      const immediateSourceInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.equal(immediateSourceInput.value, fixture.sourceValue);
+      assert.equal(immediateSourceInput.selectionStart, 3);
+      assert.equal(immediateSourceInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+      assert.equal(immediateSourceInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+
+      pendingApplies.shift().resolve();
+      await flushRuntimeMountPromises();
+      assert.equal(pendingResets.length, 1, `${fixture.format} newest source intent must reconcile a delayed Apply`);
+      pendingResets.shift().resolve();
+      await sourceMutation;
+      await flushRuntimeMountPromises();
+
+      const finalInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.equal(documentRef.activeElement, finalInput);
+      assert.equal(finalInput.value, fixture.sourceValue);
+      assert.equal(finalInput.selectionStart, 3);
+      assert.equal(finalInput.selectionEnd, 3);
+      assert.equal(finalInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+      assert.equal(finalInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+      assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
+      assert.equal(bridge.menuStates.at(-1).canResetText, false);
+
+      const firstChangedValue = `${fixture.changedValue} first`;
+      const latestChangedValue = `${fixture.changedValue} latest`;
+      finalInput.value = firstChangedValue;
+      controller.handlers.updateRuntimeText(fixture.textKey, firstChangedValue);
+      await flushRuntimeMountPromises();
+      assert.equal(pendingApplies.length, 1, `${fixture.format} first changed intent must dispatch Apply`);
+
+      const latestInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      latestInput.focus();
+      latestInput.value = latestChangedValue;
+      latestInput.setSelectionRange(4, Math.min(9, latestChangedValue.length), "forward");
+      const latestMutation = controller.handlers.updateRuntimeText(fixture.textKey, latestChangedValue);
+      await flushRuntimeMountPromises();
+      assert.equal(pendingApplies.length, 1, `${fixture.format} newer Apply must wait for the older target mutation`);
+
+      pendingApplies.shift().resolve();
+      await flushRuntimeMountPromises();
+      assert.equal(pendingApplies.length, 1, `${fixture.format} latest Apply dispatches only after the older completion settles`);
+      const beforeLatestCompletion = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.equal(beforeLatestCompletion.value, latestChangedValue);
+      assert.equal(beforeLatestCompletion.selectionStart, 4);
+      assert.equal(beforeLatestCompletion.selectionEnd, Math.min(9, latestChangedValue.length));
+
+      pendingApplies.shift().resolve();
+      await latestMutation;
+      await flushRuntimeMountPromises();
+      const orderedFinalInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.equal(documentRef.activeElement, orderedFinalInput);
+      assert.equal(orderedFinalInput.value, latestChangedValue);
+      assert.equal(orderedFinalInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
+      assert.equal(orderedFinalInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
+      assert.equal(bridge.prepareInputs.at(-1).replacements.active.at(-1).valuePreview, latestChangedValue);
+    }
   } finally {
     globalThis.document = originalDocument;
     globalThis.lottie = originalLottie;
@@ -5670,6 +6043,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.assetRow \.rowText strong\s*\{[^}]*min-width: 0/s);
   assert.match(shortTermComponents, /\.assetRow \.rowText span\s*\{[^}]*min-width: 0/s);
   assert.match(shortTermComponents, /\.assetRow \.badge\s*\{[^}]*justify-self: end/s);
+  assert.match(shortTermComponents, /\.assetRow \.badge\.safe\s*\{[^}]*background: var\(--asv-color-success-soft\)/s);
+  assert.match(shortTermComponents, /\.assetRow \.badge\.unsupported\s*\{[^}]*background: var\(--asv-asset-row-badge-attention-bg\)/s);
+  assert.match(shortTermComponents, /\.assetRow \.badge\.fail\s*\{[^}]*background: var\(--asv-color-danger-soft\)/s);
   assert.match(shortTermComponents, /\.layerRow/);
   assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*grid-template-columns: var\(--asv-layer-row-thumb-size\) minmax\(0, 1fr\)/s);
   assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*border-bottom: var\(--asv-layer-row-divider\)/s);
@@ -8124,8 +8500,10 @@ function createMultiFormatControllerTestDocument(nodes) {
     head,
     body,
     documentElement,
+    activeElement: body,
     createElement(tagName) {
       const node = new FakeDomElement(tagName);
+      node.ownerDocument = this;
       if (tagName === "div") {
         Object.defineProperty(node, "id", {
           get() {
@@ -8190,6 +8568,46 @@ class FakeDomElement {
     return this.children[0] ?? null;
   }
 
+  get innerHTML() {
+    return this._innerHTML;
+  }
+
+  set innerHTML(value) {
+    this._innerHTML = String(value);
+    if (!this._innerHTML.includes("data-text-input")) return;
+    const textKey = fakeAttributeValue(this._innerHTML, "data-text-key") || "";
+    const inputValue = fakeAttributeValue(this._innerHTML, "value") || "";
+    const initialValue = fakeAttributeValue(this._innerHTML, "data-initial-value") || "";
+    const input = new FakeDomElement("input");
+    input.className = "runtimeTextInput";
+    input.dataset.component = "InlineTextReplacementInput";
+    input.dataset.textInput = "";
+    input.dataset.textKey = textKey;
+    input.dataset.initialValue = initialValue;
+    input.value = inputValue;
+    input.selectionStart = input.value.length;
+    input.selectionEnd = input.value.length;
+    input.selectionDirection = "none";
+    input.ownerDocument = this.ownerDocument;
+    input.setSelectionRange = (start, end, direction = "none") => {
+      input.selectionStart = start;
+      input.selectionEnd = end;
+      input.selectionDirection = direction;
+    };
+    input.select = () => {
+      input.selectionStart = 0;
+      input.selectionEnd = input.value.length;
+      input.selectionDirection = "none";
+    };
+    const resetButton = new FakeDomElement("button");
+    resetButton.className = "runtimeTextResetButton";
+    resetButton.dataset.action = "runtime-text-reset";
+    resetButton.dataset.textKey = textKey;
+    resetButton.disabled = /data-action="runtime-text-reset"[^>]*disabled/u.test(this._innerHTML);
+    resetButton.ownerDocument = this.ownerDocument;
+    this.replaceChildren(input, resetButton);
+  }
+
   setAttribute(name, value) {
     this.attributes[name] = String(value);
   }
@@ -8215,6 +8633,7 @@ class FakeDomElement {
     this.childNodes = this.children;
     children.forEach((child) => {
       if (child) child.parentElement = this;
+      if (child && !child.ownerDocument) child.ownerDocument = this.ownerDocument;
     });
   }
 
@@ -8224,6 +8643,7 @@ class FakeDomElement {
 
   appendChild(child) {
     if (child) child.parentElement = this;
+    if (child && !child.ownerDocument) child.ownerDocument = this.ownerDocument;
     this.children.push(child);
     return child;
   }
@@ -8250,7 +8670,7 @@ class FakeDomElement {
       return this.children.find((child) => child.id === "multiFormatRuntimeMount") ?? null;
     }
     if (selector === "script") return this.querySelectorAll(selector)[0] ?? null;
-    return null;
+    return this.querySelectorAll(selector)[0] ?? null;
   }
 
   querySelectorAll(selector = "*") {
@@ -8258,7 +8678,9 @@ class FakeDomElement {
     const normalized = selector.toUpperCase();
     const visit = (node) => {
       node.children.forEach((child) => {
-        if (selector === "*" || child.tagName === normalized) matches.push(child);
+        if (selector === "*" || child.tagName === normalized || fakeMatchesSelector(child, selector)) {
+          matches.push(child);
+        }
         visit(child);
       });
     };
@@ -8282,8 +8704,57 @@ class FakeDomElement {
     (this.eventListeners.get(event.type) ?? []).forEach((handler) => handler.call(this, event));
   }
 
-  focus() {}
+  matches(selector) {
+    return fakeMatchesSelector(this, selector);
+  }
+
+  closest(selector) {
+    let node = this;
+    while (node) {
+      if (fakeMatchesSelector(node, selector)) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  focus() {
+    if (this.ownerDocument) this.ownerDocument.activeElement = this;
+    if (globalThis.document && "activeElement" in globalThis.document) {
+      globalThis.document.activeElement = this;
+    }
+  }
   select() {}
+}
+
+function fakeAttributeValue(markup, name) {
+  const match = markup.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`, "u"));
+  return match?.[1]?.replace(/&quot;/gu, "\"").replace(/&amp;/gu, "&") || "";
+}
+
+function fakeUnescapeCssIdentifier(value) {
+  return String(value).replace(/\\:/gu, ":").replace(/\\"/gu, "\"").replace(/\\\\/gu, "\\");
+}
+
+function fakeSelectorDataTextKey(selector) {
+  const match = selector.match(/data-text-key=["']([^"']+)["']/u);
+  return match ? fakeUnescapeCssIdentifier(match[1]) : undefined;
+}
+
+function fakeMatchesSelector(node, selector) {
+  if (!node || !selector) return false;
+  if (selector === "[data-text-input]") return Object.hasOwn(node.dataset, "textInput");
+  if (selector.startsWith("[data-text-input][data-text-key=")) {
+    return Object.hasOwn(node.dataset, "textInput")
+      && node.dataset.textKey === fakeSelectorDataTextKey(selector);
+  }
+  if (selector === "[data-action='runtime-text-reset']" || selector === "[data-action=\"runtime-text-reset\"]") {
+    return node.dataset.action === "runtime-text-reset";
+  }
+  if (selector === ".textElementRow[data-text-key]") {
+    return String(node.className || "").split(/\s+/u).includes("textElementRow")
+      && typeof node.dataset.textKey === "string";
+  }
+  return false;
 }
 
 async function flushRuntimeMountPromises() {

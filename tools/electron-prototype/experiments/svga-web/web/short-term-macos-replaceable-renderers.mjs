@@ -1,4 +1,5 @@
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
 const rowMenuIconHtml = `
@@ -82,14 +83,72 @@ export function createTextElementRow(item, index, options) {
   row.setAttribute("aria-selected", options.selected ? "true" : "false");
   const label = item.displayName || item.textKey;
   const value = item.inputValue || "";
+  const replacement = runtimeTextReplacementView(item, value, {
+    emptyIsSource: item.resetDisabled === true
+  });
+  const { initialValue, resetDisabled } = replacement;
+  row.dataset.replacementState = replacement.replacementState;
   row.title = `${label}: ${value || item.initialText || item.textKey}`;
   row.innerHTML = `
     <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
     <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
-    <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.textKey)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
-    <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" title="重置" ${item.resetDisabled ? "disabled" : ""}>${runtimeTextResetIconHtml}</button>
+    <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.textKey)}" data-initial-value="${escapeHtml(initialValue)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
+    <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" title="重置" ${resetDisabled ? "disabled" : ""}>${runtimeTextResetIconHtml}</button>
   `;
   return row;
+}
+
+export function applyRuntimeTextRowReplacementState(row, replacement) {
+  if (!row || !replacement) return;
+  row.dataset.replacementState = replacement.replacementState;
+  const resetButton = row.querySelector("[data-action='runtime-text-reset']");
+  if (resetButton) resetButton.disabled = replacement.resetDisabled;
+}
+
+export function captureRuntimeTextInputContext(textElementList) {
+  const documentRef = textElementList?.ownerDocument || globalThis.document;
+  const activeElement = documentRef?.activeElement;
+  if (!activeElement?.matches?.("[data-text-input]")) return undefined;
+  const row = activeElement.closest?.(".textElementRow[data-text-key]");
+  if (!row || row.parentElement !== textElementList) return undefined;
+  return {
+    textKey: activeElement.dataset.textKey || row.dataset.textKey || "",
+    replacementState: row.dataset.replacementState || "",
+    value: typeof activeElement.value === "string" ? activeElement.value : "",
+    selectionStart: Number.isInteger(activeElement.selectionStart) ? activeElement.selectionStart : undefined,
+    selectionEnd: Number.isInteger(activeElement.selectionEnd) ? activeElement.selectionEnd : undefined,
+    selectionDirection: activeElement.selectionDirection || "none"
+  };
+}
+
+export function restoreRuntimeTextInputContext(textElementList, context) {
+  if (!context?.textKey) return false;
+  const input = Array.from(textElementList.querySelectorAll("[data-text-input]"))
+    .find((candidate) => candidate.dataset.textKey === context.textKey);
+  if (!input) return false;
+  const row = input.closest?.(".textElementRow[data-text-key]");
+  if (row?.dataset.replacementState === context.replacementState) {
+    input.value = context.value;
+  }
+  input.focus({ preventScroll: true });
+  if (
+    Number.isInteger(context.selectionStart)
+    && Number.isInteger(context.selectionEnd)
+    && typeof input.setSelectionRange === "function"
+  ) {
+    input.setSelectionRange(
+      Math.min(context.selectionStart, input.value.length),
+      Math.min(context.selectionEnd, input.value.length),
+      context.selectionDirection
+    );
+  }
+  return true;
+}
+
+export function replaceRuntimeTextRows(textElementList, rows) {
+  const inputContext = captureRuntimeTextInputContext(textElementList);
+  textElementList.replaceChildren(...rows);
+  restoreRuntimeTextInputContext(textElementList, inputContext);
 }
 
 export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
@@ -99,9 +158,12 @@ export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
     nodes.textElementList.replaceChildren();
     return;
   }
-  nodes.textElementList.replaceChildren(...view.texts.map((item, index) => createTextElementRow(item, index, {
-    selected: item.textKey === selectedTextKey
-  })));
+  replaceRuntimeTextRows(
+    nodes.textElementList,
+    view.texts.map((item, index) => createTextElementRow(item, index, {
+      selected: item.textKey === selectedTextKey
+    }))
+  );
 }
 
 export function applyRuntimeTextSelection(nodes, selectedTextKey) {

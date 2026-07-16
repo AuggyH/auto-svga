@@ -25,9 +25,11 @@ import { syncShortTermMenuState, syncShortTermWindowMode } from "./short-term-ma
 import { createOverviewFactCell } from "./short-term-macos-overview-renderers.mjs";
 import {
   createReplaceableImageRow,
-  createTextElementRow
+  createTextElementRow,
+  replaceRuntimeTextRows
 } from "./short-term-macos-replaceable-renderers.mjs";
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import {
   multiFormatDragDecisionForEvent,
   multiFormatInventorySummaryItems,
@@ -81,6 +83,11 @@ export function createMultiFormatDesktopPreviewController({
   let svgaPlaybackModulePromise;
   let runtimeReplacementValues = new Map();
   let publicRuntimeReplacementTargets = new Map();
+  let runtimeTextMutationGeneration = 0;
+  let runtimeTextMutationSequence = 0;
+  let runtimeTextMutationIntents = new Map();
+  let runtimeTextMutationQueues = new Map();
+  let runtimeTextMutationMayHaveAuthority = new Set();
   let hostFileOpenEventId = "";
   let hostFileOpenRequest = 0;
   let activeFormat = "";
@@ -225,6 +232,7 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     activeRequest += 1;
+    invalidateRuntimeTextMutations();
     clearRuntimePreview();
     clearRuntimeReplacementValues();
     await bridge.controlMultiFormatPreview({ action: "dispose" }).catch(() => {});
@@ -394,45 +402,117 @@ export function createMultiFormatDesktopPreviewController({
     if (svgaWorkflowActive()) return svgaController.handlers.updateRuntimeText?.(textKey, value);
     if (!textKey) return;
     state.selectedTextKey = textKey;
-    state.textPreviewValues[textKey] = value;
-    bridge.applyMultiFormatReplacement({
-      targetId: textKey,
-      sourceId: state.sourceId,
-      kind: "text",
-      value
-    }).then((result) => {
-      const runtimeValue = acceptedRuntimeReplacementValue(result, "text");
-      if (replacementActionAccepted(result) && !runtimeValue) {
+    state.textPreviewValues = state.textPreviewValues || {};
+    const textTarget = (projectMultiFormatRightPanel(state.model).textTargets ?? [])
+      .find((target) => target.textKey === textKey);
+    const replacement = runtimeTextReplacementView(textTarget, value, {
+      emptyIsSource: textTarget?.resetDisabled === true
+    });
+    if (replacement.hasPreview) {
+      state.textPreviewValues[textKey] = replacement.value;
+    } else {
+      delete state.textPreviewValues[textKey];
+    }
+    renderTextTargets();
+    renderCommandState();
+    return enqueueRuntimeTextMutation(textKey, replacement);
+  }
+
+  function enqueueRuntimeTextMutation(textKey, replacement) {
+    const intent = beginRuntimeTextMutationIntent(textKey, replacement);
+    const previous = runtimeTextMutationQueues.get(intent.key) ?? Promise.resolve();
+    const queued = previous
+      .catch(() => {})
+      .then(() => applyRuntimeTextMutationIntent(intent))
+      .catch(() => {
+        if (runtimeTextMutationIntentIsCurrent(intent)) {
+          showFailure({ code: "replacement_preview_failed" });
+        }
+      })
+      .finally(() => {
+        if (runtimeTextMutationQueues.get(intent.key) === queued) {
+          runtimeTextMutationQueues.delete(intent.key);
+        }
+      });
+    runtimeTextMutationQueues.set(intent.key, queued);
+    return queued;
+  }
+
+  function beginRuntimeTextMutationIntent(textKey, replacement) {
+    const sourceId = state.sourceId || "";
+    const generation = runtimeTextMutationGeneration;
+    const sequence = ++runtimeTextMutationSequence;
+    const key = `${generation}:${sourceId}:${textKey}`;
+    const intent = {
+      generation,
+      sequence,
+      sourceId,
+      textKey,
+      key,
+      hasPreview: replacement.hasPreview,
+      value: replacement.value
+    };
+    runtimeTextMutationIntents.set(key, intent);
+    return intent;
+  }
+
+  function runtimeTextMutationIntentIsCurrent(intent) {
+    return intent.generation === runtimeTextMutationGeneration
+      && intent.sourceId === state.sourceId
+      && runtimeTextMutationIntents.get(intent.key)?.sequence === intent.sequence;
+  }
+
+  async function applyRuntimeTextMutationIntent(intent) {
+    if (!runtimeTextMutationIntentIsCurrent(intent)) return;
+    if (!intent.hasPreview) {
+      const resetRequired = runtimeTextMutationMayHaveAuthority.has(intent.key)
+        || activeReplacementForPublicTarget(state.model, "text", intent.textKey, publicRuntimeReplacementTargets);
+      if (!resetRequired) return;
+      const result = await bridge.resetMultiFormatReplacement({
+        targetId: intent.textKey,
+        sourceId: intent.sourceId,
+        kind: "text"
+      });
+      if (!runtimeTextMutationIntentIsCurrent(intent)) return;
+      const runtimeTargetId = acceptedResetRuntimeTargetId(result);
+      if (replacementActionAccepted(result) && !runtimeTargetId) {
         showFailure({ code: "replacement_preview_failed" });
         return;
       }
-      if (runtimeValue) {
-        setPublicRuntimeReplacementTarget(result, "text", textKey, runtimeValue.targetId);
-        setRuntimeReplacementValue("text", runtimeValue.targetId, runtimeValue.value);
+      if (replacementActionAccepted(result)) {
+        clearRuntimeReplacementValues("text", runtimeTargetId);
       }
+      runtimeTextMutationMayHaveAuthority.delete(intent.key);
       applyHostResult(result, { keepView: true });
-    }).catch(() => showFailure({ code: "replacement_preview_failed" }));
-  }
-
-  async function resetRuntimeText(textKey = state.selectedTextKey) {
-    if (svgaWorkflowActive()) return svgaController.handlers.resetRuntimeText?.();
-    if (!textKey) return;
-    state.selectedTextKey = textKey;
-    const result = await bridge.resetMultiFormatReplacement({
-      targetId: textKey,
-      sourceId: state.sourceId,
-      kind: "text"
-    });
-    const runtimeTargetId = acceptedResetRuntimeTargetId(result);
-    if (replacementActionAccepted(result) && !runtimeTargetId) {
-      showFailure("Replacement reset did not return an accepted runtime target binding.");
       return;
     }
-    if (replacementActionAccepted(result)) {
-      clearRuntimeReplacementValues("text", runtimeTargetId);
-      delete state.textPreviewValues[textKey];
+
+    runtimeTextMutationMayHaveAuthority.add(intent.key);
+    const result = await bridge.applyMultiFormatReplacement({
+      targetId: intent.textKey,
+      sourceId: intent.sourceId,
+      kind: "text",
+      value: intent.value
+    });
+    if (!runtimeTextMutationIntentIsCurrent(intent)) return;
+    const runtimeValue = acceptedRuntimeReplacementValue(result, "text");
+    if (replacementActionAccepted(result) && !runtimeValue) {
+      showFailure({ code: "replacement_preview_failed" });
+      return;
+    }
+    if (runtimeValue) {
+      setPublicRuntimeReplacementTarget(result, "text", intent.textKey, runtimeValue.targetId);
+      setRuntimeReplacementValue("text", runtimeValue.targetId, runtimeValue.value);
     }
     applyHostResult(result, { keepView: true });
+  }
+
+  function resetRuntimeText(textKey = state.selectedTextKey) {
+    if (svgaWorkflowActive()) return svgaController.handlers.resetRuntimeText?.();
+    if (!textKey) return;
+    const textTarget = (projectMultiFormatRightPanel(state.model).textTargets ?? [])
+      .find((target) => target.textKey === textKey);
+    return updateRuntimeText(textKey, textTarget?.initialText ?? "");
   }
 
   function applyHostResult(result, options = {}) {
@@ -632,7 +712,7 @@ export function createMultiFormatDesktopPreviewController({
     row.innerHTML = `
       <span class="thumb">${escapeHtml((item.kind || "?").slice(0, 1).toUpperCase())}</span>
       <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
-      ${item.replaceable ? `<span class="badge">可替换</span>` : `<span class="badge">${escapeHtml(assetStatusCopy(item.status))}</span>`}
+      ${inventoryItemBadgeHtml(item)}
     `;
     return row;
   }
@@ -656,6 +736,25 @@ export function createMultiFormatDesktopPreviewController({
     }
   }
 
+  function inventoryItemBadgeHtml(item) {
+    if (item.replaceable) return `<span class="badge safe">可替换</span>`;
+    const statusTone = inventoryStatusTone(item.status);
+    if (!statusTone) return "";
+    return `<span class="badge ${statusTone}">${escapeHtml(assetStatusCopy(item.status))}</span>`;
+  }
+
+  function inventoryStatusTone(status) {
+    switch (status) {
+      case "missing":
+      case "blocked":
+        return "fail";
+      case "unsupported":
+        return "unsupported";
+      default:
+        return "";
+    }
+  }
+
   function renderIssues(model) {
     const rightPanel = projectMultiFormatRightPanel(model);
     const issues = [
@@ -670,9 +769,14 @@ export function createMultiFormatDesktopPreviewController({
       const row = document.createElement("article");
       row.className = "findingRow";
       row.dataset.severity = issue.severity || "warning";
-      row.innerHTML = `<strong>${escapeHtml(issue.message || "")}</strong>`;
+      row.dataset.disposition = issueDisposition(issue.severity);
+      row.innerHTML = `<div><strong>${escapeHtml(issue.message || "")}</strong></div>`;
       return row;
     }));
+  }
+
+  function issueDisposition(severity) {
+    return severity === "error" ? "unsupported" : "reviewOnly";
   }
 
   function renderReplaceableTargets() {
@@ -696,7 +800,7 @@ export function createMultiFormatDesktopPreviewController({
       ...target,
       inputValue: state.textPreviewValues[target.textKey] ?? target.initialText ?? ""
     }));
-    nodes.textElementList.replaceChildren(...targets.map((target, index) => createTextElementRow(target, index, {
+    replaceRuntimeTextRows(nodes.textElementList, targets.map((target, index) => createTextElementRow(target, index, {
       selected: state.selectedTextKey === target.textKey
     })));
   }
@@ -1338,6 +1442,13 @@ export function createMultiFormatDesktopPreviewController({
     }
   }
 
+  function invalidateRuntimeTextMutations() {
+    runtimeTextMutationGeneration += 1;
+    runtimeTextMutationIntents = new Map();
+    runtimeTextMutationQueues = new Map();
+    runtimeTextMutationMayHaveAuthority = new Set();
+  }
+
   function replacementActionAccepted(result) {
     return result?.model?.replacement?.lastAction?.status === "accepted";
   }
@@ -1556,6 +1667,7 @@ export function createMultiFormatDesktopPreviewController({
   function revokeActiveDocumentAuthority(options = {}) {
     if (activeFormat === "svga") svgaController?.handlers?.deactivateForMultiFormat?.();
     activeFormat = "";
+    invalidateRuntimeTextMutations();
     clearRuntimePreview();
     clearRuntimeReplacementValues();
     if (options.disposeHost !== false) {
