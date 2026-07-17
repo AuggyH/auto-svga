@@ -5000,6 +5000,10 @@ test("multi-format runtime self-test writes bootstrap diagnostics before Electro
   assert.ok(entrypointIndex >= 0 && entrypointIndex < requireBeginIndex);
   assert.ok(requireBeginIndex >= 0 && requireBeginIndex < electronRequireIndex);
   assert.ok(electronRequireIndex >= 0 && electronRequireIndex < electronRequiredIndex);
+  assert.match(proofSource, /if \(!electronApi\?\.app\?\.commandLine\) \{\s*bootstrapElectronProcess\(electronApi\);\s*\}/u);
+  assert.match(proofSource, /execFileSync\(electronApiValue, \[__filename, \.\.\.process\.argv\.slice\(2\)\]/u);
+  assert.match(proofSource, /AUTO_SVGA_MULTIFORMAT_RUNTIME_SELFTEST_ELECTRON/u);
+  assert.match(proofSource, /electron_reexec_begin/u);
   assert.match(proofSource, /runtime-selftest-bootstrap-phases\.jsonl/u);
   assert.match(proofSource, /runtime-selftest-bootstrap-failure\.json/u);
   assert.match(proofSource, /installBootstrapFailureGuards\(\)/u);

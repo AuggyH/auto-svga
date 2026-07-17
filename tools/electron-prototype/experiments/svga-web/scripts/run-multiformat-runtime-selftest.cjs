@@ -21,6 +21,8 @@ const proofOutputPath = path.join(proofRoot, "multiformat-runtime-selftest-proof
 const bootstrapPhasePath = path.join(proofRoot, "runtime-selftest-bootstrap-phases.jsonl");
 const bootstrapFailurePath = path.join(proofRoot, "runtime-selftest-bootstrap-failure.json");
 const userDataRoot = path.join(proofRoot, "userData");
+const electronBootstrapEnv = "AUTO_SVGA_MULTIFORMAT_RUNTIME_SELFTEST_ELECTRON";
+const bootstrapProductMilestoneId = "0.2-multiformat-preview";
 
 writeBootstrapPhase("entrypoint_loaded");
 installBootstrapFailureGuards();
@@ -32,6 +34,9 @@ try {
 } catch (error) {
   writeBootstrapFailure("electron_require_failed", error);
   throw error;
+}
+if (!electronApi?.app?.commandLine) {
+  bootstrapElectronProcess(electronApi);
 }
 const { app, BrowserWindow, ipcMain, session } = electronApi;
 const protobuf = require("protobufjs");
@@ -1335,6 +1340,34 @@ function installBootstrapFailureGuards() {
   });
 }
 
+function bootstrapElectronProcess(electronApiValue) {
+  if (typeof electronApiValue !== "string" || electronApiValue.length === 0 || process.env[electronBootstrapEnv] === "1") {
+    writeBootstrapFailure(
+      "electron_api_unavailable",
+      new Error("Runtime self-test must run inside Electron and could not resolve a local Electron executable.")
+    );
+    process.exit(1);
+  }
+  try {
+    writeBootstrapPhase("electron_reexec_begin", {
+      electronPathHash: createHash("sha256").update(electronApiValue).digest("hex").slice(0, 16)
+    });
+    execFileSync(electronApiValue, [__filename, ...process.argv.slice(2)], {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        [electronBootstrapEnv]: "1"
+      }
+    });
+    writeBootstrapPhase("electron_reexec_complete");
+    process.exit(0);
+  } catch (error) {
+    writeBootstrapFailure("electron_reexec_failed", error);
+    const status = Number.isInteger(error?.status) ? error.status : 1;
+    process.exit(status);
+  }
+}
+
 function writeBootstrapPhase(phase, details = undefined) {
   try {
     mkdirSync(proofRoot, { recursive: true });
@@ -1357,7 +1390,7 @@ function writeBootstrapFailure(phase, error) {
     writeFileSync(bootstrapFailurePath, `${JSON.stringify({
       status: "failed",
       phase,
-      productMilestoneId: MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
+      productMilestoneId: bootstrapProductMilestoneId,
       sourceHead: "",
       error: redactString(message),
       stack: redactString(stack),
