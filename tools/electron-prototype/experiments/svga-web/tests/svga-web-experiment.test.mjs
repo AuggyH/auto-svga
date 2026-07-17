@@ -7024,7 +7024,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermReplaceableRenderers, /nodes\.editTextButton\.hidden|nodes\.resetTextButton\.hidden/);
   assert.match(shortTermRuntimeTextSurface, /export function focusShortTermRuntimeTextPreviewInput/);
   assert.match(shortTermRuntimeTextSurface, /export function applyShortTermRuntimeTextPreview/);
-  assert.match(shortTermRuntimeTextSurface, /applyRuntimeTextOverlay\(\s*nodes\.runtimeTextOverlay,\s*runtimeTextOverlayCopy\(textElement, state\.textPreview\),\s*Boolean\(state\.textPreview\)\s*\)/s);
+  assert.match(shortTermRuntimeTextSurface, /runtimeTextReplacementView\(textElement, value, \{ emptyIsSource: true \}\)/);
+  assert.match(shortTermRuntimeTextSurface, /setRuntimeTextValue\(state, textKey, replacement\.hasPreview \? replacement\.value : ""\)/);
+  assert.match(shortTermRuntimeTextSurface, /if \(replacement\.hasPreview\) \{\s*applyRuntimeTextOverlay\(\s*nodes\.runtimeTextOverlay,\s*runtimeTextOverlayCopy\(textElement, state\.textPreview\),\s*true\s*\)/s);
   assert.match(shortTermRuntimeTextSurface, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);
   assert.doesNotMatch(shortTermEntry, /applyRuntimeTextOverlay|clearRuntimeTextOverlay|runtimeTextOverlayCopy\(textElement|from "\.\/short-term-macos-text-renderers\.mjs"|from "\.\/short-term-macos-text-model\.mjs"/);
   assert.doesNotMatch(shortTermEntry, /nodes\.runtimeTextOverlay\.(hidden|textContent)\s*=/);
