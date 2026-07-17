@@ -119,6 +119,7 @@ button.danger {
 
 .rowText {
   min-width: 0;
+  overflow: hidden;
 }
 
 .rowIndex {

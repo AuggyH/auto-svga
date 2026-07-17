@@ -328,6 +328,7 @@
   background: transparent;
   box-shadow: none;
   color: var(--asv-asset-row-badge-color);
+  text-overflow: ellipsis;
 }
 
 .assetRow .badge.safe {

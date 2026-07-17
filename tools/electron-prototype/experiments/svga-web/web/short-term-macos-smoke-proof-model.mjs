@@ -54,6 +54,52 @@ export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid
   return proof;
 }
 
+export function collectRightSurfaceScrollContainmentProof(surface, options = {}) {
+  const style = options.getComputedStyle
+    ? options.getComputedStyle(surface)
+    : globalThis.getComputedStyle?.(surface);
+  const clientWidth = Number(surface?.clientWidth ?? 0);
+  const scrollWidth = Number(surface?.scrollWidth ?? 0);
+  const clientHeight = Number(surface?.clientHeight ?? 0);
+  const scrollHeight = Number(surface?.scrollHeight ?? 0);
+  const overflowX = style?.overflowX || "";
+  const overflowY = style?.overflowY || "";
+  const horizontalOverflowPixels = Math.max(0, scrollWidth - clientWidth);
+  const verticalOverflowPixels = Math.max(0, scrollHeight - clientHeight);
+  const initialScrollTop = Number(surface?.scrollTop ?? 0);
+  if (surface && verticalOverflowPixels > 0) surface.scrollTop = verticalOverflowPixels;
+  const reachedScrollTop = Number(surface?.scrollTop ?? 0);
+  if (surface) surface.scrollTop = initialScrollTop;
+  const proof = {
+    schemaVersion: 1,
+    proofId: "right-surface-scroll-containment-proof",
+    source: "renderer-dom-metrics",
+    clientWidth,
+    scrollWidth,
+    clientHeight,
+    scrollHeight,
+    overflowX,
+    overflowY,
+    horizontalContentFits: horizontalOverflowPixels === 0,
+    horizontalOverflowHidden: overflowX === "hidden" || overflowX === "clip",
+    verticalScrollEnabled: overflowY === "auto" || overflowY === "scroll",
+    verticalOverflowPixels,
+    maxScrollTop: verticalOverflowPixels,
+    reachedScrollTop,
+    bottomReachable: verticalOverflowPixels <= 0 || Math.abs(reachedScrollTop - verticalOverflowPixels) <= 1
+  };
+  proof.passed = [
+    proof.clientWidth > 0,
+    proof.clientHeight > 0,
+    proof.horizontalContentFits,
+    proof.horizontalOverflowHidden,
+    proof.verticalScrollEnabled,
+    proof.bottomReachable,
+    options.requireVerticalOverflow === true ? proof.verticalOverflowPixels > 0 : true
+  ].every(Boolean);
+  return proof;
+}
+
 export function collectShortTermEmptyStateProof({
   assetRowCount,
   noAudioCopy,
@@ -706,6 +752,7 @@ export function collectShortTermDesignInteractionProof({
   const editModeIndex = focusKeys.indexOf("mode-edit");
   const panelOverview = document.querySelector("#panelOverview");
   const panelStyle = getComputedStyle(panelOverview);
+  const rightSurfaceScrollContainmentProof = collectRightSurfaceScrollContainmentProof(panelOverview);
   const factCell = nodes.factGrid.querySelector(".factCell");
   const assetText = nodes.assetList.querySelector(".rowText");
   const stateSummary = currentStateSummary();
@@ -745,6 +792,8 @@ export function collectShortTermDesignInteractionProof({
     tabButtonsRemoved: legacyPanelTabNavigationRemoved(),
     panelScrollRegionFocusable: panelOverview?.tabIndex === 0,
     panelScrollRegionScrollable: ["auto", "scroll"].includes(panelStyle.overflowY),
+    rightSurfaceScrollContainmentProof,
+    rightSurfaceScrollContained: rightSurfaceScrollContainmentProof.passed === true,
     metadataSelectable: userSelectAllowsText(document.body)
       && userSelectAllowsText(factCell)
       && userSelectAllowsText(assetText),
@@ -792,6 +841,7 @@ export function collectShortTermDesignInteractionProof({
     proof.tabButtonsRemoved,
     proof.panelScrollRegionFocusable,
     proof.panelScrollRegionScrollable,
+    proof.rightSurfaceScrollContained,
     proof.metadataSelectable,
     proof.stateSummaryCopyable,
     proof.surfaceCaptureStatesSynced,

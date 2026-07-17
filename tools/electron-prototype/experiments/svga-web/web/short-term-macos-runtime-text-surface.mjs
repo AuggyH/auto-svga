@@ -51,19 +51,19 @@ export function applyShortTermRuntimeTextPreview({
   const textElement = selectedRuntimeTextElement(state.model?.replaceableElements, textKey);
   if (!textElement) return;
   state.selectedTextKey = textKey;
-  setRuntimeTextValue(state, textKey, value);
-  const replacement = runtimeTextReplacementView(textElement, state.textPreview, { emptyIsSource: true });
-  applyRuntimeTextOverlay(
-    nodes.runtimeTextOverlay,
-    runtimeTextOverlayCopy(textElement, state.textPreview),
-    Boolean(state.textPreview)
-  );
+  const replacement = runtimeTextReplacementView(textElement, value, { emptyIsSource: true });
+  setRuntimeTextValue(state, textKey, replacement.hasPreview ? replacement.value : "");
+  if (replacement.hasPreview) {
+    applyRuntimeTextOverlay(
+      nodes.runtimeTextOverlay,
+      runtimeTextOverlayCopy(textElement, state.textPreview),
+      true
+    );
+  } else {
+    clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+  }
   const input = findRuntimeTextInput(nodes, textKey);
-  if (input && input.value !== replacement.value) input.value = replacement.value;
-  applyRuntimeTextRowReplacementState(
-    input?.closest(".textElementRow[data-text-key]"),
-    replacement
-  );
+  applyRuntimeTextRowReplacementState(input?.closest(".textElementRow"), replacement);
   renderCommandState();
 }
 
