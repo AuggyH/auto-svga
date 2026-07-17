@@ -20,12 +20,14 @@ const runtimeTextResetIconHtml = `
 export function createReplaceableImageRow(item, index, options) {
   const label = item.displayName || item.imageKey;
   const detail = item.detail || [item.dimensions, item.fileSize].filter(Boolean).join(" · ");
+  const replacementActive = options.replacementActive === true || item.replacementActive === true;
   const row = document.createElement("article");
   row.className = "replaceableRow";
   row.tabIndex = 0;
   row.dataset.action = "select-resource";
   row.dataset.component = "ReplaceableImageRow";
   row.dataset.imageKey = item.imageKey;
+  row.dataset.replacementState = replacementActive ? "preview" : "source";
   row.setAttribute("role", "option");
   row.classList.toggle("isSelected", options.selected);
   row.classList.toggle("isRenaming", options.renaming);
@@ -45,7 +47,10 @@ export function createReplaceableImageRow(item, index, options) {
     `;
   } else {
     const trailingAction = options.directReplace
-      ? `<button type="button" class="replaceImageButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="替换 ${escapeHtml(label)} 图片">替换图片</button>`
+      ? `<span class="replacementRowActions">
+          <button type="button" class="replaceImageButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="替换 ${escapeHtml(label)} 图片">替换图片</button>
+          <button type="button" class="resetImagePreviewButton" data-action="reset-image-preview" data-image-key="${escapeHtml(item.imageKey)}" aria-label="重置 ${escapeHtml(label)} 图片预览" title="重置" ${replacementActive ? "" : "disabled"}>${runtimeTextResetIconHtml}</button>
+        </span>`
       : `<button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(label)} 操作">${rowMenuIconHtml}</button>`;
     row.innerHTML = `
       <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
@@ -86,8 +91,10 @@ export function createTextElementRow(item, index, options) {
   const replacement = runtimeTextReplacementView(item, value, {
     emptyIsSource: item.resetDisabled === true
   });
-  const { initialValue, resetDisabled } = replacement;
-  row.dataset.replacementState = replacement.replacementState;
+  const { initialValue } = replacement;
+  const replacementActive = item.replacementActive === true || options.replacementActive === true;
+  const resetDisabled = replacementActive ? false : replacement.resetDisabled;
+  row.dataset.replacementState = replacementActive ? "preview" : replacement.replacementState;
   row.title = `${label}: ${value || item.initialText || item.textKey}`;
   row.innerHTML = `
     <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>

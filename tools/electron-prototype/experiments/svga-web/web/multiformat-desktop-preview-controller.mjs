@@ -804,7 +804,15 @@ export function createMultiFormatDesktopPreviewController({
   function renderReplaceableTargets() {
     const model = state.model;
     const rightPanel = projectMultiFormatRightPanel(model);
-    const targets = rightPanel.imageTargets ?? [];
+    const targets = (rightPanel.imageTargets ?? []).map((target) => ({
+      ...target,
+      replacementActive: multiFormatActiveReplacementForPublicTarget(
+        model,
+        "image",
+        target.imageKey,
+        publicRuntimeReplacementTargets
+      )
+    }));
     nodes.replaceableSummary.textContent = targets.length
       ? `${targets.length} 个可替换图片`
       : "当前文件没有可替换图片。";
@@ -812,18 +820,29 @@ export function createMultiFormatDesktopPreviewController({
       model,
       selected: state.selectedImageKey === target.imageKey,
       renaming: false,
-      directReplace: true
+      directReplace: true,
+      replacementActive: target.replacementActive
     })));
   }
 
   function renderTextTargets() {
     const rightPanel = projectMultiFormatRightPanel(state.model);
-    const targets = (rightPanel.textTargets ?? []).map((target) => ({
-      ...target,
-      inputValue: state.textPreviewValues[target.textKey] ?? target.initialText ?? ""
-    }));
+    const targets = (rightPanel.textTargets ?? []).map((target) => {
+      const active = multiFormatActiveReplacementEntryForPublicTarget(
+        state.model,
+        "text",
+        target.textKey,
+        publicRuntimeReplacementTargets
+      );
+      return {
+        ...target,
+        inputValue: state.textPreviewValues[target.textKey] ?? active?.valuePreview ?? target.initialText ?? "",
+        replacementActive: Boolean(active)
+      };
+    });
     replaceRuntimeTextRows(nodes.textElementList, targets.map((target, index) => createTextElementRow(target, index, {
-      selected: state.selectedTextKey === target.textKey
+      selected: state.selectedTextKey === target.textKey,
+      replacementActive: target.replacementActive
     })));
   }
 
@@ -1660,10 +1679,10 @@ export function createMultiFormatDesktopPreviewController({
       canRenameImageKey: false,
       canReplaceImage: commands.replace === true && Boolean(state.selectedImageKey),
       canResetImageReplacement: commands.resetReplacement === true
-        && activeReplacementForPublicTarget(model, "image", state.selectedImageKey, publicRuntimeReplacementTargets),
+        && multiFormatActiveReplacementForPublicTarget(model, "image", state.selectedImageKey, publicRuntimeReplacementTargets),
       canEditText: commands.replace === true && selectedText,
       canResetText: commands.resetReplacement === true
-        && activeReplacementForPublicTarget(model, "text", state.selectedTextKey, publicRuntimeReplacementTargets),
+        && multiFormatActiveReplacementForPublicTarget(model, "text", state.selectedTextKey, publicRuntimeReplacementTargets),
       canRunOptimization: false,
       canShowOptimizationComparison: false,
       isRenaming: false,
@@ -2067,14 +2086,23 @@ function hasTextTarget(model, targetId) {
   );
 }
 
-function activeReplacementForPublicTarget(model, kind, publicTargetId, publicRuntimeReplacementTargets = new Map()) {
-  if (!publicTargetId || (kind !== "image" && kind !== "text")) return false;
-  const acceptedBinding = publicRuntimeReplacementTargets.get(`${kind}:${publicTargetId}`);
+export function multiFormatActiveReplacementForPublicTarget(model, kind, publicTargetId, publicRuntimeReplacementTargets = new Map()) {
+  return Boolean(multiFormatActiveReplacementEntryForPublicTarget(
+    model,
+    kind,
+    publicTargetId,
+    publicRuntimeReplacementTargets
+  ));
+}
+
+export function multiFormatActiveReplacementEntryForPublicTarget(model, kind, publicTargetId, publicRuntimeReplacementTargets = new Map()) {
+  if (!publicTargetId || (kind !== "image" && kind !== "text")) return undefined;
+  const acceptedBinding = publicRuntimeReplacementTargets?.get?.(`${kind}:${publicTargetId}`);
   const runtimeTargetId = acceptedBinding?.runtimeTargetId || publicTargetId;
-  return (model?.replacement?.active ?? []).some((entry) =>
+  return (model?.replacement?.active ?? []).find((entry) =>
     entry?.format === model?.detectedFormat
     && entry?.kind === kind
-    && entry?.targetId === runtimeTargetId
+    && (entry?.targetId === runtimeTargetId || entry?.targetId === publicTargetId)
   );
 }
 

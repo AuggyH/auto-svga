@@ -78,6 +78,9 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
         clientY: rect.bottom
       }, target.dataset.imageKey || state.selectedImageKey, target);
     }
+    if (action === "reset-image-preview") {
+      handlers.resetImageReplacement(target.dataset.imageKey || state.selectedImageKey).catch(handlers.showFailure);
+    }
     if (action === "select-text" && !eventTarget.closest("[data-text-input], [data-action='runtime-text-reset']")) {
       handlers.selectTextKey(target.dataset.textKey || state.selectedTextKey);
     }

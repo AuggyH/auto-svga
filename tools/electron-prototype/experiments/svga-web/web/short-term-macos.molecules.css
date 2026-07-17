@@ -132,7 +132,8 @@
   color: var(--asv-subtle);
 }
 
-.runtimeTextResetButton {
+.runtimeTextResetButton,
+.resetImagePreviewButton {
   display: grid;
   place-items: center;
   width: var(--asv-runtime-text-reset-size);
@@ -161,14 +162,33 @@
 }
 
 .runtimeTextResetButton:hover:not(:disabled),
-.runtimeTextResetButton:focus-visible {
+.resetImagePreviewButton:hover:not(:disabled),
+.runtimeTextResetButton:focus-visible,
+.resetImagePreviewButton:focus-visible {
   background: var(--asv-control-hover-bg);
   color: var(--asv-action);
 }
 
-.runtimeTextResetButton:focus-visible {
+.runtimeTextResetButton:disabled,
+.resetImagePreviewButton:disabled {
+  color: var(--asv-subtle);
+  cursor: default;
+  opacity: var(--asv-row-action-disabled-opacity);
+}
+
+.runtimeTextResetButton:focus-visible,
+.resetImagePreviewButton:focus-visible {
   outline: none;
   box-shadow: var(--asv-focus);
+}
+
+.replacementRowActions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: var(--asv-space-1);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .inlineActions {
@@ -231,6 +251,9 @@
   font: inherit;
   font-size: var(--asv-replace-image-action-font-size);
   font-weight: var(--asv-replace-image-action-font-weight);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   box-shadow: none;
 }
