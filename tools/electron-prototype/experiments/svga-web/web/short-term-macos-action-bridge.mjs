@@ -17,9 +17,13 @@ export function installShortTermActionBridge({
     renameImageKey: handlers.renameSelectedImageKey,
     createSaveProofOutput: handlers.createSaveProofOutput,
     createSaveFailureProofOutput: handlers.createSaveFailureProofOutput,
+    selectImageKey: handlers.selectImageKey,
     replaceImage: () => handlers.chooseReplacementImage(),
+    applyReplacementFile: handlers.applyReplacementFile,
     resetImageReplacement: handlers.resetImageReplacement,
+    selectTextKey: handlers.selectTextKey,
     editTextPreview: handlers.editRuntimeText,
+    updateTextPreview: handlers.updateRuntimeText,
     resetTextPreview: handlers.resetRuntimeText,
     openSettings: handlers.openSettings,
     setAppearance: handlers.setAppearance,
@@ -35,6 +39,8 @@ export function installShortTermActionBridge({
     overviewTab: () => handlers.openTab("overview"),
     optimizationTab: () => handlers.openTab("optimization"),
     replaceableTab: () => handlers.openTab("replaceable"),
+    currentStateSummary: handlers.currentStateSummary,
+    refreshRuntimePreviewFrame: handlers.refreshRuntimePreviewFrame,
     cancel: () => {
       closeOpenDialog(documentRef, "cancel");
       if (state.view === "compare") handlers.setMode("preview");

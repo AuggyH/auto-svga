@@ -712,8 +712,8 @@ class MultiFormatDesktopPreviewSession {
         reason: "vap_inspection_required"
       });
     }
-    const vapConfig = inspection.value.metadata?.vap?.config;
-    if (!vapConfig || typeof vapConfig !== "object" || Array.isArray(vapConfig)) {
+    const vapConfig = runtimeCompatibleVapConfig(inspection.value.metadata?.vap?.config);
+    if (!vapConfig) {
       return runtimePreviewFailure({
         format: "vap",
         code: "parse_precondition",
@@ -1322,6 +1322,42 @@ function vapFusionParamsFromReplacements(replacements) {
   for (const [tag, value] of replacements.image.entries()) params[tag] = value;
   for (const [tag, value] of replacements.text.entries()) params[tag] = value;
   return params;
+}
+
+function runtimeCompatibleVapConfig(config) {
+  if (!isRecord(config)) return undefined;
+  const clone = JSON.parse(JSON.stringify(config));
+  if (isRecord(clone.info)) {
+    clone.info.aFrame = runtimeVapRect(clone.info.aFrame);
+    clone.info.rgbFrame = runtimeVapRect(clone.info.rgbFrame);
+  }
+  if (Array.isArray(clone.src)) {
+    clone.src = clone.src.map((entry) => {
+      if (!isRecord(entry)) return entry;
+      if (entry.srcType === "image") entry.srcType = "img";
+      if (entry.srcType === "text") entry.srcType = "txt";
+      return entry;
+    });
+  }
+  if (Array.isArray(clone.frame)) {
+    clone.frame = clone.frame.map((frame) => {
+      if (!isRecord(frame) || !Array.isArray(frame.obj)) return frame;
+      frame.obj = frame.obj.map((entry) => {
+        if (!isRecord(entry)) return entry;
+        entry.frame = runtimeVapRect(entry.frame);
+        entry.mFrame = runtimeVapRect(entry.mFrame);
+        return entry;
+      });
+      return frame;
+    });
+  }
+  return clone;
+}
+
+function runtimeVapRect(value) {
+  if (Array.isArray(value)) return value.map((item) => Number(item) || 0).slice(0, 4);
+  if (isRecord(value)) return [value.x, value.y, value.w, value.h].map((item) => Number(item) || 0);
+  return value;
 }
 
 function runtimePreviewSource(filePath, bytes, adjacentVapc) {

@@ -2242,8 +2242,13 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     });
     assert.equal(vapFusionRuntime.status, "prepared");
     assert.deepEqual(Object.keys(vapFusionRuntime.fusionParams).sort(), ["avatar", "title"]);
+    assert.deepEqual(vapFusionRuntime.vapConfig.info.aFrame, [0, 405, 720, 405]);
+    assert.deepEqual(vapFusionRuntime.vapConfig.info.rgbFrame, [0, 0, 720, 405]);
     assert.equal(vapFusionRuntime.vapConfig.src[0].srcTag, "avatar");
+    assert.equal(vapFusionRuntime.vapConfig.src[0].srcType, "img");
     assert.equal(vapFusionRuntime.vapConfig.src[1].srcTag, "title");
+    assert.equal(vapFusionRuntime.vapConfig.src[1].srcType, "txt");
+    assert.deepEqual(vapFusionRuntime.vapConfig.frame[0].obj[0].frame, [10, 20, 120, 120]);
     assert.doesNotMatch(JSON.stringify(vapFusionRuntime), /\/Users|auto-svga-terminal-session/i);
     assert.equal(sourceStore.size, 5);
   } finally {
@@ -4872,8 +4877,9 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.equal(state.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
     assert.equal(vapCalls.length > 0, true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    assert.equal(runtimeEvents.includes("vap:play"), true);
     const vapPreviewPlayCount = runtimeEvents.filter((event) => event === "vap:play").length;
-    vapVideos.at(-1)?.dispatchEvent("playing");
+    vapVideos.at(-1)?.dispatchEvent("canplay");
     await flushRuntimeMountPromises();
     assert.equal(runtimeEvents.filter((event) => event === "vap:play").length > vapPreviewPlayCount, true);
     const vapOpenCallCount = vapCalls.length;
@@ -4980,6 +4986,60 @@ test("VAP real-runtime proofs require canonical replacement authority without pu
     assert.doesNotMatch(source, /replacementRuntimeValue:\s*\{\s*kind: "image",\s*targetId,\s*value: dataUri/);
   }
   assert.match(proofSource, /waitForBalancedLifecycle\(5\)/);
+});
+
+test("multi-format runtime self-test writes bootstrap diagnostics before Electron initialization", () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-multiformat-runtime-selftest.cjs"),
+    "utf8"
+  );
+  const entrypointIndex = proofSource.indexOf('writeBootstrapPhase("entrypoint_loaded")');
+  const requireBeginIndex = proofSource.indexOf('writeBootstrapPhase("electron_require_begin")');
+  const electronRequireIndex = proofSource.indexOf('require("electron")');
+  const electronRequiredIndex = proofSource.indexOf('writeBootstrapPhase("electron_required")');
+  assert.ok(entrypointIndex >= 0 && entrypointIndex < requireBeginIndex);
+  assert.ok(requireBeginIndex >= 0 && requireBeginIndex < electronRequireIndex);
+  assert.ok(electronRequireIndex >= 0 && electronRequireIndex < electronRequiredIndex);
+  assert.match(proofSource, /runtime-selftest-bootstrap-phases\.jsonl/u);
+  assert.match(proofSource, /runtime-selftest-bootstrap-failure\.json/u);
+  assert.match(proofSource, /installBootstrapFailureGuards\(\)/u);
+  assert.doesNotMatch(proofSource, /\/Users\/huangtengxin/u);
+});
+
+test("multi-format runtime self-test uses the owner replacement path for each format", () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-multiformat-runtime-selftest.cjs"),
+    "utf8"
+  );
+  const applyStart = proofSource.indexOf("async function applyOwnerVisibleImageReplacement");
+  const applyEnd = proofSource.indexOf("async function setRuntimeText", applyStart);
+  assert.notEqual(applyStart, -1, "runtime self-test must define one format-aware replacement action");
+  assert.notEqual(applyEnd, -1, "runtime self-test replacement action must have a bounded source range");
+  const applySource = proofSource.slice(applyStart, applyEnd);
+  assert.match(applySource, /input\.format === "svga"[\s\S]*applyRendererReplacementFile/u);
+  assert.match(applySource, /selectRendererImageTarget\(input\.imageTarget\)/u);
+  assert.match(applySource, /clickOwnerVisibleReplaceButton\(input\.imageTarget\)/u);
+  assert.match(applySource, /actions\.applyReplacementFile\(file\)/u);
+  assert.match(applySource, /\.replaceImageButton\[data-image-key=/u);
+  assert.match(proofSource, /createLottieMotionProofLayer\(\)/u);
+  assert.match(proofSource, /Runtime self-test motion proof/u);
+  assert.match(proofSource, /backgroundThrottling:\s*false/u);
+  assert.match(proofSource, /markupSha256/u);
+  assert.match(proofSource, /webgl-backing-store/u);
+  assert.match(proofSource, /refreshRuntimePreviewFrame/u);
+  const bridgeSource = readFileSync(
+    path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"),
+    "utf8"
+  );
+  assert.match(bridgeSource, /selectImageKey:\s*handlers\.selectImageKey/u);
+  assert.match(bridgeSource, /applyReplacementFile:\s*handlers\.applyReplacementFile/u);
+  assert.match(bridgeSource, /selectTextKey:\s*handlers\.selectTextKey/u);
+  assert.match(bridgeSource, /updateTextPreview:\s*handlers\.updateRuntimeText/u);
+  assert.match(bridgeSource, /currentStateSummary:\s*handlers\.currentStateSummary/u);
+  assert.match(bridgeSource, /refreshRuntimePreviewFrame:\s*handlers\.refreshRuntimePreviewFrame/u);
+  assert.match(proofSource, /actions\.updateTextPreview\(/u);
+  assert.match(proofSource, /actions\.resetTextPreview\(/u);
+  assert.match(proofSource, /snapshot\.summaryText\?\.includes\("未保存输出："\)/u);
 });
 
 test("VAP pixel proof requires target-scoped sibling isolation and source restoration", () => {

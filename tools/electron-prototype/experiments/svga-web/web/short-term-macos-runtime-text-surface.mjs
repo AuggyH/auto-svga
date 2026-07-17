@@ -1,7 +1,9 @@
 import {
+  runtimeTextReplacementView,
   runtimeTextOverlayCopy,
   selectedRuntimeTextElement
 } from "./short-term-macos-text-model.mjs";
+import { applyRuntimeTextRowReplacementState } from "./short-term-macos-replaceable-renderers.mjs";
 import {
   applyRuntimeTextOverlay,
   clearRuntimeTextOverlay
@@ -50,14 +52,18 @@ export function applyShortTermRuntimeTextPreview({
   if (!textElement) return;
   state.selectedTextKey = textKey;
   setRuntimeTextValue(state, textKey, value);
+  const replacement = runtimeTextReplacementView(textElement, state.textPreview, { emptyIsSource: true });
   applyRuntimeTextOverlay(
     nodes.runtimeTextOverlay,
     runtimeTextOverlayCopy(textElement, state.textPreview),
     Boolean(state.textPreview)
   );
   const input = findRuntimeTextInput(nodes, textKey);
-  const resetButton = input?.closest(".textElementRow")?.querySelector("[data-action='runtime-text-reset']");
-  if (resetButton) resetButton.disabled = !state.textPreview;
+  if (input && input.value !== replacement.value) input.value = replacement.value;
+  applyRuntimeTextRowReplacementState(
+    input?.closest(".textElementRow[data-text-key]"),
+    replacement
+  );
   renderCommandState();
 }
 

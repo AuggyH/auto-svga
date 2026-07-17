@@ -927,8 +927,16 @@ export function createMultiFormatDesktopPreviewController({
       active?.player?.pause?.();
     } catch {}
     try {
+      active?.player?.cancelRequestAnimation?.();
+    } catch {}
+    try {
       active?.player?.destroy?.();
     } catch {}
+    if (active?.format === "vap" && active?.player) {
+      try {
+        active.player.video = vapDisposedVideoSentinel();
+      } catch {}
+    }
     if (active?.format === "svga") {
       try {
         active.stopPlayback?.({ key: active.playbackKey, playbackState: state });
@@ -1204,15 +1212,29 @@ export function createMultiFormatDesktopPreviewController({
       player.setTime?.(currentTimeMs / 1000);
       active.currentTimeMs = currentTimeMs;
     }
-    if (options.deferPlaybackUntilReady && active.runtimeReady !== true) return;
+    if (options.deferPlaybackUntilReady && active.runtimeReady !== true && model.status !== "playing") return;
     if (model.status === "playing") {
-      if (options.forcePlayback || active.playbackStatus !== "playing") player.play?.();
+      if (options.forcePlayback || active.playbackStatus !== "playing") invokeVapRuntimePlay(player, active);
       active.playbackStatus = "playing";
       return;
     }
     if (model.status === "paused" || model.status === "previewReady") {
       if (options.forcePlayback || active.playbackStatus !== model.status) player.pause?.();
       active.playbackStatus = model.status;
+    }
+  }
+
+  function invokeVapRuntimePlay(player, active) {
+    const playResult = player?.play?.();
+    if (playResult && typeof playResult.catch === "function") {
+      playResult.catch(() => {
+        if (activeRuntimePreview !== active) return;
+        showRuntimePreviewFailure(new RuntimePreviewPayloadError({
+          code: "playback_failure",
+          message: "VAP runtime preview reached a typed playback failure.",
+          details: { reason: "vap_runtime_play_rejected" }
+        }));
+      });
     }
   }
 
@@ -1262,6 +1284,7 @@ export function createMultiFormatDesktopPreviewController({
         mount.dataset.runtimePlaybackFrames = String(view.frames ?? 0);
       }
     } else if (active.format === "vap") {
+      drawVapRuntimeFrame(active);
       const video = active.player?.video;
       const durationMs = Number(state.model?.canvas?.playback?.durationMs) || (Number(video?.duration) > 0 ? Number(video.duration) * 1000 : 0);
       const currentMs = Number(video?.currentTime) > 0 ? Number(video.currentTime) * 1000 : Number(state.model?.canvas?.playback?.currentTimeMs) || 0;
@@ -1298,6 +1321,49 @@ export function createMultiFormatDesktopPreviewController({
     if (bar) bar.style.width = `${Math.round(progress)}%`;
   }
 
+  function drawVapRuntimeFrame(active) {
+    const player = active?.player;
+    if (!player || typeof player.drawFrame !== "function") {
+      return { drawn: false, reason: "missing_draw_frame" };
+    }
+    try {
+      player.drawFrame(null, null);
+      player.cancelRequestAnimation?.();
+      return {
+        drawn: true,
+        hasVideo: Boolean(player.video),
+        videoReadyState: Number(player.video?.readyState) || 0,
+        videoCurrentTime: Number(player.video?.currentTime) || 0,
+        hasWebglCanvas: Boolean(player.canvas)
+      };
+    } catch (error) {
+      return {
+        drawn: false,
+        reason: "draw_frame_failed",
+        errorName: String(error?.name || "Error"),
+        errorMessage: String(error?.message || "redacted runtime error").replace(/\/Users\/[^ "']+/gu, "[redacted-path]")
+      };
+    }
+  }
+
+  function vapDisposedVideoSentinel() {
+    return {
+      currentTime: 0,
+      readyState: 0,
+      paused: true,
+      requestVideoFrameCallback() {
+        return 0;
+      },
+      cancelVideoFrameCallback() {},
+      play() {
+        return Promise.resolve();
+      },
+      pause() {},
+      addEventListener() {},
+      removeEventListener() {}
+    };
+  }
+
   function loadSvgaPlaybackModule() {
     if (!svgaPlaybackModulePromise) {
       svgaPlaybackModulePromise = Promise.resolve().then(() => svgaPlaybackModuleLoader());
@@ -1321,7 +1387,19 @@ export function createMultiFormatDesktopPreviewController({
       const candidate = player?.video;
       if (!candidate || candidate === video || typeof candidate.addEventListener !== "function") return false;
       video = candidate;
-      video.addEventListener("playing", syncDesiredPlayback);
+      try {
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "auto";
+        video.setAttribute?.("muted", "");
+        video.setAttribute?.("playsinline", "");
+        video.setAttribute?.("preload", "auto");
+      } catch {}
+      ["loadedmetadata", "loadeddata", "canplay", "canplaythrough", "playing"].forEach((eventName) => {
+        video.addEventListener(eventName, syncDesiredPlayback);
+      });
+      if (Number(video.readyState) >= 2) syncDesiredPlayback({ type: "readyState" });
+      else syncVapRuntimePlayback(activeRuntimePreview, state.model ?? {}, { forcePlayback: true });
       return true;
     };
     const discoverRuntimeChildren = () => {
@@ -1342,7 +1420,9 @@ export function createMultiFormatDesktopPreviewController({
     return () => {
       if (discoveryTimer) clearInterval(discoveryTimer);
       resizeObserver?.disconnect?.();
-      video?.removeEventListener?.("playing", syncDesiredPlayback);
+      ["loadedmetadata", "loadeddata", "canplay", "canplaythrough", "playing"].forEach((eventName) => {
+        video?.removeEventListener?.(eventName, syncDesiredPlayback);
+      });
     };
   }
 
@@ -1733,6 +1813,11 @@ export function createMultiFormatDesktopPreviewController({
     }, null, 2);
   }
 
+  function refreshRuntimePreviewFrame() {
+    if (activeRuntimePreview?.format !== "vap") return false;
+    return drawVapRuntimeFrame(activeRuntimePreview);
+  }
+
   function delegateSvga(handlerName, ...args) {
     if (!svgaWorkflowActive()) return undefined;
     return svgaController?.handlers?.[handlerName]?.(...args);
@@ -1810,6 +1895,7 @@ export function createMultiFormatDesktopPreviewController({
     createSaveProofOutput,
     createSaveFailureProofOutput,
     currentStateSummary,
+    refreshRuntimePreviewFrame,
     renderCommandState
   };
 
