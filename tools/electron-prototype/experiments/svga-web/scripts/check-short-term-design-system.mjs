@@ -106,6 +106,7 @@ const requiredPageStates = [
   "Launch",
   "Loading",
   "Load failed",
+  "Playback error",
   "Preview ready",
   "Preview replaceable",
   "General comparing",
@@ -116,6 +117,7 @@ const requiredFigmaPageStates = [
   { figma: "启动 / 默认", codePageState: "Launch", frame: { width: 640, height: 640 }, rootModules: ["WindowChromeModule", "LaunchModule"] },
   { figma: "加载 / 加载中", codePageState: "Loading", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
   { figma: "加载 / 加载失败", codePageState: "Load failed", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
+  { figma: "加载 / 播放异常", codePageState: "Playback error", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "预览 / 默认", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "预览 / 可替换元素", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface"] },
   { figma: "预览 / 优化详情", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"] },
@@ -558,6 +560,13 @@ async function main() {
   const components = await readFile(path.join(webRoot, "short-term-macos.components.css"), "utf8");
   const modules = await readFile(path.join(webRoot, "short-term-macos.modules.css"), "utf8");
   const pageStatesCss = await readFile(path.join(webRoot, "short-term-macos.page-states.css"), "utf8");
+
+  record("playback-error-preserves-preview-workspace-contract",
+    /id="playbackErrorRecovery"(?=[^>]*data-component="ErrorRecoveryPanel")(?=[^>]*data-page-state="Playback error")(?=[^>]*role="alert")[^>]*hidden/.test(page)
+    && /id="playbackErrorMessage">动画解析失败，无法正常播放<\/p>/.test(page)
+    && /data-action="reload-playback">重新加载<\/button>/.test(page)
+    && /\.playbackErrorRecovery\s*\{[\s\S]*position: absolute[\s\S]*place-items: center/.test(components)
+    && /\.stateCard\.playbackErrorPanel\s*\{[\s\S]*width: min\(var\(--asv-playback-error-panel-size\), 100%\)[\s\S]*height: min\(var\(--asv-playback-error-panel-size\), 100%\)/.test(components));
   const baseCss = await readFile(path.join(webRoot, "short-term-macos.css"), "utf8");
 
   record("multiformat-asset-groups-use-tokenized-layout",
@@ -822,6 +831,7 @@ async function main() {
     && /\.stateCanvasWrap\s*\{[\s\S]*background:\s*[\s\S]*var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/.test(modules)
     && /<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*data-page-state="Loading"/.test(page)
     && /<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*data-page-state="Load failed"/.test(page)
+    && /id="playbackErrorRecovery"[^>]*data-page-state="Playback error"/.test(page)
     && /\.workbenchStateView\s*\{[^}]*place-items: stretch/s.test(pageStatesCss));
 
   record("page-state-surface-trace-contract", /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/.test(page)

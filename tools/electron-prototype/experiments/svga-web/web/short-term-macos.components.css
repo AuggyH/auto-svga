@@ -58,6 +58,60 @@
   margin-block-start: var(--asv-state-surface-action-margin-block-start);
 }
 
+.playbackErrorRecovery {
+  position: absolute;
+  z-index: 3;
+  inset: var(--asv-runtime-stage-top) var(--asv-space-6) var(--asv-runtime-stage-bottom);
+  display: grid;
+  place-items: center;
+}
+
+.stateCard.playbackErrorPanel {
+  align-content: center;
+  width: min(var(--asv-playback-error-panel-size), 100%);
+  height: min(var(--asv-playback-error-panel-size), 100%);
+  gap: var(--asv-playback-error-panel-gap);
+  padding: var(--asv-playback-error-panel-padding);
+  border-radius: var(--asv-playback-error-panel-radius);
+}
+
+.playbackErrorIcon {
+  display: grid;
+  place-items: center;
+  width: var(--asv-playback-error-icon-size);
+  height: var(--asv-playback-error-icon-size);
+  border-radius: var(--asv-radius-pill);
+  background: var(--asv-playback-error-icon-bg);
+  color: var(--asv-playback-error-icon-color);
+}
+
+.playbackErrorIcon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.stateCard.playbackErrorPanel h1 {
+  font-size: var(--asv-playback-error-title-size);
+  font-weight: var(--asv-type-weight-semibold);
+  line-height: var(--asv-playback-error-title-line-height);
+}
+
+.stateCard.playbackErrorPanel p {
+  font-size: var(--asv-playback-error-message-size);
+  line-height: var(--asv-playback-error-message-line-height);
+}
+
+.playbackRecoveryButton {
+  min-width: var(--asv-playback-error-action-width);
+  min-height: var(--asv-playback-error-action-height);
+  margin-block-start: 0;
+}
+
 .factCell {
   position: relative;
   display: grid;

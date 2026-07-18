@@ -195,6 +195,20 @@
               <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
               <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
             </div>
+            <section class="playbackErrorRecovery" id="playbackErrorRecovery" data-component="ErrorRecoveryPanel" data-page-state="Playback error" role="alert" aria-live="assertive" hidden>
+              <div class="stateCard playbackErrorPanel">
+                <span class="playbackErrorIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M12 7.5v6"></path>
+                    <path d="M12 17h.01"></path>
+                  </svg>
+                </span>
+                <h1>播放异常</h1>
+                <p id="playbackErrorMessage">动画解析失败，无法正常播放</p>
+                <button class="toolbarButton primary playbackRecoveryButton" type="button" data-action="reload-playback">重新加载</button>
+              </div>
+            </section>
           </div>
           <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
             <div class="playbackActions" data-component="PlaybackButtonGroup">

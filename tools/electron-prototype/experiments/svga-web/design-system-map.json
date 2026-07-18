@@ -10,7 +10,7 @@
       "productMilestone": "0.2-multiformat-preview",
       "authority": "docs/product/PRODUCT_ROADMAP.md",
       "referenceBoundary": "Inherits the accepted 0.1 Figma shell and component contracts; format-specific content is capability-projected from the 0.2 PRD.",
-      "inheritsPageStates": ["Launch", "Loading", "Load failed", "Preview ready", "General comparing", "Settings dialog"],
+      "inheritsPageStates": ["Launch", "Loading", "Load failed", "Playback error", "Preview ready", "General comparing", "Settings dialog"],
       "codeComponents": ["CanvasModeSwitch", "DragDecisionOverlay", "PlaybackControls", "OverviewFactRow", "AssetFilterTabs", "AssetRow", "ReplaceableImageRow", "ReplaceableTextRow", "RightInformationSurface"],
       "codeModules": ["LaunchModule", "PreviewCanvasModule", "OverviewInformationModule", "GeneralCompareModule", "SettingsDialogModule", "StateRecoveryModule"],
       "implementationFiles": ["web/multiformat-desktop-preview-controller.mjs", "web/multiformat-product-conformance.mjs", "web/short-term-macos-dom-state.mjs", "web/short-term-macos-drag-decision-surface.mjs", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css"]
@@ -43,6 +43,15 @@
       "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"],
       "readPackets": ["docs/research/figma-mcp-read-packets/r11-current-head-fidelity-audit-20260710.md"],
       "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-state-renderers.mjs"]
+    },
+    {
+      "figma": "加载 / 播放异常",
+      "codePageState": "Playback error",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.components.css", "web/short-term-macos-state-renderers.mjs", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-controller.mjs"]
     },
     {
       "figma": "预览 / 默认",
@@ -255,7 +264,7 @@
     {
       "figma": "Molecule/错误恢复面板",
       "codeComponents": ["ErrorRecoveryPanel"],
-      "codeModules": ["LaunchModule", "StateRecoveryModule"],
+      "codeModules": ["LaunchModule", "StateRecoveryModule", "PreviewCanvasModule"],
       "implementationFiles": ["web/index.html", "web/short-term-macos-state-renderers.mjs"]
     },
     {

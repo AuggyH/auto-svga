@@ -18,3 +18,12 @@ export function renderDiscardMessage(nodes, copy) {
 export function renderFailureMessage(nodes, copy) {
   nodes.errorMessage.textContent = copy;
 }
+
+export function showPlaybackFailureRecovery(nodes) {
+  nodes.playbackErrorMessage.textContent = "动画解析失败，无法正常播放";
+  nodes.playbackErrorRecovery.hidden = false;
+}
+
+export function hidePlaybackFailureRecovery(nodes) {
+  nodes.playbackErrorRecovery.hidden = true;
+}

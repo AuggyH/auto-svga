@@ -454,6 +454,19 @@
   --asv-component-state-surface-title-margin: 0;
   --asv-component-state-surface-message-max-width: 320px;
   --asv-component-state-surface-action-margin-block-start: var(--asv-space-1);
+  --asv-component-playback-error-panel-size: 300px;
+  --asv-component-playback-error-panel-padding: var(--asv-space-6);
+  --asv-component-playback-error-panel-gap: var(--asv-space-3);
+  --asv-component-playback-error-panel-radius: var(--asv-base-radius-12);
+  --asv-component-playback-error-icon-size: var(--asv-base-space-48);
+  --asv-component-playback-error-icon-background: var(--asv-color-status-warning);
+  --asv-component-playback-error-icon-color: var(--asv-color-text-on-action);
+  --asv-component-playback-error-title-size: var(--asv-type-size-metric);
+  --asv-component-playback-error-title-line-height: 22px;
+  --asv-component-playback-error-message-size: var(--asv-type-size-footnote);
+  --asv-component-playback-error-message-line-height: 18px;
+  --asv-component-playback-error-action-width: var(--asv-component-file-header-action-width);
+  --asv-component-playback-error-action-height: 30px;
   --asv-component-state-canvas-checker-size: var(--asv-component-preview-checker-size);
   --asv-component-state-canvas-background:
     var(--asv-component-canvas-checker-pattern),
@@ -1030,6 +1043,19 @@
   --asv-state-surface-title-margin: var(--asv-component-state-surface-title-margin);
   --asv-state-surface-message-max-width: var(--asv-component-state-surface-message-max-width);
   --asv-state-surface-action-margin-block-start: var(--asv-component-state-surface-action-margin-block-start);
+  --asv-playback-error-panel-size: var(--asv-component-playback-error-panel-size);
+  --asv-playback-error-panel-padding: var(--asv-component-playback-error-panel-padding);
+  --asv-playback-error-panel-gap: var(--asv-component-playback-error-panel-gap);
+  --asv-playback-error-panel-radius: var(--asv-component-playback-error-panel-radius);
+  --asv-playback-error-icon-size: var(--asv-component-playback-error-icon-size);
+  --asv-playback-error-icon-bg: var(--asv-component-playback-error-icon-background);
+  --asv-playback-error-icon-color: var(--asv-component-playback-error-icon-color);
+  --asv-playback-error-title-size: var(--asv-component-playback-error-title-size);
+  --asv-playback-error-title-line-height: var(--asv-component-playback-error-title-line-height);
+  --asv-playback-error-message-size: var(--asv-component-playback-error-message-size);
+  --asv-playback-error-message-line-height: var(--asv-component-playback-error-message-line-height);
+  --asv-playback-error-action-width: var(--asv-component-playback-error-action-width);
+  --asv-playback-error-action-height: var(--asv-component-playback-error-action-height);
   --asv-state-canvas-checker-size: var(--asv-component-state-canvas-checker-size);
   --asv-state-canvas-bg: var(--asv-component-state-canvas-background);
   --asv-layer-row-min-height: var(--asv-component-layer-row-min-height);

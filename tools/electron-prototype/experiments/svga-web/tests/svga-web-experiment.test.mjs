@@ -133,6 +133,121 @@ test("short-term metric values split units only for simple numeric facts", async
   }), /302 <span class="factValueUnit">B<\/span>[\s\S]*242 <span class="factValueUnit">B<\/span>/);
 });
 
+test("short-term playback failure preserves the inspected workspace while parse failure clears it", async () => {
+  const { loadShortTermOpenedSource } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-file-surface.mjs")).href);
+  const { hidePlaybackFailureRecovery, showPlaybackFailureRecovery } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs")).href);
+  const createNodes = () => ({
+    errorMessage: { textContent: "" },
+    loadingMessage: { textContent: "" },
+    playbackErrorRecovery: { hidden: true },
+    playbackErrorMessage: { textContent: "" },
+    runtimeTextOverlay: { hidden: false, textContent: "preview" }
+  });
+  const createState = () => ({
+    activeOutput: { kind: "replacement" },
+    textPreviewValues: { title: "Changed" }
+  });
+  const inspectedModel = {
+    replaceableElements: {
+      images: [{ imageKey: "avatar" }],
+      texts: [{ textKey: "title" }]
+    }
+  };
+
+  const playbackNodes = createNodes();
+  const playbackState = createState();
+  const playbackViews = [];
+  let playbackFailure;
+  let terminalFailure;
+  await loadShortTermOpenedSource({
+    nodes: playbackNodes,
+    state: playbackState,
+    bytes: Uint8Array.from([1, 2, 3]),
+    displayName: "playback-error.svga",
+    sourceId: "source:playback-error",
+    clearTransientOutput() {
+      playbackState.activeOutput = undefined;
+    },
+    setView(view) {
+      playbackState.view = view;
+      playbackViews.push(view);
+    },
+    async inspectShortTerm() {
+      return inspectedModel;
+    },
+    renderPreviewModel() {},
+    async mountPrimaryPlayback() {
+      throw new Error("播放器挂载失败");
+    },
+    stopAllPlayback() {
+      playbackState.primaryPlayback = undefined;
+    },
+    showFailure(error) {
+      terminalFailure = error;
+    },
+    showPlaybackFailure(error) {
+      playbackFailure = error;
+    }
+  });
+
+  assert.deepEqual(playbackViews, ["loading", "preview"]);
+  assert.equal(playbackState.view, "preview");
+  assert.equal(playbackState.displayName, "playback-error.svga");
+  assert.equal(playbackState.sourceId, "source:playback-error");
+  assert.equal(playbackState.sourceBytes.byteLength, 3);
+  assert.equal(playbackState.model, inspectedModel);
+  assert.equal(playbackState.selectedImageKey, "avatar");
+  assert.equal(playbackState.selectedTextKey, "title");
+  assert.equal(playbackFailure?.message, "播放器挂载失败");
+  assert.equal(terminalFailure, undefined);
+  showPlaybackFailureRecovery(playbackNodes);
+  assert.equal(playbackNodes.playbackErrorRecovery.hidden, false);
+  assert.equal(playbackNodes.playbackErrorMessage.textContent, "动画解析失败，无法正常播放");
+  hidePlaybackFailureRecovery(playbackNodes);
+  assert.equal(playbackNodes.playbackErrorRecovery.hidden, true);
+
+  const parseNodes = createNodes();
+  const parseState = createState();
+  let parseFailure;
+  let parsePlaybackFailure;
+  await loadShortTermOpenedSource({
+    nodes: parseNodes,
+    state: parseState,
+    bytes: Uint8Array.from([4, 5, 6]),
+    displayName: "invalid.svga",
+    sourceId: "source:invalid",
+    clearTransientOutput() {
+      parseState.activeOutput = undefined;
+    },
+    setView(view) {
+      parseState.view = view;
+    },
+    async inspectShortTerm() {
+      throw new Error("文件解析失败");
+    },
+    renderPreviewModel() {},
+    async mountPrimaryPlayback() {
+      throw new Error("不应挂载播放");
+    },
+    stopAllPlayback() {
+      parseState.primaryPlayback = undefined;
+    },
+    showFailure(error) {
+      parseFailure = error;
+      parseState.view = "failed";
+    },
+    showPlaybackFailure(error) {
+      parsePlaybackFailure = error;
+    }
+  });
+
+  assert.equal(parseState.view, "failed");
+  assert.equal(parseState.sourceBytes, undefined);
+  assert.equal(parseState.model, undefined);
+  assert.equal(parseFailure?.message, "文件解析失败");
+  assert.equal(parsePlaybackFailure, undefined);
+});
+
 test("short-term thumbnail renderer follows frozen image sequence and audio variants", async () => {
   const { renderThumbnailHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-thumbnail-renderers.mjs")).href);
   const imageDataUrl = "data:image/png;base64,AA==";
@@ -7554,6 +7669,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermController, /showShortTermOutputBanner\(\{ nodes, title, message, tone \}\)/);
   assert.match(shortTermController, /showShortTermFailure\(\{ nodes, setView \}, error\)/);
   assert.match(shortTermController, /showShortTermOperationFailure\(\{ nodes, state, setMode, renderCommandState \}, title, error\)/);
+  assert.match(shortTermFileSurface, /showPlaybackFailure\(error\)/);
+  assert.match(shortTermController, /async function reloadPrimaryPlayback\(\)[\s\S]*mountPlayback\("primary", nodes\.primaryCanvas, state\.previewBytes \?\? state\.sourceBytes\)[\s\S]*showPlaybackFailure\(error\)/);
+  assert.match(shortTermController, /function showPlaybackFailure\(\)[\s\S]*stopAllPlayback\(\)[\s\S]*clearCanvas\(nodes\.primaryCanvas\)[\s\S]*setView\("preview"\)[\s\S]*showPlaybackFailureRecovery\(nodes\)/);
+  assert.match(shortTermEventBindings, /action === "reload-playback"[^\n]*handlers\.reloadPrimaryPlayback\(\)/);
   assert.match(shortTermController, /shortTermCurrentStateSummary\(\{ nodes, state \}\)/);
   assert.match(shortTermFeedbackSurface, /from "\.\/short-term-macos-feedback-model\.mjs"/);
   assert.match(shortTermFeedbackSurface, /buildCurrentStateSummary/);
@@ -8021,7 +8140,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackSurface, /export function renderShortTermPlaybackProgress/);
   assert.match(shortTermController, /requestAnimationFrame\(tick\)/);
   assert.match(shortTermController, /cancelAnimationFrame\(playbackProgressFrame\)/);
-  assert.match(shortTermController, /if \(key === "primary"\) startPlaybackProgressLoop\(\)/);
+  assert.match(
+    shortTermController,
+    /if \(key === "primary"\) \{\s+hidePlaybackFailureRecovery\(nodes\);\s+startPlaybackProgressLoop\(\);\s+\}/
+  );
   assert.match(shortTermPlaybackSurface, /export function clearShortTermPlaybackCanvas/);
   assert.match(shortTermPlaybackSurface, /export function shortTermPlayerPrototype/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);

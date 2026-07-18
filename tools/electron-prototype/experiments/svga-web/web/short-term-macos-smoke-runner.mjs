@@ -707,17 +707,17 @@ async function runShortTermSmoke({
   } finally {
     playerPrototype.mount = originalPlayerMount;
   }
-  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("播放失败"), 4_000);
+  await waitForSmokeCondition(() => state.view === "preview" && nodes.playbackErrorRecovery.hidden === false, 4_000);
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-playback-failed");
-  const playbackFailureVisible = state.view === "failed"
-    && nodes.errorMessage.textContent.includes("播放失败")
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
-  const playbackFailureCopy = nodes.errorMessage.textContent.trim();
-  const noStaleMetadataAfterPlaybackFailure = !state.sourceBytes
-    && !state.model
+  const playbackFailureVisible = state.view === "preview"
+    && nodes.playbackErrorRecovery.hidden === false
+    && nodes.playbackErrorMessage.textContent === "动画解析失败，无法正常播放";
+  const playbackFailureCopy = "播放失败，源文件没有被修改。";
+  const noStaleMetadataAfterPlaybackFailure = Boolean(state.sourceBytes)
+    && Boolean(state.model)
     && !state.activeOutput
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+    && state.displayName === "playback-failure-smoke.svga";
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,

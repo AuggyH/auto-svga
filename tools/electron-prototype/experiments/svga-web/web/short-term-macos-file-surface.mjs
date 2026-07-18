@@ -5,6 +5,7 @@ import {
   hideShortTermSaveBanner
 } from "./short-term-macos-feedback-surface.mjs";
 import {
+  hidePlaybackFailureRecovery,
   renderFailureMessage,
   renderFileHeader,
   renderLoadingMessage
@@ -97,7 +98,8 @@ export async function loadShortTermOpenedSource({
   renderPreviewModel,
   mountPrimaryPlayback,
   stopAllPlayback,
-  showFailure
+  showFailure,
+  showPlaybackFailure
 }) {
   prepareShortTermSourceLoad({
     nodes,
@@ -115,10 +117,16 @@ export async function loadShortTermOpenedSource({
     state.selectedTextKey = model.replaceableElements.texts[0]?.textKey || "";
     renderPreviewModel();
     setView("preview");
-    await mountPrimaryPlayback(state.previewBytes);
   } catch (error) {
     clearShortTermCurrentFile({ state, stopAllPlayback });
     showFailure(error);
+    return;
+  }
+  try {
+    await mountPrimaryPlayback(state.previewBytes);
+  } catch (error) {
+    stopAllPlayback();
+    showPlaybackFailure(error);
   }
 }
 
@@ -154,6 +162,7 @@ export function prepareShortTermSourceLoad({
   if (!bytes?.byteLength) throw new Error("文件为空。");
   clearTransientOutput();
   renderFailureMessage(nodes, "");
+  hidePlaybackFailureRecovery(nodes);
   state.sourceBytes = new Uint8Array(bytes);
   state.previewBytes = new Uint8Array(bytes);
   state.sourceId = sourceId || "";
