@@ -24,6 +24,7 @@ const DARWIN_MULTI_FORMAT_PICKER_LAUNCHER = "/usr/bin/open";
 const DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME = "Auto SVGA File Picker.app";
 const DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME = "asv-open-panel";
 const DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES = 32768;
+const DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS = 120000;
 const DARWIN_MULTI_FORMAT_PICKER_CHANNEL_PREFIX = "auto-svga-native-picker-";
 let darwinMultiFormatPickerActive = false;
 
@@ -258,9 +259,16 @@ async function runDarwinMultiFormatPicker(
         "--stderr",
         channel.stderr.filePath,
         "--args",
-        `--auto-svga-picker-channel=${channel.token}`
+        `--auto-svga-picker-channel=${channel.token}`,
+        `--auto-svga-picker-root=${channel.rootPath}`,
+        `--auto-svga-picker-parent-pid=${process.pid}`
       ],
-      { encoding: "utf8", maxBuffer: DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES }
+      {
+        encoding: "utf8",
+        maxBuffer: DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES,
+        timeout: DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS,
+        killSignal: "SIGTERM"
+      }
     );
     readBoundedPrivateResultFile(channel, channel.stderr);
     outcome = parseDarwinPickerOutput(readBoundedPrivateResultFile(channel, channel.result));
@@ -301,6 +309,7 @@ module.exports = {
   DARWIN_MULTI_FORMAT_PICKER_LAUNCHER,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME,
+  DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,
   parseDarwinPickerOutput,

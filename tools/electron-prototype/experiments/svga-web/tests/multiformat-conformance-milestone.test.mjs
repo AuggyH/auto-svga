@@ -26,6 +26,7 @@ const {
   DARWIN_MULTI_FORMAT_PICKER_LAUNCHER,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME,
+  DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,
   parseDarwinPickerOutput,
@@ -169,6 +170,7 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME, "asv-open-panel");
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME, "Auto SVGA File Picker.app");
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_LAUNCHER, "/usr/bin/open");
+  assert.equal(DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS, 120000);
   assert.match(helperSource, /import AppKit/u);
   assert.match(helperSource, /NSOpenPanel\(\)/u);
   assert.match(helperSource, /allowedContentTypes\s*=\s*\[\]/u);
@@ -176,7 +178,13 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(helperSource, /allowsOtherFileTypes\s*=\s*true/u);
   assert.match(helperSource, /canChooseFiles\s*=\s*true/u);
   assert.match(helperSource, /canChooseDirectories\s*=\s*false/u);
-  assert.match(helperSource, /finishLaunching\(\)[\s\S]*activate\(ignoringOtherApps:\s*true\)/u);
+  assert.match(helperSource, /panel\.makeKeyAndOrderFront\(nil\)[\s\S]*activate\(ignoringOtherApps:\s*true\)/u);
+  assert.match(helperSource, /panel\.orderFrontRegardless\(\)/u);
+  assert.match(helperSource, /final class PickerLifecycleGuard/u);
+  assert.match(helperSource, /kill\(parentPID,\s*0\)/u);
+  assert.match(helperSource, /FileManager\.default\.fileExists\(atPath:\s*channelRootPath\)/u);
+  assert.match(helperSource, /Date\(\)\s*>=\s*deadline/u);
+  assert.match(helperSource, /Timer\.scheduledTimer/u);
   assert.match(helperSource, /runModal\(\)/u);
   assert.match(helperSource, /final class PickerResultWriter/u);
   assert.match(helperSource, /private var didWrite = false/u);
@@ -258,7 +266,11 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.equal(path.basename(calls[0].args[5]), "launcher-stderr.log");
   assert.equal(calls[0].args[6], "--args");
   assert.match(calls[0].args[7], /^--auto-svga-picker-channel=[a-f0-9]{32}$/u);
+  assert.equal(calls[0].args[8], `--auto-svga-picker-root=${channelRoot}`);
+  assert.equal(calls[0].args[9], `--auto-svga-picker-parent-pid=${process.pid}`);
   assert.equal(path.basename(channelRoot), `auto-svga-native-picker-${calls[0].args[7].split("=")[1]}`);
+  assert.equal(calls[0].options.timeout, DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS);
+  assert.equal(calls[0].options.killSignal, "SIGTERM");
   assert.doesNotMatch(calls[0].args.join("\n"), /\/private\/tmp\/example\.svga/u);
   assert.equal(existsSync(channelRoot), false);
   assert.deepEqual(parseDarwinPickerOutput('{"status":"cancelled"}\n'), { status: "cancelled" });
@@ -366,6 +378,35 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
   releaseFirst();
   assert.deepEqual(await firstRun, { status: "cancelled" });
   assert.equal(existsSync(firstRoot), false);
+});
+
+test("macOS picker timeout releases ownership so recovery can open a fresh helper", async () => {
+  let timeoutRoot = "";
+  let timeoutOptions = null;
+  const timedOut = await runDarwinMultiFormatPicker(async (_command, args, options) => {
+    timeoutRoot = path.dirname(args[args.indexOf("--stderr") + 1]);
+    timeoutOptions = options;
+    await new Promise((resolve) => setImmediate(resolve));
+    const error = new Error("installed picker timed out");
+    error.killed = true;
+    error.signal = "SIGTERM";
+    throw error;
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(timedOut.status, "failed");
+  assert.equal(timedOut.pathRedacted, true);
+  assert.equal(timeoutOptions.timeout, DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS);
+  assert.equal(timeoutOptions.killSignal, "SIGTERM");
+  assert.equal(existsSync(timeoutRoot), false);
+
+  let recoveryLaunchCalls = 0;
+  const recovered = await runDarwinMultiFormatPicker(async (_command, args) => {
+    recoveryLaunchCalls += 1;
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
+    writeFileSync(resultPath, '{"status":"cancelled"}\n');
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(recoveryLaunchCalls, 1);
+  assert.deepEqual(recovered, { status: "cancelled" });
 });
 
 test("non-Darwin native picker remains owned by the active BrowserWindow", async () => {

@@ -9,6 +9,14 @@ private struct PickerResult: Encodable {
 
 private let channelPrefix = "auto-svga-native-picker-"
 private let channelArgumentPrefix = "--auto-svga-picker-channel="
+private let channelRootArgumentPrefix = "--auto-svga-picker-root="
+private let parentPIDArgumentPrefix = "--auto-svga-picker-parent-pid="
+private let pickerLifetime: TimeInterval = 120
+
+private struct PickerChannel {
+    let descriptor: Int32
+    let rootPath: String
+}
 
 private func isLowercaseHexToken(_ token: String) -> Bool {
     token.count == 32 && token.unicodeScalars.allSatisfy {
@@ -17,10 +25,12 @@ private func isLowercaseHexToken(_ token: String) -> Bool {
     }
 }
 
-private func openResultFile(channelToken: String) -> Int32? {
-    let rootPath = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        .appendingPathComponent("\(channelPrefix)\(channelToken)", isDirectory: true)
-        .path
+private func openResultFile(channelToken: String, rootPath: String) -> PickerChannel? {
+    let rootURL = URL(fileURLWithPath: rootPath, isDirectory: true)
+    guard rootURL.path == rootPath,
+          rootURL.lastPathComponent == "\(channelPrefix)\(channelToken)" else {
+        return nil
+    }
     var rootStats = stat()
     guard lstat(rootPath, &rootStats) == 0,
           (rootStats.st_mode & S_IFMT) == S_IFDIR,
@@ -47,7 +57,7 @@ private func openResultFile(channelToken: String) -> Int32? {
         Darwin.close(descriptor)
         return nil
     }
-    return descriptor
+    return PickerChannel(descriptor: descriptor, rootPath: rootPath)
 }
 
 private final class PickerResultWriter {
@@ -97,21 +107,64 @@ private final class PickerResultWriter {
     }
 }
 
-guard CommandLine.arguments.count == 2,
-      CommandLine.arguments[1].hasPrefix(channelArgumentPrefix) else {
+private final class PickerLifecycleGuard {
+    private let parentPID: pid_t
+    private let channelRootPath: String
+    private let deadline: Date
+    private let writer: PickerResultWriter
+    private var timer: Timer?
+
+    init(parentPID: pid_t, channelRootPath: String, writer: PickerResultWriter) {
+        self.parentPID = parentPID
+        self.channelRootPath = channelRootPath
+        self.deadline = Date().addingTimeInterval(pickerLifetime)
+        self.writer = writer
+    }
+
+    func start() {
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            self?.verifyOwnerAndChannel()
+        }
+        timer?.tolerance = 0.02
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func verifyOwnerAndChannel() {
+        errno = 0
+        let parentIsAlive = kill(parentPID, 0) == 0 || errno == EPERM
+        if !parentIsAlive
+            || !FileManager.default.fileExists(atPath: channelRootPath)
+            || Date() >= deadline {
+            NSApp.abortModal()
+            writer.finish(status: "failed", exitCode: 1)
+        }
+    }
+}
+
+guard CommandLine.arguments.count == 4,
+      let channelArgument = CommandLine.arguments.first(where: { $0.hasPrefix(channelArgumentPrefix) }),
+      let rootArgument = CommandLine.arguments.first(where: { $0.hasPrefix(channelRootArgumentPrefix) }),
+      let parentArgument = CommandLine.arguments.first(where: { $0.hasPrefix(parentPIDArgumentPrefix) }) else {
     exit(2)
 }
-let channelToken = String(CommandLine.arguments[1].dropFirst(channelArgumentPrefix.count))
+let channelToken = String(channelArgument.dropFirst(channelArgumentPrefix.count))
+let channelRootPath = String(rootArgument.dropFirst(channelRootArgumentPrefix.count))
+let parentPIDValue = String(parentArgument.dropFirst(parentPIDArgumentPrefix.count))
 guard isLowercaseHexToken(channelToken),
-      let resultDescriptor = openResultFile(channelToken: channelToken) else {
+      let parentPID = Int32(parentPIDValue),
+      parentPID > 1,
+      let channel = openResultFile(channelToken: channelToken, rootPath: channelRootPath) else {
     exit(2)
 }
-private let writer = PickerResultWriter(descriptor: resultDescriptor)
+private let writer = PickerResultWriter(descriptor: channel.descriptor)
 
 let application = NSApplication.shared
 application.setActivationPolicy(.accessory)
 application.finishLaunching()
-application.activate(ignoringOtherApps: true)
 
 let panel = NSOpenPanel()
 panel.title = "打开文件"
@@ -128,15 +181,29 @@ if #available(macOS 11.0, *) {
     panel.allowedFileTypes = nil
 }
 panel.allowsOtherFileTypes = true
+panel.center()
+panel.makeKeyAndOrderFront(nil)
+application.activate(ignoringOtherApps: true)
+panel.orderFrontRegardless()
+
+private let lifecycleGuard = PickerLifecycleGuard(
+    parentPID: parentPID,
+    channelRootPath: channel.rootPath,
+    writer: writer
+)
+lifecycleGuard.start()
 
 switch panel.runModal() {
 case .OK:
+    lifecycleGuard.stop()
     guard let selectedPath = panel.url?.path, !selectedPath.isEmpty else {
         writer.finish(status: "failed", exitCode: 1)
     }
     writer.finish(status: "selected", filePath: selectedPath)
 case .cancel:
+    lifecycleGuard.stop()
     writer.finish(status: "cancelled")
 default:
+    lifecycleGuard.stop()
     writer.finish(status: "failed", exitCode: 1)
 }
