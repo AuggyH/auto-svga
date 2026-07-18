@@ -108,6 +108,15 @@
       "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-compare-renderers.mjs"]
     },
     {
+      "figma": "对比 / 已有文件A_等待文件B",
+      "codePageState": "General comparing",
+      "appStates": ["compare"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "GeneralCompareModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-compare-model.mjs", "web/short-term-macos-compare-surface.mjs"]
+    },
+    {
       "figma": "对比 / 双文件已加载",
       "codePageState": "General comparing",
       "appStates": ["compare"],

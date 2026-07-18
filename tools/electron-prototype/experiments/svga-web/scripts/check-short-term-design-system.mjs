@@ -129,6 +129,7 @@ const requiredFigmaPageStates = [
   { figma: "预览 / 优化执行中", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface", "OptimizationRunningState"] },
   { figma: "预览 / 优化结果对比", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"] },
   { figma: "对比 / 空态", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "对比 / 已有文件A_等待文件B", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
   { figma: "对比 / 双文件已加载", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
   { figma: "对比 / 拖拽中", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
   { figma: "拖拽 / 已有文件_拖入对比", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
@@ -742,6 +743,11 @@ async function main() {
     && /class="toolbarButton primary comparePairOpenButton"/.test(compareModel)
     && /data-state="\$\{state\}"/.test(compareModel)
     && /\.comparePairOpenButton\s*\{[\s\S]*width: var\(--asv-compare-open-button-width\)[\s\S]*min-height: var\(--asv-compare-open-button-height\)/.test(modules));
+  record("compare-waiting-b-keeps-loaded-a-facts", /function comparePanelState/.test(compareModel)
+    && /if \(aModel\) return "waiting-b"/.test(compareModel)
+    && /data-state="empty" aria-hidden="true"/.test(compareModel)
+    && /displayName \|\| "文件未打开"/.test(compareModel)
+    && /if \(!comparisonReady\) return "uncompared"/.test(compareModel));
   record("compare-loaded-highlights-only-the-better-fact", /const compareStatusScore = Object\.freeze/.test(compareModel)
     && /return factScore > peerScore \? "improved" : "different"/.test(compareModel)
     && /\.compareMetricCell\[data-diff="improved"\] strong\s*\{[\s\S]*color: var\(--asv-success\)/.test(modules)

@@ -746,7 +746,7 @@ test("short-term general compare renders loaded A/B facts through shared metric 
   assert.equal((html.match(/data-diff="improved"/g) ?? []).length, 2);
   assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
 
-  const [aColumn, bColumn] = html.split(/<div class="compareMetricColumn"[^>]*data-slot="[AB]">/).slice(1);
+  const [aColumn, bColumn] = html.split(/<div class="compareMetricColumn"[^>]*data-slot="[AB]"[^>]*>/).slice(1);
   assert.match(aColumn, /data-fact-id="fileSize"[\s\S]*data-diff="different"/);
   assert.match(aColumn, /data-fact-id="decodedMemory"[\s\S]*data-diff="improved"/);
   assert.match(bColumn, /data-fact-id="fileSize"[\s\S]*data-diff="improved"/);
@@ -771,7 +771,7 @@ test("short-term general compare exposes missing-slot open actions in the right 
   });
 
   assert.match(emptyHtml, /<h2>对比模式<\/h2>/);
-  assert.equal((emptyHtml.match(/未打开文件/g) ?? []).length, 2);
+  assert.equal((emptyHtml.match(/文件未打开/g) ?? []).length, 2);
   assert.match(emptyHtml, /data-action="exit-compare"/);
   assert.equal((emptyHtml.match(/comparePairOpenButton/g) ?? []).length, 2);
   assert.match(emptyHtml, /data-slot="A" data-state="empty"[\s\S]*data-action="open-compare-a"/);
@@ -785,6 +785,32 @@ test("short-term general compare exposes missing-slot open actions in the right 
   assert.match(loadedHtml, /data-slot="B" data-state="loaded"[\s\S]*<strong>b\.svga<\/strong>/);
   assert.doesNotMatch(loadedHtml, /comparePairOpenButton/);
   assert.doesNotMatch(loadedHtml, /data-action="open-compare-[ab]"/);
+});
+
+test("short-term general compare keeps A facts visible while waiting for B", async () => {
+  const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+  const html = renderGeneralComparePanelHtml({
+    aModel: {
+      overview: {
+        facts: [
+          { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "pass" },
+          { id: "decodedMemory", label: "内存占用", value: "20.6 MiB", status: "pass" },
+          { id: "duration", label: "动画时长", value: "3 s", status: "pass" },
+          { id: "fps", label: "帧率", value: "30 fps", status: "pass" },
+          { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
+        ]
+      }
+    },
+    aDisplayName: "头像框 A.svga"
+  });
+
+  assert.match(html, /data-compare-state="waiting-b"/);
+  assert.match(html, /data-slot="A" data-state="loaded"[\s\S]*头像框 A\.svga/);
+  assert.match(html, /data-slot="B" data-state="empty"[\s\S]*文件未打开[\s\S]*data-action="open-compare-b"/);
+  assert.match(html, /class="compareMetricColumn"[^>]*data-slot="A"[^>]*data-state="loaded"[\s\S]*data-fact-id="fileSize"[\s\S]*data-fact-id="canvas"/);
+  assert.match(html, /class="compareMetricColumn"[^>]*data-slot="B"[^>]*data-state="empty"[^>]*aria-hidden="true"/);
+  assert.equal((html.match(/data-diff="uncompared"/g) ?? []).length, 4);
+  assert.doesNotMatch(html, /data-diff="unavailable"/);
 });
 
 test("short-term general compare marks asymmetric visible facts unavailable", async () => {
@@ -7895,9 +7921,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePanelHtml/);
   assert.match(shortTermCompareModel, /class="toolbarButton compareExitButton" type="button" data-action="back-preview">退出对比/);
-  assert.match(shortTermCompareModel, /if \(!aModel \|\| !bModel\) return ""/);
+  assert.match(shortTermCompareModel, /if \(!aModel && !bModel\) return ""/);
+  assert.match(shortTermCompareModel, /const comparisonReady = Boolean\(aModel && bModel\)/);
+  assert.match(shortTermCompareModel, /if \(!comparisonReady\) return "uncompared"/);
   assert.match(shortTermCompareModel, /const rows = renderCompareMetricColumns\(aModel, bModel\)/);
-  assert.match(shortTermCompareModel, /rows \? `<section class="compareMetricGrid" aria-label="对比信息">/);
+  assert.match(shortTermCompareModel, /rows \? `<section class="compareMetricGrid" aria-label="对比信息" data-compare-state="\$\{state\}">/);
   assert.match(shortTermCompareModel, /comparePairHeader/);
   assert.doesNotMatch(shortTermCompareModel, /<span>\$\{escapeHtml\(aTitle\)\}<\/span>|<span>\$\{escapeHtml\(bTitle\)\}<\/span>/);
   assert.match(shortTermCompareModel, /compareModeHeader/);
