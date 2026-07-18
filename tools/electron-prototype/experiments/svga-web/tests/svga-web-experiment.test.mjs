@@ -2330,6 +2330,87 @@ test("0.2 host-owned drag intake preserves embedded, adjacent, absent, and Lotti
   }
 });
 
+test("0.2 host-owned Lottie intake resolves the canonical a/i package-root image layout", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-package-root-"));
+  const packageRoot = path.join(sessionRoot, "bundle");
+  const animationRoot = path.join(packageRoot, "a");
+  const imageRoot = path.join(packageRoot, "i");
+  const lottiePath = path.join(animationRoot, "animation.json");
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+
+  try {
+    await mkdir(animationRoot, { recursive: true });
+    await mkdir(imageRoot, { recursive: true });
+    await writeFile(path.join(imageRoot, "avatar.png"), await createTestPng([255, 0, 0, 255]));
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.7.0",
+      w: 120,
+      h: 80,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      layers: [{ ind: 1, ty: 2, refId: "image_0" }],
+      assets: [{ id: "image_0", u: "/i/", p: "avatar.png", w: 1, h: 1 }]
+    }));
+
+    const opened = await session.openLocalFilePath(lottiePath, "fileButton");
+    assert.equal(opened.model.status, "playing");
+    assert.equal(opened.model.detectedFormat, "lottie");
+    const runtime = await session.prepareRuntimePreview({
+      sourceId: opened.sourceId,
+      format: "lottie",
+      requestId: opened.model.requestId,
+      replacements: opened.model.replacement
+    });
+    assert.equal(runtime.status, "prepared");
+    assert.match(runtime.animationData.assets[0].p, /^data:image\/png;base64,/u);
+    assert.equal(runtime.animationData.assets[0].u, "");
+    assert.doesNotMatch(JSON.stringify({ opened, runtime }), /auto-svga-lottie-package-root-|\/Users\//u);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 host-owned Lottie intake rejects noncanonical absolute image directories", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-absolute-root-"));
+  const lottiePath = path.join(sessionRoot, "animation.json");
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+
+  try {
+    for (const unsafeDirectory of ["/images/", "@lottie-root/i/"]) {
+      await writeFile(lottiePath, JSON.stringify({
+        v: "5.7.0",
+        w: 120,
+        h: 80,
+        fr: 30,
+        ip: 0,
+        op: 30,
+        layers: [{ ind: 1, ty: 2, refId: "image_0" }],
+        assets: [{ id: "image_0", u: unsafeDirectory, p: "avatar.png", w: 1, h: 1 }]
+      }));
+
+      const opened = await session.openLocalFilePath(lottiePath, "fileButton");
+      assert.notEqual(opened.model.status, "playing", unsafeDirectory);
+      assert.equal(opened.model.rightPanel.issues.some((issue) =>
+        issue.code === "invalid_file" && issue.pathRedacted === true
+      ), true, `${unsafeDirectory}: ${JSON.stringify(opened.model.rightPanel.issues)}`);
+      assert.doesNotMatch(JSON.stringify(opened), /auto-svga-lottie-absolute-root-|\/Users\//u);
+    }
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
 test("0.2 host-owned Lottie intake rejects adjacent image aliases that escape the source root", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-root-bound-"));
   const externalRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-external-"));

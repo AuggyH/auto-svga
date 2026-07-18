@@ -1246,7 +1246,7 @@ function inlineLottieRuntimeImageAssets(documentValue, sourceBinding, imageRepla
     if (asset.p === undefined && asset.u === undefined) continue;
     const rawPath = typeof asset.p === "string" ? asset.p.trim() : "";
     const rawDirectory = typeof asset.u === "string" ? asset.u.trim() : "";
-    const candidate = rawDirectory ? `${rawDirectory.replace(/[\\/]+$/u, "")}/${rawPath}` : rawPath;
+    const candidate = normalizeLottieRuntimeImageReference(rawDirectory, rawPath);
     if (!isDeterministicRuntimeRelativePath(candidate)) {
       return runtimePreviewFailure({
         format: "lottie",
@@ -1410,8 +1410,9 @@ function readBoundedFileBuffer(filePath, maxBytes) {
 function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes, expectedBinding) {
   const limit = Math.max(0, Math.trunc(Number(maxBytes) || 0));
   if (limit <= 0) throw new Error("Adjacent resource read limit is invalid.");
-  const resourcePath = resolveAdjacentResource(sourceLocalPath, relativePath);
-  const ancestorIdentitiesBefore = ancestorDirectoryIdentities(path.dirname(sourceLocalPath), resourcePath);
+  const resolvedResource = resolveAdjacentResource(sourceLocalPath, relativePath);
+  const { resourcePath, rootPath } = resolvedResource;
+  const ancestorIdentitiesBefore = ancestorDirectoryIdentities(rootPath, resourcePath);
   const fd = openSync(resourcePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
   try {
     const before = fstatSync(fd);
@@ -1437,8 +1438,8 @@ function readRootBoundedAdjacentResource(sourceLocalPath, relativePath, maxBytes
     }
     const after = fstatSync(fd);
     const pathAfter = statSync(resourcePath);
-    resolveAdjacentResource(sourceLocalPath, relativePath);
-    const ancestorIdentitiesAfter = ancestorDirectoryIdentities(path.dirname(sourceLocalPath), resourcePath);
+    const resolvedAfterRead = resolveAdjacentResource(sourceLocalPath, relativePath);
+    const ancestorIdentitiesAfter = ancestorDirectoryIdentities(resolvedAfterRead.rootPath, resourcePath);
     if (
       totalBytes <= 0
       || totalBytes > limit
@@ -1758,13 +1759,19 @@ function resolveAdjacentResource(sourceLocalPath, relativePath) {
     throw new Error("Adjacent Lottie resources must use deterministic relative paths.");
   }
   const sourceDir = path.dirname(sourceLocalPath);
-  const resolved = path.resolve(sourceDir, relativePath);
-  if (resolved !== sourceDir && !resolved.startsWith(`${sourceDir}${path.sep}`)) {
+  const packageRootAlias = relativePath.startsWith("@lottie-root/i/");
+  if (packageRootAlias && path.basename(sourceDir) !== "a") {
+    throw new Error("Lottie package-root image aliases require the canonical a/i directory layout.");
+  }
+  const rootPath = packageRootAlias ? path.dirname(sourceDir) : sourceDir;
+  const rootRelativePath = packageRootAlias ? relativePath.slice("@lottie-root/".length) : relativePath;
+  const resolved = path.resolve(rootPath, rootRelativePath);
+  if (resolved !== rootPath && !resolved.startsWith(`${rootPath}${path.sep}`)) {
     throw new Error("Adjacent Lottie resource path escapes the source directory.");
   }
-  const sourceRoot = realpathSync(sourceDir);
-  const relativeSegments = path.relative(sourceDir, resolved).split(path.sep).filter(Boolean);
-  let cursor = sourceDir;
+  const sourceRoot = realpathSync(rootPath);
+  const relativeSegments = path.relative(rootPath, resolved).split(path.sep).filter(Boolean);
+  let cursor = rootPath;
   for (const segment of relativeSegments) {
     assertExactPathSegments(cursor, segment);
     cursor = path.join(cursor, segment);
@@ -1776,7 +1783,7 @@ function resolveAdjacentResource(sourceLocalPath, relativePath) {
   if (resolvedRealPath !== sourceRoot && !resolvedRealPath.startsWith(`${sourceRoot}${path.sep}`)) {
     throw new Error("Adjacent Lottie resource real path escapes the source directory.");
   }
-  return resolved;
+  return { resourcePath: resolved, rootPath };
 }
 
 function isRecord(value) {
@@ -1791,6 +1798,13 @@ function stringValue(value) {
 function isSafeRuntimeImageValue(value) {
   return typeof value === "string"
     && (/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/iu.test(value) || value.startsWith("blob:"));
+}
+
+function normalizeLottieRuntimeImageReference(rawDirectory, rawPath) {
+  const directory = rawDirectory.replace(/[\\/]+$/u, "");
+  if (directory === "/i") return `@lottie-root/i/${rawPath}`;
+  if (directory === "@lottie-root" || directory.startsWith("@lottie-root/")) return "";
+  return directory ? `${directory}/${rawPath}` : rawPath;
 }
 
 function isDeterministicRuntimeRelativePath(value) {

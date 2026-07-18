@@ -399,7 +399,7 @@ function normalizeImageReference(
       )]
     };
   }
-  const candidate = rawDirectory ? `${rawDirectory.replace(/[\\/]+$/u, "")}/${rawPath}` : rawPath;
+  const candidate = normalizeLottieImageReference(rawDirectory, rawPath);
   if (!isDeterministicRelativePath(candidate)) {
     return {
       issues: [issue(
@@ -418,6 +418,13 @@ function normalizeImageReference(
     },
     issues: []
   };
+}
+
+function normalizeLottieImageReference(rawDirectory: string, rawPath: string): string {
+  const directory = rawDirectory.replace(/[\\/]+$/u, "");
+  if (directory === "/i") return `@lottie-root/i/${rawPath}`;
+  if (directory === "@lottie-root" || directory.startsWith("@lottie-root/")) return "";
+  return directory ? `${directory}/${rawPath}` : rawPath;
 }
 
 function normalizeFonts(fonts: LottieDocument["fonts"]): MotionResourceInfo[] {
