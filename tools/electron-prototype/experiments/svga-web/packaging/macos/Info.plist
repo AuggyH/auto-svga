@@ -2,6 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>com.auto-svga.svga</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+        <string>public.content</string>
+      </array>
+      <key>UTTypeDescription</key>
+      <string>SVGA animation</string>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>svga</string>
+        </array>
+        <key>public.mime-type</key>
+        <string>application/octet-stream</string>
+      </dict>
+    </dict>
+  </array>
   <key>AutoSVGAFinalPackagedAppAcceptanceOwner</key>
   <string>Integration Coordinator</string>
   <key>AutoSVGAInternalUseOnly</key>

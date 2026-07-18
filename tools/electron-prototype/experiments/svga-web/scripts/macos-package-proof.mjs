@@ -25,6 +25,7 @@ export const platform = "darwin";
 export const architecture = "arm64";
 export const proofSchemaVersion = 1;
 export const finalAcceptanceOwner = "Integration Coordinator";
+export const svgaUtiIdentifier = "com.auto-svga.svga";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
@@ -334,8 +335,8 @@ export function validateProof(plist, proof, packagedPlist = plist) {
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
     ["unnotarized", proof.distribution.notarized === false && plist.includes("<key>AutoSVGANotarized</key>")],
     ["productionApprovedFalse", proof.distribution.productionApproved === false && plist.includes("<key>AutoSVGAProductionApproved</key>")],
-    ["noSvgaDocumentType", !plist.includes("<key>CFBundleDocumentTypes</key>") && !packagedPlist.includes("<key>CFBundleDocumentTypes</key>") && !plist.includes("<string>svga</string>") && !packagedPlist.includes("<string>svga</string>")],
-    ["noUtiDeclaration", !plist.includes("<key>UTExportedTypeDeclarations</key>") && !packagedPlist.includes("<key>UTExportedTypeDeclarations</key>") && !plist.includes("<string>com.auto-svga.svga</string>") && !packagedPlist.includes("<string>com.auto-svga.svga</string>")],
+    ["noSvgaDocumentType", !plistKeyPresent(plist, "CFBundleDocumentTypes") && !plistKeyPresent(packagedPlist, "CFBundleDocumentTypes")],
+    ["canonicalSvgaContentType", inspectSvgaUtiDeclaration(plist).valid && inspectSvgaUtiDeclaration(packagedPlist).valid],
     ["iconArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg === "--icon=packaging/macos/app-icon")],
     ["extendInfoArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg.startsWith("--extend-info="))],
     ["appIconPath", proof.packagingScaffold.appIconPath === "tools/electron-prototype/experiments/svga-web/packaging/macos/app-icon.icns"],
@@ -576,20 +577,23 @@ function mergeInfoPlistSecurityAudits({ sourceInfoPlistSecurityAudit, packagedIn
 }
 
 export function auditInfoPlistSecurity(plist) {
+  const parsed = parseInfoPlist(plist);
   const arbitraryNetworkAllowances = forbiddenArbitraryNetworkKeys.filter((key) => plistBooleanTrue(plist, key));
   const permissionUsageDescriptions = forbiddenPermissionUsageDescriptionKeys.filter((key) => plistKeyPresent(plist, key));
-  const finderDocumentAssociations = [
-    "CFBundleDocumentTypes",
-    "UTExportedTypeDeclarations",
-    "UTImportedTypeDeclarations"
-  ].filter((key) => plistKeyPresent(plist, key));
-  if (/<string>\s*svga\s*<\/string>/i.test(plist) || /public\.filename-extension[\s\S]*<string>\s*svga\s*<\/string>/i.test(plist)) {
+  const finderDocumentAssociations = ["CFBundleDocumentTypes", "UTImportedTypeDeclarations"]
+    .filter((key) => Object.hasOwn(parsed ?? {}, key));
+  if (/\bsvga\b/i.test(JSON.stringify(parsed?.CFBundleDocumentTypes ?? null))) {
     finderDocumentAssociations.push("svga-filename-extension");
   }
+  const svgaUti = inspectSvgaUtiDeclaration(plist, parsed);
+  if (Object.hasOwn(parsed ?? {}, "UTExportedTypeDeclarations") && !svgaUti.valid) {
+    finderDocumentAssociations.push("UTExportedTypeDeclarations");
+  }
   const findings = [
+    ...(parsed ? [] : ["Info.plist is not valid structured property-list data"]),
     ...arbitraryNetworkAllowances.map((key) => `${key}=true is not allowed for the local-only internal package`),
     ...permissionUsageDescriptions.map((key) => `${key} is not allowed unless the app actually uses that permission`),
-    ...finderDocumentAssociations.map((key) => `${key} is not allowed until Finder open-file support is implemented`)
+    ...finderDocumentAssociations.map((key) => `${key} is not an allowed in-app SVGA content declaration`)
   ];
   return {
     passed: findings.length === 0,
@@ -598,6 +602,65 @@ export function auditInfoPlistSecurity(plist) {
     finderDocumentAssociations,
     findings
   };
+}
+
+export function inspectSvgaUtiDeclaration(plist, parsed = parseInfoPlist(plist)) {
+  if (!parsed) return { valid: false, reason: "invalid_plist" };
+  const exported = parsed.UTExportedTypeDeclarations;
+  if (!Array.isArray(exported) || exported.length !== 1 || !isPlainObject(exported[0])) {
+    return { valid: false, reason: "invalid_export_count" };
+  }
+  const declaration = exported[0];
+  if (!hasExactKeys(declaration, [
+    "UTTypeConformsTo",
+    "UTTypeDescription",
+    "UTTypeIdentifier",
+    "UTTypeTagSpecification"
+  ])) {
+    return { valid: false, reason: "invalid_export_fields" };
+  }
+  if (declaration.UTTypeIdentifier !== svgaUtiIdentifier || declaration.UTTypeDescription !== "SVGA animation") {
+    return { valid: false, reason: "invalid_export_identity" };
+  }
+  if (!hasExactStringSet(declaration.UTTypeConformsTo, ["public.content", "public.data"])) {
+    return { valid: false, reason: "invalid_export_conformance" };
+  }
+  const tags = declaration.UTTypeTagSpecification;
+  if (!isPlainObject(tags) || !hasExactKeys(tags, ["public.filename-extension", "public.mime-type"])) {
+    return { valid: false, reason: "invalid_export_tags" };
+  }
+  if (!hasExactStringSet(tags["public.filename-extension"], ["svga"]) || tags["public.mime-type"] !== "application/octet-stream") {
+    return { valid: false, reason: "invalid_export_tag_values" };
+  }
+  return { valid: true, reason: null };
+}
+
+function parseInfoPlist(plist) {
+  try {
+    return JSON.parse(execFileSync("/usr/bin/plutil", ["-convert", "json", "-o", "-", "--", "-"], {
+      input: plist,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"]
+    }));
+  } catch {
+    return null;
+  }
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(value, expectedKeys) {
+  return isPlainObject(value)
+    && JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...expectedKeys].sort());
+}
+
+function hasExactStringSet(value, expectedValues) {
+  return Array.isArray(value)
+    && value.every((entry) => typeof entry === "string")
+    && new Set(value).size === value.length
+    && JSON.stringify([...value].sort()) === JSON.stringify([...expectedValues].sort());
 }
 
 function plistKeyPresent(plist, key) {
