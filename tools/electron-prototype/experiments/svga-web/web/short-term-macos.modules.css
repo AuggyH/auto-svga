@@ -1180,11 +1180,30 @@ canvas {
   border-bottom: var(--asv-right-panel-section-divider);
 }
 
-.rightPanel[data-panel-state="optimization"] #panelOptimization > .sectionHead .toolbarButton {
+.rightPanel[data-panel-state="optimization"] .optimizationDetailActions {
   order: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--asv-optimization-action-gap);
+  min-width: 0;
+}
+
+.rightPanel[data-panel-state="optimization"] .optimizationDetailActions .toolbarButton {
   justify-content: center;
   width: 100%;
   min-height: var(--asv-optimization-action-height);
+  border-radius: var(--asv-optimization-action-radius);
+}
+
+.rightPanel[data-panel-state="optimization"] .optimizationDetailActions .toolbarButton:not(.primary) {
+  border-color: transparent;
+  background: var(--asv-component-optimization-detail-secondary-background);
+  color: var(--asv-component-optimization-detail-secondary-color);
+  box-shadow: none;
+}
+
+.rightPanel[data-panel-state="optimization"] .optimizationDetailActions .toolbarButton:not(.primary):hover {
+  background: var(--asv-component-optimization-detail-secondary-hover-background);
 }
 
 .sectionHead h2 span,

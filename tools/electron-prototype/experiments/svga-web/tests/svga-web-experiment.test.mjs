@@ -427,6 +427,67 @@ test("short-term preview right surface exposes page-state trace semantics", asyn
   }
 });
 
+test("short-term optimization detail exposes the frozen action group and an explicit exit", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const { bindShortTermInteractionEvents } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-event-bindings.mjs")).href);
+  const optimizationSection = page.match(/<section class="rightSurfaceBody" id="panelOptimization"[\s\S]*?<\/section>/)?.[0] ?? "";
+
+  assert.match(optimizationSection, /class="optimizationDetailActions"/);
+  assert.match(optimizationSection, /data-action="run-optimization">一键优化<\/button>/);
+  assert.match(optimizationSection, /data-action="close-optimization">放弃优化<\/button>/);
+
+  const listeners = new Map();
+  const listenerTarget = () => ({
+    addEventListener(name, handler) {
+      listeners.set(name, handler);
+    },
+    classList: { add() {}, remove() {} }
+  });
+  const documentRef = listenerTarget();
+  documentRef.querySelectorAll = () => [];
+  const nodes = {
+    replaceableList: listenerTarget(),
+    textElementList: listenerTarget(),
+    resourceContextMenu: listenerTarget(),
+    assetFilterTabs: listenerTarget(),
+    replacementFileInput: listenerTarget(),
+    settingsDialog: listenerTarget(),
+    dropZone: listenerTarget(),
+    previewStagePanel: listenerTarget(),
+    previewDragOverlay: listenerTarget(),
+    compareStage: listenerTarget(),
+    compareDragOverlay: listenerTarget()
+  };
+  const openedTabs = [];
+  const noOp = () => {};
+  const handlers = new Proxy({
+    closeResourceContextMenu: noOp,
+    openTab(tab) {
+      openedTabs.push(tab);
+    }
+  }, {
+    get(target, key) {
+      return key in target ? target[key] : noOp;
+    }
+  });
+
+  bindShortTermInteractionEvents({
+    documentRef,
+    nodes,
+    state: { view: "preview", tab: "optimization" },
+    handlers
+  });
+  const exitButton = {
+    dataset: { action: "close-optimization" },
+    closest(selector) {
+      if (selector === "[data-action]") return this;
+      return null;
+    }
+  };
+  listeners.get("click")({ target: exitButton });
+  assert.deepEqual(openedTabs, ["overview"]);
+});
+
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
   const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
   const aModel = {

@@ -578,6 +578,9 @@
   --asv-component-optimization-action-height: 30px;
   --asv-component-optimization-action-radius: var(--asv-radius-sm);
   --asv-component-optimization-action-gap: var(--asv-space-2);
+  --asv-component-optimization-detail-secondary-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 42%, transparent);
+  --asv-component-optimization-detail-secondary-hover-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, transparent);
+  --asv-component-optimization-detail-secondary-color: var(--asv-color-text-secondary);
   --asv-component-optimization-action-secondary-height: 28px;
   --asv-component-optimization-action-secondary-color: var(--asv-color-text-link);
   --asv-component-optimization-action-tertiary-color: var(--asv-color-text-primary);

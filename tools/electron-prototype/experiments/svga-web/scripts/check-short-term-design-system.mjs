@@ -706,7 +706,9 @@ async function main() {
     && /\.findingRow\s*\{[\s\S]*min-height: var\(--asv-finding-row-min-height\)[\s\S]*padding: var\(--asv-finding-row-padding-block\) var\(--asv-finding-row-padding-inline\) var\(--asv-finding-row-padding-block\) var\(--asv-finding-row-padding-inline-start\)[\s\S]*border-radius: var\(--asv-finding-row-radius\)/.test(components)
     && /\.findingRow\[data-disposition="safeExecutable"\]/.test(components)
     && /\.findingRow\[data-disposition="reviewOnly"\]/.test(components)
-    && /\.findingRow\[data-disposition="unsupported"\]/.test(components));
+    && /\.findingRow\[data-disposition="unsupported"\]/.test(components)
+    && /class="optimizationDetailActions"[\s\S]*data-action="run-optimization">一键优化<\/button>[\s\S]*data-action="close-optimization">放弃优化<\/button>/.test(page)
+    && /\.optimizationDetailActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)/.test(modules));
   record("optimization-result-metrics-use-figma-component-contract", /data-component="OptimizationResultCard" data-role="OptimizationMetricCell"/.test(baseCss + modules + components + renderModel)
     && /--asv-optimization-metric-min-height:\s*var\(--asv-component-optimization-metric-min-height\)/.test(tokens)
     && /gap:\s*var\(--asv-optimization-metric-gap\)/.test(modules)
