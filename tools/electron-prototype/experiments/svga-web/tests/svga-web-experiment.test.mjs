@@ -8927,6 +8927,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-menu-state-proof/);
   assert.match(main, /stateReflectsLoadedSmoke/);
   assert.match(main, /openMenuAvailable/);
+  assert.match(main, /openMenuAvailable:\s*menuItemEnabled\(\["文件", "打开文件\.\.\."\]\) === true/u);
   assert.match(main, /recentMenuExists/);
   assert.match(main, /clearRecentMenuExists/);
   assert.match(main, /recentMenuRecordCountMatchesState/);

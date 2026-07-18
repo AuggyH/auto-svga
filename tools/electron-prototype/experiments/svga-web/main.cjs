@@ -4769,7 +4769,7 @@ function collectShortTermMenuStateProof() {
     .map((item) => item.label || "");
   const hasRecentRecords = recentRecords.length > 0;
   const checks = {
-    openMenuAvailable: menuItemEnabled(["文件", "打开 SVGA..."]) === true,
+    openMenuAvailable: menuItemEnabled(["文件", "打开文件..."]) === true,
     recentMenuExists: menuItemExists(["文件", "最近打开"]),
     clearRecentMenuExists: menuItemExists(["文件", "最近打开", "清除最近记录"]),
     recentMenuRecordCountMatchesState: recentRecordLabels.length === recentRecords.length,
