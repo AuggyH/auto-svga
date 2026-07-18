@@ -458,6 +458,7 @@
   --asv-component-empty-state-icon-border: 1px solid color-mix(in srgb, var(--asv-color-text-tertiary) 44%, transparent);
   --asv-component-empty-state-text-size: var(--asv-type-size-footnote);
   --asv-component-empty-state-text-line-height: 18px;
+  --asv-component-empty-state-text-weight: var(--asv-type-weight-regular);
   --asv-component-empty-state-text-color: var(--asv-color-text-tertiary);
   --asv-component-state-surface-width: 360px;
   --asv-component-state-surface-gap: var(--asv-space-3);
@@ -1123,6 +1124,7 @@
   --asv-empty-state-icon-border: var(--asv-component-empty-state-icon-border);
   --asv-empty-state-text-size: var(--asv-component-empty-state-text-size);
   --asv-empty-state-text-line-height: var(--asv-component-empty-state-text-line-height);
+  --asv-empty-state-text-weight: var(--asv-component-empty-state-text-weight);
   --asv-empty-state-text-color: var(--asv-component-empty-state-text-color);
   --asv-state-surface-width: var(--asv-component-state-surface-width);
   --asv-state-surface-gap: var(--asv-component-state-surface-gap);

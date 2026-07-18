@@ -7983,8 +7983,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-empty-state-padding-block: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-empty-state-icon-size: 30px/);
   assert.match(shortTermTokens, /--asv-component-empty-state-replaceable-icon-size: 28px/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-text-weight: var\(--asv-type-weight-regular\)/);
   assert.match(shortTermTokens, /--asv-empty-state-icon-size: var\(--asv-component-empty-state-icon-size\)/);
   assert.match(shortTermTokens, /--asv-empty-state-replaceable-icon-size: var\(--asv-component-empty-state-replaceable-icon-size\)/);
+  assert.match(shortTermTokens, /--asv-empty-state-text-weight: var\(--asv-component-empty-state-text-weight\)/);
   assert.match(shortTermTokens, /--asv-component-state-surface-width/);
   assert.match(shortTermTokens, /--asv-state-surface-width: var\(--asv-component-state-surface-width\)/);
   assert.match(shortTermTokens, /--asv-component-state-canvas-checker-size: var\(--asv-component-preview-checker-size\)/);
@@ -8048,6 +8050,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermAtoms, /\.emptyText\s*\{[^}]*border: 1px dashed/s);
   assert.match(shortTermAtoms, /\.emptyText\[data-variant="asset"\]\s*\{[^}]*gap: var\(--asv-empty-state-gap\)/s);
   assert.match(shortTermAtoms, /\.emptyStateIcon\[data-kind="replaceable"\]\s*\{[^}]*width: var\(--asv-empty-state-replaceable-icon-size\)/s);
+  assert.match(shortTermAtoms, /\.emptyTextTitle\s*\{[^}]*font-weight: var\(--asv-empty-state-text-weight\)/s);
   assert.match(shortTermAtoms, /\.emptyStateNote\s*\{[^}]*background: currentColor/s);
   assert.match(shortTermAtoms, /:focus-visible/);
   assert.match(shortTermMolecules, /\.toolbarButton/);

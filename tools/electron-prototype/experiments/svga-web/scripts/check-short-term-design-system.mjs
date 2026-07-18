@@ -945,6 +945,8 @@ async function main() {
     && /--asv-component-asset-filter-tab-font-size:\s*var\(--asv-type-size-micro\)/.test(tokens)
     && /--asv-component-empty-state-width:\s*var\(--asv-component-right-surface-content-width\)/.test(tokens)
     && /--asv-component-empty-state-padding-block:\s*var\(--asv-space-1\)/.test(tokens)
+    && /--asv-component-empty-state-text-weight:\s*var\(--asv-type-weight-regular\)/.test(tokens)
+    && /\.emptyTextTitle\s*\{[\s\S]*font-weight:\s*var\(--asv-empty-state-text-weight\)/.test(atoms)
     && /--asv-component-toast-height:\s*44px/.test(tokens)
     && /--asv-component-toast-width:\s*280px/.test(tokens)
     && /--asv-component-toast-failure-width:\s*320px/.test(tokens)

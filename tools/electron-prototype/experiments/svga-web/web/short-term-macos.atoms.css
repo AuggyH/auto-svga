@@ -306,7 +306,7 @@ button.danger {
 
 .emptyTextTitle {
   color: var(--asv-empty-state-text-color);
-  font-weight: var(--asv-right-section-title-weight);
+  font-weight: var(--asv-empty-state-text-weight);
 }
 
 .emptyText[data-variant="asset"] .emptyTextTitle {
