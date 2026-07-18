@@ -359,7 +359,7 @@ test("LaunchServices dump parser extracts same-bundle-id paths and missing-node 
   const bundleIdentifier = "local.auto-svga.internal-prototype";
   const dump = [
     "bundle id: local.auto-svga.internal-prototype",
-    "path: /Users/huangtengxin/Applications/Auto SVGA.app",
+    "path: /Users/huangtengxin/Applications/Auto SVGA.app (0x1812c)",
     "",
     "identifier: local.auto-svga.internal-prototype",
     "URL: /Users/huangtengxin/.codex/worktrees/p6/auto-svga/review/x/Auto SVGA.app",
@@ -368,6 +368,9 @@ test("LaunchServices dump parser extracts same-bundle-id paths and missing-node 
     "identifier: local.auto-svga.internal-prototype",
     "URL: file:///Users/huangtengxin/.codex/worktrees/p6/auto-svga/review/y/Auto%20SVGA.app",
     "Bundle node not found on disk",
+    "",
+    "identifier: local.auto-svga.internal-prototype",
+    "/Users/huangtengxin/Documents/auto-svga/review/z/Auto SVGA.app (0x18abc)",
     "",
     "identifier: other.bundle",
     "path: /Applications/Other.app"
@@ -391,6 +394,11 @@ test("LaunchServices dump parser extracts same-bundle-id paths and missing-node 
       bundleIdentifier,
       path: "/Users/huangtengxin/.codex/worktrees/p6/auto-svga/review/y/Auto SVGA.app",
       nodeMissing: true
+    },
+    {
+      bundleIdentifier,
+      path: "/Users/huangtengxin/Documents/auto-svga/review/z/Auto SVGA.app",
+      nodeMissing: false
     }
   ]);
 });
@@ -717,6 +725,9 @@ test("promotion unregisters owned stale LaunchServices records before exchange a
     const reviewStale = "/Users/huangtengxin/.codex/worktrees/review/auto-svga/review/p6/Auto SVGA.app";
     const p6Stale = "/Users/huangtengxin/.codex/worktrees/p6/auto-svga/package/Auto SVGA.app";
     const artifactStale = "/Users/huangtengxin/.codex/worktrees/d657/auto-svga/tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA.app";
+    const repositoryExisting = "/Users/huangtengxin/Documents/auto-svga/review/current/Auto SVGA.app";
+    const trashPlain = "/Users/huangtengxin/.Trash/Auto SVGA.app";
+    const trashTimestamped = "/Users/huangtengxin/.Trash/Auto SVGA 23.20.57.app";
     const installedBefore = fixtureInspector(fixture.target);
     const candidateBefore = fixtureInspector(fixture.candidate);
     const removedRecords = [];
@@ -726,12 +737,20 @@ test("promotion unregisters owned stale LaunchServices records before exchange a
         { bundleIdentifier, path: legacyPrevious, nodeMissing: false },
         { bundleIdentifier, path: reviewStale, nodeMissing: true },
         { bundleIdentifier, path: p6Stale, nodeMissing: true },
-        { bundleIdentifier, path: artifactStale, nodeMissing: true }
+        { bundleIdentifier, path: artifactStale, nodeMissing: true },
+        { bundleIdentifier, path: repositoryExisting, nodeMissing: false },
+        { bundleIdentifier, path: trashPlain, nodeMissing: false },
+        { bundleIdentifier, path: trashPlain, nodeMissing: false },
+        { bundleIdentifier, path: trashTimestamped, nodeMissing: false }
       ],
       unregisterLaunchServicesRecord: (recordPath) => {
         removedRecords.push(recordPath);
         dependencies.launchServicesRecords = dependencies.launchServicesRecords.filter((record) => record.path !== recordPath);
         return true;
+      },
+      pathExists: (filePath) => {
+        if ([repositoryExisting, trashPlain, trashTimestamped].includes(filePath)) return true;
+        return existsSync(filePath);
       },
       renameDurably: (source, destination) => renameSync(source, destination)
     });
@@ -742,7 +761,15 @@ test("promotion unregisters owned stale LaunchServices records before exchange a
       dependencies
     });
 
-    assert.deepEqual(removedRecords.sort(), [artifactStale, legacyPrevious, p6Stale, reviewStale].sort());
+    assert.deepEqual(removedRecords.sort(), [
+      artifactStale,
+      legacyPrevious,
+      p6Stale,
+      repositoryExisting,
+      reviewStale,
+      trashPlain,
+      trashTimestamped
+    ].sort());
     assert.deepEqual(dependencies.launchServicesRecords, [{ bundleIdentifier, path: fixture.target, nodeMissing: false }]);
     assertBundleBinding(fixture.target, candidateBefore);
     assertBundleBinding(fixture.previous, installedBefore);
@@ -750,7 +777,20 @@ test("promotion unregisters owned stale LaunchServices records before exchange a
     const manifest = JSON.parse(readFileSync(dependencies.promotionManifestPath, "utf8"));
     assert.deepEqual(
       manifest.remediation.launchServices.removals.map((record) => record.path).sort(),
-      [artifactStale, legacyPrevious, p6Stale, reviewStale].sort()
+      [
+        artifactStale,
+        legacyPrevious,
+        p6Stale,
+        repositoryExisting,
+        reviewStale,
+        trashPlain,
+        trashTimestamped
+      ].sort()
+    );
+    assert.equal(
+      manifest.remediation.launchServices.recordsBefore.filter((record) => record.path === trashPlain).length,
+      2,
+      "duplicate LS records are retained in audit facts before deduped unregister"
     );
     assert.equal(manifest.remediation.launchServices.postRegistration.uniqueTarget.path, fixture.target);
     assertPromotionTransactionClean(dependencies);
@@ -782,6 +822,37 @@ test("promotion rejects unattributed stale LaunchServices record before copy or 
     }), /not safely attributable/);
     assert.equal(copied, false, "unattributed stale LS record must fail before candidate copy");
     assert.equal(existsSync(dependencies.promotionJournalPath), false, "unattributed stale LS record must fail before journal");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion rejects same-bundle LaunchServices records outside safe repo or Auto SVGA Trash patterns", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const bundleIdentifier = fixtureBundleIdentifier(fixture.candidate);
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    let copied = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      launchServicesRecords: [
+        { bundleIdentifier, path: "/Users/huangtengxin/.Trash/Not Auto SVGA.app", nodeMissing: true },
+        { bundleIdentifier, path: "/Users/huangtengxin/Documents/not-auto-svga/Auto SVGA.app", nodeMissing: true }
+      ],
+      copyBundle: () => {
+        copied = true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /not safely attributable/);
+    assert.equal(copied, false, "unsafe same-bundle LS record must fail before candidate copy");
+    assert.equal(existsSync(dependencies.promotionJournalPath), false, "unsafe same-bundle LS record must fail before journal");
     assertBundleBinding(fixture.target, installedBefore);
     assertBundleBinding(fixture.previous, previousBefore);
   } finally {
@@ -821,6 +892,37 @@ test("promotion stops before exchange when owned stale LaunchServices record can
     assert.equal(swapped, false, "failed LS stale-record removal must stop before exchange");
     assertBundleBinding(fixture.target, installedBefore);
     assert.equal(existsSync(dependencies.promotionJournalPath), true, "journal must remain for audited recovery after remediation failure");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion postcheck rejects non-target same-bundle LaunchServices records after registration", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const bundleIdentifier = fixtureBundleIdentifier(fixture.candidate);
+    const trashRecord = "/Users/huangtengxin/.Trash/Auto SVGA.app";
+    const installedBefore = fixtureInspector(fixture.target);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    const dependencies = promoteFixtureDependencies(fixture, {
+      launchServicesRecords: [],
+      registerLaunchServices: (target) => {
+        dependencies.launchServicesRecords = [
+          { bundleIdentifier, path: target, nodeMissing: false },
+          { bundleIdentifier, path: trashRecord, nodeMissing: false }
+        ];
+        return true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /post-registration is ambiguous/);
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+    assert.equal(existsSync(dependencies.promotionJournalPath), true, "postcheck failure retains recovery authority");
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }

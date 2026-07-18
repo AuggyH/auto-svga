@@ -482,7 +482,8 @@ function sameExistingPath(left, right) {
 
 function normalizeLaunchServicesPath(recordPath) {
   if (typeof recordPath !== "string" || recordPath.trim() === "") return null;
-  const withoutScheme = recordPath.trim().replace(/^file:\/\//, "");
+  const withoutRecordId = recordPath.trim().replace(/\s+\(0x[0-9a-f]+\)$/i, "");
+  const withoutScheme = withoutRecordId.replace(/^file:\/\//, "");
   try {
     return path.resolve(decodeURI(withoutScheme));
   } catch {
@@ -496,7 +497,7 @@ export function parseLaunchServicesDump(dump, bundleIdentifier) {
   for (const block of blocks) {
     if (!block.includes(bundleIdentifier)) continue;
     const pathMatch = block.match(/^\s*(?:path|bundle path|url|URL)\s*:\s*(.+?)\s*$/im)
-      ?? block.match(/^\s*(\/.+?\.app)\s*$/im);
+      ?? block.match(/^\s*(\/.+?\.app)(?:\s+\(0x[0-9a-f]+\))?\s*$/im);
     const identifierMatch = block.match(/^\s*(?:identifier|bundle id|bundle identifier|CFBundleIdentifier)\s*:\s*([^\s]+)\s*$/im);
     const identifier = identifierMatch?.[1] ?? (block.includes(bundleIdentifier) ? bundleIdentifier : null);
     const recordPath = normalizeLaunchServicesPath(pathMatch?.[1]);
@@ -551,20 +552,26 @@ function defaultUnregisterLaunchServicesRecord(recordPath) {
   return true;
 }
 
-function isRepositoryManagedLaunchServicesStalePath(recordPath) {
+function isRepositoryManagedLaunchServicesRecordPath(recordPath) {
   const normalized = normalizeLaunchServicesPath(recordPath);
   if (!normalized || path.basename(normalized) !== "Auto SVGA.app") return false;
   const safeRoots = [
     "/Users/huangtengxin/.codex/worktrees",
-    "/Users/huangtengxin/.codex/visualizations",
-    "/private/tmp",
-    "/private/var/folders/vh/lkxvz3qn4wzbk5mbwxc9fb9r0000gn/T"
+    "/Users/huangtengxin/Documents/auto-svga"
   ];
   if (!safeRoots.some((root) => normalized === root || normalized.startsWith(`${root}${path.sep}`))) return false;
   return normalized.includes(`${path.sep}review${path.sep}`)
     || normalized.includes(`${path.sep}.artifacts${path.sep}`)
     || normalized.includes(`${path.sep}auto-svga${path.sep}`)
     || normalized.includes(`${path.sep}auto-svga-`);
+}
+
+function isUserTrashAutoSvgaLaunchServicesRecordPath(recordPath) {
+  const normalized = normalizeLaunchServicesPath(recordPath);
+  if (!normalized) return false;
+  const trashRoot = "/Users/huangtengxin/.Trash";
+  if (normalized !== trashRoot && !normalized.startsWith(`${trashRoot}${path.sep}`)) return false;
+  return /^Auto SVGA.*\.app$/.test(path.basename(normalized));
 }
 
 function launchServicesRecordPathMatches(recordPath, targetPath) {
@@ -601,13 +608,31 @@ function classifyLaunchServicesRecord({
     return { classification: "removable", reason: "legacy-previous-app" };
   }
   const exists = pathExists(record.path);
-  if (!exists && isRepositoryManagedLaunchServicesStalePath(record.path)) {
-    return { classification: "removable", reason: "repository-managed-missing-record" };
+  if (isRepositoryManagedLaunchServicesRecordPath(record.path)) {
+    return {
+      classification: "removable",
+      reason: exists ? "repository-managed-existing-record" : "repository-managed-missing-record"
+    };
+  }
+  if (isUserTrashAutoSvgaLaunchServicesRecordPath(record.path)) {
+    return {
+      classification: "removable",
+      reason: exists ? "user-trash-auto-svga-existing-record" : "user-trash-auto-svga-missing-record"
+    };
   }
   return {
     classification: "blocked",
     reason: exists ? "same-bundle-id-usable-non-target-record" : "same-bundle-id-unattributed-missing-record"
   };
+}
+
+function uniqueRemovalsByPath(records) {
+  const removals = new Map();
+  for (const record of records) {
+    if (record.classification !== "removable") continue;
+    if (!removals.has(record.path)) removals.set(record.path, compactLaunchServicesRecord(record));
+  }
+  return Array.from(removals.values());
 }
 
 function planLaunchServicesRecordRemediation({
@@ -634,9 +659,7 @@ function planLaunchServicesRecordRemediation({
     target,
     legacyBackupTarget,
     records: classifiedRecords.map(compactLaunchServicesRecord),
-    removals: classifiedRecords
-      .filter((record) => record.classification === "removable")
-      .map(compactLaunchServicesRecord)
+    removals: uniqueRemovalsByPath(classifiedRecords)
   };
 }
 
