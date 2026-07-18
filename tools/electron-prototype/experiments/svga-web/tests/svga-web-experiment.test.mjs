@@ -384,6 +384,130 @@ test("short-term playback loop toggle updates player loop state", async () => {
   assert.equal(second.looping, true);
 });
 
+test("short-term Edit reserved keeps the shared playback control context", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const editView = page.match(/<section class="view editView"[\s\S]*?<\/section>\s*<div class="canvasToast"/)?.[0] ?? "";
+
+  assert.match(editView, /data-page-state="Edit reserved"/);
+  assert.match(editView, /class="playbackBar"[^>]*data-component="PlaybackControls"/);
+  assert.match(editView, /data-component="PlaybackButtonGroup"/);
+  assert.match(editView, /data-action="replay"/);
+  assert.match(editView, /data-action="play-pause"/);
+  assert.match(editView, /data-action="loop-toggle"/);
+  assert.match(editView, /id="editPlaybackProgress"/);
+  assert.match(editView, /id="editPlaybackTime"/);
+  assert.doesNotMatch(editView, /fullscreen|全屏/iu);
+});
+
+test("short-term keyed playback controls operate Edit without mutating Preview", async () => {
+  const {
+    replayPlaybackState,
+    togglePlaybackState
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-playback-control-model.mjs")).href);
+  const { togglePlaybackLoopState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-playback-loop-model.mjs")).href);
+  const calls = [];
+  const state = {
+    primaryPlaybackLooping: true,
+    primaryPlayback: { playing: true, looping: true },
+    editPlaybackLooping: true,
+    editPlayback: {
+      playing: true,
+      hasPlayed: true,
+      looping: true,
+      player: {
+        pause() { calls.push("edit:pause"); },
+        start() { calls.push("edit:start"); },
+        clear() { calls.push("edit:clear"); }
+      }
+    }
+  };
+
+  togglePlaybackState(state, "edit");
+  assert.equal(state.editPlayback.playing, false);
+  assert.equal(state.primaryPlayback.playing, true);
+  assert.deepEqual(calls, ["edit:pause"]);
+
+  togglePlaybackState(state, "edit");
+  assert.equal(state.editPlayback.playing, true);
+  assert.deepEqual(calls, ["edit:pause", "edit:start"]);
+
+  replayPlaybackState(state, "edit");
+  assert.equal(state.editPlayback.playing, true);
+  assert.deepEqual(calls, ["edit:pause", "edit:start", "edit:clear", "edit:start"]);
+
+  const loopView = togglePlaybackLoopState(state, "edit");
+  assert.equal(loopView.looping, false);
+  assert.equal(state.editPlaybackLooping, false);
+  assert.equal(state.editPlayback.looping, false);
+  assert.equal(state.primaryPlaybackLooping, true);
+  assert.equal(state.primaryPlayback.looping, true);
+});
+
+test("short-term command state synchronizes duplicate Preview and Edit playback controls", async () => {
+  const { applyCommandState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);
+  const originalDocument = globalThis.document;
+  const createButton = () => ({
+    disabled: false,
+    title: "",
+    dataset: {},
+    attributes: {},
+    selected: false,
+    classList: {
+      toggle(_name, selected) { this.owner.selected = selected; },
+      owner: undefined
+    },
+    setAttribute(name, value) { this.attributes[name] = String(value); }
+  });
+  const playButtons = [createButton(), createButton()];
+  const replayButtons = [createButton(), createButton()];
+  const loopButtons = [createButton(), createButton()];
+  [...playButtons, ...replayButtons, ...loopButtons].forEach((button) => {
+    button.classList.owner = button;
+  });
+  const buttonsByAction = new Map([
+    ["play-pause", playButtons],
+    ["replay", replayButtons],
+    ["loop-toggle", loopButtons]
+  ]);
+
+  globalThis.document = {
+    querySelector() { return null; },
+    querySelectorAll(selector) {
+      const action = selector.match(/\[data-action='([^']+)'\]/)?.[1];
+      return buttonsByAction.get(action) ?? [];
+    }
+  };
+
+  try {
+    applyCommandState({
+      actionStates: {
+        "play-pause": { enabled: true, reason: "" },
+        replay: { enabled: true, reason: "" },
+        "loop-toggle": { enabled: true, reason: "" }
+      },
+      headerSaveAsVisible: false,
+      playPauseCopy: "暂停",
+      loopEnabled: false
+    });
+
+    for (const button of playButtons) {
+      assert.equal(button.dataset.playbackState, "playing");
+      assert.equal(button.attributes["aria-label"], "暂停");
+      assert.equal(button.title, "暂停");
+    }
+    for (const button of replayButtons) {
+      assert.equal(button.attributes["aria-label"], "重播");
+      assert.equal(button.title, "重播");
+    }
+    for (const button of loopButtons) {
+      assert.equal(button.selected, false);
+      assert.equal(button.attributes["aria-pressed"], "false");
+    }
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("short-term save banner states expose direct accessible page-state semantics", async () => {
   const {
     bannerTone,
@@ -8705,24 +8829,33 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackSurface, /export function stopShortTermPlayback/);
   assert.match(shortTermPlaybackSurface, /export function stopAllShortTermPlayback/);
   assert.match(shortTermPlaybackSurface, /export function toggleShortTermPrimaryPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function toggleShortTermPlayback/);
   assert.match(shortTermPlaybackSurface, /export function replayShortTermPrimaryPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function replayShortTermPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function toggleShortTermPlaybackLoop/);
+  assert.match(shortTermPlaybackSurface, /export function shortTermActivePlaybackKey/);
   assert.match(shortTermPlaybackSurface, /export function renderShortTermPlaybackProgress/);
   assert.match(shortTermController, /requestAnimationFrame\(tick\)/);
   assert.match(shortTermController, /cancelAnimationFrame\(playbackProgressFrame\)/);
-  assert.match(
-    shortTermController,
-    /if \(key === "primary"\) \{\s+hidePlaybackFailureRecovery\(nodes\);\s+startPlaybackProgressLoop\(\);\s+\}/
-  );
+  assert.match(shortTermController, /if \(key === "primary"\) \{\s+hidePlaybackFailureRecovery\(nodes\);\s+\}/);
+  assert.match(shortTermController, /if \(key === "primary" \|\| key === "edit"\) \{\s+startPlaybackProgressLoop\(\);\s+\}/);
+  assert.match(shortTermController, /state\.primaryPlayback \|\| state\.editPlayback \? requestAnimationFrame\(tick\) : 0/);
+  assert.match(shortTermController, /playbackProgress: nodes\.editPlaybackProgress/);
+  assert.match(shortTermController, /playbackTime: nodes\.editPlaybackTime/);
+  assert.match(shortTermController, /key: shortTermActivePlaybackKey\(state\)/);
   assert.match(shortTermPlaybackSurface, /export function clearShortTermPlaybackCanvas/);
   assert.match(shortTermPlaybackSurface, /export function shortTermPlayerPrototype/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
   assert.match(shortTermPlaybackModel, /export async function mountPlayback/);
   assert.match(shortTermPlaybackModel, /export function stopPlayback/);
   assert.match(shortTermPlaybackModel, /export function stopAllPlayback/);
+  assert.match(shortTermPlaybackModel, /export function togglePlayback/);
   assert.match(shortTermPlaybackModel, /export function togglePrimaryPlayback/);
+  assert.match(shortTermPlaybackModel, /export function replayPlayback/);
   assert.match(shortTermPlaybackModel, /export function replayPrimaryPlayback/);
+  assert.match(shortTermPlaybackModel, /export function togglePlaybackLoop/);
   assert.match(shortTermPlaybackModel, /export function togglePrimaryPlaybackLoop/);
-  assert.match(shortTermPlaybackModel, /togglePrimaryPlaybackLoopState\(playbackState\)/);
+  assert.match(shortTermPlaybackModel, /togglePlaybackLoopState\(playbackState, key\)/);
   assert.match(shortTermPlaybackModel, /playback\.player\.set\(\{ loop: looping, fillMode: FILL_MODE\.FORWARDS, noExecutionDelay: false \}\)/);
   assert.match(shortTermPlaybackSurface, /export function toggleShortTermPrimaryPlaybackLoop/);
   assert.match(shortTermActionBridge, /toggleLoop: handlers\.togglePrimaryPlaybackLoop/);

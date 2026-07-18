@@ -2,13 +2,17 @@ import {
   clearCanvas,
   mountPlayback,
   playbackProgressView,
+  replayPlayback,
   replayPrimaryPlayback,
   stopAllPlayback,
   stopPlayback,
+  togglePlayback,
+  togglePlaybackLoop,
   togglePrimaryPlaybackLoop,
   svgaWebPlayerPrototype,
   togglePrimaryPlayback
 } from "./short-term-macos-playback-model.mjs";
+import { activePlaybackKey } from "./short-term-macos-playback-control-model.mjs";
 
 export async function mountShortTermPlayback({
   state,
@@ -40,12 +44,28 @@ export function toggleShortTermPrimaryPlayback({ state, onPlaybackStateChange })
   togglePrimaryPlayback(state, onPlaybackStateChange);
 }
 
+export function toggleShortTermPlayback({ state, key, onPlaybackStateChange }) {
+  return togglePlayback(state, key, onPlaybackStateChange);
+}
+
 export function replayShortTermPrimaryPlayback({ state, onPlaybackStateChange }) {
   replayPrimaryPlayback(state, onPlaybackStateChange);
 }
 
+export function replayShortTermPlayback({ state, key, onPlaybackStateChange }) {
+  return replayPlayback(state, key, onPlaybackStateChange);
+}
+
 export function toggleShortTermPrimaryPlaybackLoop({ state, onPlaybackStateChange }) {
   togglePrimaryPlaybackLoop(state, onPlaybackStateChange);
+}
+
+export function toggleShortTermPlaybackLoop({ state, key, onPlaybackStateChange }) {
+  return togglePlaybackLoop(state, key, onPlaybackStateChange);
+}
+
+export function shortTermActivePlaybackKey(state) {
+  return activePlaybackKey(state);
 }
 
 export function renderShortTermPlaybackProgress(nodes, playback) {

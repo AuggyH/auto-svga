@@ -22,12 +22,13 @@ import {
 import {
   clearShortTermPlaybackCanvas,
   mountShortTermPlayback,
-  replayShortTermPrimaryPlayback,
+  replayShortTermPlayback,
   renderShortTermPlaybackProgress,
+  shortTermActivePlaybackKey,
   stopAllShortTermPlayback,
   stopShortTermPlayback,
-  toggleShortTermPrimaryPlaybackLoop,
-  toggleShortTermPrimaryPlayback
+  toggleShortTermPlayback,
+  toggleShortTermPlaybackLoop
 } from "./short-term-macos-playback-surface.mjs";
 import {
   enterShortTermGeneralCompare,
@@ -111,6 +112,10 @@ export function createShortTermAppController({ bridge, nodes, state }) {
 
   function renderPlaybackProgress() {
     renderShortTermPlaybackProgress(nodes, state.primaryPlayback);
+    renderShortTermPlaybackProgress({
+      playbackProgress: nodes.editPlaybackProgress,
+      playbackTime: nodes.editPlaybackTime
+    }, state.editPlayback);
   }
 
   function stopPlaybackProgressLoop() {
@@ -123,7 +128,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     if (playbackProgressFrame) return;
     const tick = () => {
       renderPlaybackProgress();
-      playbackProgressFrame = state.primaryPlayback ? requestAnimationFrame(tick) : 0;
+      playbackProgressFrame = state.primaryPlayback || state.editPlayback ? requestAnimationFrame(tick) : 0;
     };
     tick();
   }
@@ -150,11 +155,13 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       return;
     }
     if (mode === "edit") {
+      stopPlayback("primary");
       setView("edit");
       renderEditReserved();
       mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
       return;
     }
+    stopPlayback("edit");
     setTab("overview");
     setView("preview");
     mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
@@ -555,6 +562,8 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     });
     if (key === "primary") {
       hidePlaybackFailureRecovery(nodes);
+    }
+    if (key === "primary" || key === "edit") {
       startPlaybackProgressLoop();
     }
     return playback;
@@ -571,7 +580,9 @@ export function createShortTermAppController({ bridge, nodes, state }) {
 
   function stopPlayback(key) {
     stopShortTermPlayback({ state, key });
-    if (key === "primary") stopPlaybackProgressLoop();
+    if ((key === "primary" || key === "edit") && !state.primaryPlayback && !state.editPlayback) {
+      stopPlaybackProgressLoop();
+    }
   }
 
   function stopAllPlayback() {
@@ -580,15 +591,27 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   function togglePrimaryPlayback() {
-    toggleShortTermPrimaryPlayback({ state, onPlaybackStateChange: renderCommandState });
+    toggleShortTermPlayback({
+      state,
+      key: shortTermActivePlaybackKey(state),
+      onPlaybackStateChange: renderCommandState
+    });
   }
 
   function replayPrimary() {
-    replayShortTermPrimaryPlayback({ state, onPlaybackStateChange: renderCommandState });
+    replayShortTermPlayback({
+      state,
+      key: shortTermActivePlaybackKey(state),
+      onPlaybackStateChange: renderCommandState
+    });
   }
 
   function togglePrimaryPlaybackLoop() {
-    toggleShortTermPrimaryPlaybackLoop({ state, onPlaybackStateChange: renderCommandState });
+    toggleShortTermPlaybackLoop({
+      state,
+      key: shortTermActivePlaybackKey(state),
+      onPlaybackStateChange: renderCommandState
+    });
   }
 
   function clearCanvas(canvas) {

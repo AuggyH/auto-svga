@@ -17,6 +17,7 @@ export function createShortTermInitialState() {
     activeOutput: undefined,
     cleanSaveAsVisible: false,
     primaryPlaybackLooping: true,
+    editPlaybackLooping: true,
     primaryPlayback: undefined,
     compareAPlayback: undefined,
     compareBPlayback: undefined,

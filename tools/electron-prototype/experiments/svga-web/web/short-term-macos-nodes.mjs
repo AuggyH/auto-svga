@@ -31,6 +31,8 @@ export function collectShortTermNodes() {
     editCanvas: document.querySelector("#editCanvas"),
     playbackProgress: document.querySelector("#playbackProgress"),
     playbackTime: document.querySelector("#playbackTime"),
+    editPlaybackProgress: document.querySelector("#editPlaybackProgress"),
+    editPlaybackTime: document.querySelector("#editPlaybackTime"),
     playbackMeta: document.querySelector("#playbackMeta"),
     factGrid: document.querySelector("#factGrid"),
     assetListHeading: document.querySelector("#assetListHeading"),

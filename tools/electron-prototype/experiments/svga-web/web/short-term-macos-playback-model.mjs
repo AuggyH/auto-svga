@@ -1,6 +1,10 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import { toParserArrayBuffer } from "./short-term-macos-byte-model.mjs";
-import { togglePrimaryPlaybackLoopState } from "./short-term-macos-playback-loop-model.mjs";
+import {
+  replayPlaybackState,
+  togglePlaybackState
+} from "./short-term-macos-playback-control-model.mjs";
+import { togglePlaybackLoopState } from "./short-term-macos-playback-loop-model.mjs";
 import { playbackCanvasFitSize } from "./short-term-macos-playback-fit-model.mjs";
 
 export async function mountPlayback({
@@ -66,36 +70,37 @@ export function stopAllPlayback(playbackState, keys = ["primary", "compareA", "c
   for (const key of keys) stopPlayback({ key, playbackState });
 }
 
+export function togglePlayback(playbackState, key, onPlaybackStateChange = () => {}) {
+  const playback = togglePlaybackState(playbackState, key);
+  if (playback) onPlaybackStateChange();
+  return playback;
+}
+
 export function togglePrimaryPlayback(playbackState, onPlaybackStateChange = () => {}) {
-  const playback = playbackState.primaryPlayback;
-  if (!playback) return;
-  if (playback.playing) {
-    playback.player.pause();
-    playback.playing = false;
-  } else {
-    playback.player.start();
-    playback.playing = true;
-    playback.hasPlayed = true;
-  }
-  onPlaybackStateChange();
+  return togglePlayback(playbackState, "primary", onPlaybackStateChange);
+}
+
+export function replayPlayback(playbackState, key, onPlaybackStateChange = () => {}) {
+  const playback = replayPlaybackState(playbackState, key);
+  if (playback) onPlaybackStateChange();
+  return playback;
 }
 
 export function replayPrimaryPlayback(playbackState, onPlaybackStateChange = () => {}) {
-  const playback = playbackState.primaryPlayback;
-  if (!playback) return;
-  playback.player.clear();
-  playback.player.start();
-  playback.playing = true;
-  playback.hasPlayed = true;
-  onPlaybackStateChange();
+  return replayPlayback(playbackState, "primary", onPlaybackStateChange);
 }
 
-export function togglePrimaryPlaybackLoop(playbackState, onPlaybackStateChange = () => {}) {
-  const { playback, looping } = togglePrimaryPlaybackLoopState(playbackState);
+export function togglePlaybackLoop(playbackState, key, onPlaybackStateChange = () => {}) {
+  const { playback, looping } = togglePlaybackLoopState(playbackState, key);
   if (playback) {
     playback.player.set({ loop: looping, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
   }
   onPlaybackStateChange();
+  return { playback, looping };
+}
+
+export function togglePrimaryPlaybackLoop(playbackState, onPlaybackStateChange = () => {}) {
+  return togglePlaybackLoop(playbackState, "primary", onPlaybackStateChange);
 }
 
 export function clearCanvas(canvas) {

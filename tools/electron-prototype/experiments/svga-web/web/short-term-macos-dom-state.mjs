@@ -75,23 +75,20 @@ export function applyCommandState(commandState) {
   if (headerSaveOverwrite) headerSaveOverwrite.hidden = true;
   if (headerSaveAs) headerSaveAs.hidden = !commandState.headerSaveAsVisible;
   if (headerSaveCluster) headerSaveCluster.hidden = !commandState.headerSaveAsVisible;
-  const playPauseButton = document.querySelector("[data-action='play-pause']");
-  if (playPauseButton) {
+  document.querySelectorAll("[data-action='play-pause']").forEach((playPauseButton) => {
     const playing = commandState.playPauseCopy === "暂停";
     playPauseButton.dataset.playbackState = playing ? "playing" : "paused";
     playPauseButton.setAttribute("aria-label", commandState.playPauseCopy);
     if (!playPauseButton.disabled) playPauseButton.title = commandState.playPauseCopy;
-  }
-  const replayButton = document.querySelector("[data-action='replay']");
-  if (replayButton) {
+  });
+  document.querySelectorAll("[data-action='replay']").forEach((replayButton) => {
     replayButton.setAttribute("aria-label", "重播");
     if (!replayButton.disabled) replayButton.title = "重播";
-  }
-  const loopButton = document.querySelector("[data-action='loop-toggle']");
-  if (loopButton) {
+  });
+  document.querySelectorAll("[data-action='loop-toggle']").forEach((loopButton) => {
     loopButton.classList.toggle("isSelected", commandState.loopEnabled === true);
     loopButton.setAttribute("aria-pressed", commandState.loopEnabled === true ? "true" : "false");
     loopButton.setAttribute("aria-label", "循环播放");
     if (!loopButton.disabled) loopButton.title = "循环播放";
-  }
+  });
 }
