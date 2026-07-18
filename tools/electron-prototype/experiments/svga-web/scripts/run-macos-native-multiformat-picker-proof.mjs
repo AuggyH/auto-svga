@@ -241,6 +241,46 @@ function run(argv) {
     return null;
   }
 
+  function exactFileRow(panel) {
+    let contents = [];
+    try { contents = panel.entireContents(); } catch {}
+    for (const element of contents) {
+      let name = "";
+      try { name = String(element.name() || ""); } catch {}
+      if (name !== basename) continue;
+      let candidate = element;
+      for (let depth = 0; depth < 8; depth += 1) {
+        try {
+          if (String(candidate.role() || "") === "AXRow") return candidate;
+          candidate = candidate.parent();
+        } catch {
+          break;
+        }
+      }
+    }
+    return null;
+  }
+
+  function selectExactFileRow(panel) {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const row = exactFileRow(panel);
+      if (row) {
+        try { row.click(); } catch {}
+        delay(0.1);
+        let selected = false;
+        try { selected = Boolean(row.selected()); } catch {}
+        if (!selected) {
+          try { row.selected.set(true); } catch {}
+          delay(0.1);
+          try { selected = Boolean(row.selected()); } catch {}
+        }
+        if (selected) return { row, role: String(row.role() || "") };
+      }
+      delay(0.1);
+    }
+    return null;
+  }
+
   let panel = null;
   for (let attempt = 0; attempt < 80 && !panel; attempt += 1) {
     panel = ownerPanel();
@@ -252,9 +292,9 @@ function run(argv) {
   events.keystroke(directoryPath);
   events.keyCode(36);
   delay(0.9);
-  events.keystroke(basename);
-  delay(0.7);
   panel = ownerPanel();
+  const selection = panel ? selectExactFileRow(panel) : null;
+  if (!selection) throw new Error("native_file_row_not_selected");
   let button = panel ? defaultButton(panel) : null;
   for (let attempt = 0; attempt < 40 && !button; attempt += 1) {
     delay(0.1);
@@ -271,7 +311,10 @@ function run(argv) {
     submitted: enabled,
     buttonName: name,
     requestedBasename: basename,
-    selectionMethod: "bounded-keyboard-basename"
+    selectedBasename: basename,
+    selectedRole: selection.role,
+    selected: true,
+    selectionMethod: "exact-ax-row"
   });
 }`;
   const output = execFileSync("/usr/bin/osascript", [
