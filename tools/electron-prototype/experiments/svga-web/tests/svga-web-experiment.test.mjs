@@ -120,9 +120,10 @@ async function exposePreloadGlobals(productMilestoneId, hostBoundaryMode = "form
 }
 
 test("short-term metric values split units only for simple numeric facts", async () => {
-  const { renderMetricValueHtml, renderOptimizationMetricCellHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
+  const { formatDisplayDetailCopy, renderMetricValueHtml, renderOptimizationMetricCellHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
   assert.equal(renderMetricValueHtml("104.5 KiB"), "104.5 <span class=\"factValueUnit\">KiB</span>");
-  assert.equal(renderMetricValueHtml("300 x 300 px"), "300 x 300 <span class=\"factValueUnit\">px</span>");
+  assert.equal(renderMetricValueHtml("300 x 300 px"), "300×300 <span class=\"factValueUnit\">px</span>");
+  assert.equal(formatDisplayDetailCopy("VAP 融合图片 · 120 x 80 · 1.5 KiB"), "VAP 融合图片 · 120×80 · 1.5 KiB");
   assert.equal(renderMetricValueHtml("低风险 / 估算 125.6 KiB"), "低风险 / 估算 125.6 KiB");
   assert.match(renderOptimizationMetricCellHtml({
     label: "文件体积",
@@ -130,6 +131,228 @@ test("short-term metric values split units only for simple numeric facts", async
     after: "242 B",
     improved: true
   }), /302 <span class="factValueUnit">B<\/span>[\s\S]*242 <span class="factValueUnit">B<\/span>/);
+});
+
+test("short-term playback failure preserves the inspected workspace while parse failure clears it", async () => {
+  const { loadShortTermOpenedSource } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-file-surface.mjs")).href);
+  const { hidePlaybackFailureRecovery, showPlaybackFailureRecovery } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs")).href);
+  const createNodes = () => ({
+    errorMessage: { textContent: "" },
+    loadingMessage: { textContent: "" },
+    playbackErrorRecovery: { hidden: true },
+    playbackErrorMessage: { textContent: "" },
+    runtimeTextOverlay: { hidden: false, textContent: "preview" }
+  });
+  const createState = () => ({
+    activeOutput: { kind: "replacement" },
+    textPreviewValues: { title: "Changed" }
+  });
+  const inspectedModel = {
+    replaceableElements: {
+      images: [{ imageKey: "avatar" }],
+      texts: [{ textKey: "title" }]
+    }
+  };
+
+  const playbackNodes = createNodes();
+  const playbackState = createState();
+  const playbackViews = [];
+  let playbackFailure;
+  let terminalFailure;
+  await loadShortTermOpenedSource({
+    nodes: playbackNodes,
+    state: playbackState,
+    bytes: Uint8Array.from([1, 2, 3]),
+    displayName: "playback-error.svga",
+    sourceId: "source:playback-error",
+    clearTransientOutput() {
+      playbackState.activeOutput = undefined;
+    },
+    setView(view) {
+      playbackState.view = view;
+      playbackViews.push(view);
+    },
+    async inspectShortTerm() {
+      return inspectedModel;
+    },
+    renderPreviewModel() {},
+    async mountPrimaryPlayback() {
+      throw new Error("播放器挂载失败");
+    },
+    stopAllPlayback() {
+      playbackState.primaryPlayback = undefined;
+    },
+    showFailure(error) {
+      terminalFailure = error;
+    },
+    showPlaybackFailure(error) {
+      playbackFailure = error;
+    }
+  });
+
+  assert.deepEqual(playbackViews, ["loading", "preview"]);
+  assert.equal(playbackState.view, "preview");
+  assert.equal(playbackState.displayName, "playback-error.svga");
+  assert.equal(playbackState.sourceId, "source:playback-error");
+  assert.equal(playbackState.sourceBytes.byteLength, 3);
+  assert.equal(playbackState.model, inspectedModel);
+  assert.equal(playbackState.selectedImageKey, "avatar");
+  assert.equal(playbackState.selectedTextKey, "title");
+  assert.equal(playbackFailure?.message, "播放器挂载失败");
+  assert.equal(terminalFailure, undefined);
+  showPlaybackFailureRecovery(playbackNodes);
+  assert.equal(playbackNodes.playbackErrorRecovery.hidden, false);
+  assert.equal(playbackNodes.playbackErrorMessage.textContent, "动画解析失败，无法正常播放");
+  hidePlaybackFailureRecovery(playbackNodes);
+  assert.equal(playbackNodes.playbackErrorRecovery.hidden, true);
+
+  const parseNodes = createNodes();
+  const parseState = createState();
+  let parseFailure;
+  let parsePlaybackFailure;
+  await loadShortTermOpenedSource({
+    nodes: parseNodes,
+    state: parseState,
+    bytes: Uint8Array.from([4, 5, 6]),
+    displayName: "invalid.svga",
+    sourceId: "source:invalid",
+    clearTransientOutput() {
+      parseState.activeOutput = undefined;
+    },
+    setView(view) {
+      parseState.view = view;
+    },
+    async inspectShortTerm() {
+      throw new Error("文件解析失败");
+    },
+    renderPreviewModel() {},
+    async mountPrimaryPlayback() {
+      throw new Error("不应挂载播放");
+    },
+    stopAllPlayback() {
+      parseState.primaryPlayback = undefined;
+    },
+    showFailure(error) {
+      parseFailure = error;
+      parseState.view = "failed";
+    },
+    showPlaybackFailure(error) {
+      parsePlaybackFailure = error;
+    }
+  });
+
+  assert.equal(parseState.view, "failed");
+  assert.equal(parseState.sourceBytes, undefined);
+  assert.equal(parseState.model, undefined);
+  assert.equal(parseFailure?.message, "文件解析失败");
+  assert.equal(parsePlaybackFailure, undefined);
+});
+
+test("short-term thumbnail renderer follows frozen image sequence and audio variants", async () => {
+  const { renderThumbnailHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-thumbnail-renderers.mjs")).href);
+  const imageDataUrl = "data:image/png;base64,AA==";
+  const model = {
+    thumbnails: {
+      imageDataUrlsByResourceId: {
+        image_0: imageDataUrl,
+        image_1: imageDataUrl,
+        image_2: imageDataUrl,
+        image_3: imageDataUrl
+      }
+    }
+  };
+
+  const imageHtml = renderThumbnailHtml({ type: "image", resourceIds: ["image_0"] }, model);
+  const sequenceHtml = renderThumbnailHtml({
+    type: "sequence-four-grid",
+    resourceIds: ["image_0", "image_1", "image_2", "image_3"]
+  }, model);
+  const audioHtml = renderThumbnailHtml({ type: "music" }, model);
+  const emptyAudioHtml = renderThumbnailHtml({ type: "audio-empty" }, model);
+
+  assert.equal((imageHtml.match(/<img /g) ?? []).length, 1);
+  assert.equal((sequenceHtml.match(/<img /g) ?? []).length, 4);
+  assert.match(audioHtml, /data-component="ThumbnailAudioIcon"/);
+  assert.match(audioHtml, /data-state="available"/);
+  assert.match(emptyAudioHtml, /data-component="ThumbnailAudioIcon"/);
+  assert.match(emptyAudioHtml, /data-state="empty"/);
+  assert.doesNotMatch(`${audioHtml}${emptyAudioHtml}`, />音频<|无音频/u);
+});
+
+test("short-term replaceable rows follow frozen image and text composition", async () => {
+  const {
+    createReplaceableImageRow,
+    createTextElementRow
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-renderers.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const imageRow = createReplaceableImageRow({
+      displayName: "avatar",
+      imageKey: "avatar",
+      resourceId: "image_0",
+      dimensions: "300 x 300",
+      fileSize: "41.8 KB"
+    }, 0, {
+      model: { thumbnails: { imageDataUrlsByResourceId: {} } },
+      selected: false,
+      renaming: false,
+      directReplace: true
+    });
+    const textRow = createTextElementRow({
+      displayName: "username",
+      textKey: "username",
+      initialText: "设计师命名，可替换",
+      inputValue: "username",
+      placeholder: "输入文字"
+    }, 0, {
+      selected: false,
+      replacementActive: false
+    });
+
+    for (const row of [imageRow, textRow]) {
+      assert.doesNotMatch(row.innerHTML, /class="rowIndex"/);
+      assert.match(row.innerHTML, /class="replaceableIdentity"/);
+    }
+    assert.match(imageRow.innerHTML, /data-component="ThumbnailFrame" data-variant="image"/);
+    assert.match(imageRow.innerHTML, /class="replacementRowActions"/);
+    assert.match(textRow.innerHTML, /data-component="ThumbnailFrame" data-variant="text"/);
+    assert.match(textRow.innerHTML, /data-component="ThumbnailTextIcon"/);
+    assert.match(textRow.innerHTML, /class="runtimeTextActions"/);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("short-term right surface normalizes core fact labels to frozen design copy", async () => {
+  const {
+    factDisplayLabel,
+    renderCompareFactCellHtml,
+    renderOverviewFactCellHtml
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
+  const legacyFacts = [
+    { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "warning" },
+    { id: "decodedMemory", label: "估算内存", value: "20.6 MiB", status: "pass" },
+    { id: "canvas", label: "画布", value: "300 x 300 px", status: "pass" },
+    { id: "fps", label: "FPS", value: "30 fps", status: "pass" }
+  ];
+  const labels = legacyFacts.map(factDisplayLabel);
+  const html = [
+    renderOverviewFactCellHtml(legacyFacts[0]),
+    renderOverviewFactCellHtml(legacyFacts[1]),
+    renderCompareFactCellHtml(legacyFacts[2]),
+    renderCompareFactCellHtml(legacyFacts[3])
+  ].join("");
+
+  assert.deepEqual(labels, ["文件大小", "内存占用", "画布尺寸", "帧率"]);
+  assert.match(html, /文件大小/);
+  assert.match(html, /内存占用/);
+  assert.match(html, /画布尺寸/);
+  assert.match(html, /帧率/);
+  assert.doesNotMatch(html, /文件体积|估算内存|>画布<|>FPS</);
+  assert.match(html, /aria-label="文件大小可优化"/);
 });
 
 test("short-term playback loop toggle updates player loop state", async () => {
@@ -163,9 +386,10 @@ test("short-term save banner states expose direct accessible page-state semantic
   } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs")).href);
   const { showSaveFeedbackBanner, clearSaveFeedbackBanner } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs")).href);
 
-  assert.equal(bannerTone("正在验证保存输出。"), "loading");
-  assert.equal(bannerTone("已保存并通过验证。"), "success");
-  assert.equal(bannerTone("保存失败。"), "danger");
+  assert.equal(bannerTone("正在保存并验证输出…"), "loading");
+  assert.equal(bannerTone("优化执行中…"), "loading");
+  assert.equal(bannerTone("已保存"), "success");
+  assert.equal(bannerTone("保存失败，请重试"), "danger");
   assert.equal(bannerTone("已取消保存。"), "warning");
   assert.deepEqual(saveBannerA11yState("loading"), {
     role: "status",
@@ -178,11 +402,12 @@ test("short-term save banner states expose direct accessible page-state semantic
     ariaBusy: "false"
   });
 
-  const loadingView = saveBannerView("正在验证保存输出。", "写入后会读取文件并校验哈希。");
+  const loadingView = saveBannerView("正在保存并验证输出…", "");
   assert.equal(loadingView.status, "loading");
   assert.equal(loadingView.role, "status");
   assert.equal(loadingView.ariaBusy, "true");
-  assert.match(loadingView.html, /正在验证保存输出。/);
+  assert.match(loadingView.html, /正在保存并验证输出…/);
+  assert.doesNotMatch(loadingView.html, /<span>/);
 
   const attributes = new Map();
   const node = {
@@ -198,7 +423,7 @@ test("short-term save banner states expose direct accessible page-state semantic
     }
   };
 
-  const failedView = showSaveFeedbackBanner(node, "保存失败。", "源文件没有被修改。");
+  const failedView = showSaveFeedbackBanner(node, "保存失败，请重试", "源文件没有被修改。");
   assert.equal(failedView.status, "danger");
   assert.equal(node.hidden, false);
   assert.equal(node.dataset.status, "danger");
@@ -216,12 +441,127 @@ test("short-term save banner states expose direct accessible page-state semantic
 
   assert.equal(sourceUnmodifiedMessage("磁盘写入失败。"), "磁盘写入失败。 源文件没有被修改。");
   const saveSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-save-surface.mjs"), "utf8");
+  const commandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
   assert.match(saveSurface, /import \{ sourceUnmodifiedMessage \} from "\.\/short-term-macos-feedback-model\.mjs";/);
-  assert.match(saveSurface, /showSaveBanner\("保存失败。", sourceUnmodifiedMessage/);
+  assert.match(saveSurface, /showSaveBanner\("正在保存并验证输出…", ""\)/);
+  assert.match(saveSurface, /showSaveBanner\("已保存", ""\)/);
+  assert.match(saveSurface, /showSaveBanner\("保存失败，请重试", sourceUnmodifiedMessage/);
+  assert.match(commandState, /正在保存并验证输出/);
+  assert.doesNotMatch(commandState, /正在验证保存输出/);
+});
+
+test("short-term optimization running state uses the Figma progress hierarchy without fabricated values", async () => {
+  const { renderOptimizationRunningState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-optimization-renderers.mjs")).href);
+  const attributes = new Map();
+  const nodes = {
+    panelOptimization: {
+      dataset: {},
+      setAttribute(name, value) {
+        attributes.set(name, value);
+      }
+    },
+    optimizationProgress: { hidden: true },
+    optimizationProgressBar: { attributes: { role: "progressbar" } },
+    runOptimizationButton: { disabled: false },
+    closeOptimizationButton: { disabled: false }
+  };
+
+  renderOptimizationRunningState(nodes, true);
+
+  assert.equal(nodes.panelOptimization.dataset.workflowState, "running");
+  assert.equal(attributes.get("aria-busy"), "true");
+  assert.equal(nodes.optimizationProgress.hidden, false);
+  assert.equal(nodes.runOptimizationButton.disabled, true);
+  assert.equal(nodes.closeOptimizationButton.disabled, true);
+  assert.equal(nodes.optimizationProgressBar.attributes.role, "progressbar");
+  assert.equal(Object.hasOwn(nodes.optimizationProgressBar.attributes, "aria-valuenow"), false);
+
+  renderOptimizationRunningState(nodes, false);
+
+  assert.equal(nodes.panelOptimization.dataset.workflowState, "idle");
+  assert.equal(attributes.get("aria-busy"), "false");
+  assert.equal(nodes.optimizationProgress.hidden, true);
+  assert.equal(nodes.closeOptimizationButton.disabled, false);
+
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  assert.match(page, /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/u);
+  assert.doesNotMatch(page, /优化执行中…\s*65%|\(2\/3\)/u);
+  assert.match(tokens, /--asv-component-optimization-progress-track-height:\s*4px/u);
+  assert.match(tokens, /--asv-component-optimization-progress-width:\s*var\(--asv-component-right-surface-content-width\)/u);
+  assert.match(tokens, /--asv-component-optimization-progress-detail-size:\s*var\(--asv-type-size-micro\)/u);
+  assert.match(tokens, /--asv-component-optimization-progress-label-size:\s*var\(--asv-type-size-footnote\)/u);
+  assert.match(modules, /\.optimizationProgressBarFill\s*\{[\s\S]*animation:\s*optimization-progress-indeterminate/u);
+  assert.match(modules, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/u);
+});
+
+test("short-term save feedback follows the frozen right-surface placement contract", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const pageStates = await readFile(path.join(experimentRoot, "web/short-term-macos.page-states.css"), "utf8");
+  const { applySaveFeedbackPlacement } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);
+
+  assert.match(page, /class="saveFeedbackOutlet" data-save-feedback-outlet="overview"[\s\S]*id="saveBanner"[^>]*data-page-state="Save feedback"/);
+  assert.match(page, /class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"/);
+  assert.doesNotMatch(page, /<header class="titlebar"[\s\S]*?<\/header>\s*<section class="saveBanner"/);
+  assert.match(tokens, /--asv-component-save-banner-min-height: 36px/);
+  assert.match(tokens, /--asv-component-save-banner-gap: var\(--asv-base-space-10\)/);
+  assert.match(tokens, /--asv-component-save-banner-radius: var\(--asv-radius-sm\)/);
+  assert.match(tokens, /--asv-component-save-banner-font-size: var\(--asv-type-size-footnote\)/);
+  assert.match(tokens, /--asv-component-save-banner-line-height: 18px/);
+  assert.match(tokens, /--asv-component-save-banner-title-weight: var\(--asv-type-weight-medium\)/);
+  assert.match(tokens, /--asv-component-save-banner-icon-border-width: 3px/);
+  assert.match(tokens, /--asv-component-save-banner-loading-background: var\(--asv-color-status-info-bg\)/);
+  assert.match(tokens, /--asv-component-save-banner-loading-color: var\(--asv-color-action-primary\)/);
+  assert.match(tokens, /--asv-component-save-banner-success-background: transparent/);
+  assert.match(tokens, /--asv-component-save-banner-success-color: var\(--asv-color-status-success\)/);
+  assert.match(tokens, /--asv-component-save-banner-danger-background: var\(--asv-color-status-danger-bg\)/);
+  assert.match(tokens, /--asv-component-save-banner-danger-color: var\(--asv-color-status-danger\)/);
+  assert.match(modules, /\.saveFeedbackOutlet\s*\{[^}]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/s);
+  assert.match(modules, /\.saveBanner\s*\{[^}]*justify-content: center/s);
+  assert.match(modules, /\.saveBanner\s*\{[^}]*border-radius: var\(--asv-save-banner-radius\)/s);
+  assert.match(modules, /\.saveBanner\s*\{[^}]*font-size: var\(--asv-save-banner-font-size\)[^}]*line-height: var\(--asv-save-banner-line-height\)/s);
+  assert.match(modules, /\.saveBanner::before\s*\{[^}]*width: var\(--asv-save-banner-icon-size\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="loading"\]\s*\{[^}]*background: var\(--asv-save-banner-loading-bg\)[^}]*color: var\(--asv-save-banner-loading-color\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="success"\]\s*\{[^}]*background: var\(--asv-save-banner-success-bg\)[^}]*color: var\(--asv-save-banner-success-color\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="danger"\]\s*\{[^}]*background: var\(--asv-save-banner-danger-bg\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="success"\]::before,[\s\S]*\.saveBanner\[data-status="danger"\]::before\s*\{[^}]*border-color: var\(--asv-save-banner-icon-track-color\)[^}]*border-top-color: currentColor[^}]*border-right-color: currentColor[^}]*border-bottom-color: currentColor/s);
+  assert.match(modules, /\.saveBanner strong\s*\{[^}]*color: currentColor/s);
+  assert.match(pageStates, /\.macApp > \.saveBanner\s*\{[^}]*grid-row: 1/s);
+
+  const overviewOutlet = { name: "overview", append(node) { node.parentElement = this; } };
+  const optimizationOutlet = { name: "optimization", append(node) { node.parentElement = this; } };
+  const app = { name: "app", append(node) { node.parentElement = this; } };
+  const banner = { parentElement: undefined };
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    querySelector(selector) {
+      return {
+        "#saveBanner": banner,
+        '[data-save-feedback-outlet="overview"]': overviewOutlet,
+        '[data-save-feedback-outlet="optimization"]': optimizationOutlet
+      }[selector] ?? null;
+    }
+  };
+  try {
+    applySaveFeedbackPlacement(app, "preview", "overview");
+    assert.equal(banner.parentElement, overviewOutlet);
+    applySaveFeedbackPlacement(app, "preview", "optimization");
+    assert.equal(banner.parentElement, optimizationOutlet);
+    applySaveFeedbackPlacement(app, "compare", "overview");
+    assert.equal(banner.parentElement, app);
+  } finally {
+    globalThis.document = originalDocument;
+  }
 });
 
 test("short-term loading and load-failed states expose recovery actions", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const components = await readFile(path.join(experimentRoot, "web/short-term-macos.components.css"), "utf8");
+  const { showShortTermFailure } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-surface.mjs")).href);
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
@@ -230,6 +570,10 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(loadingSection, /data-module="PreviewCanvasModule"/);
   assert.match(loadingSection, /data-module="StateRecoveryModule"/);
   assert.match(loadingSection, /data-role="LoadingCanvasRecovery"/);
+  assert.match(loadingSection, /class="stateCard stateLoadingCard"/);
+  assert.match(loadingSection, /<h1>正在加载…<\/h1>/);
+  assert.match(loadingSection, /<p id="loadingMessage"><\/p>/);
+  assert.doesNotMatch(loadingSection, /读取文件并准备预览。|解析文件并准备预览。|正在打开最近文件。/);
   assert.match(loadingSection, /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/);
   assert.match(loadingSection, /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/);
   assert.doesNotMatch(loadingSection, staleStateContentPattern);
@@ -238,9 +582,33 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(failedSection, /data-module="PreviewCanvasModule"/);
   assert.match(failedSection, /data-module="StateRecoveryModule"/);
   assert.match(failedSection, /data-role="FailureCanvasRecovery"/);
+  assert.match(failedSection, /class="stateCard error stateFailureCard"/);
+  assert.match(failedSection, /class="stateFailureIcon" aria-hidden="true">[\s\S]*?<svg[^>]*>[\s\S]*?<\/svg>[\s\S]*?<\/span>/);
+  assert.match(failedSection, /文件加载失败/);
+  assert.match(failedSection, /文件格式不受支持或已损坏/);
   assert.match(failedSection, /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/);
   assert.match(failedSection, /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/);
   assert.doesNotMatch(failedSection, staleStateContentPattern);
+
+  assert.match(tokens, /--asv-component-state-loading-indicator-size:\s*28px;/);
+  assert.match(tokens, /--asv-component-state-loading-label-size:\s*var\(--asv-type-size-footnote\);/);
+  assert.match(tokens, /--asv-component-state-failure-icon-size:\s*var\(--asv-base-space-48\);/);
+  assert.match(tokens, /--asv-component-state-failure-icon-background:\s*var\(--asv-color-status-danger\);/);
+  assert.match(tokens, /--asv-radius-xs:\s*var\(--asv-base-radius-2\);/);
+  assert.match(tokens, /--asv-radius-pill:\s*var\(--asv-base-radius-full\);/);
+  assert.match(tokens, /--asv-component-state-failure-title-size:\s*var\(--asv-type-size-metric\);/);
+  assert.match(tokens, /--asv-component-state-recovery-action-width:\s*var\(--asv-component-file-header-action-width\);/);
+  assert.match(components, /\.stateLoadingCard\s*\{[^}]*gap:\s*var\(--asv-state-loading-gap\);/s);
+  assert.match(components, /\.stateLoadingCard\s*>\s*\.spinner\s*\{[^}]*width:\s*var\(--asv-state-loading-indicator-size\);[^}]*height:\s*var\(--asv-state-loading-indicator-size\);/s);
+  assert.match(components, /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s);
+  assert.match(components, /\.stateFailureCard\s*>\s*h1\s*\{[^}]*font-size:\s*var\(--asv-state-failure-title-size\);[^}]*font-weight:\s*var\(--asv-state-failure-title-weight\);/s);
+  assert.match(components, /\.stateLoadingCard\s*>\s*\.stateRecoveryButton,[\s\S]*?\.stateFailureCard\s*>\s*\.stateRecoveryButton\s*\{[^}]*min-width:\s*var\(--asv-state-recovery-action-width\);[^}]*min-height:\s*var\(--asv-state-recovery-action-height\);/s);
+
+  const errorMessage = { textContent: "" };
+  let view = "preview";
+  showShortTermFailure({ nodes: { errorMessage }, setView: (nextView) => { view = nextView; } }, new Error("Inspection failed /private/source.svga"));
+  assert.equal(view, "failed");
+  assert.equal(errorMessage.textContent, "文件格式不受支持或已损坏");
 });
 
 test("short-term preview right surface exposes page-state trace semantics", async () => {
@@ -307,12 +675,92 @@ test("short-term preview right surface exposes page-state trace semantics", asyn
   }
 });
 
+test("short-term optimization detail exposes the frozen action group and an explicit exit", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const { bindShortTermInteractionEvents } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-event-bindings.mjs")).href);
+  const optimizationSectionStart = page.indexOf('id="panelOptimization"');
+  const optimizationSectionEnd = page.indexOf("</aside>", optimizationSectionStart);
+  const optimizationSection = optimizationSectionStart >= 0 && optimizationSectionEnd > optimizationSectionStart
+    ? page.slice(optimizationSectionStart, optimizationSectionEnd)
+    : "";
+
+  assert.match(optimizationSection, /class="optimizationDetailActions"/);
+  assert.match(optimizationSection, /data-action="run-optimization">一键优化<\/button>/);
+  assert.match(optimizationSection, /data-action="close-optimization">放弃优化<\/button>/);
+  assert.ok(
+    optimizationSection.indexOf('id="findingList"') < optimizationSection.indexOf('class="optimizationDetailActions"'),
+    "the frozen optimization module keeps candidate rows before the action group"
+  );
+  assert.match(tokens, /--asv-component-optimization-detail-header-padding-block:\s*var\(--asv-space-3\)/u);
+  assert.match(tokens, /--asv-component-optimization-detail-list-gap:\s*var\(--asv-space-2\)/u);
+  assert.match(tokens, /--asv-component-optimization-detail-list-padding-block:\s*var\(--asv-space-3\)/u);
+  assert.match(tokens, /--asv-component-optimization-detail-actions-padding-block:\s*var\(--asv-space-3\)/u);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) > \.sectionHead\s*\{[^}]*display:\s*contents/su);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/su);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) #findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/su);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) \.optimizationDetailActions\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-actions-padding-block\) 0/su);
+
+  const listeners = new Map();
+  const listenerTarget = () => ({
+    addEventListener(name, handler) {
+      listeners.set(name, handler);
+    },
+    classList: { add() {}, remove() {} }
+  });
+  const documentRef = listenerTarget();
+  documentRef.querySelectorAll = () => [];
+  const nodes = {
+    replaceableList: listenerTarget(),
+    textElementList: listenerTarget(),
+    resourceContextMenu: listenerTarget(),
+    assetFilterTabs: listenerTarget(),
+    replacementFileInput: listenerTarget(),
+    settingsDialog: listenerTarget(),
+    dropZone: listenerTarget(),
+    previewStagePanel: listenerTarget(),
+    previewDragOverlay: listenerTarget(),
+    compareStage: listenerTarget(),
+    compareDragOverlay: listenerTarget()
+  };
+  const openedTabs = [];
+  const noOp = () => {};
+  const handlers = new Proxy({
+    closeResourceContextMenu: noOp,
+    openTab(tab) {
+      openedTabs.push(tab);
+    }
+  }, {
+    get(target, key) {
+      return key in target ? target[key] : noOp;
+    }
+  });
+
+  bindShortTermInteractionEvents({
+    documentRef,
+    nodes,
+    state: { view: "preview", tab: "optimization" },
+    handlers
+  });
+  const exitButton = {
+    dataset: { action: "close-optimization" },
+    closest(selector) {
+      if (selector === "[data-action]") return this;
+      return null;
+    }
+  };
+  listeners.get("click")({ target: exitButton });
+  assert.deepEqual(openedTabs, ["overview"]);
+});
+
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
   const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
   const aModel = {
     overview: {
       facts: [
         { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "warning" },
+        { id: "decodedMemory", label: "内存占用", value: "20.6 MiB", status: "pass" },
         { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
       ]
     }
@@ -321,6 +769,7 @@ test("short-term general compare renders loaded A/B facts through shared metric 
     overview: {
       facts: [
         { id: "fileSize", label: "文件体积", value: "1.2 MiB", status: "pass" },
+        { id: "decodedMemory", label: "内存占用", value: "20.6 MiB", status: "warning" },
         { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
       ]
     }
@@ -337,8 +786,77 @@ test("short-term general compare renders loaded A/B facts through shared metric 
   assert.match(html, /data-slot="B"/);
   assert.match(html, /2.4 <span class="factValueUnit">MiB<\/span>/);
   assert.match(html, /1.2 <span class="factValueUnit">MiB<\/span>/);
+  assert.match(html, /文件大小/);
+  assert.doesNotMatch(html, /文件体积/);
   assert.equal((html.match(/data-diff="different"/g) ?? []).length, 2);
+  assert.equal((html.match(/data-diff="improved"/g) ?? []).length, 2);
   assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
+
+  const [aColumn, bColumn] = html.split(/<div class="compareMetricColumn"[^>]*data-slot="[AB]"[^>]*>/).slice(1);
+  assert.match(aColumn, /data-fact-id="fileSize"[\s\S]*data-diff="different"/);
+  assert.match(aColumn, /data-fact-id="decodedMemory"[\s\S]*data-diff="improved"/);
+  assert.match(bColumn, /data-fact-id="fileSize"[\s\S]*data-diff="improved"/);
+  assert.match(bColumn, /data-fact-id="decodedMemory"[\s\S]*data-diff="different"/);
+});
+
+test("short-term general compare exposes missing-slot open actions in the right panel", async () => {
+  const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+
+  const emptyHtml = renderGeneralComparePanelHtml({
+    actions: ['<button class="toolbarButton primary" type="button" data-action="exit-compare">退出对比</button>']
+  });
+  const waitingHtml = renderGeneralComparePanelHtml({
+    aModel: { overview: { facts: [] } },
+    aDisplayName: "a.svga"
+  });
+  const loadedHtml = renderGeneralComparePanelHtml({
+    aModel: { overview: { facts: [] } },
+    aDisplayName: "a.svga",
+    bModel: { overview: { facts: [] } },
+    bDisplayName: "b.svga"
+  });
+
+  assert.match(emptyHtml, /<h2>对比模式<\/h2>/);
+  assert.equal((emptyHtml.match(/文件未打开/g) ?? []).length, 2);
+  assert.match(emptyHtml, /data-action="exit-compare"/);
+  assert.equal((emptyHtml.match(/comparePairOpenButton/g) ?? []).length, 2);
+  assert.match(emptyHtml, /data-slot="A" data-state="empty"[\s\S]*data-action="open-compare-a"/);
+  assert.match(emptyHtml, /data-slot="B" data-state="empty"[\s\S]*data-action="open-compare-b"/);
+
+  assert.match(waitingHtml, /data-slot="A" data-state="loaded"[\s\S]*<strong>a\.svga<\/strong>/);
+  assert.doesNotMatch(waitingHtml, /data-action="open-compare-a"/);
+  assert.match(waitingHtml, /data-slot="B" data-state="empty"[\s\S]*data-action="open-compare-b"/);
+
+  assert.match(loadedHtml, /data-slot="A" data-state="loaded"[\s\S]*<strong>a\.svga<\/strong>/);
+  assert.match(loadedHtml, /data-slot="B" data-state="loaded"[\s\S]*<strong>b\.svga<\/strong>/);
+  assert.doesNotMatch(loadedHtml, /comparePairOpenButton/);
+  assert.doesNotMatch(loadedHtml, /data-action="open-compare-[ab]"/);
+});
+
+test("short-term general compare keeps A facts visible while waiting for B", async () => {
+  const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+  const html = renderGeneralComparePanelHtml({
+    aModel: {
+      overview: {
+        facts: [
+          { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "pass" },
+          { id: "decodedMemory", label: "内存占用", value: "20.6 MiB", status: "pass" },
+          { id: "duration", label: "动画时长", value: "3 s", status: "pass" },
+          { id: "fps", label: "帧率", value: "30 fps", status: "pass" },
+          { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
+        ]
+      }
+    },
+    aDisplayName: "头像框 A.svga"
+  });
+
+  assert.match(html, /data-compare-state="waiting-b"/);
+  assert.match(html, /data-slot="A" data-state="loaded"[\s\S]*头像框 A\.svga/);
+  assert.match(html, /data-slot="B" data-state="empty"[\s\S]*文件未打开[\s\S]*data-action="open-compare-b"/);
+  assert.match(html, /class="compareMetricColumn"[^>]*data-slot="A"[^>]*data-state="loaded"[\s\S]*data-fact-id="fileSize"[\s\S]*data-fact-id="canvas"/);
+  assert.match(html, /class="compareMetricColumn"[^>]*data-slot="B"[^>]*data-state="empty"[^>]*aria-hidden="true"/);
+  assert.equal((html.match(/data-diff="uncompared"/g) ?? []).length, 4);
+  assert.doesNotMatch(html, /data-diff="unavailable"/);
 });
 
 test("short-term general compare marks asymmetric visible facts unavailable", async () => {
@@ -364,7 +882,8 @@ test("short-term general compare marks asymmetric visible facts unavailable", as
   assert.match(html, /运行结构风险/);
   assert.equal((html.match(/data-diff="unavailable"/g) ?? []).length, 2);
   assert.match(html, />不可用<\/strong>/);
-  assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
+  assert.equal((html.match(/data-diff="improved"/g) ?? []).length, 1);
+  assert.equal((html.match(/data-diff="different"/g) ?? []).length, 1);
 });
 
 test("short-term general compare keeps identical row order when both sides have unique facts", async () => {
@@ -456,6 +975,121 @@ test("short-term asset filters support roving keyboard model and interaction han
   assert.equal(selectedFilter, "audio");
   assert.equal(prevented, true);
   assert.equal(stopped, true);
+});
+
+test("short-term asset empty filters follow frozen no-sequence and no-audio states", async () => {
+  const { overviewTabView, assetFilterTabCopy, assetFilterEmptyCopy } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs")).href);
+  const { createAssetRow, renderAssetList } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-renderers.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const model = {
+      overview: {
+        facts: [],
+        audioGroup: {
+          status: "empty",
+          copy: "当前文件暂无音频资产"
+        }
+      },
+      assets: [{
+        kind: "image",
+        name: "img_000",
+        dimensions: "300 x 300",
+        fileSize: "41.8 KB",
+        findingCodes: [],
+        thumbnail: { type: "image", resourceIds: [] }
+      }]
+    };
+    const view = overviewTabView(model);
+
+    assert.equal(assetFilterTabCopy({ label: "序列帧", count: 0 }), "序列帧");
+    assert.equal(assetFilterTabCopy({ label: "音频", count: 3 }), "音频 (3)");
+    assert.equal(assetFilterEmptyCopy("sequence"), "当前文件暂无序列帧资产");
+    assert.equal(assetFilterEmptyCopy("audio"), "当前文件暂无音频资产");
+
+    renderAssetList(nodes, view, model, "all");
+    assert.equal(nodes.assetList.children.length, 1);
+    assert.match(nodes.assetList.children[0].innerHTML, /300×300 · 41\.8 KB/u);
+    assert.doesNotMatch(nodes.assetList.children[0].innerHTML, /300 x 300/u);
+    assert.match(nodes.assetList.children[0].innerHTML, /data-component="ThumbnailFrame" data-variant="image"/);
+
+    const sequenceRow = createAssetRow({
+      kind: "sequence",
+      name: "序列帧",
+      dimensions: "300 x 300",
+      fileSize: "2.7 MB",
+      findingCodes: [],
+      thumbnail: {
+        type: "sequence-four-grid",
+        resourceIds: ["frame_0", "frame_1", "frame_2", "frame_3"]
+      }
+    }, model);
+    const audioRow = createAssetRow({
+      kind: "audio",
+      name: "音频资产",
+      dimensions: "",
+      fileSize: "2.3 s",
+      findingCodes: [],
+      thumbnail: { type: "music" }
+    }, {
+      ...model,
+      overview: {
+        ...model.overview,
+        audioGroup: { status: "available", copy: "" }
+      }
+    });
+    assert.match(sequenceRow.innerHTML, /data-component="ThumbnailFrame" data-variant="sequence"/);
+    assert.match(audioRow.innerHTML, /data-component="ThumbnailFrame" data-variant="audio"/);
+    assert.match(audioRow.innerHTML, /data-component="ThumbnailAudioIcon"/);
+    assert.doesNotMatch(audioRow.innerHTML, />音频<|无音频/u);
+
+    renderAssetList(nodes, view, model, "sequence");
+    assert.deepEqual(
+      nodes.assetFilterTabs.children.map((child) => child.textContent),
+      ["全部 (1)", "图片 (1)", "序列帧", "音频"]
+    );
+    assert.equal(nodes.assetList.children.length, 1);
+    assert.equal(nodes.assetList.children[0].className, "emptyText");
+    assert.equal(nodes.assetList.children[0].dataset.component, "InlineStatus");
+    assert.equal(nodes.assetList.children[0].dataset.variant, "asset");
+    assert.equal(nodes.assetList.children[0].dataset.kind, "sequence");
+    assert.equal(nodes.assetList.dataset.pageState, "no-sequence");
+    assert.deepEqual(
+      nodes.assetList.children[0].children.map((child) => child.className),
+      ["emptyStateIcon", "emptyTextTitle"]
+    );
+    assert.equal(nodes.assetList.children[0].children[0].children.length, 2);
+    assert.equal(nodes.assetList.children[0].textContent, "当前文件暂无序列帧资产");
+
+    renderAssetList(nodes, view, model, "audio");
+    assert.equal(nodes.assetList.children.length, 1);
+    assert.equal(nodes.assetList.children[0].dataset.kind, "audio");
+    assert.equal(nodes.assetList.dataset.pageState, "no-audio");
+    assert.equal(nodes.assetList.children[0].children[0].children.length, 2);
+    assert.equal(nodes.assetList.children[0].textContent, "当前文件暂无音频资产");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("preview imageKey dirty header exposes and clears the unsaved marker", async () => {
+  const { renderFileHeader } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs")).href);
+  const nodes = {
+    fileIdentity: new FakeDomElement("h1"),
+    playbackMeta: new FakeDomElement("p")
+  };
+
+  renderFileHeader(nodes, "文件名.svga", "300×300 / 30 fps", { dirty: true });
+  assert.equal(nodes.fileIdentity.textContent, "文件名.svga *");
+  assert.equal(nodes.fileIdentity.dataset.dirty, "true");
+  assert.equal(nodes.fileIdentity.attributes["aria-label"], "文件名.svga，存在未保存更改");
+
+  renderFileHeader(nodes, "已保存.svga", "300×300 / 30 fps", { dirty: false });
+  assert.equal(nodes.fileIdentity.textContent, "已保存.svga");
+  assert.equal(nodes.fileIdentity.dataset.dirty, "false");
+  assert.equal(nodes.fileIdentity.attributes["aria-label"], "已保存.svga");
 });
 
 async function createPackagedProofFixture({
@@ -1116,6 +1750,173 @@ test("short-term drag decision hit testing keeps Compare opt-in at the top", asy
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "open");
 });
 
+test("unsupported drop keeps the workbench shell and follows the frozen drag hierarchy", async () => {
+  const fileSurface = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-file-surface.mjs"
+  )).href);
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const shortTermController = await readFile(path.join(experimentRoot, "web/short-term-macos-controller.mjs"), "utf8");
+  const multiFormatController = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
+
+  assert.match(tokens, /--asv-type-size-metric:\s*15px/);
+  assert.match(tokens, /--asv-component-drag-overlay-label-size:\s*var\(--asv-type-size-metric\)/);
+  assert.match(tokens, /--asv-component-drag-overlay-label-line-height:\s*22px/);
+  assert.match(tokens, /--asv-component-drag-overlay-label-weight:\s*var\(--asv-type-weight-semibold\)/);
+  assert.match(modules, /\.dragDecisionZone strong\s*\{[\s\S]*line-height:\s*var\(--asv-drag-overlay-label-line-height\)/);
+  assert.doesNotMatch(tokens, /--asv-component-drag-overlay-label-size:\s*(?:30|36)px/);
+  assert.match(page, /data-view="unsupported"[^>]*data-page-state="Unsupported drop"/);
+  assert.match(page, /data-role="UnsupportedDropCanvasRecovery"/);
+  assert.match(page, /class="stateCard error stateFailureCard unsupportedDropRecoveryPanel"[^>]*id="unsupportedDropRecovery"/);
+  assert.match(page, /id="unsupportedDropRecovery"[\s\S]*?class="stateFailureIcon" aria-hidden="true">[\s\S]*?<svg[^>]*>[\s\S]*?<\/svg>/);
+  assert.doesNotMatch(page, /class="stateCard error playbackErrorPanel unsupportedDropRecoveryPanel"/);
+  assert.match(page, /data-view="unsupported"[\s\S]*data-state="disabled"/);
+  assert.match(shortTermController, /showShortTermUnsupportedDropState/);
+  assert.match(multiFormatController, /closeFile\(\{ nextView: "unsupported" \}\)/);
+  assert.match(multiFormatController, /const nextView = options\.nextView === "unsupported" \? "unsupported" : "launch"/);
+  assert.match(multiFormatController, /clearSurfaces\(\);\s*setView\(nextView\);/);
+
+  const saveBanner = {
+    hidden: false,
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    }
+  };
+  const state = {
+    sourceBytes: new Uint8Array([1]),
+    previewBytes: new Uint8Array([1]),
+    sourceId: "source-a",
+    displayName: "frame.svga",
+    model: { status: "ready" },
+    selectedImageKey: "image-a",
+    selectedTextKey: "text-a",
+    assetFilter: "images",
+    renameImageKey: "image-b",
+    textPreview: "preview",
+    textPreviewValues: { "text-a": "preview" },
+    activeOutput: { kind: "optimization" },
+    cleanSaveAsVisible: true,
+    mode: "edit",
+    tab: "replaceable"
+  };
+  let stopped = 0;
+  let view = "preview";
+
+  fileSurface.showShortTermUnsupportedDropState({
+    nodes: { saveBanner },
+    state,
+    stopAllPlayback() {
+      stopped += 1;
+    },
+    setView(nextView) {
+      view = nextView;
+    }
+  });
+
+  assert.equal(stopped, 1);
+  assert.equal(state.sourceBytes, undefined);
+  assert.equal(state.previewBytes, undefined);
+  assert.equal(state.model, undefined);
+  assert.equal(state.mode, "preview");
+  assert.equal(state.tab, "overview");
+  assert.equal(saveBanner.hidden, true);
+  assert.equal(view, "unsupported");
+});
+
+test("0.2 multi-format drag affordance accepts Lottie and VAP while keeping Compare SVGA-only", async () => {
+  const dragDecisionModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/multiformat-product-conformance.mjs"
+  )).href);
+  const dragDecisionSurface = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-drag-decision-surface.mjs"
+  )).href);
+  const target = {
+    getBoundingClientRect: () => ({
+      left: 0,
+      top: 0,
+      width: 1280,
+      height: 800
+    })
+  };
+  const dragEvent = (name, clientY = 40) => ({
+    clientY,
+    dataTransfer: { files: [{ name }] }
+  });
+
+  const svgaDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("frame.svga"), {
+    activeFormat: "svga"
+  });
+  assert.equal(svgaDecision.supported, true);
+  assert.equal(svgaDecision.compareAvailable, true);
+  assert.equal(svgaDecision.focusZone, "compare");
+
+  const lottieDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("motion.json"), {
+    activeFormat: "lottie"
+  });
+  assert.equal(lottieDecision.supported, true);
+  assert.equal(lottieDecision.compareAvailable, false);
+  assert.equal(lottieDecision.focusZone, "open");
+
+  const vapDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("fusion.mp4"), {
+    activeFormat: "vap"
+  });
+  assert.equal(vapDecision.supported, true);
+  assert.equal(vapDecision.compareAvailable, false);
+  assert.equal(vapDecision.focusZone, "open");
+
+  const unsupportedDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("preview.gif"), {
+    activeFormat: "lottie"
+  });
+  assert.equal(unsupportedDecision.supported, false);
+  assert.equal(unsupportedDecision.compareAvailable, false);
+  assert.equal(unsupportedDecision.focusZone, "open");
+
+  const createZone = (dragZone) => {
+    const strong = { textContent: "" };
+    return {
+      dataset: { dragZone },
+      hidden: false,
+      attributes: {},
+      strong,
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+      },
+      querySelector(selector) {
+        return selector === "strong" ? strong : null;
+      }
+    };
+  };
+  const compareZone = createZone("compare");
+  const openZone = createZone("open");
+  const overlay = {
+    hidden: true,
+    dataset: {},
+    querySelectorAll(selector) {
+      return selector === "[data-drag-zone]" ? [compareZone, openZone] : [];
+    }
+  };
+
+  dragDecisionSurface.showShortTermDragDecisionOverlay(overlay, lottieDecision);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.dataset.status, "supported");
+  assert.equal(overlay.dataset.focusZone, "open");
+  assert.equal(overlay.dataset.compareAvailable, "false");
+  assert.equal(compareZone.hidden, true);
+  assert.equal(compareZone.attributes["aria-hidden"], "true");
+  assert.equal(openZone.hidden, false);
+  assert.equal(openZone.strong.textContent, "打开新文件");
+
+  dragDecisionSurface.showShortTermDragDecisionOverlay(overlay, unsupportedDecision);
+  assert.equal(overlay.dataset.status, "unsupported");
+  assert.equal(overlay.dataset.focusZone, "open");
+  assert.equal(openZone.strong.textContent, "不支持的文件格式");
+});
+
 test("short-term optimization result UI fails closed for no-benefit output", async () => {
   const optimizationModel = await import(pathToFileURL(path.join(
     experimentRoot,
@@ -1129,6 +1930,8 @@ test("short-term optimization result UI fails closed for no-benefit output", asy
     experimentRoot,
     "web/short-term-macos-compare-model.mjs"
   )).href);
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
 
   assert.equal(optimizationModel.optimizationResultTone({ status: "optimized" }), "success");
   assert.equal(optimizationModel.optimizationResultTone({ status: "tradeoff" }), "warning");
@@ -1155,6 +1958,11 @@ test("short-term optimization result UI fails closed for no-benefit output", asy
   assert.match(disabledHtml, /data-status="danger"/);
   assert.match(disabledHtml, /data-action="save-as" disabled>另存为 SVGA/);
   assert.match(disabledHtml, /data-action="save-overwrite" disabled>覆盖保存/);
+  assert.match(tokens, /--asv-component-optimization-metric-improved-value-size:\s*var\(--asv-type-size-body\)/u);
+  assert.match(tokens, /--asv-component-optimization-metric-arrow-size:\s*var\(--asv-type-size-micro\)/u);
+  assert.doesNotMatch(modules, /\.optimizationMetricCell\[data-improved="true"\] \.optimizationMetricValue\s*\{[^}]*font-size/su);
+  assert.match(modules, /\.optimizationMetricCell\[data-improved="true"\] \.optimizationMetricValue em\s*\{[^}]*font-size:\s*var\(--asv-optimization-metric-improved-value-size\)/su);
+  assert.match(modules, /\.optimizationMetricValue i\s*\{[^}]*font-size:\s*var\(--asv-optimization-metric-arrow-size\)/su);
 });
 
 test("short-term future compatibility guardrails keep current behavior bounded", async () => {
@@ -3775,6 +4583,13 @@ test("0.2 composed open cancellation preserves active authority while accepted f
       const activeSourceId = state.sourceId;
       const activeImageKey = state.selectedImageKey;
       const activeTextKey = state.selectedTextKey;
+      nodes.playbackProgress.setAttribute("aria-valuenow", "64");
+      nodes.playbackProgress.style["--asv-playback-progress"] = "64%";
+      nodes.playbackProgress.children[0].style.width = "64%";
+      nodes.playbackTime.textContent = "0:32 / 0:50";
+      nodes.playbackMeta.textContent = "VAP · 120 x 80 · 0:50 · 播放中";
+      nodes.playbackMeta.dataset.status = "playing";
+      nodes.playbackMeta.dataset.format = "vap";
       await controller.handlers.openFromHostDialog();
       assert.equal(state.model, activeModel, `${format} cancel must preserve model`);
       assert.equal(state.sourceId, activeSourceId, `${format} cancel must preserve source`);
@@ -3793,6 +4608,13 @@ test("0.2 composed open cancellation preserves active authority while accepted f
       assert.equal(state.view, "failed", `${format} failure must enter failed view`);
       assert.equal(nodes.errorMessage.textContent, "无法打开文件选择器，源文件没有被修改。");
       assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|expression/i);
+      assert.equal(nodes.playbackProgress.attributes["aria-valuenow"], "0", `${format} failure must reset progress a11y`);
+      assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "0%", `${format} failure must reset progress token`);
+      assert.equal(nodes.playbackProgress.children[0].style.width, "0%", `${format} failure must reset progress bar`);
+      assert.equal(nodes.playbackTime.textContent, "0:00 / 0:00", `${format} failure must reset playback time`);
+      assert.equal(nodes.playbackMeta.textContent, "", `${format} failure must clear playback meta copy`);
+      assert.equal(nodes.playbackMeta.dataset.status, undefined, `${format} failure must clear playback meta status`);
+      assert.equal(nodes.playbackMeta.dataset.format, undefined, `${format} failure must clear playback meta format`);
       assert.equal(state.model, undefined, `${format} failure must clear model`);
       assert.equal(state.sourceBytes, undefined, `${format} failure must clear source bytes`);
       assert.equal(state.previewBytes, undefined, `${format} failure must clear preview bytes`);
@@ -3933,6 +4755,14 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
                 pathRedacted: true
               }
             ]
+          },
+          {
+            id: "format_diagnostics",
+            label: "格式诊断",
+            count: 0,
+            replaceableCount: 0,
+            status: "warning",
+            items: []
           }
         ],
         summary: {
@@ -3951,6 +4781,14 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
         severity: "warning",
         message: "存在不支持能力",
         pathRedacted: true
+      }],
+      unsupportedFeatures: [{
+        code: "unsupported_feature",
+        severity: "warning",
+        feature: "表达式",
+        path: "",
+        message: "不应直接显示的自由文案",
+        pathRedacted: true
       }]
     }, "source:daily-ui");
     const result = createRuntimeMountOpenResult("lottie", { sourceId: "source:daily-ui" });
@@ -3961,12 +4799,46 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "daily-ui", result }), true);
 
     const [imageGroup, capabilityGroup] = nodes.assetList.children;
+    assert.equal(nodes.assetList.children.length, 2);
+    assert.equal(nodes.assetFilterTabs.dataset.presentation, "summary");
+    const summaryText = (child) => child.children.map((part) => part.textContent).join("");
+    assert.deepEqual(
+      nodes.assetFilterTabs.children.map(summaryText),
+      ["全部 (5)", "图片 (3)", "问题 (3)"]
+    );
+    assert.deepEqual(
+      nodes.assetFilterTabs.children.map((child) => child.dataset.summaryId),
+      ["all", "images", "issues"]
+    );
+    for (const child of nodes.assetFilterTabs.children) {
+      assert.deepEqual(
+        child.children.map((part) => part.className),
+        ["assetSummaryLabel", "assetSummaryCount"]
+      );
+    }
+    assert.equal(imageGroup.dataset.empty, undefined);
+    assert.equal(capabilityGroup.dataset.empty, undefined);
+    for (const group of [imageGroup, capabilityGroup]) {
+      assert.deepEqual(
+        group.children[0].children.map((child) => child.className),
+        ["assetGroupTitle", "assetGroupCount"]
+      );
+      assert.doesNotMatch(group.children[0].innerHTML, /存在缺失或阻断|存在不支持项|可替换/u);
+    }
+    assert.equal(imageGroup.children[0].children[0].textContent, "图片资源");
+    assert.equal(imageGroup.children[0].children[1].textContent, "(3)");
+    assert.doesNotMatch(nodes.assetList.textContent, /格式诊断|\(0\)/u);
+
     const [availableRow, replaceableRow, missingRow] = imageGroup.children[1].children;
     const [unsupportedRow, blockedRow] = capabilityGroup.children[1].children;
     assert.equal(availableRow.dataset.status, "available");
     assert.equal(availableRow.dataset.attention, "false");
     assert.doesNotMatch(availableRow.innerHTML, />可用</u);
+    assert.match(availableRow.innerHTML, /120×80/u);
+    assert.doesNotMatch(availableRow.innerHTML, /120 x 80/u);
     assert.match(replaceableRow.innerHTML, /class="badge safe"[^>]*>可替换</u);
+    assert.match(replaceableRow.attributes["aria-label"], /120×80/u);
+    assert.doesNotMatch(replaceableRow.attributes["aria-label"], /120 x 80/u);
     assert.equal(missingRow.dataset.attention, "true");
     assert.match(missingRow.innerHTML, /class="badge fail"[^>]*>缺失</u);
     assert.equal(unsupportedRow.dataset.attention, "true");
@@ -3974,9 +4846,287 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(blockedRow.dataset.attention, "true");
     assert.match(blockedRow.innerHTML, /class="badge fail"[^>]*>阻断</u);
 
-    const [issueRow] = nodes.findingList.children;
+    const [issueRow, unsupportedFeatureRow] = nodes.findingList.children;
+    assert.equal(nodes.findingList.attributes.role, "list");
+    assert.equal(nodes.findingList.attributes["aria-label"], "格式检查");
+    assert.equal(issueRow.attributes.role, "listitem");
+    assert.equal(issueRow.dataset.component, "FindingRow");
     assert.equal(issueRow.dataset.disposition, "reviewOnly");
-    assert.match(issueRow.innerHTML, /<div><strong>存在不支持能力<\/strong><\/div>/u);
+    assert.match(issueRow.innerHTML, /<div><strong>当前文件包含暂不支持的内容。<\/strong><\/div>/u);
+    assert.match(unsupportedFeatureRow.innerHTML, /<div><strong>暂不支持：表达式<\/strong><\/div>/u);
+    assert.doesNotMatch(nodes.findingList.textContent, /存在不支持能力|不应直接显示/u);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.2 replaceable summary includes text-only Lottie and VAP targets", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    for (const fixture of [
+      {
+        format: "lottie",
+        eventId: "lottie-text-only",
+        textKey: "text:1",
+        displayName: "Greeting",
+        initialText: "Original greeting"
+      },
+      {
+        format: "vap",
+        eventId: "vap-text-only",
+        textKey: "title",
+        displayName: "title",
+        initialText: "VAP 融合文字"
+      }
+    ]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      globalThis.document = createMultiFormatControllerTestDocument(nodes);
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const controller = createMultiFormatDesktopPreviewController({
+        bridge: {
+          updateShortTermMenuState() {
+            return Promise.resolve();
+          },
+          setShortTermWindowMode() {
+            return Promise.resolve();
+          }
+        },
+        nodes,
+        state,
+        svgaController: { handlers: { deactivateForMultiFormat() {}, renderCommandState() {} } }
+      });
+      const textTargets = [{
+        textKey: fixture.textKey,
+        displayName: fixture.displayName,
+        initialText: fixture.initialText,
+        placeholder: "输入文字以预览",
+        resetDisabled: false
+      }];
+      const result = createRuntimeMountOpenResult(fixture.format, {
+        sourceId: `${fixture.eventId}-source`,
+        imageTargets: [],
+        textTargets
+      });
+
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: fixture.eventId }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({ eventId: fixture.eventId, result }), true);
+
+      assert.equal(nodes.replaceableSummary.textContent, "(1)");
+      assert.doesNotMatch(nodes.replaceableSummary.textContent, /没有可替换图片|未发现可替换元素/u);
+      assert.equal(nodes.replaceableList.children.length, 0);
+      assert.equal(nodes.replaceableList.dataset.empty, "true");
+      assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "false");
+      assert.equal(nodes.textElementList.dataset.empty, "false");
+      const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.ok(input);
+      assert.equal(input.value, fixture.initialText);
+      assert.equal(input.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    }
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.2 replaceable empty state uses frozen Figma copy and section state", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge: {
+        updateShortTermMenuState() {
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        }
+      },
+      nodes,
+      state,
+      svgaController: { handlers: { deactivateForMultiFormat() {}, renderCommandState() {} } }
+    });
+    const result = createRuntimeMountOpenResult("lottie", {
+      sourceId: "lottie-no-replaceable-source",
+      imageTargets: [],
+      textTargets: []
+    });
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "lottie-no-replaceable" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "lottie-no-replaceable", result }), true);
+
+    assert.equal(nodes.replaceableSummary.textContent, "(0)");
+    assert.equal(nodes.replaceableList.children.length, 1);
+    assert.equal(nodes.replaceableList.children[0].className, "emptyText");
+    assert.equal(nodes.replaceableList.children[0].dataset.component, "InlineStatus");
+    assert.equal(nodes.replaceableList.children[0].dataset.variant, "asset");
+    assert.equal(nodes.replaceableList.children[0].dataset.kind, "replaceable");
+    assert.equal(nodes.replaceableList.children[0].textContent, "未发现可替换元素");
+    assert.deepEqual(
+      nodes.replaceableList.children[0].children.map((child) => child.className),
+      ["emptyStateIcon", "emptyTextTitle"]
+    );
+    assert.equal(nodes.replaceableList.children[0].children[0].children.length, 0);
+    assert.equal(nodes.replaceableList.dataset.empty, "false");
+    assert.equal(nodes.textElementList.children.length, 0);
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.pageState, "no-replaceable");
+    assert.equal(nodes.textElementList.dataset.empty, "true");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.1 replaceable empty state keeps imageKey module and Figma single-line copy", async () => {
+  const {
+    renderShortTermReplaceableImages,
+    renderShortTermRuntimeTextElements
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const state = {
+      selectedImageKey: "",
+      selectedTextKey: "",
+      renameImageKey: "",
+      textPreviewValues: {}
+    };
+    const model = {
+      images: [],
+      texts: []
+    };
+
+    renderShortTermReplaceableImages({ nodes, state, model });
+    renderShortTermRuntimeTextElements({ nodes, state, model });
+
+    assert.equal(nodes.replaceableSummary.textContent, "(0)");
+    assert.equal(nodes.replaceableList.dataset.empty, "false");
+    assert.equal(nodes.textElementList.dataset.empty, "true");
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.pageState, "no-replaceable");
+    assert.equal(nodes.replaceableList.children.length, 1);
+    const empty = nodes.replaceableList.children[0];
+    assert.equal(empty.className, "emptyText");
+    assert.equal(empty.dataset.component, "InlineStatus");
+    assert.equal(empty.dataset.variant, "asset");
+    assert.equal(empty.dataset.kind, "replaceable");
+    assert.equal(empty.textContent, "未发现可替换元素");
+    assert.deepEqual(
+      empty.children.map((child) => child.className),
+      ["emptyStateIcon", "emptyTextTitle"]
+    );
+    assert.equal(empty.children[0].children.length, 0);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.2 inventory summary follows Figma asset type rhythm", async () => {
+  const { multiFormatInventorySummaryItems } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-product-conformance.mjs")).href);
+  assert.deepEqual(
+    multiFormatInventorySummaryItems({
+      totalItems: 12,
+      imageCount: 7,
+      textCount: 2,
+      sequenceFrameCount: 1,
+      audioVideoCount: 1,
+      unsupportedOrMissingCount: 1
+    }),
+    [
+      { id: "all", label: "全部", count: 12 },
+      { id: "images", label: "图片", count: 7 },
+      { id: "texts", label: "文本", count: 2 },
+      { id: "sequences", label: "序列帧", count: 1 },
+      { id: "media", label: "音视频", count: 1 },
+      { id: "issues", label: "问题", count: 1 }
+    ]
+  );
+  assert.deepEqual(
+    multiFormatInventorySummaryItems({
+      totalItems: 4,
+      imageCount: 4,
+      textCount: 0,
+      sequenceFrameCount: 0,
+      audioVideoCount: 0,
+      unsupportedOrMissingCount: 0
+    }),
+    [
+      { id: "all", label: "全部", count: 4 },
+      { id: "images", label: "图片", count: 4 }
+    ]
+  );
+});
+
+test("0.2 playback meta uses closed renderer-owned status and format semantics", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+
+  try {
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge: {
+        updateShortTermMenuState() {
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        }
+      },
+      nodes,
+      state,
+      svgaController: { handlers: { deactivateForMultiFormat() {}, renderCommandState() {} } }
+    });
+
+    const playingResult = createRuntimeMountOpenResult("vap", { sourceId: "source:playback-meta" });
+    playingResult.model.status = "playing";
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "playback-meta-playing" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "playback-meta-playing", result: playingResult }), true);
+
+    assert.equal(nodes.playbackMeta.dataset.status, "playing");
+    assert.equal(nodes.playbackMeta.dataset.format, "vap");
+    assert.match(nodes.playbackMeta.textContent, /VAP · 120×80 · 0:01 · 播放中/u);
+    assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "25%");
+    assert.equal(nodes.playbackProgress.children[0].style.width, "25%");
+
+    const unknownResult = createRuntimeMountOpenResult("lottie", { sourceId: "source:playback-unknown" });
+    unknownResult.model.status = "hostInternalPhase123";
+    unknownResult.model.detectedFormat = "internalRuntimeFormat";
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "playback-meta-unknown" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "playback-meta-unknown", result: unknownResult }), true);
+
+    assert.equal(nodes.playbackMeta.dataset.status, "unknown");
+    assert.equal(nodes.playbackMeta.dataset.format, "unknown");
+    assert.match(nodes.playbackMeta.textContent, /0\.2 · 120×80 · 0:01 · 未知/u);
+    assert.doesNotMatch(nodes.playbackMeta.textContent, /hostInternalPhase123|internalRuntimeFormat/u);
   } finally {
     globalThis.document = originalDocument;
   }
@@ -4064,6 +5214,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
 
     const lottieInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
     assert.ok(lottieInput);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.equal(lottieInput.value, "Original greeting");
     assert.equal(lottieInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(lottieInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
@@ -4080,6 +5231,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieChangedInput.selectionDirection, "forward");
     assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
     assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
     assert.equal(lottieCalls.length, 2);
     assert.equal(lottieCalls[1].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["text:1"]);
@@ -4095,6 +5247,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieSourceInput.selectionEnd, 8);
     assert.equal(lottieSourceInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(lottieSourceInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetText, false);
 
@@ -4105,6 +5258,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     const lottieChangedAgainInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
     assert.equal(documentRef.activeElement, lottieChangedAgainInput);
     assert.equal(lottieChangedAgainInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
 
     controller.handlers.selectImageKey("avatar");
     await controller.handlers.applyReplacementFile({
@@ -4121,6 +5275,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
       bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId).sort(),
       ["avatar", "text:1"]
     );
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
 
     await controller.handlers.resetRuntimeText("text:1");
     await flushRuntimeMountPromises();
@@ -4137,6 +5292,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieResetInput.selectionEnd, 16);
     assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
 
     await controller.handlers.resetImageReplacement("avatar");
     await flushRuntimeMountPromises();
@@ -4144,6 +5300,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieCalls[6].animationData.assets[0].p, "data:image/png;base64,AQID");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetImageReplacement, false);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
 
     bridge.markOpened("vap");
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "vap-open" }), true);
@@ -4174,6 +5331,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     const vapInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="title"]`);
     assert.equal(vapInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
     assert.equal(vapInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
     vapInput.focus();
     vapInput.setSelectionRange(3, 3, "none");
     await controller.handlers.resetRuntimeText("title");
@@ -4184,6 +5342,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(vapSourceInput.selectionStart, 3);
     assert.equal(vapSourceInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(vapSourceInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetText, false);
   } finally {
@@ -4667,7 +5826,7 @@ test("0.2 renderer runtime prepare failure preserves current multi-format source
     assert.equal(state.model.status, "playbackFailed");
     assert.equal(state.selectedImageKey, "avatar");
     assert.equal(state.selectedTextKey, "text:1");
-    assert.equal(nodes.playbackMeta.textContent.includes("播放失败"), true);
+    assert.equal(nodes.playbackMeta.textContent.includes("播放异常"), true);
     assert.equal(nodes.errorMessage.textContent, "无法挂载本地预览，源文件没有被修改。");
     assert.doesNotMatch(JSON.stringify(state.model), /\/Users|alice|Secret|lottie\.json/i);
 
@@ -6204,6 +7363,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermNavigationSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-navigation-surface.mjs"), "utf8");
   const shortTermSmokeProofModel = await readFile(path.join(experimentRoot, "web/short-term-macos-smoke-proof-model.mjs"), "utf8");
   const shortTermSmokeRunner = await readFile(path.join(experimentRoot, "web/short-term-macos-smoke-runner.mjs"), "utf8");
+  const shortTermNarrowLayoutProof = await readFile(path.join(experimentRoot, "scripts/run-right-surface-narrow-layout-proof.cjs"), "utf8");
   const shortTermByteModel = await readFile(path.join(experimentRoot, "web/short-term-macos-byte-model.mjs"), "utf8");
   const shortTermApiClient = await readFile(path.join(experimentRoot, "web/short-term-macos-api-client.mjs"), "utf8");
   const shortTermHostClient = await readFile(path.join(experimentRoot, "web/short-term-macos-host-client.mjs"), "utf8");
@@ -6283,16 +7443,17 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="settingsDialog"(?=[^>]*data-component="SettingsSheet")(?=[^>]*data-module="SettingsDialogModule")(?=[^>]*data-status="info")[^>]*>/);
   assert.match(page, /class="settingsGroup" aria-label="外观" data-component="ThemeSegmentedControl"/);
   assert.match(page, /class="dialogHeader settingsHeader"/);
-  assert.doesNotMatch(page, /class="settingsHeaderIcon"/);
+  assert.match(page, /class="settingsHeaderIcon" aria-hidden="true"/);
   assert.match(page, /name="appearance" value="system" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>跟随系统<\/span>/);
   assert.match(page, /name="appearance" value="light" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>浅色<\/span>/);
   assert.match(page, /name="appearance" value="dark" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>深色<\/span>/);
+  assert.match(page, /<button class="primary" value="close" data-action="close-settings">完成<\/button>/);
   assert.doesNotMatch(page, /预览背景|主预览适配|活动记录/);
   assert.match(page, /class="dialogActions"/);
   assert.match(page, /id="resourceContextMenu"/);
   assert.match(page, /放弃未保存输出/);
   assert.match(page, /id="textElementList"/);
-  assert.match(page, /<section class="replaceableSection"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*<\/section>/);
+  assert.match(page, /<section class="replaceableSection"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*<\/section>/);
   assert.doesNotMatch(page, /textPreviewBlock|textPreviewHeading|textPreviewSummary|>运行时文本 <span/);
   assert.doesNotMatch(page, /class="textPreviewActions"|data-action="edit-text" disabled|data-action="reset-text" disabled/);
   assert.match(page, /data-component="WindowChrome"/);
@@ -6337,9 +7498,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-text-input-width: 172px/);
   assert.match(shortTermTokens, /--asv-component-text-input-height: 24px/);
   assert.match(shortTermTokens, /--asv-text-input-height: var\(--asv-component-text-input-height\)/);
-  assert.match(shortTermTokens, /--asv-component-mode-switch-width: 192px/);
+  assert.match(shortTermTokens, /--asv-component-mode-switch-width: 152px/);
   assert.match(shortTermTokens, /--asv-component-mode-switch-height: 42px/);
-  assert.match(shortTermTokens, /--asv-component-mode-button-width: 92px/);
+  assert.match(shortTermTokens, /--asv-component-mode-button-width: 72px/);
   assert.match(shortTermTokens, /--asv-component-mode-button-height: 34px/);
   assert.match(shortTermTokens, /--asv-mode-switch-gap: var\(--asv-component-mode-switch-gap\)/);
   assert.match(shortTermTokens, /--asv-mode-switch-shadow: var\(--asv-component-mode-switch-shadow\)/);
@@ -6365,6 +7526,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-toolbar-control-bg: var\(--asv-component-toolbar-control-background\)/);
   assert.match(shortTermTokens, /--asv-component-asset-list-gap: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-thumbnail-size: 48px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-sequence-cell-size: 16px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-sequence-gap: 4px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-audio-icon-width: 17px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-audio-icon-height: 32px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-audio-icon-color: var\(--asv-color-text-tertiary\)/);
   assert.match(shortTermTokens, /--asv-component-right-panel-width: 360px/);
   assert.match(shortTermTokens, /--asv-component-right-panel-padding: var\(--asv-space-4\)/);
   assert.match(shortTermTokens, /--asv-component-right-surface-content-width: calc\(var\(--asv-component-right-panel-width\) - \(var\(--asv-component-right-panel-padding\) \* 2\)\)/);
@@ -6486,6 +7652,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
   assert.match(shortTermTokens, /--asv-component-empty-state-width: 312px/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-gap: var\(--asv-space-3\)/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-icon-size: 30px/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-replaceable-icon-size: 28px/);
+  assert.match(shortTermTokens, /--asv-empty-state-icon-size: var\(--asv-component-empty-state-icon-size\)/);
+  assert.match(shortTermTokens, /--asv-empty-state-replaceable-icon-size: var\(--asv-component-empty-state-replaceable-icon-size\)/);
   assert.match(shortTermTokens, /--asv-component-state-surface-width/);
   assert.match(shortTermTokens, /--asv-state-surface-width: var\(--asv-component-state-surface-width\)/);
   assert.match(shortTermTokens, /--asv-component-state-canvas-checker-size: var\(--asv-component-preview-checker-size\)/);
@@ -6508,7 +7679,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-layout-page-edit-center-width: 560px/);
   assert.match(shortTermTokens, /--asv-page-launch-frame-width: var\(--asv-layout-page-launch-frame-width\)/);
   assert.match(shortTermTokens, /--asv-page-workbench-frame-width: var\(--asv-layout-page-workbench-frame-width\)/);
-  assert.match(shortTermTokens, /--asv-component-settings-divider-width: 0px/);
+  assert.match(shortTermTokens, /--asv-component-settings-sheet-min-height: 300px/);
+  assert.match(shortTermTokens, /--asv-component-settings-sheet-radius: var\(--asv-base-radius-24\)/);
+  assert.match(shortTermTokens, /--asv-component-settings-divider-width: 1px/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-height: 88px/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-selected-border: var\(--asv-color-border-focus\)/);
   assert.match(shortTermTokens, /--asv-component-layer-row-min-height/);
   assert.match(shortTermTokens, /--asv-component-layer-row-divider: 0 solid transparent/);
   assert.match(shortTermTokens, /--asv-layer-list-gap: var\(--asv-component-layer-list-gap\)/);
@@ -6525,9 +7700,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-finding-row-summary-size: var\(--asv-component-finding-row-summary-size\)/);
   assert.match(shortTermTokens, /--asv-finding-row-impact-color: var\(--asv-component-finding-row-impact-color\)/);
   assert.match(shortTermTokens, /--asv-finding-row-badge-min-height: var\(--asv-component-finding-row-badge-min-height\)/);
-  assert.match(shortTermTokens, /--asv-component-row-index-width/);
+  assert.doesNotMatch(shortTermTokens, /--asv-component-row-index-width/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-text-icon-width: 32px/);
+  assert.match(shortTermTokens, /--asv-thumb-text-icon-width: var\(--asv-component-thumbnail-text-icon-width\)/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
-  assert.match(shortTermTokens, /--asv-row-index-width/);
+  assert.doesNotMatch(shortTermTokens, /--asv-row-index-width/);
   assert.match(shortTermTokens, /--asv-focus-inset/);
   assert.match(shortTermTokens, /prefers-color-scheme: dark/);
   assert.match(shortTermTokens, /@media \(max-height: 780px\)/);
@@ -6535,11 +7712,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermAtoms, /button\.primary:disabled/);
   assert.match(shortTermAtoms, /\.spinner/);
   assert.match(shortTermAtoms, /\.thumb\.sequence/);
-  assert.match(shortTermAtoms, /\.rowIndex/);
+  assert.doesNotMatch(shortTermAtoms, /\.rowIndex/);
+  assert.match(shortTermAtoms, /\.thumbnailTextIcon\s*\{[^}]*width: var\(--asv-thumb-text-icon-width\)/s);
   assert.match(shortTermAtoms, /\.badge/);
   assert.match(shortTermAtoms, /\.emptyText\s*\{[^}]*background: transparent/s);
   assert.match(shortTermAtoms, /\.emptyText\s*\{[^}]*width: min\(var\(--asv-empty-state-width\), 100%\)/s);
   assert.doesNotMatch(shortTermAtoms, /\.emptyText\s*\{[^}]*border: 1px dashed/s);
+  assert.match(shortTermAtoms, /\.emptyText\[data-variant="asset"\]\s*\{[^}]*gap: var\(--asv-empty-state-gap\)/s);
+  assert.match(shortTermAtoms, /\.emptyStateIcon\[data-kind="replaceable"\]\s*\{[^}]*width: var\(--asv-empty-state-replaceable-icon-size\)/s);
+  assert.match(shortTermAtoms, /\.emptyStateNote\s*\{[^}]*background: currentColor/s);
   assert.match(shortTermAtoms, /:focus-visible/);
   assert.match(shortTermMolecules, /\.toolbarButton/);
   assert.match(shortTermMolecules, /\.buttonIcon\s*\{[^}]*flex: 0 0 auto/s);
@@ -6643,7 +7824,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermComponents, /\.stateCard\.error h1\s*\{[^}]*color: var\(--asv-danger\)/s);
   assert.match(page, /class="toolbarButton primary stateRecoveryButton"/);
   assert.match(page, /class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true"/);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.view,[\s\S]*\.macApp\[data-app-state="failed"\] \.view\s*\{[^}]*grid-row: 2/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.view,[\s\S]*\.macApp\[data-app-state="unsupported"\] \.view\s*\{[^}]*grid-row: 2/s);
   assert.match(shortTermPageStates, /\.workbenchStateView\s*\{[^}]*place-items: stretch/s);
   assert.match(shortTermComponents, /\.appDialog\[data-status="warning"\]::before/);
   assert.match(shortTermComponents, /\.dialogHeader/);
@@ -6651,7 +7832,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsDialog/);
   assert.match(shortTermComponents, /\.settingsGroup/);
   assert.match(shortTermComponents, /\.settingsHeader/);
-  assert.doesNotMatch(shortTermComponents, /\.settingsHeaderIcon/);
+  assert.match(shortTermComponents, /\.settingsHeaderIcon\s*\{[^}]*width: var\(--asv-settings-title-icon-size\)[^}]*color: var\(--asv-action\)/s);
   assert.match(shortTermComponents, /\.appDialog::backdrop\s*\{[^}]*background: var\(--asv-dialog-backdrop-bg\)/s);
   assert.match(shortTermComponents, /\.settingsDialog\s*\{[^}]*border: var\(--asv-settings-sheet-border\)/s);
   assert.match(shortTermComponents, /\.settingsDialog\s*\{[^}]*border-radius: var\(--asv-settings-sheet-radius\)/s);
@@ -6661,6 +7842,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsDialog \.dialogBody\s*\{[^}]*padding: var\(--asv-settings-sheet-padding\) 0/s);
   assert.match(shortTermComponents, /\.settingsHeader\s*\{[^}]*padding: 0 var\(--asv-settings-sheet-padding\)/s);
   assert.match(shortTermComponents, /\.settingsHeader h2\s*\{[^}]*min-height: var\(--asv-settings-title-row-height\)/s);
+  assert.match(shortTermComponents, /\.settingsHeader h2\s*\{[^}]*font-size: var\(--asv-settings-title-size\)[^}]*font-weight: var\(--asv-settings-title-weight\)/s);
   assert.match(shortTermComponents, /\.settingsChoiceGroup/);
   assert.match(shortTermComponents, /\.settingsGroup\s*\{[^}]*gap: var\(--asv-settings-appearance-block-gap\)/s);
   assert.match(shortTermComponents, /\.settingsGroup\s*\{[^}]*min-height: var\(--asv-settings-appearance-block-height\)/s);
@@ -6668,6 +7850,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*padding: var\(--asv-settings-choice-group-padding\)/s);
   assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*background: var\(--asv-settings-choice-group-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice/);
+  assert.match(shortTermComponents, /\.settingsChoice\s*\{[^}]*min-height: var\(--asv-settings-choice-height\)[^}]*font-weight: var\(--asv-settings-choice-label-weight\)/s);
   assert.match(shortTermComponents, /\.settingsChoiceIcon/);
   assert.match(shortTermComponents, /\.settingsChoice:hover\s*\{[^}]*background: var\(--asv-settings-choice-hover-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)/);
@@ -6691,7 +7874,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*padding: var\(--asv-file-header-padding-block\) 0/s);
   assert.match(shortTermTokens, /--asv-component-workbench-top-safe-area: var\(--asv-component-toolbar-height\)/);
   assert.match(shortTermTokens, /--asv-component-workbench-floating-control-top: var\(--asv-space-4\)/);
-  assert.match(shortTermTokens, /--asv-component-right-panel-safe-padding-block-start: var\(--asv-component-right-panel-padding\)/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-safe-padding-block-start: var\(--asv-component-workbench-top-safe-area\)/);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*margin: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) 0/s);
   assert.match(shortTermModules, /\.rightPanel\s*\{[^}]*background: var\(--asv-side-surface-bg\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-side-surface-bg\)/s);
@@ -6710,7 +7893,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.recentClearButton\s*\{/);
   assert.match(shortTermModules, /\.recentClearButton\s*\{[^}]*box-shadow: var\(--asv-launch-recent-control-shadow\)/s);
   assert.match(shortTermModules, /\.recentClearButton:hover:not\(:disabled\)\s*\{[^}]*background: var\(--asv-launch-recent-clear-hover-bg\)/s);
-  assert.match(page, /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*hidden/);
+  assert.match(page, /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*data-state="empty"/);
+  assert.match(page, /class="recentClearButton"[^>]*data-action="clear-recent"[^>]*disabled/);
   assert.match(shortTermModules, /\.recentBlock ol\s*\{[^}]*border-top: var\(--asv-launch-recent-list-border\)/s);
   assert.match(shortTermModules, /\.recentBlock li\s*\{[^}]*border-bottom: var\(--asv-launch-recent-row-border\)/s);
   assert.match(shortTermModules, /\.recentBlock li\[data-state="invalid"\]\s*\{[^}]*opacity: var\(--asv-launch-recent-invalid-opacity\)/s);
@@ -6735,6 +7919,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*border-bottom: var\(--asv-right-panel-header-divider\)/s);
   assert.match(shortTermModules, /\.sectionHead\s*\{[^}]*padding-bottom: var\(--asv-right-section-head-padding-block-end\)/s);
   assert.match(shortTermModules, /\.assetList,[\s\S]*\.textElementList\s*\{[^}]*margin-top: var\(--asv-right-section-list-margin-block-start\)/s);
+  assert.match(shortTermModules, /\.replaceableList\[data-empty="true"\],[\s\S]*\.textElementList\[data-empty="true"\]\s*\{[^}]*display:\s*none/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*display: grid/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*gap: var\(--asv-asset-section-head-gap\)/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead h2\s*\{[^}]*white-space: nowrap/s);
@@ -6783,8 +7968,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-save-banner-min-height/);
   assert.match(shortTermTokens, /--asv-save-banner-min-height: var\(--asv-component-save-banner-min-height\)/);
   assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*min-height: var\(--asv-save-banner-min-height\)/s);
-  assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*border-bottom: var\(--asv-save-banner-border\)/s);
-  assert.match(shortTermModules, /\.saveBanner::before\s*\{[^}]*display: none/s);
+  assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*border: var\(--asv-save-banner-border\)/s);
+  assert.match(shortTermModules, /\.saveBanner::before\s*\{[^}]*width: var\(--asv-save-banner-icon-size\)/s);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
   assert.doesNotMatch(shortTermModules, /\.canvasWrap\[data-canvas-label\]::before/);
@@ -6838,8 +8023,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-columns: 1fr/s);
   assert.match(shortTermTokens, /--asv-component-drag-overlay-grid-rows: 1fr 3fr/);
   assert.match(shortTermTokens, /--asv-drag-overlay-grid-rows: var\(--asv-component-drag-overlay-grid-rows\)/);
-  assert.match(shortTermModules, /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/);
-  assert.match(shortTermModules, /padding-top: calc\(var\(--asv-toolbar-height\) \+ var\(--asv-launch-content-offset-block-start\)\)/);
+  assert.doesNotMatch(shortTermModules, /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/);
+  assert.doesNotMatch(shortTermModules, /padding-top: calc\(var\(--asv-toolbar-height\) \+ var\(--asv-launch-content-offset-block-start\)\)/);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-rows: var\(--asv-drag-overlay-grid-rows\)/s);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*backdrop-filter: var\(--asv-drag-overlay-backdrop-filter\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone\s*\{[^}]*opacity: var\(--asv-drag-zone-opacity\)/s);
@@ -6849,12 +8034,21 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="launch"\]/);
   assert.match(shortTermStyles, /body\s*\{[^}]*min-width: var\(--asv-launch-min-width\)[^}]*min-height: var\(--asv-launch-min-height\)/s);
   assert.match(shortTermPageStates, /\.macApp\s*\{[^}]*min-width: var\(--asv-launch-min-width\)[^}]*min-height: var\(--asv-launch-min-height\)/s);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="failed"\]\s*\{[^}]*min-width: var\(--asv-workbench-min-width\)[^}]*min-height: var\(--asv-workbench-min-height\)/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="unsupported"\]\s*\{[^}]*min-width: min\(var\(--asv-workbench-min-width\), 100vw\)[^}]*min-height: min\(var\(--asv-workbench-min-height\), 100vh\)/s);
   assert.match(shortTermPageStates, /\.launchView\s*\{[^}]*place-items: stretch/s);
-  assert.match(shortTermPageStates, /\.saveBanner\s*\{[^}]*grid-row: 1/s);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="failed"\] \.view\s*\{[^}]*grid-row: 2/s);
+  assert.match(shortTermPageStates, /\.macApp > \.saveBanner\s*\{[^}]*grid-row: 1/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="unsupported"\] \.view\s*\{[^}]*grid-row: 2/s);
   assert.match(shortTermPageStates, /\.previewView,\s*\.workbenchStateView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.compareView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermPageStates, /\.compareView\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermModules, /\.compareCanvasSurface\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermModules, /\.compareStage\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermModules, /\.compareCanvasWrap\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermModules, /\.compareInfo\s*\{[^}]*min-width: 0[^}]*overflow-x: hidden[^}]*overflow-y: auto/s);
+  assert.match(shortTermNarrowLayoutProof, /documentScrollWidth <= innerWidth \+ 1/);
+  assert.match(shortTermNarrowLayoutProof, /panel\.right <= innerWidth \+ 1/);
+  assert.match(shortTermNarrowLayoutProof, /exitButton\.right <= innerWidth \+ 1/);
+  assert.match(shortTermNarrowLayoutProof, /panel\.scrollWidth <= result\.compare\.panel\.clientWidth \+ 1/);
   assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-columns: var\(--asv-left-width\) minmax\(var\(--asv-edit-canvas-min-width\), 1fr\) minmax\(var\(--asv-edit-right-panel-min-width\), var\(--asv-right-panel-width\)\)/s);
   assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.editView\s*\{[^}]*gap: var\(--asv-edit-view-gap\)/s);
@@ -6954,6 +8148,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermController, /showShortTermOutputBanner\(\{ nodes, title, message, tone \}\)/);
   assert.match(shortTermController, /showShortTermFailure\(\{ nodes, setView \}, error\)/);
   assert.match(shortTermController, /showShortTermOperationFailure\(\{ nodes, state, setMode, renderCommandState \}, title, error\)/);
+  assert.match(shortTermFileSurface, /showPlaybackFailure\(error\)/);
+  assert.match(shortTermController, /async function reloadPrimaryPlayback\(\)[\s\S]*mountPlayback\("primary", nodes\.primaryCanvas, state\.previewBytes \?\? state\.sourceBytes\)[\s\S]*showPlaybackFailure\(error\)/);
+  assert.match(shortTermController, /function showPlaybackFailure\(\)[\s\S]*stopAllPlayback\(\)[\s\S]*clearCanvas\(nodes\.primaryCanvas\)[\s\S]*setView\("preview"\)[\s\S]*showPlaybackFailureRecovery\(nodes\)/);
+  assert.match(shortTermEventBindings, /action === "reload-playback"[^\n]*handlers\.reloadPrimaryPlayback\(\)/);
   assert.match(shortTermController, /shortTermCurrentStateSummary\(\{ nodes, state \}\)/);
   assert.match(shortTermFeedbackSurface, /from "\.\/short-term-macos-feedback-model\.mjs"/);
   assert.match(shortTermFeedbackSurface, /buildCurrentStateSummary/);
@@ -7044,9 +8242,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePanelHtml/);
   assert.match(shortTermCompareModel, /class="toolbarButton compareExitButton" type="button" data-action="back-preview">退出对比/);
-  assert.match(shortTermCompareModel, /if \(!aModel \|\| !bModel\) return ""/);
+  assert.match(shortTermCompareModel, /if \(!aModel && !bModel\) return ""/);
+  assert.match(shortTermCompareModel, /const comparisonReady = Boolean\(aModel && bModel\)/);
+  assert.match(shortTermCompareModel, /if \(!comparisonReady\) return "uncompared"/);
   assert.match(shortTermCompareModel, /const rows = renderCompareMetricColumns\(aModel, bModel\)/);
-  assert.match(shortTermCompareModel, /rows \? `<section class="compareMetricGrid" aria-label="对比信息">/);
+  assert.match(shortTermCompareModel, /rows \? `<section class="compareMetricGrid" aria-label="对比信息" data-compare-state="\$\{state\}">/);
   assert.match(shortTermCompareModel, /comparePairHeader/);
   assert.doesNotMatch(shortTermCompareModel, /<span>\$\{escapeHtml\(aTitle\)\}<\/span>|<span>\$\{escapeHtml\(bTitle\)\}<\/span>/);
   assert.match(shortTermCompareModel, /compareModeHeader/);
@@ -7089,7 +8289,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStateRenderers, /export function renderDiscardMessage/);
   assert.match(shortTermStateRenderers, /export function renderFailureMessage/);
   assert.match(shortTermStateRenderers, /nodes\.loadingMessage\.textContent = copy/);
-  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = displayName/);
+  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = dirty \? `\$\{displayName\} \*` : displayName/);
   assert.match(shortTermStateRenderers, /nodes\.discardMessage\.textContent = copy/);
   assert.match(shortTermStateRenderers, /nodes\.errorMessage\.textContent = copy/);
   assert.doesNotMatch(shortTermEditReservedRenderers, /export function applyCompareSlotView|export function markCompareSlotLoaded|export function applyCompareTraceView|export function renderCompareInfoPanel/);
@@ -7108,9 +8308,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEditReservedRenderers, /export function createReplaceableImageRow|export function renderReplaceableImages|export function createTextElementRow|export function renderRuntimeTextElements|ReplaceableImageRow|ReplaceableTextRow/);
   assert.match(shortTermReplaceableRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermReplaceableRenderers, /export function renderReplaceableImages/);
+  assert.match(shortTermReplaceableRenderers, /export function renderReplaceableEmptyState/);
   assert.match(shortTermReplaceableRenderers, /export function createTextElementRow/);
   assert.match(shortTermReplaceableRenderers, /export function renderRuntimeTextElements/);
-  assert.doesNotMatch(shortTermReplaceableRenderers, /from "\.\/short-term-macos-inline-status-renderers\.mjs"/);
+  assert.match(shortTermReplaceableRenderers, /createReplaceableEmptyStatus/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /createInlineStatusText\(/);
   assert.match(shortTermReplaceableRenderers, /from "\.\/short-term-macos-thumbnail-renderers\.mjs"/);
   assert.match(shortTermEditReservedRenderers, /export function createEditLayerRow/);
   assert.match(shortTermEditReservedRenderers, /export function renderEditReservedLayers/);
@@ -7133,15 +8335,17 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /export function saveBannerView/);
   assert.match(shortTermFeedbackModel, /export function sourceUnmodifiedMessage/);
   assert.match(shortTermFeedbackModel, /escapeHtml\(title\)/);
-  assert.match(shortTermFeedbackModel, /escapeHtml\(message \|\| ""\)/);
+  assert.match(shortTermFeedbackModel, /const messageHtml = message \?/);
+  assert.match(shortTermFeedbackModel, /escapeHtml\(message\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
-  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, "正在打开最近文件。"\)/);
-  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, "解析文件并准备预览。"\)/);
+  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, ""\)/);
+  assert.doesNotMatch(shortTermFileSurface, /正在打开最近文件。|解析文件并准备预览。/);
   assert.match(shortTermFileSurface, /renderFileHeader\(nodes, "等待打开文件", "-"\)/);
-  assert.match(shortTermPreviewSurface, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta\)/);
+  assert.match(shortTermPreviewSurface, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta, \{[\s\S]*dirty: state\.activeOutput\?\.kind === "rename"[\s\S]*\}\)/);
   assert.match(shortTermController, /renderMessage: \(copy\) => renderDiscardMessage\(nodes, copy\)/);
   assert.match(shortTermDialogModel, /renderMessage\(message\)/);
-  assert.match(shortTermFeedbackSurface, /renderFailureMessage\(nodes, sourceUnmodifiedMessage\(message\)\)/);
+  assert.match(shortTermFeedbackSurface, /renderFailureMessage\(nodes, SHORT_TERM_LOAD_FAILURE_COPY\)/);
+  assert.match(shortTermFeedbackSurface, /message: sourceUnmodifiedMessage\(message\)/);
   assert.match(shortTermFileSurface, /state\.sourceBytes = new Uint8Array\(bytes\)/);
   assert.match(shortTermFileSurface, /state\.sourceBytes = undefined/);
   assert.match(shortTermFileSurface, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);
@@ -7149,7 +8353,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /nodes\.(loadingMessage|fileIdentity|playbackMeta|discardMessage|errorMessage)\.textContent\s*=/);
   assert.doesNotMatch(shortTermEntry, /renderLoadingMessage\(nodes, "正在打开最近文件。"\)|renderLoadingMessage\(nodes, "解析文件并准备预览。"\)|renderFileHeader\(nodes, "等待打开文件", "-"\)|state\.sourceBytes = new Uint8Array\(bytes\)|state\.sourceBytes = undefined|hideShortTermSaveBanner\(nodes\)/);
   assert.match(shortTermStateRenderers, /nodes\.loadingMessage\.textContent = copy/);
-  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = displayName/);
+  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = dirty \? `\$\{displayName\} \*` : displayName/);
   assert.match(shortTermStateRenderers, /nodes\.playbackMeta\.textContent = playbackMeta/);
   assert.match(shortTermStateRenderers, /nodes\.discardMessage\.textContent = copy/);
   assert.match(shortTermStateRenderers, /nodes\.errorMessage\.textContent = copy/);
@@ -7170,8 +8374,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermLaunchRenderers, /export function renderLaunchRecentFiles/);
   assert.match(shortTermLaunchRenderers, /export function renderRecentFilesUnavailable/);
   assert.match(shortTermLaunchRenderers, /listNode\.closest\("\.recentBlock"\)/);
-  assert.match(shortTermLaunchRenderers, /recentBlock\.hidden = true/);
-  assert.match(shortTermLaunchRenderers, /recentBlock\.hidden = records\.length === 0/);
+  assert.match(shortTermLaunchRenderers, /recentBlock\.hidden = false/);
+  assert.match(shortTermLaunchRenderers, /recentBlock\.dataset\.state = "unavailable"/);
+  assert.match(shortTermLaunchRenderers, /recentBlock\.dataset\.state = records\.length === 0 \? "empty" : "ready"/);
   assert.match(shortTermLaunchRenderers, /clearButton\.disabled = records\.length === 0/);
   assert.match(shortTermLaunchRenderers, /data-action="open-recent"/);
   assert.match(shortTermLaunchRenderers, /data-recent-id/);
@@ -7260,6 +8465,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextRenderers, /node\.hidden = !visible/);
   assert.match(shortTermTextRenderers, /node\.textContent = ""/);
   assert.match(shortTermTextModel, /export const RUNTIME_TEXT_DEFAULT_VALUE = "SVGA VIP"/);
+  assert.match(shortTermSmokeRunner, /const runtimeTextPreviewValue = "SVGA VIP Preview"/);
+  assert.match(shortTermSmokeRunner, /state\.textPreview === runtimeTextPreviewValue/);
   assert.match(shortTermTextModel, /export function runtimeTextInputValue/);
   assert.match(shortTermTextModel, /export function hasRuntimeTextPreview/);
   assert.match(shortTermTextModel, /export function runtimeTextPlaceholder/);
@@ -7268,7 +8475,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextModel, /export function nextSelectedTextKey/);
   assert.match(shortTermTextModel, /export function selectedRuntimeTextElement/);
   assert.doesNotMatch(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
-  assert.match(shortTermTextModel, /summaryCopy: `\(\$\{images\.length \+ texts\.length\}\)`/);
+  assert.match(shortTermTextModel, /replaceableElementSummaryCopy\(images\.length \+ texts\.length, hasImagePreview \|\| hasTextPreview\)/);
+  assert.match(shortTermReplaceableModel, /export function replaceableElementSummaryCopy/);
   assert.match(shortTermReplaceableSurface, /from "\.\/short-term-macos-replaceable-model\.mjs"/);
   assert.match(shortTermReplaceableSurface, /replaceableImageListView/);
   assert.match(shortTermReplaceableSurface, /nextReplaceableSelection/);
@@ -7278,15 +8486,20 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableList\.replaceChildren/);
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableSummary\.textContent = view\.summaryCopy/);
   assert.match(shortTermReplaceableRenderers, /closest\("\.replaceableSection"\)\?\.setAttribute\("data-empty", view\.hasImages \? "false" : "true"\)/);
+  assert.match(shortTermReplaceableRenderers, /nodes\.replaceableList\.dataset\.empty = view\.hasImages \? "false" : "true"/);
   assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.dataset\.empty = view\.hasTextElements \? "false" : "true"/);
+  assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.closest\("\.replaceableSection"\)\?\.setAttribute\("data-empty", "false"\)/);
   assert.match(shortTermModules, /\.replaceableSection\[data-empty="true"\]/);
+  assert.match(shortTermComponents, /\.replaceableRow\[data-replacement-state="preview"\] \.rowText strong::after/);
+  assert.match(shortTermComponents, /\.textElementRow\[data-replacement-state="preview"\] \.rowText strong::after/);
+  assert.match(shortTermComponents, /content: "\*"/);
   assert.doesNotMatch(shortTermModules, /textPreviewBlock/);
   assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
   assert.doesNotMatch(shortTermReplaceableRenderers, /createInlineStatusText/);
   assert.match(shortTermReplaceableModel, /export function replaceableImageListView/);
   assert.match(shortTermReplaceableModel, /export function nextReplaceableSelection/);
   assert.doesNotMatch(shortTermReplaceableModel, /没有可替换元素。/);
-  assert.match(shortTermReplaceableModel, /summaryCopy: `\(\$\{images\.length\}\)`/);
+  assert.match(shortTermReplaceableModel, /summaryCopy: replaceableElementSummaryCopy\(images\.length, hasPreview\)/);
   assert.match(shortTermController, /from "\.\/short-term-macos-optimization-surface\.mjs"/);
   assert.match(shortTermOptimizationSurface, /from "\.\/short-term-macos-optimization-model\.mjs"/);
   assert.match(shortTermOptimizationSurface, /optimizationTabView/);
@@ -7296,6 +8509,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationSurface, /prependOptimizationResult\(nodes, model\.resultTitle, model\.resultSummary, tone\)/);
   assert.doesNotMatch(shortTermEntry, /createOptimizationFindingRow|createInlineStatusText|createMessageRow|nodes\.optimizationSummary\.textContent|nodes\.findingList\.replaceChildren|nodes\.findingList\.prepend/);
   assert.match(shortTermOptimizationSurface, /from "\.\/short-term-macos-optimization-renderers\.mjs"/);
+  assert.match(shortTermOptimizationSurface, /clearShortTermSaveBanner\(nodes\)/);
+  assert.match(shortTermOptimizationSurface, /renderOptimizationRunningState\(nodes, true\)/);
+  assert.match(shortTermOptimizationSurface, /renderOptimizationRunningState\(nodes, false\)/);
+  assert.doesNotMatch(shortTermOptimizationSurface, /showSaveBanner\("优化执行中…", "正在生成优化文件，请勿关闭…"\)/);
+  assert.doesNotMatch(shortTermOptimizationSurface, /正在执行安全优化。|只处理当前可安全执行的项目。/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-optimization-model\.mjs"|from "\.\/short-term-macos-optimization-renderers\.mjs"|optimizationTabView|optimizationResultTone|prependOptimizationResult|renderOptimizationFindings/);
   assert.match(shortTermOptimizationRenderers, /nodes\.optimizationSummary\.textContent = view\.summaryCopy/);
   assert.match(shortTermOptimizationRenderers, /nodes\.runOptimizationButton\.textContent = view\.runButtonCopy/);
@@ -7409,7 +8627,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackSurface, /export function renderShortTermPlaybackProgress/);
   assert.match(shortTermController, /requestAnimationFrame\(tick\)/);
   assert.match(shortTermController, /cancelAnimationFrame\(playbackProgressFrame\)/);
-  assert.match(shortTermController, /if \(key === "primary"\) startPlaybackProgressLoop\(\)/);
+  assert.match(
+    shortTermController,
+    /if \(key === "primary"\) \{\s+hidePlaybackFailureRecovery\(nodes\);\s+startPlaybackProgressLoop\(\);\s+\}/
+  );
   assert.match(shortTermPlaybackSurface, /export function clearShortTermPlaybackCanvas/);
   assert.match(shortTermPlaybackSurface, /export function shortTermPlayerPrototype/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
@@ -7599,10 +8820,17 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /document\.elementFromPoint\(compareExitHitX, compareExitHitY\)/);
   assert.match(shortTermSmokeRunner, /compareExitButtonPointerProof/);
   assert.match(shortTermSmokeRunner, /hitTargetIsExitButton: compareExitButtonPointerHit/);
+  assert.match(shortTermSmokeRunner, /hitTestAvailable: compareExitHitTestAvailable/);
+  assert.match(shortTermSmokeRunner, /buttonWithinViewport: compareExitButtonWithinViewport/);
+  assert.match(shortTermSmokeRunner, /hiddenDomActivationUsed: !compareExitHitTestAvailable/);
   assert.match(shortTermSmokeRunner, /exitedToPreview: state\.view === "preview"/);
   assert.match(shortTermSmokeProofModel, /compareExitButtonPointerPathWorks/);
+  assert.match(shortTermSmokeProofModel, /compareExitButtonHiddenActivationPathWorks/);
+  assert.match(shortTermSmokeProofModel, /compareExitButtonInteractionWorks/);
   assert.match(shortTermSmokeProofModel, /compareExitButtonBelowTitlebar/);
   assert.match(main, /compareExitButtonPointerProof/);
+  assert.match(main, /compareExitHiddenActivationPath/);
+  assert.match(main, /compareExitButtonInteractionWorks/);
   assert.match(main, /hitTargetAction !== "back-preview"/);
   assert.match(main, /compareExitButtonPointerProof\.buttonTop < compareExitButtonPointerProof\.titlebarBottom/);
   assert.match(shortTermSmokeProofModel, /focusedControlSpaceNotGlobalPlayback/);
@@ -7617,6 +8845,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /minimumPreviewCaptured/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermReplaceableClassificationProof/);
   assert.match(shortTermSmokeProofModel, /short-term-replaceable-classification-proof/);
+  assert.match(shortTermSmokeProofModel, /noReplaceableCopy === "未发现可替换元素"/);
   assert.match(shortTermSmokeProofModel, /automaticKeysExcluded/);
   assert.match(shortTermSmokeRunner, /collectShortTermReplaceableClassificationProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replaceable-classification-proof"/);
@@ -7650,6 +8879,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-design-interaction-proof\.json/);
   assert.match(main, /shortTermDesignInteractionProof: Boolean\(shortTermDesignInteractionProof\)/);
   assert.match(main, /validateShortTermReplaceableClassificationProof/);
+  assert.match(main, /value\.noReplaceableCopy !== "未发现可替换元素"/);
   assert.match(main, /short-term-replaceable-classification-proof\.json/);
   assert.doesNotMatch(shortTermEntry, /const screenshotCaptures = \[\]/);
   assert.match(shortTermSmokeRunner, /shortTermScreenshots: smokeArtifactCapture\.allSmokeArtifactsCaptured\(9\)/);
@@ -7728,7 +8958,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEditReservedRenderers, /row\.className = "layerRow"/);
   assert.doesNotMatch(shortTermEditReservedRenderers, /row\.className = "assetRow"/);
   assert.match(shortTermEditReservedRenderers, /row\.dataset\.component = "LayerRow"/);
-  assert.match(shortTermReplaceableRenderers, /class="rowIndex"/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /class="rowIndex"/);
+  assert.match(shortTermReplaceableRenderers, /class="replaceableIdentity"/);
+  assert.match(shortTermReplaceableRenderers, /data-component="ThumbnailFrame" data-variant="text"/);
   assert.match(shortTermSmokeProofModel, /comparisonVisible/);
   assert.match(shortTermSmokeProofModel, /sourceBytesUnchanged/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermRenameProof/);
@@ -7783,7 +9015,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationSurface, /showOperationFailure\("优化未完成。", error\)/);
   assert.match(shortTermReplaceableSurface, /showOperationFailure\("重命名未完成。", error\)/);
   assert.match(shortTermReplaceableSurface, /showOperationFailure\("替换未完成。", error\)/);
+  assert.match(shortTermReplaceableSurface, /showSaveBanner\("正在重命名 imageKey…", ""\)/);
+  assert.match(shortTermReplaceableSurface, /showSaveBanner\("正在替换图片…", ""\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
+  assert.doesNotMatch(shortTermReplaceableSurface, /完成引用闭合检查|完成重开验证|保存保持关闭/);
+  assert.doesNotMatch(shortTermOptimizationSurface, /保存保持关闭/);
+  assert.doesNotMatch(shortTermSaveSurface, /保存保持关闭/);
   assert.match(shortTermController, /currentStateSummary/);
   assert.match(shortTermFeedbackModel, /错误：\$\{input\.errorText\.trim\(\)\}/);
   assert.match(shortTermFeedbackModel, /提示：\$\{input\.saveBannerText\.trim\(\)\}/);
@@ -7847,6 +9084,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-menu-state-proof/);
   assert.match(main, /stateReflectsLoadedSmoke/);
   assert.match(main, /openMenuAvailable/);
+  assert.match(main, /openMenuAvailable:\s*menuItemEnabled\(\["文件", "打开文件\.\.\."\]\) === true/u);
   assert.match(main, /recentMenuExists/);
   assert.match(main, /clearRecentMenuExists/);
   assert.match(main, /recentMenuRecordCountMatchesState/);
@@ -8152,6 +9390,9 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
   assert.match(dataComponentAllowlist, /DragDecisionOverlay/);
   assert.match(dataComponentAllowlist, /CanvasToast/);
+  assert.match(dataComponentAllowlist, /ThumbnailFrame/);
+  assert.match(dataComponentAllowlist, /ThumbnailAudioIcon/);
+  assert.match(dataComponentAllowlist, /ThumbnailTextIcon/);
   assert.match(source, /const disallowedLaunchCopyPatterns = \[/);
   assert.match(source, /launch-page-copy-stays-minimal/);
   assert.match(source, /const disallowedLegacySurfaceCopyPatterns = \[/);
@@ -8747,6 +9988,40 @@ function createSessionBackedMultiFormatRuntimeMountTestBridge(session) {
 
 function createRuntimeMountOpenResult(format, options = {}) {
   const activeReplacements = Array.isArray(options.active) ? options.active : [];
+  const defaultImageTargets = format === "lottie"
+    ? [{
+        imageKey: "avatar",
+        resourceId: "avatar",
+        displayName: "Avatar",
+        detail: "120 x 80"
+      }]
+    : format === "vap"
+      ? [{
+          imageKey: "avatar",
+          resourceId: "avatar",
+          displayName: "avatar",
+          detail: "VAP 融合图片 · 120 x 80"
+        }]
+      : [];
+  const defaultTextTargets = format === "lottie"
+    ? [{
+        textKey: "text:1",
+        displayName: "Greeting",
+        initialText: "Original greeting",
+        placeholder: "输入文字以预览",
+        resetDisabled: false
+      }]
+    : format === "vap"
+      ? [{
+          textKey: "title",
+          displayName: "title",
+          initialText: "VAP 融合文字",
+          placeholder: "输入文字以预览",
+          resetDisabled: false
+        }]
+      : [];
+  const imageTargets = Array.isArray(options.imageTargets) ? options.imageTargets : defaultImageTargets;
+  const textTargets = Array.isArray(options.textTargets) ? options.textTargets : defaultTextTargets;
   const ownerRightPanelSnapshotEnvelope = createTestOwnerRightPanelSnapshotEnvelope({
     facts: [{ id: "format", label: "格式", value: format.toUpperCase(), status: "pass" }],
     assetInventory: {
@@ -8756,47 +10031,17 @@ function createRuntimeMountOpenResult(format, options = {}) {
       groups: [],
       summary: {
         totalItems: 0,
-        replaceableItems: 0,
-        imageCount: 0,
-        textCount: format === "lottie" || format === "vap" ? 1 : 0,
+        replaceableItems: imageTargets.length + textTargets.length,
+        imageCount: imageTargets.length,
+        textCount: textTargets.length,
         sequenceFrameCount: 0,
         audioVideoCount: 0,
         unsupportedOrMissingCount: 0
       },
       capabilityMarkers: []
     },
-    imageTargets: format === "lottie"
-      ? [{
-          imageKey: "avatar",
-          resourceId: "avatar",
-          displayName: "Avatar",
-          detail: "120 x 80"
-        }]
-      : format === "vap"
-        ? [{
-            imageKey: "avatar",
-            resourceId: "avatar",
-            displayName: "avatar",
-            detail: "VAP 融合图片 · 120 x 80"
-          }]
-        : [],
-    textTargets: format === "lottie"
-      ? [{
-          textKey: "text:1",
-          displayName: "Greeting",
-          initialText: "Original greeting",
-          placeholder: "输入文字以预览",
-          resetDisabled: false
-        }]
-      : format === "vap"
-        ? [{
-            textKey: "title",
-            displayName: "title",
-            initialText: "VAP 融合文字",
-            placeholder: "输入文字以预览",
-            resetDisabled: false
-          }]
-        : []
+    imageTargets,
+    textTargets
   }, options.sourceId ?? (format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb"));
   return {
     status: "opened",
@@ -9029,6 +10274,11 @@ function createMultiFormatControllerTestNodes() {
   const playbackProgress = new FakeDomElement("div");
   const playbackProgressBar = new FakeDomElement("span");
   playbackProgress.replaceChildren(playbackProgressBar);
+  const replaceableSection = new FakeDomElement("section");
+  replaceableSection.className = "replaceableSection";
+  const replaceableList = new FakeDomElement("div");
+  const textElementList = new FakeDomElement("div");
+  replaceableSection.replaceChildren(textElementList, replaceableList);
   return {
     app: new FakeDomElement("main"),
     loadingMessage: new FakeDomElement("p"),
@@ -9040,8 +10290,8 @@ function createMultiFormatControllerTestNodes() {
     assetFilterTabs: new FakeDomElement("div"),
     assetList: new FakeDomElement("div"),
     findingList: new FakeDomElement("div"),
-    replaceableList: new FakeDomElement("div"),
-    textElementList: new FakeDomElement("div"),
+    replaceableList,
+    textElementList,
     replaceableSummary: new FakeDomElement("p"),
     playbackProgress,
     playbackTime: new FakeDomElement("span"),
@@ -9175,6 +10425,10 @@ class FakeDomElement {
 
   setAttribute(name, value) {
     this.attributes[name] = String(value);
+    if (name.startsWith("data-")) {
+      const datasetKey = name.slice(5).replace(/-([a-z])/gu, (_match, letter) => letter.toUpperCase());
+      this.dataset[datasetKey] = String(value);
+    }
   }
 
   setAttributeNS(_namespace, name, value) {
@@ -9273,6 +10527,11 @@ class FakeDomElement {
     return fakeMatchesSelector(this, selector);
   }
 
+  contains(candidate) {
+    if (candidate === this) return true;
+    return this.children.some((child) => child?.contains?.(candidate));
+  }
+
   closest(selector) {
     let node = this;
     while (node) {
@@ -9318,6 +10577,9 @@ function fakeMatchesSelector(node, selector) {
   if (selector === ".textElementRow[data-text-key]") {
     return String(node.className || "").split(/\s+/u).includes("textElementRow")
       && typeof node.dataset.textKey === "string";
+  }
+  if (selector === ".replaceableSection") {
+    return String(node.className || "").split(/\s+/u).includes("replaceableSection");
   }
   return false;
 }

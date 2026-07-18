@@ -49,11 +49,15 @@ const allowedDataComponents = new Set([
   "MetricOptimizationEntry",
   "AssetRow",
   "AssetFilterTabs",
+  "ThumbnailFrame",
+  "ThumbnailAudioIcon",
+  "ThumbnailTextIcon",
   "SequenceThumbnail",
   "AudioAssetRow",
   "ReplaceableImageRow",
   "ReplaceableTextRow",
   "OptimizationFindingRow",
+  "OptimizationRunningState",
   "OptimizationResultCard",
   "OptimizationResultDetailRow",
   "CompareCanvasSurface",
@@ -89,6 +93,7 @@ const allowedModules = new Set([
   "OverviewInformationModule",
   "ReplaceableElementsSurface",
   "OptimizationDetailSurface",
+  "OptimizationRunningState",
   "GeneralCompareModule",
   "OptimizationCompareModule",
   "EditReservedModule",
@@ -103,8 +108,12 @@ const requiredPageStates = [
   "Launch",
   "Loading",
   "Load failed",
+  "Playback error",
+  "Drag decision overlay",
+  "Unsupported drop",
   "Preview ready",
   "Preview replaceable",
+  "Save feedback",
   "General comparing",
   "Edit reserved"
 ];
@@ -113,12 +122,26 @@ const requiredFigmaPageStates = [
   { figma: "启动 / 默认", codePageState: "Launch", frame: { width: 640, height: 640 }, rootModules: ["WindowChromeModule", "LaunchModule"] },
   { figma: "加载 / 加载中", codePageState: "Loading", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
   { figma: "加载 / 加载失败", codePageState: "Load failed", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
+  { figma: "加载 / 播放异常", codePageState: "Playback error", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "预览 / 默认", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "预览 / 可替换元素", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface"] },
+  { figma: "预览 / imageKey 重命名 Dirty 状态", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface", "SaveStateModule"] },
+  { figma: "预览 / 无可替换元素", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface"] },
+  { figma: "预览 / 无音频资产", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
+  { figma: "预览 / 无序列帧资产", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "预览 / 优化详情", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"] },
+  { figma: "预览 / 优化执行中", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface", "OptimizationRunningState"] },
   { figma: "预览 / 优化结果对比", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"] },
   { figma: "对比 / 空态", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "对比 / 已有文件A_等待文件B", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
   { figma: "对比 / 双文件已加载", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "对比 / 拖拽中", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "拖拽 / 已有文件_拖入对比", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
+  { figma: "拖拽 / 格式不支持_拖拽中", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
+  { figma: "拖拽 / 格式不支持_Drop后", codePageState: "Unsupported drop", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
+  { figma: "保存 / 保存中", codePageState: "Save feedback", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"] },
+  { figma: "保存 / 保存成功", codePageState: "Save feedback", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"] },
+  { figma: "保存 / 保存失败", codePageState: "Save feedback", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"] },
   { figma: "编辑 / 默认", codePageState: "Edit reserved", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "EditReservedModule", "PreviewCanvasModule"] },
   { figma: "参考 / 设置面板", codePageState: "Settings dialog", frame: { width: 1280, height: 800 }, rootModules: ["SettingsDialogModule"] }
 ];
@@ -324,6 +347,11 @@ function arraysEqual(a = [], b = []) {
 
 async function main() {
   const page = await readFile(path.join(webRoot, "index.html"), "utf8");
+  const optimizationPanelStart = page.indexOf('id="panelOptimization"');
+  const optimizationPanelEnd = page.indexOf("</aside>", optimizationPanelStart);
+  const optimizationPanel = optimizationPanelStart >= 0 && optimizationPanelEnd > optimizationPanelStart
+    ? page.slice(optimizationPanelStart, optimizationPanelEnd)
+    : "";
   const appEntry = await readFile(path.join(webRoot, "short-term-macos-app.mjs"), "utf8");
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
   const overviewRenderer = await readFile(path.join(webRoot, "short-term-macos-overview-renderers.mjs"), "utf8");
@@ -488,6 +516,7 @@ async function main() {
 
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
+  const unsupportedSection = page.match(/<section class="view stateView workbenchStateView unsupportedDropView" data-view="unsupported"[\s\S]*?<\/section>\s*<\/section>/)?.[0] ?? "";
   const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
   record("loading-and-load-failed-states-keep-recovery-contract",
     /aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"/.test(loadingSection)
@@ -555,20 +584,46 @@ async function main() {
   const components = await readFile(path.join(webRoot, "short-term-macos.components.css"), "utf8");
   const modules = await readFile(path.join(webRoot, "short-term-macos.modules.css"), "utf8");
   const pageStatesCss = await readFile(path.join(webRoot, "short-term-macos.page-states.css"), "utf8");
+
+  record("loading-and-failed-states-match-frozen-visual-contract",
+    /class="stateCard stateLoadingCard"/.test(loadingSection)
+    && /class="stateCard error stateFailureCard"/.test(failedSection)
+    && /class="stateFailureIcon" aria-hidden="true">[\s\S]*?<svg[^>]*>[\s\S]*?<\/svg>/.test(failedSection)
+    && /--asv-component-state-loading-indicator-size:\s*28px/.test(tokens)
+    && /--asv-component-state-loading-label-size:\s*var\(--asv-type-size-footnote\)/.test(tokens)
+    && /--asv-component-state-failure-icon-size:\s*var\(--asv-base-space-48\)/.test(tokens)
+    && /--asv-component-state-failure-icon-background:\s*var\(--asv-color-status-danger\)/.test(tokens)
+    && /--asv-radius-xs:\s*var\(--asv-base-radius-2\)/.test(tokens)
+    && /--asv-radius-pill:\s*var\(--asv-base-radius-full\)/.test(tokens)
+    && /--asv-component-state-failure-title-size:\s*var\(--asv-type-size-metric\)/.test(tokens)
+    && /\.stateLoadingCard\s*>\s*\.spinner\s*\{[^}]*width:\s*var\(--asv-state-loading-indicator-size\);[^}]*height:\s*var\(--asv-state-loading-indicator-size\);/s.test(components)
+    && /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s.test(components)
+    && /\.stateFailureCard\s*>\s*h1\s*\{[^}]*font-size:\s*var\(--asv-state-failure-title-size\);[^}]*font-weight:\s*var\(--asv-state-failure-title-weight\);/s.test(components));
+
+  record("playback-error-preserves-preview-workspace-contract",
+    /id="playbackErrorRecovery"(?=[^>]*data-component="ErrorRecoveryPanel")(?=[^>]*data-page-state="Playback error")(?=[^>]*role="alert")[^>]*hidden/.test(page)
+    && /class="playbackErrorIcon playbackErrorWarningIcon"[^>]*>!<\/span>/.test(page)
+    && /id="playbackErrorMessage">动画解析失败，无法正常播放<\/p>/.test(page)
+    && /data-action="reload-playback">重新加载<\/button>/.test(page)
+    && /--asv-component-playback-error-icon-glyph-size:\s*20px/.test(tokens)
+    && /\.playbackErrorRecovery\s*\{[\s\S]*position: absolute[\s\S]*place-items: center/.test(components)
+    && /\.playbackErrorWarningIcon\s*\{[^}]*font-size:\s*var\(--asv-playback-error-icon-glyph-size\)/s.test(components)
+    && /\.stateCard\.playbackErrorPanel\s*\{[\s\S]*width: min\(var\(--asv-playback-error-panel-size\), 100%\)[\s\S]*height: min\(var\(--asv-playback-error-panel-size\), 100%\)/.test(components));
   const baseCss = await readFile(path.join(webRoot, "short-term-macos.css"), "utf8");
 
   record("multiformat-asset-groups-use-tokenized-layout",
     /--asv-component-asset-group-gap:\s*var\(--asv-space-1\)/.test(tokens)
       && /--asv-asset-group-gap:\s*var\(--asv-component-asset-group-gap\)/.test(tokens)
       && /\.assetGroup\s*\{[\s\S]*gap:\s*var\(--asv-asset-group-gap\)/.test(modules)
-      && /\.assetGroupHeader\s*\{[\s\S]*padding:\s*var\(--asv-asset-group-header-padding-block\) 0/.test(modules));
+      && /--asv-asset-group-header-padding-inline:\s*var\(--asv-component-asset-group-header-padding-inline\)/.test(tokens)
+      && /\.assetGroupHeader\s*\{[\s\S]*padding:\s*var\(--asv-asset-group-header-padding-block\) var\(--asv-asset-group-header-padding-inline\)/.test(modules));
 
   const rightSurfaceContractChecks = [
     /--asv-component-right-panel-width:\s*360px/.test(tokens),
     /--asv-component-right-panel-padding:\s*var\(--asv-space-4\)/.test(tokens),
     /--asv-component-workbench-top-safe-area:\s*var\(--asv-component-toolbar-height\)/.test(tokens),
     /--asv-component-workbench-floating-control-top:\s*var\(--asv-space-4\)/.test(tokens),
-    /--asv-component-right-panel-safe-padding-block-start:\s*var\(--asv-component-right-panel-padding\)/.test(tokens),
+    /--asv-component-right-panel-safe-padding-block-start:\s*var\(--asv-component-workbench-top-safe-area\)/.test(tokens),
     /--asv-component-right-surface-content-width:\s*calc\(var\(--asv-component-right-panel-width\) - \(var\(--asv-component-right-panel-padding\) \* 2\)\)/.test(tokens),
     /--asv-component-right-panel-section-gap:\s*var\(--asv-space-1\)/.test(tokens),
     /--asv-component-right-panel-section-margin-block-start:\s*var\(--asv-space-1\)/.test(tokens),
@@ -583,7 +638,7 @@ async function main() {
     /--asv-component-file-header-padding-block:\s*var\(--asv-space-3\)/.test(tokens),
     /--asv-component-right-section-title-size:\s*var\(--asv-type-size-footnote\)/.test(tokens),
     /--asv-component-right-section-title-line-height:\s*18px/.test(tokens),
-    /--asv-component-right-section-title-weight:\s*540/.test(tokens),
+    /--asv-component-right-section-title-weight:\s*var\(--asv-type-weight-medium\)/.test(tokens),
     /--asv-component-fact-grid-width:\s*328px/.test(tokens),
     /--asv-component-fact-grid-padding-block:\s*var\(--asv-space-3\)/.test(tokens),
     /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"/.test(page),
@@ -591,7 +646,7 @@ async function main() {
     /class="rightSurfaceHeader"/.test(page),
     /id="assetListHeading">资产列表<\/h2>/.test(page),
     /id="assetFilterTabs"[^>]*data-component="AssetFilterTabs"/.test(page),
-    /<section class="replaceableSection"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*<\/section>/.test(page),
+    /<section class="replaceableSection"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*<\/section>/.test(page),
     !/textPreviewBlock|textPreviewHeading|textPreviewSummary/.test(page),
     /dataset\.action = "asset-filter"/.test(overviewRenderer),
     /cell\.dataset\.component = "FactCell"/.test(overviewRenderer),
@@ -600,7 +655,7 @@ async function main() {
     /\.rightPanel\s*\{[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
     /\.rightSurfaceBody\s*\{[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
     /\.rightSurfaceBody > \.factGrid,[\s\S]*\.compareInfo > \.resultGroup\s*\{[\s\S]*max-width: var\(--asv-right-surface-content-width\)/.test(modules),
-    /\.compareInfo\s*\{[\s\S]*gap: var\(--asv-right-panel-section-gap\)[\s\S]*padding: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
+    /\.compareInfo\s*\{[\s\S]*gap: var\(--asv-right-panel-section-gap\)[\s\S]*min-width: 0[\s\S]*overflow-x: hidden[\s\S]*overflow-y: auto[\s\S]*padding: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
     /\.canvasModeSwitch\s*\{[\s\S]*top: var\(--asv-workbench-floating-control-top\)/.test(modules),
     /\.sectionHead\s*\{[\s\S]*padding-bottom: var\(--asv-right-section-head-padding-block-end\)/.test(modules),
     /\.sectionHead h2\s*\{[\s\S]*font-size: var\(--asv-right-section-title-size\)[\s\S]*line-height: var\(--asv-right-section-title-line-height\)/.test(modules),
@@ -621,11 +676,31 @@ async function main() {
     && /--asv-scrollable-surface-scrollbar-size:\s*var\(--asv-component-scrollable-surface-scrollbar-size\)/.test(tokens)
     && /\.rightSurfaceBody,\s*\.compareInfo,\s*\.layerPanel,\s*\.reservedPanel\s*\{[\s\S]*scrollbar-width: none/.test(modules)
     && /\.rightSurfaceBody::-webkit-scrollbar,[\s\S]*\.reservedPanel::-webkit-scrollbar\s*\{[\s\S]*width: var\(--asv-scrollable-surface-scrollbar-size\)[\s\S]*height: var\(--asv-scrollable-surface-scrollbar-size\)/.test(modules));
+  record("figma-save-feedback-banner-stays-in-contextual-right-surface-flow",
+    /class="saveFeedbackOutlet" data-save-feedback-outlet="overview">[\s\S]*id="saveBanner"[^>]*data-module="SaveStateModule"[^>]*data-page-state="Save feedback"/.test(page)
+      && /class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"/.test(page)
+      && !/<header class="titlebar"[\s\S]*?<\/header>\s*<section class="saveBanner"/.test(page)
+      && /--asv-component-save-banner-min-height:\s*36px/.test(tokens)
+      && /--asv-component-save-banner-gap:\s*var\(--asv-base-space-10\)/.test(tokens)
+      && /--asv-component-save-banner-radius:\s*var\(--asv-radius-sm\)/.test(tokens)
+      && /--asv-component-save-banner-font-size:\s*var\(--asv-type-size-footnote\)/.test(tokens)
+      && /--asv-component-save-banner-line-height:\s*18px/.test(tokens)
+      && /--asv-component-save-banner-title-weight:\s*var\(--asv-type-weight-medium\)/.test(tokens)
+      && /--asv-component-save-banner-icon-size:\s*var\(--asv-base-space-20\)/.test(tokens)
+      && /--asv-component-save-banner-icon-border-width:\s*3px/.test(tokens)
+      && /--asv-component-save-banner-loading-background:\s*var\(--asv-color-status-info-bg\)/.test(tokens)
+      && /--asv-component-save-banner-success-background:\s*transparent/.test(tokens)
+      && /--asv-component-save-banner-danger-background:\s*var\(--asv-color-status-danger-bg\)/.test(tokens)
+      && /\.saveFeedbackOutlet\s*\{[\s\S]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/.test(modules)
+      && /\.saveBanner\s*\{[\s\S]*justify-content: center[\s\S]*border-radius: var\(--asv-save-banner-radius\)[\s\S]*font-size: var\(--asv-save-banner-font-size\)[\s\S]*line-height: var\(--asv-save-banner-line-height\)/.test(modules)
+      && /\.saveBanner\[data-status="loading"\]::before\s*\{[\s\S]*animation: spin var\(--asv-save-banner-icon-duration\)/.test(modules)
+      && /\.saveBanner strong\s*\{[\s\S]*color: currentColor/.test(modules)
+      && /\.macApp > \.saveBanner\s*\{[\s\S]*grid-row: 1/.test(pageStatesCss));
   record("figma-r4-launch-module-contract-covered", /data-view="launch"[^>]*data-module="LaunchModule"/.test(page)
     && /class="launchCanvas"[^>]*data-component="LaunchDropCanvas"/.test(page)
     && /class="launchPrompt"[^>]*data-component="FileDropTarget"[^>]*data-role="LaunchEmptyCanvas"/.test(page)
-    && /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*hidden/.test(page)
-    && /data-action="clear-recent"/.test(page)
+    && /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*data-state="empty"/.test(page)
+    && /class="recentClearButton"[^>]*data-action="clear-recent"[^>]*disabled/.test(page)
     && /--asv-component-launch-empty-canvas-size:\s*300px/.test(tokens)
     && /--asv-component-launch-content-width:\s*300px/.test(tokens)
     && /--asv-component-launch-content-offset-block-start:\s*46px/.test(tokens)
@@ -636,12 +711,15 @@ async function main() {
     && /--asv-component-launch-recent-row-height:\s*32px/.test(tokens)
     && /--asv-component-launch-recent-row-radius:\s*var\(--asv-base-radius-12\)/.test(tokens)
     && /--asv-component-launch-recent-invalid-opacity:\s*0\.45/.test(tokens)
-    && /recentBlock\.hidden = records\.length === 0/.test(launchRenderer)
+    && /recentBlock\.hidden = false/.test(launchRenderer)
+    && /recentBlock\.dataset\.state = "unavailable"/.test(launchRenderer)
+    && /recentBlock\.dataset\.state = records\.length === 0 \? "empty" : "ready"/.test(launchRenderer)
     && /records\.map\(createRecentFileRow\)/.test(launchRenderer)
     && /LAUNCH_RECENT_LIMIT = 5/.test(recentFilesModel)
     && /records\.slice\(0, limit\)/.test(recentFilesModel)
     && /文件不可访问/.test(launchRenderer)
-    && /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)\s*\{[\s\S]*align-content: start[\s\S]*padding-top: calc\(var\(--asv-toolbar-height\) \+ var\(--asv-launch-content-offset-block-start\)\)/.test(modules));
+    && /\.recentClearButton:disabled\s*\{[\s\S]*visibility: hidden/.test(modules)
+    && !/\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/.test(modules));
   record("figma-r4-canvas-playback-contract-covered", /data-module="PreviewCanvasModule"[^>]*data-component="PreviewStage"/.test(page)
     && /class="canvasModeSwitch"[^>]*data-component="CanvasModeSwitch"/.test(page)
     && /class="playbackBar"[^>]*data-component="PlaybackControls"/.test(page)
@@ -666,9 +744,9 @@ async function main() {
     && /--asv-component-playback-icon-size:\s*var\(--asv-component-icon-button-icon-size\)/.test(tokens)
     && /--asv-component-playback-progress-height:\s*3px/.test(tokens)
     && /--asv-component-playback-time-line-height:\s*18px/.test(tokens)
-    && /--asv-component-mode-switch-width:\s*192px/.test(tokens)
+    && /--asv-component-mode-switch-width:\s*152px/.test(tokens)
     && /--asv-component-mode-switch-height:\s*42px/.test(tokens)
-    && /--asv-component-mode-button-width:\s*92px/.test(tokens)
+    && /--asv-component-mode-button-width:\s*72px/.test(tokens)
     && /--asv-component-mode-button-height:\s*34px/.test(tokens)
     && /--asv-component-mode-switch-padding:\s*var\(--asv-space-1\)/.test(tokens)
     && /--asv-component-mode-button-padding-inline:\s*var\(--asv-space-3\)/.test(tokens)
@@ -687,6 +765,20 @@ async function main() {
     && /--asv-component-compare-empty-prompt-width:\s*var\(--asv-component-launch-content-width\)/.test(tokens)
     && /\.compareEmptyPrompt\s*\{[\s\S]*gap: var\(--asv-compare-empty-prompt-gap\)[\s\S]*width: min\(var\(--asv-compare-empty-prompt-width\), 100%\)/.test(modules)
     && /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareEmptyPrompt\s*\{[\s\S]*display: none/.test(modules));
+  record("compare-right-panel-missing-slots-use-open-action-contract", /function renderComparePairSlotHtml\(slot, model, displayName\)/.test(compareModel)
+    && /const openAction = slot === "A" \? "open-compare-a" : "open-compare-b"/.test(compareModel)
+    && /class="toolbarButton primary comparePairOpenButton"/.test(compareModel)
+    && /data-state="\$\{state\}"/.test(compareModel)
+    && /\.comparePairOpenButton\s*\{[\s\S]*width: var\(--asv-compare-open-button-width\)[\s\S]*min-height: var\(--asv-compare-open-button-height\)/.test(modules));
+  record("compare-waiting-b-keeps-loaded-a-facts", /function comparePanelState/.test(compareModel)
+    && /if \(aModel\) return "waiting-b"/.test(compareModel)
+    && /data-state="empty" aria-hidden="true"/.test(compareModel)
+    && /displayName \|\| "文件未打开"/.test(compareModel)
+    && /if \(!comparisonReady\) return "uncompared"/.test(compareModel));
+  record("compare-loaded-highlights-only-the-better-fact", /const compareStatusScore = Object\.freeze/.test(compareModel)
+    && /return factScore > peerScore \? "improved" : "different"/.test(compareModel)
+    && /\.compareMetricCell\[data-diff="improved"\] strong\s*\{[\s\S]*color: var\(--asv-success\)/.test(modules)
+    && !/\.compareMetricCell\[data-diff="different"\] strong\s*\{[\s\S]*color: var\(--asv-success\)/.test(modules));
   record("optimization-detail-uses-figma-r5-candidate-row-contract", /dataset\.component = "OptimizationFindingRow"/.test(optimizationRenderer)
     && /dataset\.role = "OptimizationCandidateRow"/.test(optimizationRenderer)
     && /--asv-component-finding-row-min-height:\s*62px/.test(tokens)
@@ -699,11 +791,33 @@ async function main() {
     && /\.findingRow\s*\{[\s\S]*min-height: var\(--asv-finding-row-min-height\)[\s\S]*padding: var\(--asv-finding-row-padding-block\) var\(--asv-finding-row-padding-inline\) var\(--asv-finding-row-padding-block\) var\(--asv-finding-row-padding-inline-start\)[\s\S]*border-radius: var\(--asv-finding-row-radius\)/.test(components)
     && /\.findingRow\[data-disposition="safeExecutable"\]/.test(components)
     && /\.findingRow\[data-disposition="reviewOnly"\]/.test(components)
-    && /\.findingRow\[data-disposition="unsupported"\]/.test(components));
+    && /\.findingRow\[data-disposition="unsupported"\]/.test(components)
+    && /class="optimizationDetailActions"[\s\S]*data-action="run-optimization">一键优化<\/button>[\s\S]*data-action="close-optimization">放弃优化<\/button>/.test(page)
+    && optimizationPanel.indexOf('id="findingList"') >= 0
+    && optimizationPanel.indexOf('id="findingList"') < optimizationPanel.indexOf('class="optimizationDetailActions"')
+    && /--asv-component-optimization-detail-header-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-optimization-detail-list-gap:\s*var\(--asv-space-2\)/.test(tokens)
+    && /--asv-component-optimization-detail-list-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-optimization-detail-actions-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /#panelOptimization:not\(\[hidden\]\) > \.sectionHead\s*\{[^}]*display:\s*contents/s.test(modules)
+    && /#panelOptimization:not\(\[hidden\]\) > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/s.test(modules)
+    && /#panelOptimization:not\(\[hidden\]\) #findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/s.test(modules)
+    && /#panelOptimization:not\(\[hidden\]\) \.optimizationDetailActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)[\s\S]*padding: var\(--asv-optimization-detail-actions-padding-block\) 0/.test(modules));
+  record("optimization-running-uses-figma-progress-contract", /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/.test(page)
+    && /export function renderOptimizationRunningState/.test(optimizationRenderer)
+    && /--asv-component-optimization-progress-width:\s*var\(--asv-component-right-surface-content-width\)/.test(tokens)
+    && /--asv-component-optimization-progress-detail-size:\s*var\(--asv-type-size-micro\)/.test(tokens)
+    && /--asv-component-optimization-progress-track-height:\s*4px/.test(tokens)
+    && /\.optimizationProgressBarFill\s*\{[\s\S]*animation: optimization-progress-indeterminate/.test(modules)
+    && /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/.test(modules));
   record("optimization-result-metrics-use-figma-component-contract", /data-component="OptimizationResultCard" data-role="OptimizationMetricCell"/.test(baseCss + modules + components + renderModel)
     && /--asv-optimization-metric-min-height:\s*var\(--asv-component-optimization-metric-min-height\)/.test(tokens)
+    && /--asv-component-optimization-metric-improved-value-size:\s*var\(--asv-type-size-body\)/.test(tokens)
+    && /--asv-component-optimization-metric-arrow-size:\s*var\(--asv-type-size-micro\)/.test(tokens)
     && /gap:\s*var\(--asv-optimization-metric-gap\)/.test(modules)
-    && /padding:\s*var\(--asv-optimization-metric-padding-block\) var\(--asv-optimization-metric-padding-inline\)/.test(modules));
+    && /padding:\s*var\(--asv-optimization-metric-padding-block\) var\(--asv-optimization-metric-padding-inline\)/.test(modules)
+    && /\.optimizationMetricCell\[data-improved="true"\] \.optimizationMetricValue em\s*\{[^}]*font-size: var\(--asv-optimization-metric-improved-value-size\)/s.test(modules)
+    && /\.optimizationMetricValue i\s*\{[^}]*font-size: var\(--asv-optimization-metric-arrow-size\)/s.test(modules));
   record("optimization-actions-use-figma-r5-button-rhythm", /<div class="compareActions optimizationActions">/.test(compareModel)
     && /--asv-component-optimization-action-height:\s*30px/.test(tokens)
     && /--asv-component-optimization-action-radius:\s*var\(--asv-radius-sm\)/.test(tokens)
@@ -725,26 +839,44 @@ async function main() {
     && /--asv-component-compare-mode-header-min-height:\s*54px/.test(tokens)
     && /--asv-compare-mode-header-divider:\s*var\(--asv-component-compare-mode-header-divider\)/.test(tokens)
     && /--asv-component-dialog-backdrop-background:/.test(tokens)
-    && /--asv-component-settings-sheet-border:/.test(tokens)
-    && /--asv-component-settings-sheet-radius:/.test(tokens)
+    && /--asv-component-settings-sheet-min-height:\s*300px/.test(tokens)
+    && /--asv-component-settings-sheet-border:\s*1px solid/.test(tokens)
+    && /--asv-component-settings-sheet-radius:\s*var\(--asv-base-radius-24\)/.test(tokens)
     && /--asv-component-settings-sheet-background:/.test(tokens)
     && /--asv-component-settings-sheet-shadow:/.test(tokens)
     && /--asv-component-settings-sheet-padding:\s*var\(--asv-space-6\)/.test(tokens)
     && /--asv-component-settings-sheet-gap:\s*var\(--asv-space-4\)/.test(tokens)
     && /--asv-component-settings-title-row-height:\s*22px/.test(tokens)
+    && /--asv-component-settings-title-icon-size:\s*20px/.test(tokens)
+    && /--asv-component-settings-title-size:\s*var\(--asv-type-size-metric\)/.test(tokens)
+    && /--asv-component-settings-title-weight:\s*var\(--asv-type-weight-semibold\)/.test(tokens)
     && /--asv-component-settings-action-height:\s*44px/.test(tokens)
     && /--asv-component-settings-appearance-block-height:\s*116px/.test(tokens)
     && /--asv-component-settings-appearance-block-gap:\s*var\(--asv-base-space-10\)/.test(tokens)
-    && /--asv-component-settings-appearance-block-padding-block:\s*var\(--asv-base-space-8\)/.test(tokens)
-    && /--asv-component-settings-choice-height:\s*72px/.test(tokens)
+    && /--asv-component-settings-appearance-block-padding-block:\s*var\(--asv-base-space-0\)/.test(tokens)
+    && /--asv-component-settings-choice-height:\s*88px/.test(tokens)
     && /--asv-component-settings-choice-icon-size:\s*20px/.test(tokens)
+    && /--asv-component-settings-choice-label-size:\s*var\(--asv-type-size-caption\)/.test(tokens)
+    && /--asv-component-settings-choice-selected-border:\s*var\(--asv-color-border-focus\)/.test(tokens)
+    && /--asv-component-settings-choice-selected-bg:\s*var\(--asv-color-status-info-soft\)/.test(tokens)
     && /--asv-component-layer-panel-header-height:\s*50px/.test(tokens)
+    && /--asv-component-edit-reserved-gap:\s*var\(--asv-space-2\)/.test(tokens)
+    && /--asv-component-edit-reserved-title-size:\s*var\(--asv-type-size-body\)/.test(tokens)
+    && /--asv-component-edit-reserved-title-color:\s*var\(--asv-color-text-secondary\)/.test(tokens)
+    && /--asv-component-edit-reserved-message-size:\s*var\(--asv-type-size-caption\)/.test(tokens)
+    && /--asv-component-edit-reserved-message-color:\s*var\(--asv-color-text-tertiary\)/.test(tokens)
     && /\.previewView,\s*\.workbenchStateView\s*\{[\s\S]*gap: var\(--asv-preview-gap\)[\s\S]*padding: var\(--asv-preview-gap\)/.test(pageStatesCss)
     && /\.compareMetricGrid\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)[\s\S]*gap: var\(--asv-compare-metric-column-gap\)/.test(modules)
     && /\.compareModeHeader\s*\{[\s\S]*min-height: var\(--asv-compare-mode-header-min-height\)[\s\S]*border-bottom: var\(--asv-compare-mode-header-divider\)/.test(modules)
     && /\.compareMetricColumn\s*\{[\s\S]*min-height: var\(--asv-compare-metric-column-min-height\)[\s\S]*background: var\(--asv-compare-metric-column-bg\)/.test(modules)
     && /\.layerPanelHeader\s*\{[\s\S]*min-height: var\(--asv-layer-panel-header-height\)/.test(modules)
     && /\.layerList\s*\{[\s\S]*gap: var\(--asv-layer-list-gap\)/.test(modules)
+    && /data-role="EditReservedPlaceholder"/.test(page)
+    && /<h2>编辑操作区<\/h2>/.test(page)
+    && /<span>短期版本保留占位<\/span>/.test(page)
+    && /<span>高级功能后续规划<\/span>/.test(page)
+    && /\.reservedPanel\s*\{[\s\S]*display: grid[\s\S]*place-items: center/.test(modules)
+    && /\.editReservedPlaceholder\s*\{[\s\S]*gap: var\(--asv-edit-reserved-gap\)[\s\S]*text-align: center/.test(modules)
     && /\.settingsDialog \.dialogBody\s*\{[\s\S]*gap: var\(--asv-settings-sheet-gap\)[\s\S]*padding: var\(--asv-settings-sheet-padding\) 0/.test(components)
     && /\.appDialog::backdrop\s*\{[\s\S]*background: var\(--asv-dialog-backdrop-bg\)/.test(components)
     && /\.settingsDialog\s*\{[\s\S]*border: var\(--asv-settings-sheet-border\)[\s\S]*border-radius: var\(--asv-settings-sheet-radius\)[\s\S]*background: var\(--asv-settings-sheet-bg\)[\s\S]*box-shadow: var\(--asv-settings-sheet-shadow\)/.test(components)
@@ -792,7 +924,23 @@ async function main() {
     && /\.stateCanvasWrap\s*\{[\s\S]*background:\s*[\s\S]*var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/.test(modules)
     && /<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*data-page-state="Loading"/.test(page)
     && /<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*data-page-state="Load failed"/.test(page)
+    && /id="playbackErrorRecovery"[^>]*data-page-state="Playback error"/.test(page)
     && /\.workbenchStateView\s*\{[^}]*place-items: stretch/s.test(pageStatesCss));
+  record("drag-decision-follows-frozen-typography-and-owner-zone-contract",
+    /--asv-component-drag-overlay-label-size:\s*var\(--asv-type-size-metric\)/.test(tokens)
+    && /--asv-component-drag-overlay-label-line-height:\s*22px/.test(tokens)
+    && /--asv-component-drag-overlay-label-weight:\s*var\(--asv-type-weight-semibold\)/.test(tokens)
+    && /--asv-component-drag-overlay-grid-rows:\s*1fr 3fr/.test(tokens)
+    && /\.dragDecisionZone strong\s*\{[\s\S]*line-height:\s*var\(--asv-drag-overlay-label-line-height\)/.test(modules)
+    && !/--asv-component-drag-overlay-label-size:\s*(?:30|36)px/.test(tokens));
+  record("unsupported-drop-keeps-workbench-recovery-shell",
+    /data-page-state="Unsupported drop"/.test(unsupportedSection)
+    && /data-role="UnsupportedDropCanvasRecovery"/.test(unsupportedSection)
+    && /class="stateCard error stateFailureCard unsupportedDropRecoveryPanel"[^>]*id="unsupportedDropRecovery"[^>]*data-component="ErrorRecoveryPanel"/.test(unsupportedSection)
+    && /class="stateFailureIcon" aria-hidden="true"/.test(unsupportedSection)
+    && !/class="stateCard error playbackErrorPanel unsupportedDropRecoveryPanel"/.test(unsupportedSection)
+    && /data-state="disabled"/.test(unsupportedSection)
+    && /\.unsupportedDropView\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/.test(pageStatesCss));
 
   record("page-state-surface-trace-contract", /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/.test(page)
     && /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/.test(page)
@@ -810,7 +958,7 @@ async function main() {
     && /rightPanel\.dataset\.panelState = surfaceState/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8"))
     && /node\.dataset\.stateMode = view\.stateMode/.test(await readFile(path.join(webRoot, "short-term-macos-compare-renderers.mjs"), "utf8")));
 
-  record("settings-sheet-keeps-boundary-light-grouping", /--asv-component-settings-divider-width:\s*0px/.test(tokens)
+  record("settings-sheet-keeps-boundary-light-grouping", /--asv-component-settings-divider-width:\s*1px/.test(tokens)
     && /\.settingsGroup\s*\{[\s\S]*border-top: var\(--asv-settings-divider-width\) solid var\(--asv-settings-divider-color\)[\s\S]*border-bottom: var\(--asv-settings-divider-width\) solid var\(--asv-settings-divider-color\)/.test(components));
 
   record("focus-visible-covered-by-ui-layers", [atoms, molecules, components, modules].every((source) => source.includes(":focus-visible")));
@@ -840,7 +988,11 @@ async function main() {
     && /--asv-workbench-min-width:\s*var\(--asv-layout-workbench-min-width\)/.test(tokens)
     && /body\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(baseCss)
     && /\.macApp\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(pageStatesCss)
-    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="failed"\]\s*\{[\s\S]*min-width:\s*var\(--asv-workbench-min-width\)[\s\S]*min-height:\s*var\(--asv-workbench-min-height\)/.test(pageStatesCss)
+    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="unsupported"\]\s*\{[\s\S]*min-width:\s*min\(var\(--asv-workbench-min-width\), 100vw\)[\s\S]*min-height:\s*min\(var\(--asv-workbench-min-height\), 100vh\)/.test(pageStatesCss)
+    && /\.compareView\s*\{[\s\S]*min-width:\s*0/.test(pageStatesCss)
+    && /\.compareCanvasSurface\s*\{[\s\S]*min-width:\s*0/.test(modules)
+    && /\.compareStage\s*\{[\s\S]*min-width:\s*0/.test(modules)
+    && /\.compareCanvasWrap\s*\{[\s\S]*min-width:\s*0/.test(modules)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
   record("figma-page-frame-layout-contract-covered", /--asv-layout-page-launch-frame-width:\s*640px/.test(tokens)

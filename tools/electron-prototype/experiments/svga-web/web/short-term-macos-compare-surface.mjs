@@ -70,7 +70,7 @@ export async function enterShortTermGeneralCompare({
     title: state.sourceBytes ? state.displayName || "A 文件" : "未打开文件",
     model: state.model
   });
-  renderShortTermCompareSlot({ nodes, slot: "B", title: "未打开文件" });
+  renderShortTermCompareSlot({ nodes, slot: "B", title: "文件未打开" });
   renderShortTermGeneralComparePanel({
     nodes,
     state,

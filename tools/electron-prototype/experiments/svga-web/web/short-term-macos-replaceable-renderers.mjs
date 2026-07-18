@@ -1,4 +1,5 @@
-import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { escapeHtml, formatDisplayDetailCopy } from "./short-term-macos-render-model.mjs";
+import { createReplaceableEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
 import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
@@ -17,9 +18,9 @@ const runtimeTextResetIconHtml = `
   </svg>
 `;
 
-export function createReplaceableImageRow(item, index, options) {
+export function createReplaceableImageRow(item, _index, options) {
   const label = item.displayName || item.imageKey;
-  const detail = item.detail || [item.dimensions, item.fileSize].filter(Boolean).join(" · ");
+  const detail = formatDisplayDetailCopy(item.detail || [item.dimensions, item.fileSize].filter(Boolean).join(" · "));
   const replacementActive = options.replacementActive === true || item.replacementActive === true;
   const row = document.createElement("article");
   row.className = "replaceableRow";
@@ -35,11 +36,12 @@ export function createReplaceableImageRow(item, index, options) {
   row.title = [label, detail].filter(Boolean).join(" · ");
   if (options.renaming) {
     row.innerHTML = `
-      <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-      <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
-      <label class="rowText renameEditor">新 imageKey
-        <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
-      </label>
+      <span class="replaceableIdentity">
+        <span class="thumb" data-component="ThumbnailFrame" data-variant="image">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
+        <label class="rowText renameEditor">新 imageKey
+          <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
+        </label>
+      </span>
       <span class="inlineActions">
         <button type="button" data-action="inline-rename-confirm">确认</button>
         <button type="button" data-action="inline-rename-cancel">取消</button>
@@ -53,9 +55,10 @@ export function createReplaceableImageRow(item, index, options) {
         </span>`
       : `<button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(label)} 操作">${rowMenuIconHtml}</button>`;
     row.innerHTML = `
-      <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-      <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
-      <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(detail)}</span></span>
+      <span class="replaceableIdentity">
+        <span class="thumb" data-component="ThumbnailFrame" data-variant="image">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
+        <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(detail)}</span></span>
+      </span>
       ${trailingAction}
     `;
   }
@@ -65,6 +68,7 @@ export function createReplaceableImageRow(item, index, options) {
 export function renderReplaceableImages(nodes, view, model) {
   nodes.replaceableSummary.textContent = view.summaryCopy;
   nodes.replaceableList.closest(".replaceableSection")?.setAttribute("data-empty", view.hasImages ? "false" : "true");
+  nodes.replaceableList.dataset.empty = view.hasImages ? "false" : "true";
   if (!view.hasImages) {
     nodes.replaceableList.replaceChildren();
     return;
@@ -76,7 +80,21 @@ export function renderReplaceableImages(nodes, view, model) {
   })));
 }
 
-export function createTextElementRow(item, index, options) {
+export function renderReplaceableEmptyState(nodes) {
+  const noImages = nodes.replaceableList.dataset.empty === "true";
+  const noTexts = nodes.textElementList.dataset.empty === "true";
+  const section = nodes.replaceableList.closest(".replaceableSection");
+  if (!noImages || !noTexts) {
+    section?.removeAttribute("data-page-state");
+    return;
+  }
+  section?.setAttribute("data-empty", "true");
+  section?.setAttribute("data-page-state", "no-replaceable");
+  nodes.replaceableList.dataset.empty = "false";
+  nodes.replaceableList.replaceChildren(createReplaceableEmptyStatus());
+}
+
+export function createTextElementRow(item, _index, options) {
   const row = document.createElement("article");
   row.className = "textElementRow";
   row.tabIndex = 0;
@@ -97,10 +115,14 @@ export function createTextElementRow(item, index, options) {
   row.dataset.replacementState = replacementActive ? "preview" : replacement.replacementState;
   row.title = `${label}: ${value || item.initialText || item.textKey}`;
   row.innerHTML = `
-    <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-    <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
-    <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.textKey)}" data-initial-value="${escapeHtml(initialValue)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
-    <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" title="重置" ${resetDisabled ? "disabled" : ""}>${runtimeTextResetIconHtml}</button>
+    <span class="replaceableIdentity">
+      <span class="thumb" data-component="ThumbnailFrame" data-variant="text">${renderThumbnailHtml({ type: "text" }, options.model)}</span>
+      <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
+    </span>
+    <span class="runtimeTextActions">
+      <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.textKey)}" data-initial-value="${escapeHtml(initialValue)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
+      <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" title="重置" ${resetDisabled ? "disabled" : ""}>${runtimeTextResetIconHtml}</button>
+    </span>
   `;
   return row;
 }
@@ -161,6 +183,9 @@ export function replaceRuntimeTextRows(textElementList, rows) {
 export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
   nodes.replaceableSummary.textContent = view.summaryCopy;
   nodes.textElementList.dataset.empty = view.hasTextElements ? "false" : "true";
+  if (view.hasTextElements) {
+    nodes.textElementList.closest(".replaceableSection")?.setAttribute("data-empty", "false");
+  }
   if (!view.hasTextElements) {
     nodes.textElementList.replaceChildren();
     return;

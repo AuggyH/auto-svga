@@ -1,3 +1,5 @@
+import { replaceableElementSummaryCopy } from "./short-term-macos-replaceable-model.mjs";
+
 export const RUNTIME_TEXT_DEFAULT_VALUE = "SVGA VIP";
 
 export function runtimeTextInputValue(textPreviewValues, textElement) {
@@ -33,6 +35,8 @@ export function hasRuntimeTextPreview(textPreviewValues) {
 export function runtimeTextListView(model, textPreviewValues) {
   const texts = Array.isArray(model?.texts) ? model.texts : [];
   const images = Array.isArray(model?.images) ? model.images : [];
+  const hasImagePreview = images.some((item) => item?.replacementActive === true);
+  const hasTextPreview = hasRuntimeTextPreview(textPreviewValues);
   return {
     texts: texts.map((item) => {
       const inputValue = runtimeTextInputValue(textPreviewValues, item);
@@ -45,9 +49,9 @@ export function runtimeTextListView(model, textPreviewValues) {
       };
     }),
     hasTextElements: texts.length > 0,
-    hasTextPreview: hasRuntimeTextPreview(textPreviewValues),
+    hasTextPreview,
     emptyCopy: "",
-    summaryCopy: `(${images.length + texts.length})`
+    summaryCopy: replaceableElementSummaryCopy(images.length + texts.length, hasImagePreview || hasTextPreview)
   };
 }
 

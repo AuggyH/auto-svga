@@ -2,7 +2,10 @@ import { escapeHtml } from "./short-term-macos-render-model.mjs";
 
 export function renderRecentFilesUnavailable({ listNode, noteNode, clearButton }) {
   const recentBlock = listNode.closest(".recentBlock");
-  if (recentBlock) recentBlock.hidden = true;
+  if (recentBlock) {
+    recentBlock.hidden = false;
+    recentBlock.dataset.state = "unavailable";
+  }
   listNode.replaceChildren();
   clearButton.disabled = true;
   noteNode.textContent = "";
@@ -11,7 +14,10 @@ export function renderRecentFilesUnavailable({ listNode, noteNode, clearButton }
 
 export function renderLaunchRecentFiles({ listNode, noteNode, clearButton }, records) {
   const recentBlock = listNode.closest(".recentBlock");
-  if (recentBlock) recentBlock.hidden = records.length === 0;
+  if (recentBlock) {
+    recentBlock.hidden = false;
+    recentBlock.dataset.state = records.length === 0 ? "empty" : "ready";
+  }
   clearButton.disabled = records.length === 0;
   listNode.replaceChildren(...records.map(createRecentFileRow));
   noteNode.textContent = "";

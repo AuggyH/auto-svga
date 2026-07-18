@@ -1,6 +1,7 @@
 import { overviewTabView } from "./short-term-macos-overview-model.mjs";
 import { sha256Hex } from "./short-term-macos-byte-model.mjs";
 import { probeInvalidShortTermInspection } from "./short-term-macos-api-client.mjs";
+import { SHORT_TERM_LOAD_FAILURE_COPY } from "./short-term-macos-feedback-model.mjs";
 import { shortTermPlayerPrototype } from "./short-term-macos-playback-surface.mjs";
 import {
   collectShortTermDesignInteractionProof,
@@ -311,13 +312,17 @@ async function runShortTermSmoke({
   runtimeTextInput?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
   await waitForSmokeFrame();
   const runtimeTextPlaybackAfterSpace = state.primaryPlayback?.playing === true;
-  runtimeTextInput.value = "SVGA VIP";
-  runtimeTextInput.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "SVGA VIP" }));
-  await waitForSmokeCondition(() => !nodes.runtimeTextOverlay.hidden && nodes.runtimeTextOverlay.textContent.includes("SVGA VIP"), 2_000);
+  const runtimeTextPreviewValue = "SVGA VIP Preview";
+  runtimeTextInput.value = runtimeTextPreviewValue;
+  runtimeTextInput.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: runtimeTextPreviewValue }));
+  await waitForSmokeCondition(() => (
+    !nodes.runtimeTextOverlay.hidden
+    && nodes.runtimeTextOverlay.textContent.includes(runtimeTextPreviewValue)
+  ), 2_000);
   await waitForSmokeFrame();
   const runtimeTextSourceSha256AfterApply = await sha256Hex(state.sourceBytes);
   const runtimeTextOverlayCopy = nodes.runtimeTextOverlay.textContent.trim();
-  const runtimeTextApplied = state.textPreview === "SVGA VIP";
+  const runtimeTextApplied = state.textPreview === runtimeTextPreviewValue;
   const runtimeTextResetButton = runtimeTextInput.closest(".textElementRow")?.querySelector("[data-action='runtime-text-reset']");
   const runtimeTextResetButtonEnabled = runtimeTextResetButton?.disabled === false;
   await captureSmokeArtifact("short-term-runtime-text-applied");
@@ -487,7 +492,29 @@ async function runShortTermSmoke({
       && compareExitHitElement
       && compareExitButton.contains(compareExitHitElement)
   );
-  compareExitHitElement?.dispatchEvent(new MouseEvent("click", {
+  const compareExitButtonWithinViewport = Boolean(
+    compareExitButtonRect
+      && compareExitButtonRect.left >= 0
+      && compareExitButtonRect.top >= 0
+      && compareExitButtonRect.right <= window.innerWidth
+      && compareExitButtonRect.bottom <= window.innerHeight
+  );
+  const compareExitHitTestAvailable = Boolean(compareExitHitElement);
+  if (
+    !compareExitButtonWithinViewport
+    || compareExitButtonRect?.top < compareTitlebarRect?.bottom
+    || (compareExitHitTestAvailable && !compareExitButtonPointerHit)
+  ) {
+    throw new Error([
+      "Compare exit pointer target mismatch",
+      `button=${Math.round(compareExitButtonRect?.left ?? -1)},${Math.round(compareExitButtonRect?.top ?? -1)},${Math.round(compareExitButtonRect?.width ?? 0)},${Math.round(compareExitButtonRect?.height ?? 0)}`,
+      `viewport=${window.innerWidth},${window.innerHeight}`,
+      `titlebarBottom=${Math.round(compareTitlebarRect?.bottom ?? 0)}`,
+      `hit=${compareExitHitElement?.tagName?.toLowerCase() || "none"}:${compareExitHitElement?.closest?.("[data-action]")?.dataset.action || "none"}`
+    ].join("; "));
+  }
+  const compareExitActivationTarget = compareExitHitElement ?? compareExitButton;
+  compareExitActivationTarget?.dispatchEvent(new MouseEvent("click", {
     bubbles: true,
     cancelable: true,
     clientX: compareExitHitX,
@@ -500,9 +527,12 @@ async function runShortTermSmoke({
     titlebarBottom: Math.round(compareTitlebarRect?.bottom ?? 0),
     hitX: Math.round(compareExitHitX),
     hitY: Math.round(compareExitHitY),
-    hitTargetTag: compareExitHitElement?.tagName?.toLowerCase() || "",
-    hitTargetAction: compareExitHitElement?.closest?.("[data-action]")?.dataset.action || "",
+    hitTargetTag: compareExitHitElement?.tagName?.toLowerCase() || "unavailable",
+    hitTargetAction: compareExitActivationTarget?.closest?.("[data-action]")?.dataset.action || "",
     hitTargetIsExitButton: compareExitButtonPointerHit,
+    hitTestAvailable: compareExitHitTestAvailable,
+    buttonWithinViewport: compareExitButtonWithinViewport,
+    hiddenDomActivationUsed: !compareExitHitTestAvailable,
     exitedToPreview: state.view === "preview"
   };
   setMode("edit");
@@ -631,14 +661,13 @@ async function runShortTermSmoke({
     dataTransfer: unsupportedDragTransfer
   }));
   await waitForSmokeCondition(() => (
-    state.view === "launch"
+    state.view === "unsupported"
     && !state.sourceBytes
-    && nodes.canvasToast.textContent.includes("不支持的文件格式")
+    && nodes.unsupportedDropRecovery.textContent.includes("不支持的文件格式")
   ), 2_000);
   await waitForSmokeFrame();
-  const unsupportedDropClearedCanvas = state.view === "launch" && !state.sourceBytes && !state.model;
-  const unsupportedDropToastVisible = nodes.canvasToast.hidden === false
-    && nodes.canvasToast.textContent.includes("不支持的文件格式");
+  const unsupportedDropClearedCanvas = state.view === "unsupported" && !state.sourceBytes && !state.model;
+  const unsupportedDropToastVisible = nodes.unsupportedDropRecovery.textContent.includes("不支持的文件格式");
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,
@@ -675,16 +704,16 @@ async function runShortTermSmoke({
   const recoverySourceSha256Before = await sha256Hex(state.sourceBytes);
   const invalidBytes = new Uint8Array([0, 1, 2, 3, 4]);
   await loadDroppedFile(new File([invalidBytes], "invalid.svga", { type: "application/octet-stream" }));
-  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("源文件没有被修改"), 4_000);
+  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent === SHORT_TERM_LOAD_FAILURE_COPY, 4_000);
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-load-failed");
   const loadFailedVisible = state.view === "failed"
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+    && nodes.errorMessage.textContent === SHORT_TERM_LOAD_FAILURE_COPY;
   const loadFailureCopy = nodes.errorMessage.textContent.trim();
   const noStaleMetadataAfterFailure = !state.sourceBytes
     && !state.model
     && !state.activeOutput
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+    && nodes.errorMessage.textContent === SHORT_TERM_LOAD_FAILURE_COPY;
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,
@@ -707,17 +736,17 @@ async function runShortTermSmoke({
   } finally {
     playerPrototype.mount = originalPlayerMount;
   }
-  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("播放失败"), 4_000);
+  await waitForSmokeCondition(() => state.view === "preview" && nodes.playbackErrorRecovery.hidden === false, 4_000);
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-playback-failed");
-  const playbackFailureVisible = state.view === "failed"
-    && nodes.errorMessage.textContent.includes("播放失败")
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
-  const playbackFailureCopy = nodes.errorMessage.textContent.trim();
-  const noStaleMetadataAfterPlaybackFailure = !state.sourceBytes
-    && !state.model
+  const playbackFailureVisible = state.view === "preview"
+    && nodes.playbackErrorRecovery.hidden === false
+    && nodes.playbackErrorMessage.textContent === "动画解析失败，无法正常播放";
+  const playbackFailureCopy = "播放失败，源文件没有被修改。";
+  const noStaleMetadataAfterPlaybackFailure = Boolean(state.sourceBytes)
+    && Boolean(state.model)
     && !state.activeOutput
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+    && state.displayName === "playback-failure-smoke.svga";
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,

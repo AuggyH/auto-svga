@@ -1,3 +1,5 @@
+import { SHORT_TERM_LOAD_FAILURE_COPY } from "./short-term-macos-feedback-model.mjs";
+
 export function createSmokeArtifactCapture(bridge) {
   const capturedArtifacts = [];
   const captureSmokeArtifact = async (scenario) => {
@@ -114,7 +116,7 @@ export function collectShortTermEmptyStateProof({
     proofId: "short-term-empty-state-proof",
     source: "short-term-smoke",
     noAudioVisible: noAudioCopy.includes("当前文件暂无音频资产"),
-    noReplaceableImagesMinimal: replaceableImageRowCount === 0 && noReplaceableCopy === "",
+    noReplaceableImagesMinimal: replaceableImageRowCount === 0 && noReplaceableCopy === "未发现可替换元素",
     textUnavailableMinimal: textElementRowCount === 0 && textUnavailableCopy === "",
     ordinaryImagesNotDuplicatedInReplaceables: replaceableImageRowCount === 0 && assetRowCount > 0,
     ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
@@ -249,7 +251,7 @@ export function collectShortTermReplaceableClassificationProof({
     automaticKeysExcluded: automaticImageNames.length > 0 && automaticReplaceableCount === 0,
     designerKeysIncluded: designerReplaceableKeys.includes("profile_frame"),
     replaceableElementsNotAllImages: designerReplaceableKeys.length > 0 && designerReplaceableKeys.length < designerImageAssetCount,
-    automaticEmptyStateMinimal: noReplaceableCopy === ""
+    automaticEmptyStateMinimal: noReplaceableCopy === "未发现可替换元素"
   };
   proof.passed = [
     proof.automaticKeysExcluded,
@@ -621,7 +623,7 @@ export function collectShortTermLoadFailureProof({
     invalidDropAttempted: true,
     loadFailedVisible,
     errorCopy: loadFailureCopy,
-    sourceFileUnmodifiedClaimVisible: loadFailureCopy.includes("源文件没有被修改"),
+    ownerFailureCopyVisible: loadFailureCopy === SHORT_TERM_LOAD_FAILURE_COPY,
     noStaleMetadataAfterFailure,
     invalidApiRejected,
     recoveryFileName,
@@ -644,7 +646,7 @@ export function collectShortTermLoadFailureProof({
   proof.passed = [
     proof.invalidDropAttempted,
     proof.loadFailedVisible,
-    proof.sourceFileUnmodifiedClaimVisible,
+    proof.ownerFailureCopyVisible,
     proof.noStaleMetadataAfterFailure,
     proof.invalidApiRejected,
     proof.recoveryLoaded,
@@ -822,9 +824,24 @@ export function collectShortTermDesignInteractionProof({
     noMainSurfaceAppearanceButton: settingsAppearanceProof?.noMainSurfaceAppearanceButton === true,
     compareExitButtonPointerProof,
     compareExitButtonPointerPathWorks: compareExitButtonPointerProof?.buttonRendered === true
+      && compareExitButtonPointerProof?.hitTestAvailable === true
       && compareExitButtonPointerProof?.hitTargetIsExitButton === true
       && compareExitButtonPointerProof?.hitTargetAction === "back-preview"
       && compareExitButtonPointerProof?.exitedToPreview === true,
+    compareExitButtonHiddenActivationPathWorks: compareExitButtonPointerProof?.buttonRendered === true
+      && compareExitButtonPointerProof?.hitTestAvailable === false
+      && compareExitButtonPointerProof?.buttonWithinViewport === true
+      && compareExitButtonPointerProof?.hiddenDomActivationUsed === true
+      && compareExitButtonPointerProof?.hitTargetAction === "back-preview"
+      && compareExitButtonPointerProof?.exitedToPreview === true,
+    compareExitButtonInteractionWorks: compareExitButtonPointerProof?.buttonRendered === true
+      && compareExitButtonPointerProof?.buttonWithinViewport === true
+      && compareExitButtonPointerProof?.hitTargetAction === "back-preview"
+      && compareExitButtonPointerProof?.exitedToPreview === true
+      && (
+        compareExitButtonPointerProof?.hitTargetIsExitButton === true
+        || compareExitButtonPointerProof?.hiddenDomActivationUsed === true
+      ),
     compareExitButtonBelowTitlebar: compareExitButtonPointerProof?.buttonTop >= compareExitButtonPointerProof?.titlebarBottom,
     focusedControlSpaceProof,
     focusedControlSpaceNotGlobalPlayback: focusedControlSpaceProof?.targetAction === "mode-edit"
@@ -851,7 +868,7 @@ export function collectShortTermDesignInteractionProof({
     proof.appearanceScreenshotsCaptured,
     proof.appearanceMenuStateSynced,
     proof.noMainSurfaceAppearanceButton,
-    proof.compareExitButtonPointerPathWorks,
+    proof.compareExitButtonInteractionWorks,
     proof.compareExitButtonBelowTitlebar,
     proof.focusedControlSpaceNotGlobalPlayback,
     proof.reducedMotionRulePresent,

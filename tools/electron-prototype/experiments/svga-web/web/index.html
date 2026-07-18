@@ -19,8 +19,6 @@
         <div class="windowControlSpace" aria-hidden="true"></div>
       </header>
 
-      <section class="saveBanner" id="saveBanner" aria-live="polite" data-component="SaveFeedbackBanner" hidden></section>
-
       <section class="view launchView isActive" data-view="launch" aria-label="启动" data-page-state="Launch" data-module="LaunchModule">
         <div class="launchCanvas" id="dropZone" data-component="LaunchDropCanvas">
           <div class="launchPrompt" data-component="FileDropTarget" data-role="LaunchEmptyCanvas">
@@ -40,10 +38,10 @@
               <span>打开文件</span>
             </button>
           </div>
-          <section class="recentBlock" aria-label="最近打开" data-component="LaunchRecentFilesList" hidden>
+          <section class="recentBlock" aria-label="最近打开" data-component="LaunchRecentFilesList" data-state="empty">
             <div class="recentHeader">
               <h2>最近打开</h2>
-              <button class="recentClearButton" type="button" data-action="clear-recent" aria-label="清除最近记录" title="清除最近记录">
+              <button class="recentClearButton" type="button" data-action="clear-recent" aria-label="清除最近记录" title="清除最近记录" disabled>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5 7h14"></path>
                   <path d="M10 11v6"></path>
@@ -66,10 +64,10 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <div class="canvasWrap stateCanvasWrap" data-component="FileDropTarget" data-role="LoadingCanvasRecovery">
-            <div class="stateCard" data-component="FileDropTarget">
+            <div class="stateCard stateLoadingCard" data-component="FileDropTarget">
               <span class="spinner" aria-hidden="true"></span>
-              <h1>正在加载</h1>
-              <p id="loadingMessage">读取文件并准备预览。</p>
+              <h1>正在加载…</h1>
+              <p id="loadingMessage"></p>
               <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">
                 <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M3 7.8A2.8 2.8 0 0 1 5.8 5h3.9l2 2H18A3 3 0 0 1 21 10v6.2A2.8 2.8 0 0 1 18.2 19H5.8A2.8 2.8 0 0 1 3 16.2Z"></path>
@@ -111,7 +109,7 @@
         </section>
         <aside class="rightPanel stateInfoPanel" aria-label="加载信息" data-component="RightInformationSurface" data-module="StateRecoveryModule" data-panel-state="loading">
           <div class="stateInfoHeader">
-            <h1>正在加载</h1>
+            <h1>正在加载…</h1>
           </div>
           <section class="stateInfoBody" aria-label="加载状态">
             <div class="stateSkeletonList" aria-hidden="true">
@@ -130,9 +128,15 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <div class="canvasWrap stateCanvasWrap" data-component="ErrorRecoveryPanel" data-role="FailureCanvasRecovery">
-            <div class="stateCard error" data-component="ErrorRecoveryPanel">
+            <div class="stateCard error stateFailureCard" data-component="ErrorRecoveryPanel">
+              <span class="stateFailureIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m8 8 8 8"></path>
+                  <path d="m16 8-8 8"></path>
+                </svg>
+              </span>
               <h1>文件加载失败</h1>
-              <p id="errorMessage">文件未能解析，源文件没有被修改。</p>
+              <p id="errorMessage">文件格式不受支持或已损坏</p>
               <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">
                 <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M3 7.8A2.8 2.8 0 0 1 5.8 5h3.9l2 2H18A3 3 0 0 1 21 10v6.2A2.8 2.8 0 0 1 18.2 19H5.8A2.8 2.8 0 0 1 3 16.2Z"></path>
@@ -182,13 +186,63 @@
         </aside>
       </section>
 
+      <section class="view stateView workbenchStateView unsupportedDropView" data-view="unsupported" aria-live="assertive" role="alert" data-page-state="Unsupported drop" hidden>
+        <section class="previewStagePanel stateStagePanel unsupportedDropStagePanel" aria-label="不支持的文件格式" data-module="PreviewCanvasModule" data-component="PreviewStage">
+          <div class="canvasModeSwitch stateModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch" aria-disabled="true">
+            <button type="button" class="isSelected" aria-pressed="true" disabled>预览模式</button>
+            <button type="button" aria-pressed="false" disabled>编辑模式</button>
+          </div>
+          <div class="canvasWrap stateCanvasWrap" data-component="ErrorRecoveryPanel" data-role="UnsupportedDropCanvasRecovery">
+            <div class="stateCard error stateFailureCard unsupportedDropRecoveryPanel" id="unsupportedDropRecovery" data-component="ErrorRecoveryPanel">
+              <span class="stateFailureIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m8 8 8 8"></path>
+                  <path d="m16 8-8 8"></path>
+                </svg>
+              </span>
+              <h1>不支持的文件格式</h1>
+              <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">打开文件</button>
+            </div>
+          </div>
+          <div class="playbackBar statePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled">
+            <div class="playbackActions" data-component="PlaybackButtonGroup">
+              <button type="button" class="playbackIconButton" data-component="IconButton" aria-label="重播" title="重播" disabled>
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
+                  <path d="M7.8 4.6v3.2H4.6"></path>
+                </svg>
+              </button>
+              <button type="button" class="playbackIconButton primary" data-component="IconButton" aria-label="播放" title="播放" disabled>
+                <svg class="playbackIcon playbackIconPlay" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.5v13l10-6.5-10-6.5Z"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="playbackProgress" role="progressbar" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span></span>
+            </div>
+            <span class="playbackTime">0:00 / 0:00</span>
+            <div class="playbackRightActions" data-component="PlaybackButtonGroup">
+              <button type="button" class="playbackIconButton" data-component="IconButton" aria-label="循环播放" title="循环播放" disabled>
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17 2.8l3.2 3.2L17 9.2"></path>
+                  <path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6h12.2"></path>
+                  <path d="M7 21.2 3.8 18 7 14.8"></path>
+                  <path d="M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H4.3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+      </section>
+
       <section class="view previewView" data-view="preview" data-page-state="Preview ready" hidden>
         <section class="previewStagePanel" id="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage">
           <div class="canvasModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch">
             <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览模式</button>
             <button type="button" data-action="mode-edit" aria-pressed="false">编辑模式</button>
           </div>
-          <section class="dragDecisionOverlay" id="previewDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
+          <section class="dragDecisionOverlay" id="previewDragOverlay" data-component="DragDecisionOverlay" data-page-state="Drag decision overlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
             <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
             <div class="dragDecisionZone" data-drag-zone="open"><strong>打开新文件</strong></div>
           </section>
@@ -197,6 +251,14 @@
               <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
               <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
             </div>
+            <section class="playbackErrorRecovery" id="playbackErrorRecovery" data-component="ErrorRecoveryPanel" data-page-state="Playback error" role="alert" aria-live="assertive" hidden>
+              <div class="stateCard playbackErrorPanel">
+                <span class="playbackErrorIcon playbackErrorWarningIcon" aria-hidden="true">!</span>
+                <h1>播放异常</h1>
+                <p id="playbackErrorMessage">动画解析失败，无法正常播放</p>
+                <button class="toolbarButton primary playbackRecoveryButton" type="button" data-action="reload-playback">重新加载</button>
+              </div>
+            </section>
           </div>
           <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
             <div class="playbackActions" data-component="PlaybackButtonGroup">
@@ -248,14 +310,17 @@
               <div class="sectionHead">
                 <h2 id="replaceableHeading">imageKey <span id="replaceableSummary"></span></h2>
               </div>
-              <div class="replaceableList" id="replaceableList" role="listbox" aria-label="imageKey"></div>
               <div class="textElementList" id="textElementList" role="listbox" aria-label="运行时文本"></div>
+              <div class="replaceableList" id="replaceableList" role="listbox" aria-label="imageKey"></div>
               <menu class="contextMenu" id="resourceContextMenu" role="menu" tabindex="-1" hidden>
                 <button type="button" role="menuitem" data-action="context-rename">重命名 imageKey</button>
                 <button type="button" role="menuitem" data-action="context-replace">替换预览图片</button>
                 <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
               </menu>
             </section>
+            <div class="saveFeedbackOutlet" data-save-feedback-outlet="overview">
+              <section class="saveBanner" id="saveBanner" aria-live="polite" data-component="SaveFeedbackBanner" data-module="SaveStateModule" data-page-state="Save feedback" hidden></section>
+            </div>
             <section class="assetSection" data-component="AssetRow">
               <div class="sectionHead assetSectionHead">
                 <h2 id="assetListHeading">资产列表</h2>
@@ -271,9 +336,20 @@
                 <h2>优化</h2>
                 <p id="optimizationSummary"></p>
               </div>
-              <button class="toolbarButton primary" type="button" data-action="run-optimization">执行安全优化</button>
             </div>
             <div class="findingList" id="findingList"></div>
+            <section class="optimizationProgress" id="optimizationProgress" data-component="OptimizationRunningState" data-module="OptimizationRunningState" aria-live="polite" hidden>
+              <p class="optimizationProgressLabel">优化执行中…</p>
+              <div class="optimizationProgressBar" id="optimizationProgressBar" role="progressbar" aria-label="优化执行中">
+                <span class="optimizationProgressBarFill"></span>
+              </div>
+              <p class="optimizationProgressDetail">正在生成优化文件，请勿关闭…</p>
+            </section>
+            <div class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"></div>
+            <div class="optimizationDetailActions">
+              <button class="toolbarButton primary" type="button" data-action="run-optimization">一键优化</button>
+              <button class="toolbarButton" type="button" data-action="close-optimization">放弃优化</button>
+            </div>
           </section>
         </aside>
       </section>
@@ -285,7 +361,7 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <section class="compareStage" id="compareStage">
-            <section class="dragDecisionOverlay" id="compareDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
+            <section class="dragDecisionOverlay" id="compareDragOverlay" data-component="DragDecisionOverlay" data-page-state="Drag decision overlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
               <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
               <div class="dragDecisionZone" data-drag-zone="open"><strong>打开新文件</strong></div>
             </section>
@@ -388,7 +464,15 @@
           </div>
           <div class="canvasWrap"><canvas id="editCanvas" aria-label="编辑预留预览"></canvas></div>
         </section>
-        <aside class="reservedPanel" data-component="ReservedOperationPanel"></aside>
+        <aside class="reservedPanel" data-component="ReservedOperationPanel">
+          <div class="editReservedPlaceholder" data-role="EditReservedPlaceholder">
+            <h2>编辑操作区</h2>
+            <p>
+              <span>短期版本保留占位</span>
+              <span>高级功能后续规划</span>
+            </p>
+          </div>
+        </aside>
       </section>
 
       <div class="canvasToast" id="canvasToast" data-component="CanvasToast" role="status" aria-live="polite" hidden></div>
@@ -411,6 +495,12 @@
       <form method="dialog" class="dialogBody">
         <header class="dialogHeader settingsHeader">
           <h2>
+            <span class="settingsHeaderIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
+              </svg>
+            </span>
             <span>设置</span>
           </h2>
         </header>
@@ -459,7 +549,7 @@
           </div>
         </fieldset>
         <menu class="dialogActions">
-          <button value="close" data-action="close-settings">完成</button>
+          <button class="primary" value="close" data-action="close-settings">完成</button>
         </menu>
       </form>
     </dialog>

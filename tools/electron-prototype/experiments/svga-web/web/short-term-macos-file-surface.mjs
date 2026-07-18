@@ -5,6 +5,7 @@ import {
   hideShortTermSaveBanner
 } from "./short-term-macos-feedback-surface.mjs";
 import {
+  hidePlaybackFailureRecovery,
   renderFailureMessage,
   renderFileHeader,
   renderLoadingMessage
@@ -14,7 +15,7 @@ import { toUint8Array } from "./short-term-macos-byte-model.mjs";
 
 export function renderShortTermRecentOpenLoading({ nodes, setView }) {
   setView("loading");
-  renderLoadingMessage(nodes, "正在打开最近文件。");
+  renderLoadingMessage(nodes, "");
 }
 
 export async function openShortTermSourceFromHostDialog({
@@ -97,7 +98,8 @@ export async function loadShortTermOpenedSource({
   renderPreviewModel,
   mountPrimaryPlayback,
   stopAllPlayback,
-  showFailure
+  showFailure,
+  showPlaybackFailure
 }) {
   prepareShortTermSourceLoad({
     nodes,
@@ -115,10 +117,16 @@ export async function loadShortTermOpenedSource({
     state.selectedTextKey = model.replaceableElements.texts[0]?.textKey || "";
     renderPreviewModel();
     setView("preview");
-    await mountPrimaryPlayback(state.previewBytes);
   } catch (error) {
     clearShortTermCurrentFile({ state, stopAllPlayback });
     showFailure(error);
+    return;
+  }
+  try {
+    await mountPrimaryPlayback(state.previewBytes);
+  } catch (error) {
+    stopAllPlayback();
+    showPlaybackFailure(error);
   }
 }
 
@@ -154,6 +162,7 @@ export function prepareShortTermSourceLoad({
   if (!bytes?.byteLength) throw new Error("文件为空。");
   clearTransientOutput();
   renderFailureMessage(nodes, "");
+  hidePlaybackFailureRecovery(nodes);
   state.sourceBytes = new Uint8Array(bytes);
   state.previewBytes = new Uint8Array(bytes);
   state.sourceId = sourceId || "";
@@ -167,7 +176,7 @@ export function prepareShortTermSourceLoad({
   state.cleanSaveAsVisible = false;
   clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   setView("loading");
-  renderLoadingMessage(nodes, "解析文件并准备预览。");
+  renderLoadingMessage(nodes, "");
 }
 
 export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
@@ -204,4 +213,17 @@ export function resetShortTermLaunchSurface({
   applyModeButtons("preview");
   setView("launch");
   refreshRecentFiles?.().catch(() => {});
+}
+
+export function showShortTermUnsupportedDropState({
+  nodes,
+  state,
+  stopAllPlayback,
+  setView
+}) {
+  clearShortTermCurrentFile({ state, stopAllPlayback });
+  state.mode = "preview";
+  state.tab = "overview";
+  hideShortTermSaveBanner(nodes);
+  setView("unsupported");
 }

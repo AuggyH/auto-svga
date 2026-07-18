@@ -6,11 +6,10 @@ import {
 } from "./short-term-macos-dom-state.mjs";
 import { closeOpenDialog } from "./short-term-macos-dialog-model.mjs";
 import {
-  hideShortTermCanvasToast,
   hideShortTermDragDecisionOverlays,
-  showShortTermCanvasToast,
   showShortTermDragDecisionOverlay
 } from "./short-term-macos-drag-decision-surface.mjs";
+import { createReplaceableEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
 import {
   applyShortTermAppearance,
   closeShortTermSettings,
@@ -28,7 +27,8 @@ import {
   createTextElementRow,
   replaceRuntimeTextRows
 } from "./short-term-macos-replaceable-renderers.mjs";
-import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { replaceableElementSummaryCopy } from "./short-term-macos-replaceable-model.mjs";
+import { escapeHtml, formatDisplayDetailCopy } from "./short-term-macos-render-model.mjs";
 import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import {
   multiFormatDragDecisionForEvent,
@@ -54,10 +54,29 @@ const reviewedOwnerFailureCopyByCode = Object.freeze({
   playback_failure: "文件预览播放出现问题。",
   runtime_preview_failed: "无法挂载本地预览，源文件没有被修改。"
 });
+const rendererIssueCopyByCode = Object.freeze({
+  missing_resource: "预览所需资源缺失。",
+  unsupported_feature: "当前文件包含暂不支持的内容。",
+  invalid_file: "文件内容不完整或格式异常，无法预览。",
+  playback_failure: "文件预览播放出现问题。",
+  owner_issue: "当前文件存在无法显示的检查问题。"
+});
+const rendererUnsupportedFeatureCopyByFeature = Object.freeze({
+  "表达式": "暂不支持：表达式",
+  "蒙版": "暂不支持：蒙版",
+  "特效": "暂不支持：特效",
+  "时间重映射": "暂不支持：时间重映射",
+  "3D 图层": "暂不支持：3D 图层",
+  "摄像机图层": "暂不支持：摄像机图层",
+  "纯色图层": "暂不支持：纯色图层",
+  "内嵌图片资源": "暂不支持：内嵌图片资源",
+  "非 H.264 视频编码": "暂不支持：非 H.264 视频编码",
+  "未识别的融合元素类型": "暂不支持：未识别的融合元素类型"
+});
 const factLabels = new Map([
   ["Format", "格式"],
-  ["Canvas", "画布"],
-  ["Duration", "时长"],
+  ["Canvas", "画布尺寸"],
+  ["Duration", "动画时长"],
   ["Layers", "图层"],
   ["Assets", "资源"],
   ["Replaceable", "可替换"],
@@ -208,8 +227,7 @@ export function createMultiFormatDesktopPreviewController({
       return svgaController.handlers.dropCanvasFile?.(event, target, overlay);
     }
     if (!decision.supported) {
-      await closeFile();
-      showShortTermCanvasToast(nodes, "不支持的文件格式");
+      await closeFile({ nextView: "unsupported" });
       renderCommandState();
       return;
     }
@@ -226,7 +244,8 @@ export function createMultiFormatDesktopPreviewController({
     hideShortTermDragDecisionOverlays(nodes);
   }
 
-  async function closeFile() {
+  async function closeFile(options = {}) {
+    const nextView = options.nextView === "unsupported" ? "unsupported" : "launch";
     if (svgaWorkflowActive()) {
       await svgaController?.handlers?.closeFile?.();
       if (!state.sourceBytes) activeFormat = "";
@@ -247,7 +266,7 @@ export function createMultiFormatDesktopPreviewController({
     state.tab = "overview";
     activeFormat = "";
     clearSurfaces();
-    setView("launch");
+    setView(nextView);
   }
 
   async function control(action, input = {}) {
@@ -638,7 +657,10 @@ export function createMultiFormatDesktopPreviewController({
     const rightPanel = projectMultiFormatRightPanel(model);
     const inventory = rightPanel.assetInventory;
     if (inventory?.groups?.length) {
-      const groups = inventory.groups.filter((group) => group.items?.length > 0);
+      const groups = inventory.groups.filter((group) => {
+        const items = Array.isArray(group.items) ? group.items : [];
+        return items.length > 0;
+      });
       if (nodes.assetListHeading) {
         nodes.assetListHeading.textContent = `资产列表 (${inventory.summary.totalItems})`;
       }
@@ -673,14 +695,25 @@ export function createMultiFormatDesktopPreviewController({
       row.dataset.component = "AssetRow";
       row.setAttribute("role", "listitem");
       row.dataset.kind = asset.kind || "unknown";
-      const detail = [asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean).join(" · ");
+      const detail = formatDisplayDetailCopy([asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean).join(" · "));
+      const label = rowLabel(asset.name || asset.id, detail, asset.replaceable ? "可替换" : "");
+      if (label) {
+        row.title = label;
+        row.setAttribute("aria-label", label);
+      }
       row.innerHTML = `
         <span class="thumb">${escapeHtml((asset.ownerKind || "资源").slice(0, 1))}</span>
         <span class="rowText"><strong>${escapeHtml(asset.name || asset.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
-        ${asset.replaceable ? `<span class="badge">可替换</span>` : ""}
+        ${asset.replaceable ? `<span class="badge safe">可替换</span>` : ""}
       `;
       return row;
     }));
+  }
+
+  function rowLabel(...parts) {
+    return parts
+      .filter((part) => typeof part === "string" && part.trim())
+      .join("，");
   }
 
   function createInventorySummaryItem(item) {
@@ -689,31 +722,48 @@ export function createMultiFormatDesktopPreviewController({
     summary.dataset.summaryId = item.id;
     summary.dataset.count = String(item.count);
     summary.setAttribute("role", "listitem");
-    summary.textContent = `${item.label} ${item.count}`;
+    const labelNode = document.createElement("span");
+    labelNode.className = "assetSummaryLabel";
+    labelNode.textContent = item.label;
+    const countNode = document.createElement("span");
+    countNode.className = "assetSummaryCount";
+    countNode.textContent = ` (${item.count})`;
+    summary.replaceChildren(labelNode, countNode);
+    const label = rowLabel(item.label, String(item.count));
+    summary.title = label;
+    summary.setAttribute("aria-label", label);
     return summary;
   }
 
   function createAssetGroup(group) {
+    const items = Array.isArray(group.items) ? group.items : [];
     const section = document.createElement("section");
     section.className = "assetGroup";
     section.dataset.role = "AssetInventoryGroup";
     section.dataset.group = group.id;
     section.dataset.status = group.status;
     section.setAttribute("role", "group");
-    section.setAttribute("aria-label", group.label);
+    const groupLabel = rowLabel(group.label, `${group.count} 项`);
+    section.title = groupLabel;
+    section.setAttribute("aria-label", groupLabel);
 
     const heading = document.createElement("header");
     heading.className = "assetGroupHeader";
-    const statusCopy = groupStatusCopy(group);
-    heading.innerHTML = `
-      <span class="rowText"><strong>${escapeHtml(group.label)}</strong>${statusCopy ? `<span>${escapeHtml(statusCopy)}</span>` : ""}</span>
-      <span class="badge">${escapeHtml(String(group.count))}</span>
-    `;
+    heading.dataset.status = group.status;
+    heading.setAttribute("aria-label", groupLabel);
+    heading.title = groupLabel;
+    const title = document.createElement("strong");
+    title.className = "assetGroupTitle";
+    title.textContent = group.label;
+    const count = document.createElement("span");
+    count.className = "assetGroupCount";
+    count.textContent = `(${group.count})`;
+    heading.replaceChildren(title, count);
 
     const list = document.createElement("div");
     list.className = "assetGroupList";
     list.setAttribute("role", "list");
-    list.replaceChildren(...group.items.map(createInventoryItemRow));
+    list.replaceChildren(...items.map(createInventoryItemRow));
     section.replaceChildren(heading, list);
     return section;
   }
@@ -730,20 +780,16 @@ export function createMultiFormatDesktopPreviewController({
     row.dataset.replaceable = item.replaceable ? "true" : "false";
     row.setAttribute("role", "listitem");
     if (item.runtimeTargetId) row.dataset.runtimeTargetId = item.runtimeTargetId;
-    const detail = item.detail?.length ? item.detail.join(" · ") : "";
+    const detail = item.detail?.length ? formatDisplayDetailCopy(item.detail.join(" · ")) : "";
+    const label = rowLabel(item.label || item.id, detail, assetStatusCopy(item.status));
+    row.title = label;
+    row.setAttribute("aria-label", label);
     row.innerHTML = `
       <span class="thumb">${escapeHtml((item.kind || "?").slice(0, 1).toUpperCase())}</span>
       <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
       ${inventoryItemBadgeHtml(item)}
     `;
     return row;
-  }
-
-  function groupStatusCopy(group) {
-    if (group.status === "blocked") return "存在缺失或阻断";
-    if (group.status === "warning") return "存在不支持项";
-    if (group.replaceableCount > 0) return `${group.replaceableCount} 可替换`;
-    return "";
   }
 
   function assetStatusCopy(status) {
@@ -783,18 +829,38 @@ export function createMultiFormatDesktopPreviewController({
       ...(rightPanel.issues ?? []),
       ...(rightPanel.unsupportedFeatures ?? []).map((entry) => ({
         code: "unsupported_feature",
-        severity: "warning",
-        message: entry.message
+        severity: entry.severity,
+        feature: entry.feature
       }))
     ];
+    nodes.findingList.setAttribute("role", "list");
+    nodes.findingList.setAttribute("aria-label", "格式检查");
     nodes.findingList.replaceChildren(...issues.map((issue) => {
+      const copy = issueDisplayCopy(issue);
+      const severity = issueSeverity(issue.severity);
       const row = document.createElement("article");
       row.className = "findingRow";
-      row.dataset.severity = issue.severity || "warning";
-      row.dataset.disposition = issueDisposition(issue.severity);
-      row.innerHTML = `<div><strong>${escapeHtml(issue.message || "")}</strong></div>`;
+      row.dataset.component = "FindingRow";
+      row.dataset.severity = severity;
+      row.dataset.disposition = issueDisposition(severity);
+      row.setAttribute("role", "listitem");
+      const label = rowLabel(copy);
+      row.title = label;
+      row.setAttribute("aria-label", label);
+      row.innerHTML = `<div><strong>${escapeHtml(copy)}</strong></div>`;
       return row;
     }));
+  }
+
+  function issueDisplayCopy(issue) {
+    if (issue?.code === "unsupported_feature" && typeof issue.feature === "string") {
+      return rendererUnsupportedFeatureCopyByFeature[issue.feature] ?? rendererIssueCopyByCode.unsupported_feature;
+    }
+    return rendererIssueCopyByCode[issue?.code] ?? rendererIssueCopyByCode.owner_issue;
+  }
+
+  function issueSeverity(severity) {
+    return severity === "error" || severity === "info" ? severity : "warning";
   }
 
   function issueDisposition(severity) {
@@ -804,7 +870,11 @@ export function createMultiFormatDesktopPreviewController({
   function renderReplaceableTargets() {
     const model = state.model;
     const rightPanel = projectMultiFormatRightPanel(model);
-    const targets = (rightPanel.imageTargets ?? []).map((target) => ({
+    const imageTargets = rightPanel.imageTargets ?? [];
+    const textTargets = rightPanel.textTargets ?? [];
+    const imageCount = imageTargets.length;
+    const textCount = textTargets.length;
+    const targets = imageTargets.map((target) => ({
       ...target,
       replacementActive: multiFormatActiveReplacementForPublicTarget(
         model,
@@ -813,9 +883,27 @@ export function createMultiFormatDesktopPreviewController({
         publicRuntimeReplacementTargets
       )
     }));
-    nodes.replaceableSummary.textContent = targets.length
-      ? `${targets.length} 个可替换图片`
-      : "当前文件没有可替换图片。";
+    const totalCount = imageCount + textCount;
+    const hasReplacementPreview = targets.some((target) => target.replacementActive)
+      || textTargets.some((target) => multiFormatActiveReplacementForPublicTarget(
+        model,
+        "text",
+        target.textKey,
+        publicRuntimeReplacementTargets
+      ));
+    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount, hasReplacementPreview);
+    const replaceableSection = nodes.replaceableList.closest?.(".replaceableSection");
+    replaceableSection?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
+    if (totalCount === 0) {
+      replaceableSection?.setAttribute("data-page-state", "no-replaceable");
+    } else {
+      replaceableSection?.removeAttribute("data-page-state");
+    }
+    nodes.replaceableList.dataset.empty = totalCount > 0 && targets.length === 0 ? "true" : "false";
+    if (totalCount === 0) {
+      nodes.replaceableList.replaceChildren(createReplaceableEmptyStatus());
+      return;
+    }
     nodes.replaceableList.replaceChildren(...targets.map((target, index) => createReplaceableImageRow(target, index, {
       model,
       selected: state.selectedImageKey === target.imageKey,
@@ -840,6 +928,7 @@ export function createMultiFormatDesktopPreviewController({
         replacementActive: Boolean(active)
       };
     });
+    nodes.textElementList.dataset.empty = targets.length > 0 ? "false" : "true";
     replaceRuntimeTextRows(nodes.textElementList, targets.map((target, index) => createTextElementRow(target, index, {
       selected: state.selectedTextKey === target.textKey,
       replacementActive: target.replacementActive
@@ -1336,8 +1425,25 @@ export function createMultiFormatDesktopPreviewController({
       }
     }
     nodes.playbackProgress?.setAttribute("aria-valuenow", String(Math.round(progress)));
+    applyPlaybackProgress(progress);
+  }
+
+  function applyPlaybackProgress(progress) {
+    const value = `${Math.round(progress)}%`;
+    const style = nodes.playbackProgress?.style;
+    if (style && typeof style.setProperty === "function") {
+      style.setProperty("--asv-playback-progress", value);
+    } else if (style) {
+      style["--asv-playback-progress"] = value;
+    }
     const bar = nodes.playbackProgress?.querySelector("span");
-    if (bar) bar.style.width = `${Math.round(progress)}%`;
+    if (bar) bar.style.width = value;
+  }
+
+  function resetPlaybackProgress() {
+    if (nodes.playbackTime) nodes.playbackTime.textContent = "0:00 / 0:00";
+    nodes.playbackProgress?.setAttribute("aria-valuenow", "0");
+    applyPlaybackProgress(0);
   }
 
   function drawVapRuntimeFrame(active) {
@@ -1645,10 +1751,11 @@ export function createMultiFormatDesktopPreviewController({
     const current = Math.min(duration, playback.currentTimeMs || 0);
     const progress = duration > 0 ? Math.round((current / duration) * 100) : 0;
     nodes.playbackProgress?.setAttribute("aria-valuenow", String(progress));
-    const bar = nodes.playbackProgress?.querySelector("span");
-    if (bar) bar.style.width = `${progress}%`;
+    applyPlaybackProgress(progress);
     nodes.playbackTime.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
     nodes.playbackMeta.textContent = playbackMeta(model);
+    nodes.playbackMeta.dataset.status = playbackStatusId(model.status);
+    nodes.playbackMeta.dataset.format = playbackFormatId(model.detectedFormat);
   }
 
   function renderCommandState() {
@@ -1727,7 +1834,7 @@ export function createMultiFormatDesktopPreviewController({
       nodes.assetFilterTabs.setAttribute("role", "tablist");
       nodes.assetFilterTabs.setAttribute("aria-label", "资产类型");
     }
-    nodes.playbackTime.textContent = "0:00 / 0:00";
+    resetPlaybackProgress();
   }
 
   function openSettings() {
@@ -1790,6 +1897,7 @@ export function createMultiFormatDesktopPreviewController({
     activeFormat = "";
     invalidateRuntimeTextMutations();
     clearRuntimePreview();
+    resetPlaybackProgress();
     clearRuntimeReplacementValues();
     if (options.disposeHost !== false) {
       Promise.resolve(bridge?.controlMultiFormatPreview?.({ action: "dispose" })).catch(() => {});
@@ -1992,7 +2100,7 @@ export function normalizeMultiFormatOpenOutcome(result) {
 }
 
 function applyProductCopy(documentRef = document) {
-  documentRef.querySelector(".launchPrompt p")?.replaceChildren("拖拽 SVGA / Lottie JSON / VAP MP4 到此处");
+  documentRef.querySelector(".launchPrompt p")?.replaceChildren("拖拽文件到此处");
   documentRef.querySelectorAll("[data-action='open'] span").forEach((node) => {
     node.textContent = "打开文件";
   });
@@ -2008,8 +2116,8 @@ async function fileToDataUri(file) {
 }
 
 function playbackMeta(model) {
-  const format = model.detectedFormat ? model.detectedFormat.toUpperCase() : "0.2";
-  const dimensions = model.canvas?.dimensions || "unknown";
+  const format = playbackFormatCopy(model.detectedFormat);
+  const dimensions = formatDisplayDetailCopy(model.canvas?.dimensions || "unknown");
   const duration = formatTime(model.canvas?.playback?.durationMs || 0);
   return `${format} · ${dimensions} · ${duration} · ${statusCopy(model.status)}`;
 }
@@ -2054,18 +2162,41 @@ function trustedOwnerFailureCode(failure) {
   }
 }
 
+const playbackStatusCopyById = Object.freeze({
+  launch: "待打开",
+  loading: "加载中",
+  previewReady: "已就绪",
+  playing: "播放中",
+  paused: "已暂停",
+  playbackBlocked: "播放受限",
+  playbackFailed: "播放异常",
+  failed: "加载失败",
+  disposed: "已关闭"
+});
+
+const playbackFormatCopyById = Object.freeze({
+  svga: "SVGA",
+  lottie: "LOTTIE",
+  vap: "VAP"
+});
+
+function playbackStatusId(status) {
+  return typeof status === "string" && Object.hasOwn(playbackStatusCopyById, status)
+    ? status
+    : "unknown";
+}
+
+function playbackFormatId(format) {
+  const id = typeof format === "string" ? format.toLowerCase() : "";
+  return Object.hasOwn(playbackFormatCopyById, id) ? id : "unknown";
+}
+
+function playbackFormatCopy(format) {
+  return playbackFormatCopyById[playbackFormatId(format)] ?? "0.2";
+}
+
 function statusCopy(status) {
-  return {
-    launch: "待打开",
-    loading: "加载中",
-    previewReady: "已就绪",
-    playing: "播放中",
-    paused: "已暂停",
-    playbackBlocked: "播放受限",
-    playbackFailed: "播放失败",
-    failed: "加载失败",
-    disposed: "已关闭"
-  }[status] ?? status ?? "未知";
+  return playbackStatusCopyById[playbackStatusId(status)] ?? "未知";
 }
 
 function formatTime(timeMs) {

@@ -1,4 +1,11 @@
 const RISK_STATUSES = new Set(["warning", "fail"]);
+const FACT_DISPLAY_LABELS = new Map([
+  ["fileSize", "文件大小"],
+  ["decodedMemory", "内存占用"],
+  ["duration", "动画时长"],
+  ["fps", "帧率"],
+  ["canvas", "画布尺寸"]
+]);
 
 export function overviewFactGroups(model) {
   const requiredIds = new Set([
@@ -26,30 +33,44 @@ export function overviewVisibleFacts(model) {
 }
 
 export function renderOverviewFactCellHtml(fact) {
+  const label = factDisplayLabel(fact);
   const status = overviewStatusCopy(fact.status);
   const requirement = fact.requirement ? ` title="${escapeHtml(fact.requirement)}"` : "";
   return `
-    <span>${escapeHtml(fact.label)}</span>
+    <span>${escapeHtml(label)}</span>
     <strong>${renderMetricValueHtml(fact.value)}</strong>
-    ${status ? `<button type="button" class="metricOptimizationEntry" data-component="MetricOptimizationEntry" data-action="open-optimization" aria-label="${escapeHtml(fact.label)}${escapeHtml(status)}"${requirement}><b>${escapeHtml(status)}</b></button>` : ""}
+    ${status ? `<button type="button" class="metricOptimizationEntry" data-component="MetricOptimizationEntry" data-action="open-optimization" aria-label="${escapeHtml(label)}${escapeHtml(status)}"${requirement}><b>${escapeHtml(status)}</b></button>` : ""}
   `;
 }
 
 export function renderCompareFactCellHtml(fact) {
+  const label = factDisplayLabel(fact);
   return `
     <div class="factCell compareMetricCell" data-component="FactCell" data-status="${escapeHtml(fact.status || "unknown")}">
-      <span>${escapeHtml(fact.label)}</span>
+      <span>${escapeHtml(label)}</span>
       <strong>${renderMetricValueHtml(fact.value)}</strong>
       <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
     </div>
   `;
 }
 
+export function factDisplayLabel(fact) {
+  return FACT_DISPLAY_LABELS.get(fact?.id) || String(fact?.label ?? "");
+}
+
 export function renderMetricValueHtml(value) {
   const copy = String(value ?? "");
   const match = copy.match(/^(\d+(?:\.\d+)?(?:\s*[×x]\s*\d+(?:\.\d+)?)?)\s+(MiB|KiB|B|fps|px|ms|s)$/i);
   if (!match) return escapeHtml(copy);
-  return `${escapeHtml(match[1])} <span class="factValueUnit">${escapeHtml(match[2])}</span>`;
+  return `${escapeHtml(formatDisplayDimensionCopy(match[1]))} <span class="factValueUnit">${escapeHtml(match[2])}</span>`;
+}
+
+export function formatDisplayDimensionCopy(value) {
+  return String(value ?? "").replace(/\b(\d{1,6}(?:\.\d+)?)\s*[x×]\s*(\d{1,6}(?:\.\d+)?)\b/gu, "$1×$2");
+}
+
+export function formatDisplayDetailCopy(value) {
+  return formatDisplayDimensionCopy(value);
 }
 
 export function renderOptimizationMetricCellHtml(metric) {

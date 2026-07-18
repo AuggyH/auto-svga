@@ -18,7 +18,9 @@ export function renderShortTermPreviewModel({ nodes, state }) {
   const model = state.model;
   if (!model) return;
   const overviewView = overviewTabView(model);
-  renderFileHeader(nodes, state.displayName, overviewView.playbackMeta);
+  renderFileHeader(nodes, state.displayName, overviewView.playbackMeta, {
+    dirty: state.activeOutput?.kind === "rename"
+  });
   renderOverviewFacts(nodes, overviewView);
   renderAssetList(nodes, overviewView, model, state.assetFilter);
   renderShortTermOptimization({ nodes, model: model.optimization });

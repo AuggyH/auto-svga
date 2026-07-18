@@ -80,7 +80,7 @@ export async function saveShortTermActiveOutput({
 }) {
   if (!state.activeOutput?.bytes?.byteLength || !bridge?.saveShortTermSvgaOutput) return undefined;
   if (state.activeOutput.kind === "optimization" && !canSaveOptimizationResult(state.activeOutput.details)) {
-    showSaveBanner(state.activeOutput.title || "优化结果不可保存。", state.activeOutput.summary || "保存保持关闭。");
+    showSaveBanner(state.activeOutput.title || "优化结果不可保存。", state.activeOutput.summary || "当前结果不可保存。");
     return undefined;
   }
   if (state.saveStatus === "validating") return undefined;
@@ -90,7 +90,7 @@ export async function saveShortTermActiveOutput({
   }
   state.saveStatus = "validating";
   renderCommandState();
-  showSaveBanner("正在验证保存输出。", "写入后会读取文件并校验哈希。");
+  showSaveBanner("正在保存并验证输出…", "");
   try {
     const outputKind = state.activeOutput.kind;
     const outputBytes = new Uint8Array(state.activeOutput.bytes);
@@ -119,7 +119,7 @@ export async function saveShortTermActiveOutput({
     renderPreviewModel();
     await mountPrimaryPlayback(state.previewBytes);
     renderCommandState();
-    showSaveBanner("已保存并通过验证。", `${result.fileName || "输出文件"} 已重新进入干净状态。`);
+    showSaveBanner("已保存", "");
     await refreshRecentFiles();
     return {
       ...result,
@@ -129,7 +129,7 @@ export async function saveShortTermActiveOutput({
   } catch (error) {
     state.saveStatus = "failed";
     renderCommandState();
-    showSaveBanner("保存失败。", sourceUnmodifiedMessage(error instanceof Error ? error.message : String(error)));
+    showSaveBanner("保存失败，请重试", sourceUnmodifiedMessage(error instanceof Error ? error.message : String(error)));
     throw error;
   }
 }

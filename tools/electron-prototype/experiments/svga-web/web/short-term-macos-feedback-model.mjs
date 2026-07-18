@@ -1,5 +1,7 @@
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
 
+export const SHORT_TERM_LOAD_FAILURE_COPY = "文件格式不受支持或已损坏";
+
 const SAVE_BANNER_A11Y = {
   danger: { role: "alert", ariaLive: "assertive", ariaBusy: "false" },
   loading: { role: "status", ariaLive: "polite", ariaBusy: "true" },
@@ -13,7 +15,7 @@ export function normalizeSaveBannerStatus(status) {
 }
 
 export function bannerTone(title) {
-  if (/正在/.test(title)) return "loading";
+  if (/正在|执行中/.test(title)) return "loading";
   if (/失败|未完成|未通过/.test(title)) return "danger";
   if (/没有|不支持|取消/.test(title)) return "warning";
   if (/已/.test(title)) return "success";
@@ -27,10 +29,11 @@ export function saveBannerA11yState(status) {
 export function saveBannerView(title, message, tone = bannerTone(title)) {
   const status = normalizeSaveBannerStatus(tone);
   const a11y = saveBannerA11yState(status);
+  const messageHtml = message ? `<span> ${escapeHtml(message)}</span>` : "";
   return {
     status,
     ...a11y,
-    html: `<strong>${escapeHtml(title)}</strong><span> ${escapeHtml(message || "")}</span>`
+    html: `<strong>${escapeHtml(title)}</strong>${messageHtml}`
   };
 }
 
@@ -58,6 +61,7 @@ export function viewCopy(view) {
     launch: "等待打开",
     loading: "正在打开",
     failed: "打开失败",
+    unsupported: "格式不支持",
     preview: "预览",
     compare: "对比",
     edit: "编辑预留"

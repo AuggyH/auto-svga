@@ -113,13 +113,20 @@ test("0.2 owner copy uses Open File without candidate or proof language", () => 
 
 test("multi-format owner copy hides host and runtime implementation language", () => {
   const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const inlineStatusSource = source("web/short-term-macos-inline-status-renderers.mjs");
 
   assert.doesNotMatch(controllerSource, /Replacement preview/u);
   assert.doesNotMatch(controllerSource, /0\.2 预览(?:主机|请求|运行时)/u);
   assert.match(controllerSource, /无法更新替换预览，源文件没有被修改。/u);
   assert.match(controllerSource, /文件加载超时，请重新打开文件。源文件没有被修改。/u);
   assert.match(controllerSource, /资产列表/u);
-  assert.match(controllerSource, /个可替换图片/u);
+  assert.match(controllerSource, /createReplaceableEmptyStatus/u);
+  assert.doesNotMatch(controllerSource, /仅包含自动命名资源/u);
+  assert.match(inlineStatusSource, /未发现可替换元素/u);
+  assert.doesNotMatch(inlineStatusSource, /仅包含自动命名资源|不满足可替换元素命名规则/u);
+  assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount, hasReplacementPreview\)/u);
+  assert.match(controllerSource, /\.launchPrompt p"\)\?\.replaceChildren\("拖拽文件到此处"\)/u);
+  assert.doesNotMatch(controllerSource, /拖拽 SVGA \/ Lottie JSON \/ VAP MP4 到此处/u);
   assert.match(controllerSource, /renderFailureMessage\(nodes, ownerFailureCopy\(error\)\)/u);
   assert.doesNotMatch(controllerSource, /renderFailureMessage\(nodes, error instanceof Error \? error\.message/u);
 });
@@ -430,8 +437,8 @@ test("multi-format inventory summary exposes only meaningful localized counts", 
     unsupportedOrMissingCount: 0
   }), [
     { id: "images", label: "图片", count: 4 },
-    { id: "sequences", label: "序列", count: 12 },
-    { id: "media", label: "媒体", count: 1 }
+    { id: "sequences", label: "序列帧", count: 12 },
+    { id: "media", label: "音视频", count: 1 }
   ]);
 });
 
@@ -573,7 +580,7 @@ test("right-panel rendering projects only format-applicable groups and hides int
   const vapProjection = projectMultiFormatRightPanel(ownerEnvelope({
     facts: [
       { id: "audio", label: "音频", value: "存在", status: "pass" },
-      { id: "dimensions", label: "画布", value: "未知", status: "unknown" }
+      { id: "dimensions", label: "画布尺寸", value: "未知", status: "unknown" }
     ],
     assetInventory: {
       schemaVersion: 1,
@@ -622,7 +629,10 @@ test("accepted R12 shell affordances remain present in the composed 0.2 shell", 
   const domStateSource = source("web/short-term-macos-dom-state.mjs");
 
   assert.match(htmlSource, /class="canvasModeSwitch compareModeSwitch"/u);
-  assert.match(compareModelSource, /comparePairOpenButton[\s\S]*打开文件/u);
+  assert.match(htmlSource, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a"/u);
+  assert.match(htmlSource, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b"/u);
+  assert.match(compareModelSource, /comparePairOpenButton/u);
+  assert.match(compareModelSource, /"open-compare-a" : "open-compare-b"/u);
   assert.match(compareModelSource, /compareExitButton/u);
   assert.match(controllerSource, /loadDroppedCompareFile,/u);
   assert.match(domStateSource, /rightSurfaceHeader\.hidden = surfaceState === "optimization"/u);
@@ -863,6 +873,14 @@ test("real-rendering evidence binds the current routed material aliases without 
   assert.match(proofSource, /AUTO_SVGA_SKIP_FUSION_FIXTURE === "1"/u);
   assert.match(proofSource, /status: "notRun", reason: "task_owned_fusion_fixture_unavailable"/u);
   assert.doesNotMatch(proofSource, /Users\/huangtengxin\/Downloads/u);
+});
+
+test("real-rendering matrix follows owner autoplay without toggling it off", () => {
+  const proofSource = source("scripts/run-multiformat-real-rendering-matrix-proof.cjs");
+  const functionSource = extractFunctionSource(proofSource, "async function provePlayableFormat");
+
+  assert.match(functionSource, /modelStatus\(snapshot\) === "playing"/u);
+  assert.doesNotMatch(functionSource, /runInPage\(`\$\{input\.label\} play`/u);
 });
 
 test("real-rendering VAP Canvas risk oracle requires one canonical owner warning", () => {

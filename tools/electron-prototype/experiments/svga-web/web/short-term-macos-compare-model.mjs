@@ -1,5 +1,6 @@
 import {
   escapeHtml,
+  factDisplayLabel,
   overviewVisibleFacts,
   renderCompareFactCellHtml,
   renderMetricValueHtml,
@@ -42,6 +43,13 @@ function compareFactValue(facts, id) {
   return facts.find((fact) => fact.id === id)?.value || "";
 }
 
+const compareStatusScore = Object.freeze({
+  unknown: 0,
+  fail: 1,
+  warning: 2,
+  pass: 3
+});
+
 function compareFactIds(aFacts, bFacts) {
   return [...aFacts, ...bFacts].reduce((ids, fact) => {
     if (fact?.id && !ids.includes(fact.id)) ids.push(fact.id);
@@ -57,18 +65,24 @@ function compareAlignedFacts(rowIds, facts, peerFacts) {
       id,
       fact,
       peer,
-      label: fact?.label || peer?.label || id
+      label: factDisplayLabel(fact || peer || { id, label: id })
     };
   });
 }
 
-function compareFactDiff(fact, peer) {
+function compareFactDiff(fact, peer, comparisonReady = true) {
+  if (!comparisonReady) return "uncompared";
   if (!fact || !peer) return "unavailable";
-  return compareFactValue([peer], fact.id) !== fact.value ? "different" : "same";
+  const sameValue = compareFactValue([peer], fact.id) === fact.value;
+  const sameStatus = (fact.status || "unknown") === (peer.status || "unknown");
+  if (sameValue && sameStatus) return "same";
+  const factScore = compareStatusScore[fact.status || "unknown"] ?? compareStatusScore.unknown;
+  const peerScore = compareStatusScore[peer.status || "unknown"] ?? compareStatusScore.unknown;
+  return factScore > peerScore ? "improved" : "different";
 }
 
-function renderCompareColumnFactHtml({ id, fact, peer, label }) {
-  const diff = compareFactDiff(fact, peer);
+function renderCompareColumnFactHtml({ id, fact, peer, label, comparisonReady }) {
+  const diff = compareFactDiff(fact, peer, comparisonReady);
   if (!fact) {
     return `
       <div class="compareMetricCell" data-component="FactCell" data-fact-id="${escapeHtml(id)}" data-status="unavailable" data-diff="unavailable">
@@ -79,26 +93,58 @@ function renderCompareColumnFactHtml({ id, fact, peer, label }) {
   }
   return `
     <div class="compareMetricCell" data-component="FactCell" data-fact-id="${escapeHtml(id)}" data-status="${escapeHtml(fact.status || "unknown")}" data-diff="${escapeHtml(diff)}">
-      <span>${escapeHtml(fact.label)}</span>
+      <span>${escapeHtml(factDisplayLabel(fact))}</span>
       <strong>${renderMetricValueHtml(fact.value)}</strong>
     </div>
   `;
 }
 
-function renderCompareMetricColumnHtml(slot, rowIds, facts, peerFacts) {
+function renderCompareMetricColumnHtml(slot, rowIds, facts, peerFacts, comparisonReady) {
   return `
-    <div class="compareMetricColumn" data-component="CompareMetricColumn" data-slot="${escapeHtml(slot)}">
-      ${compareAlignedFacts(rowIds, facts, peerFacts).map(renderCompareColumnFactHtml).join("")}
+    <div class="compareMetricColumn" data-component="CompareMetricColumn" data-slot="${escapeHtml(slot)}" data-state="loaded">
+      ${compareAlignedFacts(rowIds, facts, peerFacts).map((row) => renderCompareColumnFactHtml({ ...row, comparisonReady })).join("")}
     </div>
   `;
 }
 
+function renderEmptyCompareMetricColumnHtml(slot) {
+  return `<div class="compareMetricColumn" data-component="CompareMetricColumn" data-slot="${escapeHtml(slot)}" data-state="empty" aria-hidden="true"></div>`;
+}
+
 function renderCompareMetricColumns(aModel, bModel) {
-  if (!aModel || !bModel) return "";
+  if (!aModel && !bModel) return "";
   const aFacts = compareFacts(aModel);
   const bFacts = compareFacts(bModel);
   const rowIds = compareFactIds(aFacts, bFacts);
-  return `${renderCompareMetricColumnHtml("A", rowIds, aFacts, bFacts)}${renderCompareMetricColumnHtml("B", rowIds, bFacts, aFacts)}`;
+  const comparisonReady = Boolean(aModel && bModel);
+  const aColumn = aModel
+    ? renderCompareMetricColumnHtml("A", rowIds, aFacts, bFacts, comparisonReady)
+    : renderEmptyCompareMetricColumnHtml("A");
+  const bColumn = bModel
+    ? renderCompareMetricColumnHtml("B", rowIds, bFacts, aFacts, comparisonReady)
+    : renderEmptyCompareMetricColumnHtml("B");
+  return `${aColumn}${bColumn}`;
+}
+
+function renderComparePairSlotHtml(slot, model, displayName) {
+  const state = model ? "loaded" : "empty";
+  const openAction = slot === "A" ? "open-compare-a" : "open-compare-b";
+  const openButton = model ? "" : `
+    <button class="toolbarButton primary comparePairOpenButton" data-component="ToolbarButton" type="button" data-action="${openAction}" aria-label="打开 ${slot} 文件">打开文件</button>
+  `;
+  return `
+    <div data-slot="${slot}" data-state="${state}">
+      <strong>${escapeHtml(displayName || "文件未打开")}</strong>
+      ${openButton}
+    </div>
+  `;
+}
+
+function comparePanelState(aModel, bModel) {
+  if (aModel && bModel) return "loaded";
+  if (aModel) return "waiting-b";
+  if (bModel) return "waiting-a";
+  return "empty";
 }
 
 export function renderGeneralComparePanelHtml({
@@ -112,24 +158,17 @@ export function renderGeneralComparePanelHtml({
 } = {}) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
   const rows = renderCompareMetricColumns(aModel, bModel);
-  const aAction = aModel ? "" : `<button class="toolbarButton primary comparePairOpenButton" type="button" data-action="open-compare-a">打开文件</button>`;
-  const bAction = bModel ? "" : `<button class="toolbarButton primary comparePairOpenButton" type="button" data-action="open-compare-b">打开文件</button>`;
+  const state = comparePanelState(aModel, bModel);
   return `
-    <section class="compareSummary compareModeHeader">
+    <section class="compareSummary compareModeHeader" data-compare-state="${state}">
       <h2>对比模式</h2>
       ${actionHtml}
     </section>
-    <section class="comparePairHeader" aria-label="对比文件">
-      <div>
-        <strong>${escapeHtml(aDisplayName || "未打开文件")}</strong>
-        ${aAction}
-      </div>
-      <div>
-        <strong>${escapeHtml(bDisplayName || "未打开文件")}</strong>
-        ${bAction}
-      </div>
+    <section class="comparePairHeader" aria-label="对比文件" data-compare-state="${state}">
+      ${renderComparePairSlotHtml("A", aModel, aDisplayName)}
+      ${renderComparePairSlotHtml("B", bModel, bDisplayName)}
     </section>
-    ${rows ? `<section class="compareMetricGrid" aria-label="对比信息">${rows}</section>` : ""}
+    ${rows ? `<section class="compareMetricGrid" aria-label="对比信息" data-compare-state="${state}">${rows}</section>` : ""}
   `;
 }
 

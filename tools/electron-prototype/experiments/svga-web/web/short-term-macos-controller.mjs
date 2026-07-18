@@ -2,7 +2,11 @@ import {
   applyModeButtons,
   applyViewState
 } from "./short-term-macos-dom-state.mjs";
-import { renderDiscardMessage } from "./short-term-macos-state-renderers.mjs";
+import {
+  hidePlaybackFailureRecovery,
+  renderDiscardMessage,
+  showPlaybackFailureRecovery
+} from "./short-term-macos-state-renderers.mjs";
 import { inspectShortTermSvga } from "./short-term-macos-api-client.mjs";
 import { confirmDiscardUnsavedOutput as confirmDiscardDialogOutput } from "./short-term-macos-dialog-model.mjs";
 import { renderShortTermCommandSurface } from "./short-term-macos-command-surface.mjs";
@@ -67,7 +71,8 @@ import {
   loadShortTermOpenedSource,
   openShortTermRecentSource,
   openShortTermSourceFromHostDialog,
-  resetShortTermLaunchSurface
+  resetShortTermLaunchSurface,
+  showShortTermUnsupportedDropState
 } from "./short-term-macos-file-surface.mjs";
 import {
   createShortTermSaveFailureProofOutput,
@@ -92,7 +97,6 @@ import {
   dragDecisionForEvent,
   hideShortTermCanvasToast,
   hideShortTermDragDecisionOverlays,
-  showShortTermCanvasToast,
   showShortTermDragDecisionOverlay
 } from "./short-term-macos-drag-decision-surface.mjs";
 import {
@@ -148,12 +152,12 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     if (mode === "edit") {
       setView("edit");
       renderEditReserved();
-      mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes).catch(showFailure);
+      mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
       return;
     }
     setTab("overview");
     setView("preview");
-    mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes).catch(showFailure);
+    mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
   }
 
   async function openFromHostDialog() {
@@ -234,7 +238,8 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       renderPreviewModel,
       mountPrimaryPlayback: (nextBytes) => mountPlayback("primary", nodes.primaryCanvas, nextBytes, { start: startPlayback }),
       stopAllPlayback,
-      showFailure
+      showFailure,
+      showPlaybackFailure
     });
   }
 
@@ -265,15 +270,12 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     hideCanvasDragDecision();
     if (!decision.file) return;
     if (!decision.supported) {
-      resetShortTermLaunchSurface({
+      showShortTermUnsupportedDropState({
         nodes,
         state,
         stopAllPlayback,
-        setTab,
-        setView,
-        refreshRecentFiles
+        setView
       });
-      showShortTermCanvasToast(nodes, "不支持的文件格式");
       renderCommandState();
       return;
     }
@@ -551,8 +553,20 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       options,
       onPlaybackStateChange: renderCommandState
     });
-    if (key === "primary") startPlaybackProgressLoop();
+    if (key === "primary") {
+      hidePlaybackFailureRecovery(nodes);
+      startPlaybackProgressLoop();
+    }
     return playback;
+  }
+
+  async function reloadPrimaryPlayback() {
+    if (!state.sourceBytes) return;
+    try {
+      await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes);
+    } catch (error) {
+      showPlaybackFailure(error);
+    }
   }
 
   function stopPlayback(key) {
@@ -639,6 +653,16 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     showShortTermFailure({ nodes, setView }, error);
   }
 
+  function showPlaybackFailure() {
+    stopAllPlayback();
+    clearCanvas(nodes.primaryCanvas);
+    state.mode = "preview";
+    applyModeButtons("preview");
+    setView("preview");
+    showPlaybackFailureRecovery(nodes);
+    renderCommandState();
+  }
+
   function showOperationFailure(title, error) {
     showShortTermOperationFailure({ nodes, state, setMode, renderCommandState }, title, error);
   }
@@ -657,6 +681,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     setMode,
     togglePrimaryPlayback,
     replayPrimary,
+    reloadPrimaryPlayback,
     togglePrimaryPlaybackLoop,
     runOptimization,
     saveActiveOutput,

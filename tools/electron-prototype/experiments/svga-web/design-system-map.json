@@ -10,7 +10,7 @@
       "productMilestone": "0.2-multiformat-preview",
       "authority": "docs/product/PRODUCT_ROADMAP.md",
       "referenceBoundary": "Inherits the accepted 0.1 Figma shell and component contracts; format-specific content is capability-projected from the 0.2 PRD.",
-      "inheritsPageStates": ["Launch", "Loading", "Load failed", "Preview ready", "General comparing", "Settings dialog"],
+      "inheritsPageStates": ["Launch", "Loading", "Load failed", "Playback error", "Preview ready", "General comparing", "Settings dialog"],
       "codeComponents": ["CanvasModeSwitch", "DragDecisionOverlay", "PlaybackControls", "OverviewFactRow", "AssetFilterTabs", "AssetRow", "ReplaceableImageRow", "ReplaceableTextRow", "RightInformationSurface"],
       "codeModules": ["LaunchModule", "PreviewCanvasModule", "OverviewInformationModule", "GeneralCompareModule", "SettingsDialogModule", "StateRecoveryModule"],
       "implementationFiles": ["web/multiformat-desktop-preview-controller.mjs", "web/multiformat-product-conformance.mjs", "web/short-term-macos-dom-state.mjs", "web/short-term-macos-drag-decision-surface.mjs", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css"]
@@ -45,6 +45,15 @@
       "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-state-renderers.mjs"]
     },
     {
+      "figma": "加载 / 播放异常",
+      "codePageState": "Playback error",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.components.css", "web/short-term-macos-state-renderers.mjs", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-controller.mjs"]
+    },
+    {
       "figma": "预览 / 默认",
       "codePageState": "Preview ready",
       "appStates": ["preview"],
@@ -63,6 +72,50 @@
       "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-replaceable-renderers.mjs"]
     },
     {
+      "figma": "预览 / imageKey 重命名 Dirty 状态",
+      "figmaNodeId": "82:1821",
+      "frozenArchiveSlug": "preview-imagekey-dirty",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface", "SaveStateModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-state-renderers.mjs", "web/short-term-macos-preview-surface.mjs", "web/short-term-macos-command-surface.mjs"]
+    },
+    {
+      "figma": "预览 / 无可替换元素",
+      "figmaNodeId": "82:1139",
+      "frozenArchiveSlug": "preview-no-replaceable",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/short-term-macos.tokens.css", "web/short-term-macos.atoms.css", "web/short-term-macos.modules.css", "web/short-term-macos-inline-status-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
+    },
+    {
+      "figma": "预览 / 无音频资产",
+      "figmaNodeId": "82:1423",
+      "frozenArchiveSlug": "preview-no-audio",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/short-term-macos.tokens.css", "web/short-term-macos.atoms.css", "web/short-term-macos.modules.css", "web/short-term-macos-overview-model.mjs", "web/short-term-macos-overview-renderers.mjs"]
+    },
+    {
+      "figma": "预览 / 无序列帧资产",
+      "figmaNodeId": "298:9755",
+      "frozenArchiveSlug": "preview-no-sequence",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/short-term-macos.tokens.css", "web/short-term-macos.atoms.css", "web/short-term-macos.modules.css", "web/short-term-macos-overview-model.mjs", "web/short-term-macos-overview-renderers.mjs"]
+    },
+    {
       "figma": "预览 / 优化详情",
       "codePageState": "Preview ready",
       "appStates": ["preview"],
@@ -70,6 +123,15 @@
       "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"],
       "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
       "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-optimization-renderers.mjs"]
+    },
+    {
+      "figma": "预览 / 优化执行中",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface", "OptimizationRunningState"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-optimization-renderers.mjs", "web/short-term-macos-optimization-surface.mjs"]
     },
     {
       "figma": "预览 / 优化结果对比",
@@ -90,6 +152,15 @@
       "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-compare-renderers.mjs"]
     },
     {
+      "figma": "对比 / 已有文件A_等待文件B",
+      "codePageState": "General comparing",
+      "appStates": ["compare"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "GeneralCompareModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-compare-model.mjs", "web/short-term-macos-compare-surface.mjs"]
+    },
+    {
       "figma": "对比 / 双文件已加载",
       "codePageState": "General comparing",
       "appStates": ["compare"],
@@ -97,6 +168,69 @@
       "rootModules": ["WindowChromeModule", "GeneralCompareModule"],
       "readPackets": ["docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md"],
       "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-compare-model.mjs"]
+    },
+    {
+      "figma": "对比 / 拖拽中",
+      "codePageState": "Drag decision overlay",
+      "appStates": ["compare"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "GeneralCompareModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-model.mjs", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "拖拽 / 已有文件_拖入对比",
+      "codePageState": "Drag decision overlay",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-model.mjs", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "拖拽 / 格式不支持_拖拽中",
+      "codePageState": "Drag decision overlay",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-model.mjs", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "拖拽 / 格式不支持_Drop后",
+      "codePageState": "Unsupported drop",
+      "appStates": ["unsupported"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.components.css", "web/short-term-macos.page-states.css", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-controller.mjs", "web/multiformat-desktop-preview-controller.mjs"]
+    },
+    {
+      "figma": "保存 / 保存中",
+      "codePageState": "Save feedback",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-feedback-model.mjs", "web/short-term-macos-save-renderers.mjs", "web/short-term-macos-save-surface.mjs"]
+    },
+    {
+      "figma": "保存 / 保存成功",
+      "codePageState": "Save feedback",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-feedback-model.mjs", "web/short-term-macos-save-renderers.mjs", "web/short-term-macos-save-surface.mjs"]
+    },
+    {
+      "figma": "保存 / 保存失败",
+      "codePageState": "Save feedback",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-feedback-model.mjs", "web/short-term-macos-save-renderers.mjs", "web/short-term-macos-save-surface.mjs"]
     },
     {
       "figma": "编辑 / 默认",
@@ -138,7 +272,7 @@
     },
     {
       "figma": "Atom/缩略图框",
-      "codeComponents": ["SequenceThumbnail", "AssetRow", "LayerRow", "ReplaceableImageRow"],
+      "codeComponents": ["ThumbnailFrame", "ThumbnailAudioIcon", "ThumbnailTextIcon", "AssetRow", "LayerRow", "ReplaceableImageRow"],
       "codeModules": ["OverviewInformationModule", "EditReservedModule"],
       "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-thumbnail-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
     },
@@ -230,7 +364,7 @@
     },
     {
       "figma": "Molecule/资源列表行",
-      "codeComponents": ["AssetRow", "AudioAssetRow", "SequenceThumbnail", "ReplaceableImageRow", "ReplaceableTextRow"],
+      "codeComponents": ["AssetRow", "AudioAssetRow", "ThumbnailFrame", "ThumbnailAudioIcon", "ThumbnailTextIcon", "ReplaceableImageRow", "ReplaceableTextRow"],
       "codeModules": ["OverviewInformationModule", "ReplaceableElementsSurface"],
       "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
     },
@@ -255,7 +389,7 @@
     {
       "figma": "Molecule/错误恢复面板",
       "codeComponents": ["ErrorRecoveryPanel"],
-      "codeModules": ["LaunchModule", "StateRecoveryModule"],
+      "codeModules": ["LaunchModule", "StateRecoveryModule", "PreviewCanvasModule"],
       "implementationFiles": ["web/index.html", "web/short-term-macos-state-renderers.mjs"]
     },
     {

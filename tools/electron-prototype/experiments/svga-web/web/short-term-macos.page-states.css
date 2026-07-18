@@ -25,7 +25,7 @@
   overflow: hidden;
 }
 
-.saveBanner {
+.macApp > .saveBanner {
   grid-row: 1;
 }
 
@@ -33,7 +33,8 @@
 .macApp[data-app-state="compare"] .view,
 .macApp[data-app-state="edit"] .view,
 .macApp[data-app-state="loading"] .view,
-.macApp[data-app-state="failed"] .view {
+.macApp[data-app-state="failed"] .view,
+.macApp[data-app-state="unsupported"] .view {
   grid-row: 2;
 }
 
@@ -41,9 +42,10 @@
 .macApp[data-app-state="compare"],
 .macApp[data-app-state="edit"],
 .macApp[data-app-state="loading"],
-.macApp[data-app-state="failed"] {
-  min-width: var(--asv-workbench-min-width);
-  min-height: var(--asv-workbench-min-height);
+.macApp[data-app-state="failed"],
+.macApp[data-app-state="unsupported"] {
+  min-width: min(var(--asv-workbench-min-width), 100vw);
+  min-height: min(var(--asv-workbench-min-height), 100vh);
 }
 
 .view[hidden] {
@@ -87,12 +89,17 @@
   overflow: hidden;
 }
 
+.unsupportedDropView {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .compareView {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--asv-right-panel-width);
   grid-template-rows: minmax(0, 1fr);
   gap: var(--asv-preview-gap);
   height: 100%;
+  min-width: 0;
   min-height: 0;
   padding: var(--asv-preview-gap);
   background: var(--asv-workbench);

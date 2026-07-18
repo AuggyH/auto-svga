@@ -9,6 +9,7 @@ import {
 } from "./short-term-macos-api-client.mjs";
 import {
   applyRuntimeTextSelection,
+  renderReplaceableEmptyState,
   renderReplaceableImages,
   renderRuntimeTextElements
 } from "./short-term-macos-replaceable-renderers.mjs";
@@ -38,6 +39,7 @@ export function renderShortTermRuntimeTextElements({ nodes, state, model }) {
   const view = runtimeTextListView(model, state.textPreviewValues);
   state.selectedTextKey = nextSelectedTextKey(state.selectedTextKey, view.texts);
   renderRuntimeTextElements(nodes, view, state.selectedTextKey);
+  renderReplaceableEmptyState(nodes);
   setActionEnabled("edit-text", view.hasTextElements, "当前文件没有可预览文本元素");
   setActionEnabled("reset-text", view.hasTextPreview, "当前没有已应用的文本预览");
 }
@@ -135,7 +137,7 @@ export async function confirmShortTermInlineRename({
     cancelShortTermInlineRename({ nodes, state });
     return;
   }
-  showSaveBanner("正在重命名 imageKey。", "完成引用闭合检查后启用保存。");
+  showSaveBanner("正在重命名 imageKey…", "");
   try {
     const renamed = await renameShortTermImageKey({
       bytes: state.sourceBytes,
@@ -146,7 +148,7 @@ export async function confirmShortTermInlineRename({
     });
     const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
     if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
-      showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", renamed.rename?.diagnostic?.message || "保存保持关闭。");
+      showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", "源文件没有被修改。");
       return;
     }
     state.previewBytes = renamedBytes;
@@ -198,7 +200,7 @@ export async function applyShortTermReplacementFile({
 }) {
   if (!file || !state.sourceBytes || !state.selectedImageKey) return;
   if (!(await confirmDiscardUnsavedOutput("替换图片会放弃当前未保存的 SVGA 输出。"))) return;
-  showSaveBanner("正在替换图片资源。", "完成重开验证后启用保存。");
+  showSaveBanner("正在替换图片…", "");
   try {
     const payload = {
       name: state.displayName,
@@ -212,7 +214,7 @@ export async function applyShortTermReplacementFile({
     });
     const replacedBytes = replaced.replacedSvgaBase64 ? fromBase64(replaced.replacedSvgaBase64) : undefined;
     if (!replacedBytes?.byteLength || replaced.replacement?.status !== "replaced") {
-      showSaveBanner(replaced.replacement?.resultTitle || "替换未完成。", replaced.replacement?.diagnostic?.message || "保存保持关闭。");
+      showSaveBanner(replaced.replacement?.resultTitle || "替换未完成。", "源文件没有被修改。");
       return;
     }
     state.previewBytes = replacedBytes;

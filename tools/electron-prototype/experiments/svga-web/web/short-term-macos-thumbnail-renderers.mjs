@@ -3,9 +3,19 @@ import {
   isSafeImageDataUrl
 } from "./short-term-macos-render-model.mjs";
 
+function renderAudioThumbnailIcon(state) {
+  return `<span class="thumbnailAudioIcon" data-component="ThumbnailAudioIcon" data-state="${state}" aria-hidden="true"></span>`;
+}
+
+function renderTextThumbnailIcon() {
+  return `<span class="thumbnailTextIcon" data-component="ThumbnailTextIcon" aria-hidden="true"></span>`;
+}
+
 export function renderThumbnailHtml(thumbnail, model) {
-  if (!thumbnail || thumbnail.type === "audio-empty") return "无音频";
-  if (thumbnail.type === "music") return "音频";
+  if (!thumbnail) return "";
+  if (thumbnail.type === "audio-empty") return renderAudioThumbnailIcon("empty");
+  if (thumbnail.type === "music") return renderAudioThumbnailIcon("available");
+  if (thumbnail.type === "text") return renderTextThumbnailIcon();
   const urls = (thumbnail.resourceIds ?? [])
     .map((id) => model?.thumbnails?.imageDataUrlsByResourceId?.[id])
     .filter(isSafeImageDataUrl)
