@@ -4941,7 +4941,7 @@ test("0.2 renderer runtime prepare failure preserves current multi-format source
     assert.equal(state.model.status, "playbackFailed");
     assert.equal(state.selectedImageKey, "avatar");
     assert.equal(state.selectedTextKey, "text:1");
-    assert.equal(nodes.playbackMeta.textContent.includes("播放失败"), true);
+    assert.equal(nodes.playbackMeta.textContent.includes("播放异常"), true);
     assert.equal(nodes.errorMessage.textContent, "无法挂载本地预览，源文件没有被修改。");
     assert.doesNotMatch(JSON.stringify(state.model), /\/Users|alice|Secret|lottie\.json/i);
 

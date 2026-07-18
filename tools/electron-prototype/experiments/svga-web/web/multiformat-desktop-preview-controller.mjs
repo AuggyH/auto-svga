@@ -2165,7 +2165,7 @@ const playbackStatusCopyById = Object.freeze({
   playing: "播放中",
   paused: "已暂停",
   playbackBlocked: "播放受限",
-  playbackFailed: "播放失败",
+  playbackFailed: "播放异常",
   failed: "加载失败",
   disposed: "已关闭"
 });
