@@ -180,7 +180,12 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(helperSource, /runModal\(\)/u);
   assert.match(helperSource, /final class PickerResultWriter/u);
   assert.match(helperSource, /private var didWrite = false/u);
-  assert.match(helperSource, /FileHandle\.standardOutput\.synchronizeFile\(\)/u);
+  assert.match(helperSource, /openResultFile\(channelToken:/u);
+  assert.match(helperSource, /O_WRONLY \| O_NOFOLLOW/u);
+  assert.match(helperSource, /st_nlink == 1/u);
+  assert.match(helperSource, /Darwin\.write/u);
+  assert.match(helperSource, /fsync\(descriptor\)/u);
+  assert.doesNotMatch(helperSource, /FileHandle\.standardOutput/u);
   assert.match(helperSource, /func finish\([\s\S]*\) -> Never/u);
   assert.match(helperSource, /case \.OK:[\s\S]*writer\.finish\(status: "selected"/u);
   assert.match(helperSource, /case \.cancel:[\s\S]*writer\.finish\(status: "cancelled"/u);
@@ -237,7 +242,8 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   let channelRoot = "";
   assert.deepEqual(await runDarwinMultiFormatPicker(async (command, args, options) => {
     calls.push({ command, args, options });
-    const resultPath = args[args.indexOf("-o") + 1];
+    const stderrPath = args[args.indexOf("--stderr") + 1];
+    const resultPath = path.join(path.dirname(stderrPath), "picker-result.json");
     channelRoot = path.dirname(resultPath);
     assert.equal(lstatSync(channelRoot).mode & 0o7777, 0o700);
     assert.equal(lstatSync(resultPath).mode & 0o7777, 0o600);
@@ -247,12 +253,12 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   }, "/private/runtime/native/Auto SVGA File Picker.app"), { status: "selected", filePath: "/private/tmp/example.svga" });
   assert.equal(calls[0].command, "/usr/bin/open");
   assert.deepEqual(calls[0].args.slice(0, 5), [
-    "-n", "-W", "-a", "/private/runtime/native/Auto SVGA File Picker.app", "-o"
+    "-n", "-W", "-a", "/private/runtime/native/Auto SVGA File Picker.app", "--stderr"
   ]);
-  assert.equal(path.basename(calls[0].args[5]), "picker-result.json");
-  assert.equal(calls[0].args[6], "--stderr");
-  assert.equal(path.basename(calls[0].args[7]), "launcher-stderr.log");
-  assert.equal(path.dirname(calls[0].args[5]), path.dirname(calls[0].args[7]));
+  assert.equal(path.basename(calls[0].args[5]), "launcher-stderr.log");
+  assert.equal(calls[0].args[6], "--args");
+  assert.match(calls[0].args[7], /^--auto-svga-picker-channel=[a-f0-9]{32}$/u);
+  assert.equal(path.basename(channelRoot), `auto-svga-native-picker-${calls[0].args[7].split("=")[1]}`);
   assert.doesNotMatch(calls[0].args.join("\n"), /\/private\/tmp\/example\.svga/u);
   assert.equal(existsSync(channelRoot), false);
   assert.deepEqual(parseDarwinPickerOutput('{"status":"cancelled"}\n'), { status: "cancelled" });
@@ -264,7 +270,7 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
 test("macOS picker result channel fails closed on cancellation, replacement, growth, launch failure, and overlap", async () => {
   let cancelledRoot = "";
   const cancelled = await runDarwinMultiFormatPicker(async (_command, args) => {
-    const resultPath = args[args.indexOf("-o") + 1];
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
     cancelledRoot = path.dirname(resultPath);
     writeFileSync(resultPath, '{"status":"cancelled"}\n');
     return { stdout: "ignored launcher stdout" };
@@ -274,7 +280,7 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
 
   let replacedRoot = "";
   const replaced = await runDarwinMultiFormatPicker(async (_command, args) => {
-    const resultPath = args[args.indexOf("-o") + 1];
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
     replacedRoot = path.dirname(resultPath);
     unlinkSync(resultPath);
     writeFileSync(
@@ -290,7 +296,7 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
 
   let oversizedRoot = "";
   const oversized = await runDarwinMultiFormatPicker(async (_command, args) => {
-    const resultPath = args[args.indexOf("-o") + 1];
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
     oversizedRoot = path.dirname(resultPath);
     writeFileSync(resultPath, "x".repeat(32769));
     return { stdout: "" };
@@ -302,7 +308,7 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
   let hardlinkedRoot = "";
   let hardlinkPath = "";
   const hardlinked = await runDarwinMultiFormatPicker(async (_command, args) => {
-    const resultPath = args[args.indexOf("-o") + 1];
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
     hardlinkedRoot = path.dirname(resultPath);
     hardlinkPath = path.join(os.tmpdir(), `auto-svga-native-picker-link-${process.pid}-${Date.now()}`);
     linkSync(resultPath, hardlinkPath);
@@ -316,7 +322,7 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
 
   let permissiveRoot = "";
   const permissive = await runDarwinMultiFormatPicker(async (_command, args) => {
-    const resultPath = args[args.indexOf("-o") + 1];
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
     permissiveRoot = path.dirname(resultPath);
     chmodSync(resultPath, 0o644);
     writeFileSync(resultPath, '{"status":"cancelled"}\n');
@@ -328,7 +334,7 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
 
   let failedLaunchRoot = "";
   const failedLaunch = await runDarwinMultiFormatPicker(async (_command, args) => {
-    failedLaunchRoot = path.dirname(args[args.indexOf("-o") + 1]);
+    failedLaunchRoot = path.dirname(args[args.indexOf("--stderr") + 1]);
     throw new Error("launch failed at /Users/alice/private/file.svga");
   }, "/private/runtime/native/Auto SVGA File Picker.app");
   assert.equal(failedLaunch.status, "failed");
@@ -341,7 +347,7 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
   let firstRoot = "";
   const started = new Promise((resolve) => { markStarted = resolve; });
   const firstRun = runDarwinMultiFormatPicker(async (_command, args) => {
-    const resultPath = args[args.indexOf("-o") + 1];
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
     firstRoot = path.dirname(resultPath);
     markStarted();
     await new Promise((resolve) => { releaseFirst = resolve; });

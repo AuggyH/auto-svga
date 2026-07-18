@@ -1,13 +1,14 @@
 "use strict";
 
 const { execFile } = require("node:child_process");
+const { randomBytes } = require("node:crypto");
 const {
   chmodSync,
   closeSync,
   constants,
   fstatSync,
   lstatSync,
-  mkdtempSync,
+  mkdirSync,
   openSync,
   readSync,
   rmdirSync,
@@ -23,6 +24,7 @@ const DARWIN_MULTI_FORMAT_PICKER_LAUNCHER = "/usr/bin/open";
 const DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME = "Auto SVGA File Picker.app";
 const DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME = "asv-open-panel";
 const DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES = 32768;
+const DARWIN_MULTI_FORMAT_PICKER_CHANNEL_PREFIX = "auto-svga-native-picker-";
 let darwinMultiFormatPickerActive = false;
 
 function createMultiFormatOpenDialogOptions() {
@@ -159,9 +161,11 @@ function cleanupDarwinPickerResultChannel(channel) {
 }
 
 function createDarwinPickerResultChannel(temporaryDirectory = os.tmpdir()) {
-  const rootPath = mkdtempSync(path.join(temporaryDirectory, "auto-svga-native-picker-"));
-  const channel = { rootPath, rootIdentity: null, result: null, stderr: null };
+  const token = randomBytes(16).toString("hex");
+  const rootPath = path.join(temporaryDirectory, `${DARWIN_MULTI_FORMAT_PICKER_CHANNEL_PREFIX}${token}`);
+  const channel = { token, rootPath, rootIdentity: null, result: null, stderr: null };
   try {
+    mkdirSync(rootPath, { mode: 0o700 });
     chmodSync(rootPath, 0o700);
     channel.rootIdentity = assertPrivateDirectory(rootPath);
     channel.result = createPrivateResultFile(path.join(rootPath, "picker-result.json"));
@@ -251,10 +255,10 @@ async function runDarwinMultiFormatPicker(
         "-W",
         "-a",
         helperBundlePath,
-        "-o",
-        channel.result.filePath,
         "--stderr",
-        channel.stderr.filePath
+        channel.stderr.filePath,
+        "--args",
+        `--auto-svga-picker-channel=${channel.token}`
       ],
       { encoding: "utf8", maxBuffer: DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES }
     );
