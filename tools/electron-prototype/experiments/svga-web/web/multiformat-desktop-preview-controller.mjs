@@ -29,6 +29,7 @@ import {
   createTextElementRow,
   replaceRuntimeTextRows
 } from "./short-term-macos-replaceable-renderers.mjs";
+import { replaceableElementSummaryCopy } from "./short-term-macos-replaceable-model.mjs";
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
 import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import {
@@ -871,9 +872,11 @@ export function createMultiFormatDesktopPreviewController({
   function renderReplaceableTargets() {
     const model = state.model;
     const rightPanel = projectMultiFormatRightPanel(model);
-    const imageCount = (rightPanel.imageTargets ?? []).length;
-    const textCount = (rightPanel.textTargets ?? []).length;
-    const targets = (rightPanel.imageTargets ?? []).map((target) => ({
+    const imageTargets = rightPanel.imageTargets ?? [];
+    const textTargets = rightPanel.textTargets ?? [];
+    const imageCount = imageTargets.length;
+    const textCount = textTargets.length;
+    const targets = imageTargets.map((target) => ({
       ...target,
       replacementActive: multiFormatActiveReplacementForPublicTarget(
         model,
@@ -883,7 +886,14 @@ export function createMultiFormatDesktopPreviewController({
       )
     }));
     const totalCount = imageCount + textCount;
-    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount);
+    const hasReplacementPreview = targets.some((target) => target.replacementActive)
+      || textTargets.some((target) => multiFormatActiveReplacementForPublicTarget(
+        model,
+        "text",
+        target.textKey,
+        publicRuntimeReplacementTargets
+      ));
+    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount, hasReplacementPreview);
     nodes.replaceableList.closest?.(".replaceableSection")?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
     nodes.replaceableList.dataset.empty = totalCount > 0 && targets.length === 0 ? "true" : "false";
     if (totalCount === 0) {
@@ -897,10 +907,6 @@ export function createMultiFormatDesktopPreviewController({
       directReplace: true,
       replacementActive: target.replacementActive
     })));
-  }
-
-  function replaceableElementSummaryCopy(totalCount) {
-    return `(${Math.max(0, totalCount)})`;
   }
 
   function renderTextTargets() {

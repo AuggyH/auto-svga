@@ -4319,6 +4319,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
 
     const lottieInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
     assert.ok(lottieInput);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.equal(lottieInput.value, "Original greeting");
     assert.equal(lottieInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(lottieInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
@@ -4335,6 +4336,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieChangedInput.selectionDirection, "forward");
     assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
     assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
     assert.equal(lottieCalls.length, 2);
     assert.equal(lottieCalls[1].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["text:1"]);
@@ -4350,6 +4352,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieSourceInput.selectionEnd, 8);
     assert.equal(lottieSourceInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(lottieSourceInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetText, false);
 
@@ -4360,6 +4363,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     const lottieChangedAgainInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
     assert.equal(documentRef.activeElement, lottieChangedAgainInput);
     assert.equal(lottieChangedAgainInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
 
     controller.handlers.selectImageKey("avatar");
     await controller.handlers.applyReplacementFile({
@@ -4376,6 +4380,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
       bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId).sort(),
       ["avatar", "text:1"]
     );
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
 
     await controller.handlers.resetRuntimeText("text:1");
     await flushRuntimeMountPromises();
@@ -4392,6 +4397,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieResetInput.selectionEnd, 16);
     assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
 
     await controller.handlers.resetImageReplacement("avatar");
     await flushRuntimeMountPromises();
@@ -4399,6 +4405,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieCalls[6].animationData.assets[0].p, "data:image/png;base64,AQID");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetImageReplacement, false);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
 
     bridge.markOpened("vap");
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "vap-open" }), true);
@@ -4429,6 +4436,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     const vapInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="title"]`);
     assert.equal(vapInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
     assert.equal(vapInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
     vapInput.focus();
     vapInput.setSelectionRange(3, 3, "none");
     await controller.handlers.resetRuntimeText("title");
@@ -4439,6 +4447,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(vapSourceInput.selectionStart, 3);
     assert.equal(vapSourceInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(vapSourceInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetText, false);
   } finally {
@@ -7528,7 +7537,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextModel, /export function nextSelectedTextKey/);
   assert.match(shortTermTextModel, /export function selectedRuntimeTextElement/);
   assert.doesNotMatch(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
-  assert.match(shortTermTextModel, /summaryCopy: `\(\$\{images\.length \+ texts\.length\}\)`/);
+  assert.match(shortTermTextModel, /replaceableElementSummaryCopy\(images\.length \+ texts\.length, hasImagePreview \|\| hasTextPreview\)/);
+  assert.match(shortTermReplaceableModel, /export function replaceableElementSummaryCopy/);
   assert.match(shortTermReplaceableSurface, /from "\.\/short-term-macos-replaceable-model\.mjs"/);
   assert.match(shortTermReplaceableSurface, /replaceableImageListView/);
   assert.match(shortTermReplaceableSurface, /nextReplaceableSelection/);
@@ -7551,7 +7561,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableModel, /export function replaceableImageListView/);
   assert.match(shortTermReplaceableModel, /export function nextReplaceableSelection/);
   assert.doesNotMatch(shortTermReplaceableModel, /没有可替换元素。/);
-  assert.match(shortTermReplaceableModel, /summaryCopy: `\(\$\{images\.length\}\)`/);
+  assert.match(shortTermReplaceableModel, /summaryCopy: replaceableElementSummaryCopy\(images\.length, hasPreview\)/);
   assert.match(shortTermController, /from "\.\/short-term-macos-optimization-surface\.mjs"/);
   assert.match(shortTermOptimizationSurface, /from "\.\/short-term-macos-optimization-model\.mjs"/);
   assert.match(shortTermOptimizationSurface, /optimizationTabView/);

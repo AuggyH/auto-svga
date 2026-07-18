@@ -123,7 +123,7 @@ test("multi-format owner copy hides host and runtime implementation language", (
   assert.doesNotMatch(controllerSource, /仅包含自动命名资源/u);
   assert.match(inlineStatusSource, /未发现可替换元素/u);
   assert.match(inlineStatusSource, /仅包含自动命名资源（如 img_000），/u);
-  assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount\)/u);
+  assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount, hasReplacementPreview\)/u);
   assert.match(controllerSource, /renderFailureMessage\(nodes, ownerFailureCopy\(error\)\)/u);
   assert.doesNotMatch(controllerSource, /renderFailureMessage\(nodes, error instanceof Error \? error\.message/u);
 });
