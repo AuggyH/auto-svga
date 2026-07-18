@@ -1900,9 +1900,13 @@ test("macOS native picker proof binds the packaged AppKit helper and rejects dis
   assert.match(source, /exactProcessPids\(nativePickerHelperName\)/);
   assert.match(source, /packagedNativePickerHelperPath/);
   assert.match(source, /outside the executable regular-file contract/);
-  assert.match(source, /events\.keystroke\(filePath\)/);
-  assert.match(source, /selectionMethod: "go-to-exact-file"/);
-  assert.doesNotMatch(source, /entireContents|bounded-keyboard-basename|exact-ax-row/);
+  assert.match(source, /events\.keystroke\(directoryPath\)/);
+  assert.match(source, /events\.keystroke\(basename\)/);
+  assert.match(source, /String\(candidate\.role\(\) \|\| ""\) === "AXRow"/);
+  assert.match(source, /Boolean\(row\.selected\(\)\)/);
+  assert.match(source, /inspected < 256/);
+  assert.match(source, /selectionMethod: "parent-directory-exact-basename"/);
+  assert.doesNotMatch(source, /entireContents|go-to-exact-file/);
   assert.match(source, /AXDefaultButton/);
   assert.match(source, /openButtonEnabled/);
   assert.match(source, /native Open button remained disabled/);

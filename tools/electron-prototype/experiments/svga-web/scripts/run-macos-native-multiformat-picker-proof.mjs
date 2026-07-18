@@ -233,11 +233,12 @@ async function connectProductPage(browserWebSocketUrl, child, readChildOutput) {
 }
 
 function runNativePanelSelection(pid, filePath) {
+  const directoryPath = path.dirname(filePath);
   const basename = path.basename(filePath);
   const script = String.raw`
 function run(argv) {
   const ownerPid = Number(argv[0]);
-  const filePath = String(argv[1]);
+  const directoryPath = String(argv[1]);
   const basename = String(argv[2]);
   const events = Application("System Events");
   const owner = events.applicationProcesses().find((process) => Number(process.unixId()) === ownerPid);
@@ -266,6 +267,55 @@ function run(argv) {
     return null;
   }
 
+  function exactFileRow(panel) {
+    const queue = [panel];
+    let inspected = 0;
+    while (queue.length > 0 && inspected < 256) {
+      const element = queue.shift();
+      inspected += 1;
+      let name = "";
+      try { name = String(element.name() || ""); } catch {}
+      if (name === basename) {
+        let candidate = element;
+        for (let depth = 0; depth < 8; depth += 1) {
+          try {
+            if (String(candidate.role() || "") === "AXRow") return candidate;
+            candidate = candidate.parent();
+          } catch {
+            break;
+          }
+        }
+      }
+      let children = [];
+      try { children = element.uiElements(); } catch {}
+      for (const child of children) {
+        if (queue.length + inspected >= 256) break;
+        queue.push(child);
+      }
+    }
+    return null;
+  }
+
+  function selectExactFileRow(panel) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const row = exactFileRow(panel);
+      if (row) {
+        try { row.click(); } catch {}
+        delay(0.1);
+        let selected = false;
+        try { selected = Boolean(row.selected()); } catch {}
+        if (!selected) {
+          try { row.selected.set(true); } catch {}
+          delay(0.1);
+          try { selected = Boolean(row.selected()); } catch {}
+        }
+        if (selected) return { role: String(row.role() || "") };
+      }
+      delay(0.1);
+    }
+    return null;
+  }
+
   let panel = null;
   for (let attempt = 0; attempt < 80 && !panel; attempt += 1) {
     panel = ownerPanel();
@@ -274,20 +324,15 @@ function run(argv) {
   if (!panel) throw new Error("native_open_panel_missing");
   events.keystroke("g", { using: ["command down", "shift down"] });
   delay(0.4);
-  events.keystroke(filePath);
+  events.keystroke(directoryPath);
   events.keyCode(36);
-  delay(1.2);
+  delay(0.9);
   panel = ownerPanel();
-  if (!panel) {
-    return JSON.stringify({
-      openButtonFound: false,
-      openButtonEnabled: true,
-      submitted: true,
-      buttonName: "return",
-      requestedBasename: basename,
-      selectionMethod: "go-to-exact-file"
-    });
-  }
+  if (!panel) throw new Error("native_open_panel_missing_after_navigation");
+  events.keystroke(basename);
+  delay(0.4);
+  const selection = selectExactFileRow(panel);
+  if (!selection) throw new Error("native_file_row_not_selected");
   let button = panel ? defaultButton(panel) : null;
   for (let attempt = 0; attempt < 40 && !button; attempt += 1) {
     delay(0.1);
@@ -304,11 +349,14 @@ function run(argv) {
     submitted: enabled,
     buttonName: name,
     requestedBasename: basename,
-    selectionMethod: "go-to-exact-file"
+    selectedBasename: basename,
+    selectedRole: selection.role,
+    selected: true,
+    selectionMethod: "parent-directory-exact-basename"
   });
 }`;
   const output = execFileSync("/usr/bin/osascript", [
-    "-l", "JavaScript", "-e", script, "--", String(pid), filePath, basename
+    "-l", "JavaScript", "-e", script, "--", String(pid), directoryPath, basename
   ], {
     encoding: "utf8",
     timeout: 20000,
