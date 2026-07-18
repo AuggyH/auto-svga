@@ -861,10 +861,12 @@ async function main() {
     && /\.optimizationMetricValue i\s*\{[^}]*font-size: var\(--asv-optimization-metric-arrow-size\)/s.test(modules));
   record("optimization-actions-use-figma-r5-button-rhythm", /<div class="compareActions optimizationActions">/.test(compareModel)
     && /--asv-component-optimization-action-height:\s*30px/.test(tokens)
-    && /--asv-component-optimization-action-radius:\s*var\(--asv-radius-sm\)/.test(tokens)
+    && /--asv-component-optimization-action-radius:\s*6px/.test(tokens)
     && /--asv-component-optimization-action-gap:\s*var\(--asv-space-2\)/.test(tokens)
     && /\.optimizationActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)/.test(modules)
     && /\.optimizationActions \.toolbarButton\s*\{[\s\S]*min-height: var\(--asv-optimization-action-height\)[\s\S]*border-radius: var\(--asv-optimization-action-radius\)/.test(modules));
+  record("replaceable-actions-use-figma-button-radius", /--asv-component-replace-image-action-radius:\s*var\(--asv-base-radius-8\)/.test(tokens)
+    && /\.replaceImageButton\s*\{[\s\S]*border-radius: var\(--asv-replace-image-action-radius\)/.test(molecules));
   record("optimization-result-details-use-tokenized-row-contract", /data-component="OptimizationResultDetailRow"/.test(compareModel)
     && /--asv-component-optimization-result-row-padding-block:\s*var\(--asv-base-space-4\)/.test(tokens)
     && /--asv-component-optimization-result-row-radius:\s*var\(--asv-radius-md\)/.test(tokens)

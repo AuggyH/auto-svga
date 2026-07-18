@@ -8363,6 +8363,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.sectionHead\s*\{[^}]*padding-bottom: var\(--asv-right-section-head-padding-block-end\)/s);
   assert.match(shortTermModules, /\.assetList,[\s\S]*\.textElementList\s*\{[^}]*margin-top: var\(--asv-right-section-list-margin-block-start\)/s);
   assert.match(shortTermModules, /\.replaceableList\[data-empty="true"\],[\s\S]*\.textElementList\[data-empty="true"\]\s*\{[^}]*display:\s*none/s);
+  assert.match(shortTermTokens, /--asv-component-replace-image-action-radius: var\(--asv-base-radius-8\)/);
+  assert.match(shortTermMolecules, /\.replaceImageButton\s*\{[^}]*border-radius: var\(--asv-replace-image-action-radius\)/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*display: grid/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*gap: var\(--asv-asset-section-head-gap\)/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead h2\s*\{[^}]*white-space: nowrap/s);
@@ -8391,6 +8393,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.resultGroup\s*\{[^}]*box-shadow: none/s);
   assert.match(shortTermTokens, /--asv-component-optimization-result-row-padding-block: var\(--asv-base-space-4\)/);
   assert.match(shortTermTokens, /--asv-component-optimization-result-row-radius: var\(--asv-radius-md\)/);
+  assert.match(shortTermTokens, /--asv-component-optimization-action-radius: 6px/);
   assert.match(shortTermModules, /\.resultGroup li\s*\{[^}]*padding: var\(--asv-optimization-result-row-padding-block\) var\(--asv-optimization-result-row-padding-inline\)/s);
   assert.match(shortTermModules, /\.resultGroup li\s*\{[^}]*background: var\(--asv-optimization-result-row-bg\)/s);
   assert.match(shortTermModules, /\.resultGroup\.muted li\s*\{[^}]*background: var\(--asv-optimization-result-muted-row-bg\)/s);
