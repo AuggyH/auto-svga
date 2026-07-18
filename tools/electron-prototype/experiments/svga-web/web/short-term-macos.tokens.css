@@ -314,7 +314,7 @@
   --asv-component-file-header-padding-block: var(--asv-space-3);
   --asv-component-file-header-title-size: var(--asv-type-size-state-title);
   --asv-component-file-header-title-line-height: 26px;
-  --asv-component-file-header-action-width: 72px;
+  --asv-component-file-header-action-width: 60px;
   --asv-component-file-header-action-height: 30px;
   --asv-component-preview-gap: var(--asv-base-space-0);
   --asv-component-playback-bar-height: 44px;
@@ -484,7 +484,7 @@
   --asv-component-state-failure-message-line-height: 18px;
   --asv-component-state-failure-message-weight: var(--asv-type-weight-regular);
   --asv-component-state-failure-message-color: var(--asv-color-text-secondary);
-  --asv-component-state-recovery-action-width: var(--asv-component-file-header-action-width);
+  --asv-component-state-recovery-action-width: 72px;
   --asv-component-state-recovery-action-height: 30px;
   --asv-component-playback-error-panel-size: 300px;
   --asv-component-playback-error-panel-padding: var(--asv-space-6);
@@ -498,7 +498,7 @@
   --asv-component-playback-error-title-line-height: 22px;
   --asv-component-playback-error-message-size: var(--asv-type-size-footnote);
   --asv-component-playback-error-message-line-height: 18px;
-  --asv-component-playback-error-action-width: var(--asv-component-file-header-action-width);
+  --asv-component-playback-error-action-width: 72px;
   --asv-component-playback-error-action-height: 30px;
   --asv-component-state-canvas-checker-size: var(--asv-component-preview-checker-size);
   --asv-component-state-canvas-background:

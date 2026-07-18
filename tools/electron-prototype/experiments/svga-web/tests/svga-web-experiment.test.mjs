@@ -632,7 +632,8 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(tokens, /--asv-radius-xs:\s*var\(--asv-base-radius-2\);/);
   assert.match(tokens, /--asv-radius-pill:\s*var\(--asv-base-radius-full\);/);
   assert.match(tokens, /--asv-component-state-failure-title-size:\s*var\(--asv-type-size-metric\);/);
-  assert.match(tokens, /--asv-component-state-recovery-action-width:\s*var\(--asv-component-file-header-action-width\);/);
+  assert.match(tokens, /--asv-component-state-recovery-action-width:\s*72px;/);
+  assert.match(tokens, /--asv-component-playback-error-action-width:\s*72px;/);
   assert.match(components, /\.stateLoadingCard\s*\{[^}]*gap:\s*var\(--asv-state-loading-gap\);/s);
   assert.match(components, /\.stateLoadingCard\s*>\s*\.spinner\s*\{[^}]*width:\s*var\(--asv-state-loading-indicator-size\);[^}]*height:\s*var\(--asv-state-loading-indicator-size\);/s);
   assert.match(components, /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s);
@@ -7617,7 +7618,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-right-section-head-padding-block-end: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-right-section-list-margin-block-start: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-file-header-width: calc\(100% - \(var\(--asv-right-panel-padding\) \* 2\)\)/);
-  assert.match(shortTermTokens, /--asv-component-file-header-action-width: 72px/);
+  assert.match(shortTermTokens, /--asv-component-file-header-action-width: 60px/);
+  assert.match(shortTermTokens, /--asv-component-state-recovery-action-width: 72px/);
+  assert.match(shortTermTokens, /--asv-component-playback-error-action-width: 72px/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-background: var\(--asv-color-surface-canvas\)/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-ring: none/);
   assert.match(shortTermTokens, /--asv-component-asset-row-divider: 0 solid transparent/);
