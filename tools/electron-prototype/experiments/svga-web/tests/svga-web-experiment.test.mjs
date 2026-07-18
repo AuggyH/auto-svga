@@ -1844,6 +1844,8 @@ test("macOS native picker proof binds the Standard Additions process and rejects
   assert.match(source, /playbackState !== "playing"/);
   assert.match(source, /snapshot\.progress !== playingFirst\.progress/);
   assert.match(source, /statePreserved/);
+  assert.match(source, /rejectPending/);
+  assert.match(source, /Promise\.race\(\[\s*client\?\.evaluate\("window\.close\(\); true"\)/u);
   assert.match(source, /inputPathsRedacted: true/);
   assert.doesNotMatch(source, /inspectSvgaUtiDeclaration|inspectSvgaDocumentTypeDeclaration/);
   assert.doesNotMatch(source, /LaunchServices|lsregister|stageTestApp|readContentTypeTree|nativeAdmission/);

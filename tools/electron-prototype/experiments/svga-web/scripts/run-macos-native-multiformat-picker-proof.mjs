@@ -142,8 +142,15 @@ class CdpClient {
       if (message.error) reject(new Error(message.error.message));
       else resolve(message.result);
     });
+    this.webSocket.addEventListener("close", () => this.rejectPending("DevTools connection closed."));
+    this.webSocket.addEventListener("error", () => this.rejectPending("DevTools connection failed."));
     await this.call("Runtime.enable");
     return this;
+  }
+
+  rejectPending(message) {
+    for (const { reject } of this.pending.values()) reject(new Error(message));
+    this.pending.clear();
   }
 
   call(method, params = {}) {
@@ -166,6 +173,7 @@ class CdpClient {
   }
 
   close() {
+    this.rejectPending("DevTools client closed.");
     this.webSocket.close();
   }
 }
@@ -449,17 +457,24 @@ async function proveRow(client, row) {
 }
 
 async function closeProduct(client, child) {
-  try { await client?.evaluate("window.close(); true"); } catch {}
-  const exited = await Promise.race([
+  try {
+    await Promise.race([
+      client?.evaluate("window.close(); true"),
+      delay(1000)
+    ]);
+  } catch {}
+  client?.close();
+  const exited = child.exitCode !== null || child.signalCode !== null || await Promise.race([
     new Promise((resolve) => child.once("exit", () => resolve(true))),
     delay(5000).then(() => false)
   ]);
   if (!exited && child.exitCode === null) child.kill("SIGTERM");
-  await Promise.race([
-    new Promise((resolve) => child.once("exit", resolve)),
-    delay(5000)
-  ]);
-  client?.close();
+  if (child.exitCode === null && child.signalCode === null) {
+    await Promise.race([
+      new Promise((resolve) => child.once("exit", resolve)),
+      delay(5000)
+    ]);
+  }
 }
 
 async function main() {
