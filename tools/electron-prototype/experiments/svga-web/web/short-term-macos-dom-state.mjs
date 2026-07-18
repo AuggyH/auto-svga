@@ -69,12 +69,10 @@ export function applyCommandState(commandState) {
   Object.entries(commandState.actionStates).forEach(([action, actionState]) => {
     setActionEnabled(action, actionState.enabled, actionState.reason);
   });
-  const headerSaveCluster = document.querySelector(".rightSurfaceHeader .toolbarClusterSave");
-  const headerSaveAs = document.querySelector(".rightSurfaceHeader [data-action='save-as']");
-  const headerSaveOverwrite = document.querySelector(".rightSurfaceHeader [data-action='save-overwrite']");
-  if (headerSaveOverwrite) headerSaveOverwrite.hidden = true;
-  if (headerSaveAs) headerSaveAs.hidden = !commandState.headerSaveAsVisible;
-  if (headerSaveCluster) headerSaveCluster.hidden = !commandState.headerSaveAsVisible;
+  const previewSaveActions = document.querySelector("[data-preview-save-actions]");
+  const previewSaveAs = document.querySelector("[data-preview-save-actions] [data-action='save-as']");
+  if (previewSaveAs) previewSaveAs.hidden = !commandState.headerSaveAsVisible;
+  if (previewSaveActions) previewSaveActions.hidden = !commandState.headerSaveAsVisible;
   document.querySelectorAll("[data-action='play-pause']").forEach((playPauseButton) => {
     const playing = commandState.playPauseCopy === "暂停";
     playPauseButton.dataset.playbackState = playing ? "playing" : "paused";

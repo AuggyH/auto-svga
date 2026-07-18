@@ -66,6 +66,7 @@
   --asv-base-radius-0: 0;
   --asv-base-radius-2: 2px;
   --asv-base-radius-4: 4px;
+  --asv-base-radius-6: 6px;
   --asv-base-radius-8: 8px;
   --asv-base-radius-control-8: 8px;
   --asv-base-radius-12: 12px;
@@ -231,6 +232,7 @@
   --asv-component-dialog-backdrop-background: color-mix(in srgb, var(--asv-color-surface-mask) 24%, transparent);
   --asv-component-window-controls-width: 78px;
   --asv-component-control-height: 28px;
+  --asv-component-text-button-radius: var(--asv-base-radius-6);
   --asv-component-text-input-width: 172px;
   --asv-component-text-input-height: 24px;
   --asv-component-text-input-padding-block: var(--asv-base-space-4);
@@ -295,6 +297,8 @@
   --asv-component-right-panel-padding: var(--asv-space-4);
   --asv-component-right-panel-safe-padding-block-start: var(--asv-component-workbench-top-safe-area);
   --asv-component-right-surface-content-width: calc(var(--asv-component-right-panel-width) - (var(--asv-component-right-panel-padding) * 2));
+  --asv-component-preview-save-action-width: var(--asv-component-right-surface-content-width);
+  --asv-component-preview-save-action-height: 30px;
   --asv-component-right-panel-section-gap: var(--asv-space-1);
   --asv-component-right-panel-section-margin-block-start: var(--asv-space-1);
   --asv-component-right-panel-section-padding-block-start: var(--asv-space-1);
@@ -641,7 +645,7 @@
   --asv-component-optimization-metric-padding-block: var(--asv-space-2);
   --asv-component-optimization-metric-padding-inline: var(--asv-base-space-0);
   --asv-component-optimization-action-height: 30px;
-  --asv-component-optimization-action-radius: 6px;
+  --asv-component-optimization-action-radius: var(--asv-base-radius-6);
   --asv-component-optimization-action-gap: var(--asv-space-2);
   --asv-component-optimization-detail-header-padding-block: var(--asv-space-3);
   --asv-component-optimization-detail-list-gap: var(--asv-space-2);
@@ -932,6 +936,7 @@
   --asv-file-identity-font-size: var(--asv-component-file-identity-font-size);
   --asv-window-controls-width: var(--asv-component-window-controls-width);
   --asv-control-height: var(--asv-component-control-height);
+  --asv-text-button-radius: var(--asv-component-text-button-radius);
   --asv-file-header-width: var(--asv-component-file-header-width);
   --asv-file-header-padding-block: var(--asv-component-file-header-padding-block);
   --asv-file-header-title-size: var(--asv-component-file-header-title-size);
@@ -969,6 +974,8 @@
   --asv-right-panel-padding: var(--asv-component-right-panel-padding);
   --asv-right-panel-safe-padding-block-start: var(--asv-component-right-panel-safe-padding-block-start);
   --asv-right-surface-content-width: var(--asv-component-right-surface-content-width);
+  --asv-preview-save-action-width: var(--asv-component-preview-save-action-width);
+  --asv-preview-save-action-height: var(--asv-component-preview-save-action-height);
   --asv-right-panel-section-gap: var(--asv-component-right-panel-section-gap);
   --asv-right-panel-section-margin-block-start: var(--asv-component-right-panel-section-margin-block-start);
   --asv-right-panel-section-padding-block-start: var(--asv-component-right-panel-section-padding-block-start);

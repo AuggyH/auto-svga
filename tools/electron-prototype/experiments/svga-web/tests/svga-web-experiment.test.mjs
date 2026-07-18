@@ -862,7 +862,7 @@ test("short-term loading and load-failed states expose recovery actions", async 
   const { showShortTermFailure } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-surface.mjs")).href);
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
-  const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
+  const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|previewSaveActions|data-action="save-as"|data-action="save-overwrite"/;
 
   assert.match(loadingSection, /aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"/);
   assert.match(loadingSection, /data-module="PreviewCanvasModule"/);
@@ -969,6 +969,69 @@ test("short-term preview right surface exposes page-state trace semantics", asyn
     assert.equal(compareView.dataset.module, "OptimizationCompareModule");
     assert.equal(compareView.dataset.pageState, "General comparing");
     assert.equal(compareView.dataset.stateMode, "optimization");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("short-term dirty Save As follows the frozen replaceable-surface hierarchy", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const { applyCommandState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);
+  const headerStart = page.indexOf('<div class="rightSurfaceHeader">');
+  const headerEnd = page.indexOf("</div>", headerStart);
+  const replaceableStart = page.indexOf('<section class="replaceableSection"');
+  const replaceableEnd = page.indexOf("</section>", replaceableStart);
+  const saveActionsStart = page.indexOf('data-preview-save-actions');
+  const saveFeedbackStart = page.indexOf('data-save-feedback-outlet="overview"');
+  const saveActionsHtml = page.slice(saveActionsStart, saveFeedbackStart);
+
+  assert.ok(headerStart >= 0 && headerEnd > headerStart);
+  assert.doesNotMatch(page.slice(headerStart, headerEnd), /data-component="SaveButtonPair"|data-action="save-as"/);
+  assert.ok(replaceableEnd < saveActionsStart);
+  assert.ok(saveActionsStart < saveFeedbackStart);
+  assert.match(saveActionsHtml, /data-component="SaveButtonPair" hidden>[\s\S]*data-action="save-as"[\s\S]*>\u53e6\u5b58\u4e3a<\/button>/);
+  assert.doesNotMatch(saveActionsHtml, /data-action="save-overwrite"/);
+  assert.match(tokens, /--asv-base-radius-6:\s*6px/);
+  assert.match(tokens, /--asv-component-text-button-radius:\s*var\(--asv-base-radius-6\)/);
+  assert.match(tokens, /--asv-component-preview-save-action-width:\s*var\(--asv-component-right-surface-content-width\)/);
+  assert.match(modules, /\.previewSaveActions\s*\{[^}]*width:\s*min\(var\(--asv-preview-save-action-width\), 100%\)/s);
+  assert.match(modules, /\.previewSaveActions \.toolbarButton\s*\{[^}]*width:\s*100%[^}]*border-radius:\s*var\(--asv-text-button-radius\)/s);
+
+  const saveActions = { hidden: true };
+  const saveAs = { disabled: true, title: "", dataset: {}, setAttribute() {}, classList: { toggle() {} } };
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    querySelector(selector) {
+      if (selector === "[data-preview-save-actions]") return saveActions;
+      if (selector === "[data-preview-save-actions] [data-action='save-as']") return saveAs;
+      return null;
+    },
+    querySelectorAll(selector) {
+      return selector === "[data-action='save-as']" ? [saveAs] : [];
+    }
+  };
+  try {
+    applyCommandState({
+      actionStates: { "save-as": { enabled: true, reason: "" } },
+      headerSaveAsVisible: true,
+      playPauseCopy: "\u64ad\u653e",
+      loopEnabled: true
+    });
+    assert.equal(saveActions.hidden, false);
+    assert.equal(saveAs.hidden, false);
+    assert.equal(saveAs.disabled, false);
+
+    applyCommandState({
+      actionStates: { "save-as": { enabled: false, reason: "\u6ca1\u6709\u53ef\u4fdd\u5b58\u7684\u8f93\u51fa" } },
+      headerSaveAsVisible: false,
+      playPauseCopy: "\u64ad\u653e",
+      loopEnabled: true
+    });
+    assert.equal(saveActions.hidden, true);
+    assert.equal(saveAs.hidden, true);
+    assert.equal(saveAs.disabled, true);
   } finally {
     globalThis.document = originalDocument;
   }
@@ -6916,7 +6979,11 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     assert.match(page, /short-term-macos-app\.mjs/);
     assert.match(page, /short-term-macos\.tokens\.css/);
     assert.match(page, /short-term-macos\.css/);
-    assert.match(page, /覆盖保存/);
+    const previewSaveActionsHtml = page.match(/<div class="previewSaveActions"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "";
+    assert.match(previewSaveActionsHtml, /data-action="save-as"/);
+    assert.doesNotMatch(previewSaveActionsHtml, /data-action="save-overwrite"/);
+    const compareModel = await fetch(`${server.origin}/short-term-macos-compare-model.mjs`).then((response) => response.text());
+    assert.match(compareModel, /data-action="save-overwrite"\$\{saveDisabled\}>覆盖保存/);
     assert.doesNotMatch(page, /productShellMount/);
     assert.doesNotMatch(page, /desktop-product-entry\.mjs/);
     assert.doesNotMatch(page, /prototype\.js/);
@@ -7863,7 +7930,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="recentClearButton" type="button" data-action="clear-recent" aria-label="清除最近记录"/);
   assert.doesNotMatch(page, />清除记录<\/button>/);
   assert.doesNotMatch(page, /本地预览，不上传/);
-  assert.match(page, /覆盖保存/);
+  const previewSaveActionsHtml = page.match(/<div class="previewSaveActions"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "";
+  assert.match(previewSaveActionsHtml, /data-action="save-as"/);
+  assert.doesNotMatch(previewSaveActionsHtml, /data-action="save-overwrite"/);
+  assert.match(shortTermCompareModel, /data-action="save-overwrite"\$\{saveDisabled\}>覆盖保存/);
   assert.match(page, /id="discardDialog"/);
   assert.doesNotMatch(page, /id="textDialog"|data-component="TextReplacementSheet"/);
   assert.match(page, /id="discardDialog" data-component="ErrorRecoveryPanel" data-status="warning"/);
@@ -7888,7 +7958,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(page, /data-action="compare"/);
   assert.doesNotMatch(page, /打开另一个 SVGA 后开始对比/);
   assert.match(page, /data-component="CanvasModeSwitch"/);
-  assert.match(page, /class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair"/);
+  assert.match(page, /class="previewSaveActions" data-preview-save-actions data-component="SaveButtonPair" hidden/);
+  assert.doesNotMatch(page, /class="toolbarCluster toolbarClusterSave"/);
   assert.match(page, /data-component="ReservedOperationPanel"/);
   assert.doesNotMatch(page, /class="tabs"[^>]*role="tablist"|data-component="TabItem"|role="tab"|aria-selected="true"/);
   assert.match(page, /id="panelOverview"(?=[^>]*data-panel="overview")(?=[^>]*data-page-state="Preview overview")(?=[^>]*tabindex="0")(?=[^>]*aria-label="文件信息")(?=[^>]*data-module="OverviewInformationModule")[^>]*>/);
@@ -8309,7 +8380,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-side-surface-bg: var\(--asv-component-side-surface-background\)/);
   assert.match(shortTermModules, /box-shadow: inset var\(--asv-side-surface-separator-width\) 0 0 var\(--asv-side-surface-separator\)/);
   assert.match(shortTermModules, /\.fileIdentity\s*\{[^}]*max-width: 100%/s);
-  assert.match(shortTermModules, /\.toolbarClusterSave\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermModules, /\.previewSaveActions\s*\{[^}]*width: min\(var\(--asv-preview-save-action-width\), 100%\)/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*box-sizing: border-box/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*width: var\(--asv-file-header-width\)/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*max-width: var\(--asv-file-header-width\)/s);
@@ -8393,7 +8464,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.resultGroup\s*\{[^}]*box-shadow: none/s);
   assert.match(shortTermTokens, /--asv-component-optimization-result-row-padding-block: var\(--asv-base-space-4\)/);
   assert.match(shortTermTokens, /--asv-component-optimization-result-row-radius: var\(--asv-radius-md\)/);
-  assert.match(shortTermTokens, /--asv-component-optimization-action-radius: 6px/);
+  assert.match(shortTermTokens, /--asv-component-optimization-action-radius: var\(--asv-base-radius-6\)/);
   assert.match(shortTermModules, /\.resultGroup li\s*\{[^}]*padding: var\(--asv-optimization-result-row-padding-block\) var\(--asv-optimization-result-row-padding-inline\)/s);
   assert.match(shortTermModules, /\.resultGroup li\s*\{[^}]*background: var\(--asv-optimization-result-row-bg\)/s);
   assert.match(shortTermModules, /\.resultGroup\.muted li\s*\{[^}]*background: var\(--asv-optimization-result-muted-row-bg\)/s);

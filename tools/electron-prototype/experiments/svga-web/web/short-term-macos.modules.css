@@ -62,11 +62,6 @@
   justify-self: start;
 }
 
-.toolbarClusterSave {
-  justify-self: end;
-  min-width: 0;
-}
-
 .windowControlSpace {
   width: var(--asv-window-controls-width);
   min-width: var(--asv-window-controls-width);
@@ -805,7 +800,7 @@ canvas {
 .rightSurfaceHeader {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--asv-space-3);
   align-items: center;
   width: var(--asv-file-header-width);
@@ -898,6 +893,7 @@ canvas {
 
 .rightSurfaceBody > .factGrid,
 .rightSurfaceBody > .replaceableSection,
+.rightSurfaceBody > .previewSaveActions,
 .rightSurfaceBody > .saveFeedbackOutlet,
 .rightSurfaceBody > .assetSection,
 .compareInfo > .compareSummary,
@@ -907,6 +903,22 @@ canvas {
 .compareInfo > .resultGroup {
   width: 100%;
   max-width: var(--asv-right-surface-content-width);
+}
+
+.previewSaveActions {
+  display: grid;
+  width: min(var(--asv-preview-save-action-width), 100%);
+  margin-top: var(--asv-space-3);
+}
+
+.previewSaveActions[hidden] {
+  display: none;
+}
+
+.previewSaveActions .toolbarButton {
+  width: 100%;
+  min-height: var(--asv-preview-save-action-height);
+  border-radius: var(--asv-text-button-radius);
 }
 
 .rightSurfaceBody {

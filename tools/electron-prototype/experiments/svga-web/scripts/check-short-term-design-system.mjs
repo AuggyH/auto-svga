@@ -539,7 +539,7 @@ async function main() {
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const unsupportedSection = page.match(/<section class="view stateView workbenchStateView unsupportedDropView" data-view="unsupported"[\s\S]*?<\/section>\s*<\/section>/)?.[0] ?? "";
-  const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
+  const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|previewSaveActions|data-action="save-as"|data-action="save-overwrite"/;
   record("loading-and-load-failed-states-keep-recovery-contract",
     /aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"/.test(loadingSection)
     && /data-module="PreviewCanvasModule"/.test(loadingSection)
@@ -861,12 +861,17 @@ async function main() {
     && /\.optimizationMetricValue i\s*\{[^}]*font-size: var\(--asv-optimization-metric-arrow-size\)/s.test(modules));
   record("optimization-actions-use-figma-r5-button-rhythm", /<div class="compareActions optimizationActions">/.test(compareModel)
     && /--asv-component-optimization-action-height:\s*30px/.test(tokens)
-    && /--asv-component-optimization-action-radius:\s*6px/.test(tokens)
+    && /--asv-component-optimization-action-radius:\s*var\(--asv-base-radius-6\)/.test(tokens)
     && /--asv-component-optimization-action-gap:\s*var\(--asv-space-2\)/.test(tokens)
     && /\.optimizationActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)/.test(modules)
     && /\.optimizationActions \.toolbarButton\s*\{[\s\S]*min-height: var\(--asv-optimization-action-height\)[\s\S]*border-radius: var\(--asv-optimization-action-radius\)/.test(modules));
   record("replaceable-actions-use-figma-button-radius", /--asv-component-replace-image-action-radius:\s*var\(--asv-base-radius-8\)/.test(tokens)
     && /\.replaceImageButton\s*\{[\s\S]*border-radius: var\(--asv-replace-image-action-radius\)/.test(molecules));
+  record("preview-dirty-save-action-follows-frozen-body-hierarchy", /<\/section>\s*<div class="previewSaveActions" data-preview-save-actions data-component="SaveButtonPair" hidden>[\s\S]*data-action="save-as"/.test(page)
+    && !/<div class="toolbarCluster toolbarClusterSave"/.test(page)
+    && /--asv-component-text-button-radius:\s*var\(--asv-base-radius-6\)/.test(tokens)
+    && /--asv-component-preview-save-action-width:\s*var\(--asv-component-right-surface-content-width\)/.test(tokens)
+    && /\.previewSaveActions \.toolbarButton\s*\{[\s\S]*width: 100%[\s\S]*border-radius: var\(--asv-text-button-radius\)/.test(modules));
   record("optimization-result-details-use-tokenized-row-contract", /data-component="OptimizationResultDetailRow"/.test(compareModel)
     && /--asv-component-optimization-result-row-padding-block:\s*var\(--asv-base-space-4\)/.test(tokens)
     && /--asv-component-optimization-result-row-radius:\s*var\(--asv-radius-md\)/.test(tokens)

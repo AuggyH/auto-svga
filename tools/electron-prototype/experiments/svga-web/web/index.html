@@ -299,10 +299,6 @@
         <aside class="rightPanel" aria-label="信息" data-component="RightInformationSurface" data-panel-state="overview">
           <div class="rightSurfaceHeader">
             <h1 class="fileIdentity" id="fileIdentity">等待打开文件</h1>
-            <div class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair">
-              <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+S">覆盖保存</button>
-              <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
-            </div>
           </div>
           <section class="rightSurfaceBody isActive" id="panelOverview" data-panel="overview" data-page-state="Preview overview" tabindex="0" aria-label="文件信息" data-module="OverviewInformationModule">
             <section class="factGrid" id="factGrid" aria-label="文件信息" data-component="OverviewFactRow"></section>
@@ -318,6 +314,9 @@
                 <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
               </menu>
             </section>
+            <div class="previewSaveActions" data-preview-save-actions data-component="SaveButtonPair" hidden>
+              <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
+            </div>
             <div class="saveFeedbackOutlet" data-save-feedback-outlet="overview">
               <section class="saveBanner" id="saveBanner" aria-live="polite" data-component="SaveFeedbackBanner" data-module="SaveStateModule" data-page-state="Save feedback" hidden></section>
             </div>
