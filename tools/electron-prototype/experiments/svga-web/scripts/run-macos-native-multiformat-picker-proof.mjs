@@ -2,16 +2,12 @@ import { createHash } from "node:crypto";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
-import { inspectSvgaDocumentTypeDeclaration, inspectSvgaUtiDeclaration } from "./macos-package-proof.mjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const requireFromPrototype = createRequire(path.join(experimentRoot, "../..", "package.json"));
-const launchServicesRegister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
 const proofFileName = "macos-native-multiformat-picker-proof.json";
 const expectedRows = Object.freeze([
   { alias: "TASK-SVGA-A", env: "AUTO_SVGA_NATIVE_PICKER_SVGA", extension: ".svga", format: "svga" },
@@ -73,27 +69,12 @@ function validateAppBundleAt(appBundle, sourceHead) {
     const stats = statSync(requiredPath);
     if (!stats.isFile() || stats.size <= 0) throw new Error("Native picker App is missing a required packaged file.");
   }
-  const infoPlist = readFileSync(infoPlistPath, "utf8");
-  if (!inspectSvgaUtiDeclaration(infoPlist).valid || !inspectSvgaDocumentTypeDeclaration(infoPlist).valid) {
-    throw new Error("Packaged App does not contain the canonical SVGA native admission declarations.");
-  }
   const asar = requireFromPrototype("@electron/asar");
   const buildInfo = JSON.parse(asar.extractFile(asarPath, ".runtime/build-info.json").toString("utf8"));
   if (buildInfo.buildCommit !== sourceHead || buildInfo.productMilestoneId !== "0.2-multiformat-preview") {
     throw new Error("Packaged App build identity does not match the exact source head and product milestone.");
   }
   return { appBundle, executable, infoPlistPath, asarPath, buildInfo };
-}
-
-function stageTestApp(sourceApp, sourceHead) {
-  const appBundle = path.join(
-    os.homedir(),
-    "Applications",
-    `Auto SVGA Native Picker Selftest ${sourceHead.slice(0, 12)}.app`
-  );
-  if (existsSync(appBundle)) throw new Error("Native picker task App path already exists.");
-  execFileSync("/usr/bin/ditto", ["--norsrc", sourceApp.appBundle, appBundle], { stdio: "ignore" });
-  return validateAppBundleAt(appBundle, sourceHead);
 }
 
 function assertNoAutoSvgaProcess() {
@@ -107,25 +88,6 @@ function assertNoAutoSvgaProcess() {
     if (error?.status !== 1) throw error;
   }
   if (output) throw new Error("Another Auto SVGA process owns the native picker runtime slot.");
-}
-
-function registerTestApp(appBundle) {
-  execFileSync(launchServicesRegister, ["-f", appBundle], { stdio: "ignore" });
-}
-
-function unregisterTestApp(appBundle) {
-  try {
-    execFileSync(launchServicesRegister, ["-u", appBundle], { stdio: "ignore" });
-  } catch {
-    // A failed unregister is surfaced by the final exact process/listener checks.
-  }
-}
-
-function readContentTypeTree(filePath) {
-  return execFileSync("/usr/bin/mdls", ["-raw", "-name", "kMDItemContentTypeTree", filePath], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  });
 }
 
 function assertNoTcpListener(port) {
@@ -461,11 +423,8 @@ async function main() {
   const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim();
   const artifacts = prepareArtifactRoot();
   const rows = expectedRows.map(validateRegularInput);
-  const sourceApp = validateAppBundleAt(requiredAbsolutePath("AUTO_SVGA_NATIVE_PICKER_APP"), sourceHead);
-  const app = stageTestApp(sourceApp, sourceHead);
+  const app = validateAppBundleAt(requiredAbsolutePath("AUTO_SVGA_NATIVE_PICKER_APP"), sourceHead);
   assertNoAutoSvgaProcess();
-  registerTestApp(app.appBundle);
-  const svgaContentTypeTree = readContentTypeTree(rows[0].filePath);
   mkdirSync(artifacts.userDataPath, { mode: 0o700 });
   const childEnv = { ...process.env };
   delete childEnv.AUTO_SVGA_PRODUCT_ARTIFACTS;
@@ -515,13 +474,6 @@ async function main() {
       sourceHead,
       buildCommit: app.buildInfo.buildCommit,
       productMilestoneId: app.buildInfo.productMilestoneId,
-      nativeAdmission: {
-        svgaUti: "com.auto-svga.svga",
-        conformsTo: ["public.content", "public.data"],
-        launchServicesResolvedAsContent: svgaContentTypeTree.includes("public.content"),
-        documentRole: "Viewer",
-        handlerRank: "Alternate"
-      },
       rows: results,
       cancel: { ...cancel, statePreserved: afterCancel.fileIdentity === beforeCancel.fileIdentity },
       boundaries: {
@@ -546,8 +498,6 @@ async function main() {
     }, null, 2));
   } finally {
     await closeProduct(client, child);
-    unregisterTestApp(app.appBundle);
-    rmSync(app.appBundle, { recursive: true, force: false });
     rmSync(artifacts.userDataPath, { recursive: true, force: true });
     assertNoAutoSvgaProcess();
     if (Number.isInteger(devToolsPort) && devToolsPort > 0) assertNoTcpListener(devToolsPort);
