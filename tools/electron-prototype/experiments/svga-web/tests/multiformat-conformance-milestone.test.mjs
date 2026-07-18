@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { chmodSync, existsSync, linkSync, lstatSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -22,11 +23,13 @@ import {
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const {
+  DARWIN_MULTI_FORMAT_PICKER_LAUNCHER,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,
   parseDarwinPickerOutput,
+  resolveDarwinMultiFormatPickerHelperBundlePath,
   resolveDarwinMultiFormatPickerHelperPath,
   runDarwinMultiFormatPicker,
   validateMultiFormatPickerSelection
@@ -165,6 +168,7 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME, "asv-open-panel");
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME, "Auto SVGA File Picker.app");
+  assert.equal(DARWIN_MULTI_FORMAT_PICKER_LAUNCHER, "/usr/bin/open");
   assert.match(helperSource, /import AppKit/u);
   assert.match(helperSource, /NSOpenPanel\(\)/u);
   assert.match(helperSource, /allowedContentTypes\s*=\s*\[\]/u);
@@ -179,6 +183,14 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(helperInfoPlist, /LSUIElement[\s\S]*<true\/>/u);
   assert.doesNotMatch(helperInfoPlist, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
   assert.doesNotMatch(pickerSource, /osascript|chooseFile|System Events/u);
+
+  assert.equal(
+    resolveDarwinMultiFormatPickerHelperBundlePath({
+      moduleDirectory: "/repo/tools/electron-prototype/experiments/svga-web",
+      resourcesPath: "/Electron/Resources"
+    }),
+    "/repo/tools/electron-prototype/experiments/svga-web/.runtime/native/Auto SVGA File Picker.app"
+  );
 
   assert.equal(
     resolveDarwinMultiFormatPickerHelperPath({
@@ -216,15 +228,130 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   });
 
   const calls = [];
+  let channelRoot = "";
   assert.deepEqual(await runDarwinMultiFormatPicker(async (command, args, options) => {
     calls.push({ command, args, options });
-    return { stdout: JSON.stringify({ status: "selected", filePath: "/private/tmp/example.svga" }) };
-  }, "/private/runtime/native/asv-open-panel"), { status: "selected", filePath: "/private/tmp/example.svga" });
-  assert.equal(calls[0].command, "/private/runtime/native/asv-open-panel");
-  assert.deepEqual(calls[0].args, []);
+    const resultPath = args[args.indexOf("-o") + 1];
+    channelRoot = path.dirname(resultPath);
+    assert.equal(lstatSync(channelRoot).mode & 0o7777, 0o700);
+    assert.equal(lstatSync(resultPath).mode & 0o7777, 0o600);
+    assert.equal(lstatSync(resultPath).nlink, 1);
+    writeFileSync(resultPath, JSON.stringify({ status: "selected", filePath: "/private/tmp/example.svga" }));
+    return { stdout: JSON.stringify({ status: "selected", filePath: "/private/tmp/ignored.mp4" }) };
+  }, "/private/runtime/native/Auto SVGA File Picker.app"), { status: "selected", filePath: "/private/tmp/example.svga" });
+  assert.equal(calls[0].command, "/usr/bin/open");
+  assert.deepEqual(calls[0].args.slice(0, 5), [
+    "-n", "-W", "-a", "/private/runtime/native/Auto SVGA File Picker.app", "-o"
+  ]);
+  assert.equal(path.basename(calls[0].args[5]), "picker-result.json");
+  assert.equal(calls[0].args[6], "--stderr");
+  assert.equal(path.basename(calls[0].args[7]), "launcher-stderr.log");
+  assert.equal(path.dirname(calls[0].args[5]), path.dirname(calls[0].args[7]));
   assert.doesNotMatch(calls[0].args.join("\n"), /\/private\/tmp\/example\.svga/u);
+  assert.equal(existsSync(channelRoot), false);
   assert.deepEqual(parseDarwinPickerOutput('{"status":"cancelled"}\n'), { status: "cancelled" });
   assert.equal(parseDarwinPickerOutput("not-json").code, "file_picker_failed");
+});
+
+test("macOS picker result channel fails closed on cancellation, replacement, growth, launch failure, and overlap", async () => {
+  let cancelledRoot = "";
+  const cancelled = await runDarwinMultiFormatPicker(async (_command, args) => {
+    const resultPath = args[args.indexOf("-o") + 1];
+    cancelledRoot = path.dirname(resultPath);
+    writeFileSync(resultPath, '{"status":"cancelled"}\n');
+    return { stdout: "ignored launcher stdout" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.deepEqual(cancelled, { status: "cancelled" });
+  assert.equal(existsSync(cancelledRoot), false);
+
+  let replacedRoot = "";
+  const replaced = await runDarwinMultiFormatPicker(async (_command, args) => {
+    const resultPath = args[args.indexOf("-o") + 1];
+    replacedRoot = path.dirname(resultPath);
+    unlinkSync(resultPath);
+    writeFileSync(
+      resultPath,
+      JSON.stringify({ status: "selected", filePath: "/private/tmp/replaced.svga" }),
+      { mode: 0o600 }
+    );
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(replaced.status, "failed");
+  assert.equal(replaced.pathRedacted, true);
+  assert.equal(existsSync(replacedRoot), false);
+
+  let oversizedRoot = "";
+  const oversized = await runDarwinMultiFormatPicker(async (_command, args) => {
+    const resultPath = args[args.indexOf("-o") + 1];
+    oversizedRoot = path.dirname(resultPath);
+    writeFileSync(resultPath, "x".repeat(32769));
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(oversized.status, "failed");
+  assert.equal(oversized.pathRedacted, true);
+  assert.equal(existsSync(oversizedRoot), false);
+
+  let hardlinkedRoot = "";
+  let hardlinkPath = "";
+  const hardlinked = await runDarwinMultiFormatPicker(async (_command, args) => {
+    const resultPath = args[args.indexOf("-o") + 1];
+    hardlinkedRoot = path.dirname(resultPath);
+    hardlinkPath = path.join(os.tmpdir(), `auto-svga-native-picker-link-${process.pid}-${Date.now()}`);
+    linkSync(resultPath, hardlinkPath);
+    writeFileSync(resultPath, '{"status":"cancelled"}\n');
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(hardlinked.status, "failed");
+  assert.equal(hardlinked.pathRedacted, true);
+  assert.equal(existsSync(hardlinkedRoot), false);
+  unlinkSync(hardlinkPath);
+
+  let permissiveRoot = "";
+  const permissive = await runDarwinMultiFormatPicker(async (_command, args) => {
+    const resultPath = args[args.indexOf("-o") + 1];
+    permissiveRoot = path.dirname(resultPath);
+    chmodSync(resultPath, 0o644);
+    writeFileSync(resultPath, '{"status":"cancelled"}\n');
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(permissive.status, "failed");
+  assert.equal(permissive.pathRedacted, true);
+  assert.equal(existsSync(permissiveRoot), false);
+
+  let failedLaunchRoot = "";
+  const failedLaunch = await runDarwinMultiFormatPicker(async (_command, args) => {
+    failedLaunchRoot = path.dirname(args[args.indexOf("-o") + 1]);
+    throw new Error("launch failed at /Users/alice/private/file.svga");
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(failedLaunch.status, "failed");
+  assert.equal(failedLaunch.pathRedacted, true);
+  assert.doesNotMatch(JSON.stringify(failedLaunch), /Users\/alice|private\/file/u);
+  assert.equal(existsSync(failedLaunchRoot), false);
+
+  let releaseFirst;
+  let markStarted;
+  let firstRoot = "";
+  const started = new Promise((resolve) => { markStarted = resolve; });
+  const firstRun = runDarwinMultiFormatPicker(async (_command, args) => {
+    const resultPath = args[args.indexOf("-o") + 1];
+    firstRoot = path.dirname(resultPath);
+    markStarted();
+    await new Promise((resolve) => { releaseFirst = resolve; });
+    writeFileSync(resultPath, '{"status":"cancelled"}\n');
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  await started;
+  let overlappingLaunchCalls = 0;
+  const overlapping = await runDarwinMultiFormatPicker(async () => {
+    overlappingLaunchCalls += 1;
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+  assert.equal(overlapping.status, "failed");
+  assert.equal(overlapping.pathRedacted, true);
+  assert.equal(overlappingLaunchCalls, 0);
+  releaseFirst();
+  assert.deepEqual(await firstRun, { status: "cancelled" });
+  assert.equal(existsSync(firstRoot), false);
 });
 
 test("non-Darwin native picker remains owned by the active BrowserWindow", async () => {
