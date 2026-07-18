@@ -341,6 +341,21 @@ test("short-term general compare renders loaded A/B facts through shared metric 
   assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
 });
 
+test("short-term general compare keeps open actions on canvas, not in right panel", async () => {
+  const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+
+  const html = renderGeneralComparePanelHtml({
+    actions: ['<button class="toolbarButton primary" type="button" data-action="exit-compare">退出对比</button>']
+  });
+
+  assert.match(html, /<h2>对比模式<\/h2>/);
+  assert.equal((html.match(/未打开文件/g) ?? []).length, 2);
+  assert.match(html, /data-action="exit-compare"/);
+  assert.doesNotMatch(html, /comparePairOpenButton/);
+  assert.doesNotMatch(html, /data-action="open-compare-a"/);
+  assert.doesNotMatch(html, /data-action="open-compare-b"/);
+});
+
 test("short-term general compare marks asymmetric visible facts unavailable", async () => {
   const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
   const aModel = {

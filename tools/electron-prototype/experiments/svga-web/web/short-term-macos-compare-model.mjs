@@ -112,8 +112,6 @@ export function renderGeneralComparePanelHtml({
 } = {}) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
   const rows = renderCompareMetricColumns(aModel, bModel);
-  const aAction = aModel ? "" : `<button class="toolbarButton primary comparePairOpenButton" type="button" data-action="open-compare-a">打开文件</button>`;
-  const bAction = bModel ? "" : `<button class="toolbarButton primary comparePairOpenButton" type="button" data-action="open-compare-b">打开文件</button>`;
   return `
     <section class="compareSummary compareModeHeader">
       <h2>对比模式</h2>
@@ -122,11 +120,9 @@ export function renderGeneralComparePanelHtml({
     <section class="comparePairHeader" aria-label="对比文件">
       <div>
         <strong>${escapeHtml(aDisplayName || "未打开文件")}</strong>
-        ${aAction}
       </div>
       <div>
         <strong>${escapeHtml(bDisplayName || "未打开文件")}</strong>
-        ${bAction}
       </div>
     </section>
     ${rows ? `<section class="compareMetricGrid" aria-label="对比信息">${rows}</section>` : ""}
