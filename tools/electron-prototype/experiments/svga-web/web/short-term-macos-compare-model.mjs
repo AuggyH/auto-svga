@@ -43,6 +43,13 @@ function compareFactValue(facts, id) {
   return facts.find((fact) => fact.id === id)?.value || "";
 }
 
+const compareStatusScore = Object.freeze({
+  unknown: 0,
+  fail: 1,
+  warning: 2,
+  pass: 3
+});
+
 function compareFactIds(aFacts, bFacts) {
   return [...aFacts, ...bFacts].reduce((ids, fact) => {
     if (fact?.id && !ids.includes(fact.id)) ids.push(fact.id);
@@ -65,7 +72,12 @@ function compareAlignedFacts(rowIds, facts, peerFacts) {
 
 function compareFactDiff(fact, peer) {
   if (!fact || !peer) return "unavailable";
-  return compareFactValue([peer], fact.id) !== fact.value ? "different" : "same";
+  const sameValue = compareFactValue([peer], fact.id) === fact.value;
+  const sameStatus = (fact.status || "unknown") === (peer.status || "unknown");
+  if (sameValue && sameStatus) return "same";
+  const factScore = compareStatusScore[fact.status || "unknown"] ?? compareStatusScore.unknown;
+  const peerScore = compareStatusScore[peer.status || "unknown"] ?? compareStatusScore.unknown;
+  return factScore > peerScore ? "improved" : "different";
 }
 
 function renderCompareColumnFactHtml({ id, fact, peer, label }) {

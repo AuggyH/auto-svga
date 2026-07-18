@@ -494,6 +494,7 @@ test("short-term general compare renders loaded A/B facts through shared metric 
     overview: {
       facts: [
         { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "warning" },
+        { id: "decodedMemory", label: "内存占用", value: "20.6 MiB", status: "pass" },
         { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
       ]
     }
@@ -502,6 +503,7 @@ test("short-term general compare renders loaded A/B facts through shared metric 
     overview: {
       facts: [
         { id: "fileSize", label: "文件体积", value: "1.2 MiB", status: "pass" },
+        { id: "decodedMemory", label: "内存占用", value: "20.6 MiB", status: "warning" },
         { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
       ]
     }
@@ -521,7 +523,14 @@ test("short-term general compare renders loaded A/B facts through shared metric 
   assert.match(html, /文件大小/);
   assert.doesNotMatch(html, /文件体积/);
   assert.equal((html.match(/data-diff="different"/g) ?? []).length, 2);
+  assert.equal((html.match(/data-diff="improved"/g) ?? []).length, 2);
   assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
+
+  const [aColumn, bColumn] = html.split(/<div class="compareMetricColumn"[^>]*data-slot="[AB]">/).slice(1);
+  assert.match(aColumn, /data-fact-id="fileSize"[\s\S]*data-diff="different"/);
+  assert.match(aColumn, /data-fact-id="decodedMemory"[\s\S]*data-diff="improved"/);
+  assert.match(bColumn, /data-fact-id="fileSize"[\s\S]*data-diff="improved"/);
+  assert.match(bColumn, /data-fact-id="decodedMemory"[\s\S]*data-diff="different"/);
 });
 
 test("short-term general compare exposes missing-slot open actions in the right panel", async () => {
@@ -581,7 +590,8 @@ test("short-term general compare marks asymmetric visible facts unavailable", as
   assert.match(html, /运行结构风险/);
   assert.equal((html.match(/data-diff="unavailable"/g) ?? []).length, 2);
   assert.match(html, />不可用<\/strong>/);
-  assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
+  assert.equal((html.match(/data-diff="improved"/g) ?? []).length, 1);
+  assert.equal((html.match(/data-diff="different"/g) ?? []).length, 1);
 });
 
 test("short-term general compare keeps identical row order when both sides have unique facts", async () => {

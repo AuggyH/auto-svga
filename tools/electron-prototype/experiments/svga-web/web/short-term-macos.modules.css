@@ -1540,7 +1540,7 @@ canvas {
   color: var(--asv-subtle);
 }
 
-.compareMetricCell[data-diff="different"] strong {
+.compareMetricCell[data-diff="improved"] strong {
   color: var(--asv-success);
 }
 

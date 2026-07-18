@@ -699,6 +699,10 @@ async function main() {
     && /class="toolbarButton primary comparePairOpenButton"/.test(compareModel)
     && /data-state="\$\{state\}"/.test(compareModel)
     && /\.comparePairOpenButton\s*\{[\s\S]*width: var\(--asv-compare-open-button-width\)[\s\S]*min-height: var\(--asv-compare-open-button-height\)/.test(modules));
+  record("compare-loaded-highlights-only-the-better-fact", /const compareStatusScore = Object\.freeze/.test(compareModel)
+    && /return factScore > peerScore \? "improved" : "different"/.test(compareModel)
+    && /\.compareMetricCell\[data-diff="improved"\] strong\s*\{[\s\S]*color: var\(--asv-success\)/.test(modules)
+    && !/\.compareMetricCell\[data-diff="different"\] strong\s*\{[\s\S]*color: var\(--asv-success\)/.test(modules));
   record("optimization-detail-uses-figma-r5-candidate-row-contract", /dataset\.component = "OptimizationFindingRow"/.test(optimizationRenderer)
     && /dataset\.role = "OptimizationCandidateRow"/.test(optimizationRenderer)
     && /--asv-component-finding-row-min-height:\s*62px/.test(tokens)
