@@ -478,6 +478,37 @@ test("ready workspace right surface keeps tokenized density and containment cont
   assert.match(pageStates, /@media \(max-width: 1080px\)/u);
 });
 
+test("playback recovery and launch empty state follow the frozen page-state geometry", async () => {
+  const [page, tokens, components, modules] = await Promise.all([
+    "index.html",
+    "short-term-macos.tokens.css",
+    "short-term-macos.components.css",
+    "short-term-macos.modules.css"
+  ].map((file) => readFile(path.join(experimentRoot, "web", file), "utf8")));
+
+  const playbackStart = page.indexOf('<section class="playbackErrorRecovery"');
+  const playbackEnd = page.indexOf("</section>", playbackStart);
+  assert.notEqual(playbackStart, -1);
+  assert.notEqual(playbackEnd, -1);
+  const playbackRecovery = page.slice(playbackStart, playbackEnd);
+  assert.match(playbackRecovery, /class="playbackErrorIcon playbackErrorWarningIcon"[^>]*>!<\/span>/u);
+  assert.doesNotMatch(playbackRecovery, /<(?:circle|svg)\b/u);
+  assert.match(tokens, /--asv-component-playback-error-icon-glyph-size:\s*20px/u);
+  assert.match(components, /\.playbackErrorWarningIcon\s*\{[^}]*font-size:\s*var\(--asv-playback-error-icon-glyph-size\)/su);
+
+  assert.match(page, /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*data-state="empty"/u);
+  assert.match(page, /<h2>最近打开<\/h2>/u);
+  assert.match(tokens, /--asv-layout-launch-min-width:\s*640px/u);
+  assert.match(tokens, /--asv-layout-launch-min-height:\s*640px/u);
+  assert.match(tokens, /--asv-component-launch-empty-canvas-size:\s*300px/u);
+  assert.match(tokens, /--asv-component-launch-recent-height:\s*200px/u);
+  assert.match(modules, /\.launchCanvas\s*\{[^}]*grid-template-rows:\s*var\(--asv-launch-empty-canvas-size\) var\(--asv-launch-recent-height\)[^}]*align-content:\s*center/su);
+  assert.match(modules, /\.launchPrompt\s*\{[^}]*min-height:\s*var\(--asv-launch-empty-canvas-size\)[^}]*text-align:\s*center/su);
+  assert.match(modules, /\.recentBlock\s*\{[^}]*min-height:\s*var\(--asv-launch-recent-height\)/su);
+  assert.match(modules, /\.recentClearButton:disabled\s*\{[^}]*visibility:\s*hidden/su);
+  assert.doesNotMatch(modules, /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/u);
+});
+
 test("launch recent module remains present for unavailable, empty, and non-empty states", () => {
   const createNodes = () => {
     const recentBlock = new FakeElement();

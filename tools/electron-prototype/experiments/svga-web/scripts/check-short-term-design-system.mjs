@@ -582,9 +582,12 @@ async function main() {
 
   record("playback-error-preserves-preview-workspace-contract",
     /id="playbackErrorRecovery"(?=[^>]*data-component="ErrorRecoveryPanel")(?=[^>]*data-page-state="Playback error")(?=[^>]*role="alert")[^>]*hidden/.test(page)
+    && /class="playbackErrorIcon playbackErrorWarningIcon"[^>]*>!<\/span>/.test(page)
     && /id="playbackErrorMessage">动画解析失败，无法正常播放<\/p>/.test(page)
     && /data-action="reload-playback">重新加载<\/button>/.test(page)
+    && /--asv-component-playback-error-icon-glyph-size:\s*20px/.test(tokens)
     && /\.playbackErrorRecovery\s*\{[\s\S]*position: absolute[\s\S]*place-items: center/.test(components)
+    && /\.playbackErrorWarningIcon\s*\{[^}]*font-size:\s*var\(--asv-playback-error-icon-glyph-size\)/s.test(components)
     && /\.stateCard\.playbackErrorPanel\s*\{[\s\S]*width: min\(var\(--asv-playback-error-panel-size\), 100%\)[\s\S]*height: min\(var\(--asv-playback-error-panel-size\), 100%\)/.test(components));
   const baseCss = await readFile(path.join(webRoot, "short-term-macos.css"), "utf8");
 

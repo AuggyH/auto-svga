@@ -470,6 +470,7 @@
   --asv-component-playback-error-icon-size: var(--asv-base-space-48);
   --asv-component-playback-error-icon-background: var(--asv-color-status-warning);
   --asv-component-playback-error-icon-color: var(--asv-color-text-on-action);
+  --asv-component-playback-error-icon-glyph-size: 20px;
   --asv-component-playback-error-title-size: var(--asv-type-size-metric);
   --asv-component-playback-error-title-line-height: 22px;
   --asv-component-playback-error-message-size: var(--asv-type-size-footnote);
@@ -1079,6 +1080,7 @@
   --asv-playback-error-icon-size: var(--asv-component-playback-error-icon-size);
   --asv-playback-error-icon-bg: var(--asv-component-playback-error-icon-background);
   --asv-playback-error-icon-color: var(--asv-component-playback-error-icon-color);
+  --asv-playback-error-icon-glyph-size: var(--asv-component-playback-error-icon-glyph-size);
   --asv-playback-error-title-size: var(--asv-component-playback-error-title-size);
   --asv-playback-error-title-line-height: var(--asv-component-playback-error-title-line-height);
   --asv-playback-error-message-size: var(--asv-component-playback-error-message-size);

@@ -248,13 +248,7 @@
             </div>
             <section class="playbackErrorRecovery" id="playbackErrorRecovery" data-component="ErrorRecoveryPanel" data-page-state="Playback error" role="alert" aria-live="assertive" hidden>
               <div class="stateCard playbackErrorPanel">
-                <span class="playbackErrorIcon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <path d="M12 7.5v6"></path>
-                    <path d="M12 17h.01"></path>
-                  </svg>
-                </span>
+                <span class="playbackErrorIcon playbackErrorWarningIcon" aria-hidden="true">!</span>
                 <h1>播放异常</h1>
                 <p id="playbackErrorMessage">动画解析失败，无法正常播放</p>
                 <button class="toolbarButton primary playbackRecoveryButton" type="button" data-action="reload-playback">重新加载</button>
