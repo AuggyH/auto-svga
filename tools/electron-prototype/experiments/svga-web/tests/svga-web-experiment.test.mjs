@@ -2376,9 +2376,59 @@ test("0.2 host-owned Lottie intake resolves the canonical a/i package-root image
   }
 });
 
-test("0.2 host-owned Lottie intake rejects noncanonical absolute image directories", async () => {
+test("0.2 Lottie runtime inlining rejects absolute p before package-root alias normalization", async () => {
+  const sessionSource = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
+  const inlineSource = extractFunctionSource(
+    sessionSource,
+    "function inlineLottieRuntimeImageAssets(documentValue, sourceBinding, imageReplacements)"
+  );
+  const normalizeSource = extractFunctionSource(
+    sessionSource,
+    "function normalizeLottieRuntimeImageReference(rawDirectory, rawPath)"
+  );
+  const deterministicSource = extractFunctionSource(
+    sessionSource,
+    "function isDeterministicRuntimeRelativePath(value)"
+  );
+  let adjacentReads = 0;
+  const context = {
+    Buffer,
+    isRecord: (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value),
+    stringValue: (value) => typeof value === "string" ? value.trim() : "",
+    isSafeRuntimeImageValue: () => false,
+    normalizeRuntimeRelativePath: (value) => value.split(/[\\/]+/u).filter(Boolean).join("/"),
+    runtimePreviewFailure: (input) => ({ status: "failed", issue: input }),
+    readRootBoundedAdjacentResource: () => {
+      adjacentReads += 1;
+      throw new Error("unexpected adjacent read");
+    }
+  };
+  vm.runInNewContext(
+    `${normalizeSource}; ${deterministicSource}; ${inlineSource}; globalThis.normalize = normalizeLottieRuntimeImageReference; globalThis.isDeterministic = isDeterministicRuntimeRelativePath; globalThis.inline = inlineLottieRuntimeImageAssets;`,
+    context
+  );
+
+  const documentValue = { assets: [{ id: "image_0", u: "/i/", p: "/avatar.png" }] };
+  const result = context.inline(documentValue, {
+    filePath: "animation.json",
+    adjacentResources: new Map()
+  }, new Map());
+  assert.equal(result.status, "failed");
+  assert.equal(result.issue.reason, "unsafe_lottie_image_reference");
+  assert.equal(adjacentReads, 0);
+  assert.equal(documentValue.assets[0].p, "/avatar.png");
+  assert.equal(context.normalize("/i/", "/avatar.png"), "");
+  assert.equal(context.isDeterministic(context.normalize("/i/", "/avatar.png")), false);
+  assert.equal(context.normalize("/i/", "avatar.png"), "@lottie-root/i/avatar.png");
+  assert.equal(context.isDeterministic(context.normalize("/i/", "avatar.png")), true);
+});
+
+test("0.2 host-owned Lottie intake rejects noncanonical absolute image references", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-absolute-root-"));
-  const lottiePath = path.join(sessionRoot, "animation.json");
+  const packageRoot = path.join(sessionRoot, "bundle");
+  const animationRoot = path.join(packageRoot, "a");
+  const imageRoot = path.join(packageRoot, "i");
+  const lottiePath = path.join(animationRoot, "animation.json");
   const session = createMultiFormatDesktopPreviewSession({
     repoRoot,
     sessionRoot,
@@ -2387,7 +2437,14 @@ test("0.2 host-owned Lottie intake rejects noncanonical absolute image directori
   });
 
   try {
-    for (const unsafeDirectory of ["/images/", "@lottie-root/i/"]) {
+    await mkdir(animationRoot, { recursive: true });
+    await mkdir(imageRoot, { recursive: true });
+    await writeFile(path.join(imageRoot, "avatar.png"), await createTestPng([255, 0, 0, 255]));
+    for (const { rawDirectory, rawPath } of [
+      { rawDirectory: "/images/", rawPath: "avatar.png" },
+      { rawDirectory: "@lottie-root/i/", rawPath: "avatar.png" },
+      { rawDirectory: "/i/", rawPath: "/avatar.png" }
+    ]) {
       await writeFile(lottiePath, JSON.stringify({
         v: "5.7.0",
         w: 120,
@@ -2396,14 +2453,14 @@ test("0.2 host-owned Lottie intake rejects noncanonical absolute image directori
         ip: 0,
         op: 30,
         layers: [{ ind: 1, ty: 2, refId: "image_0" }],
-        assets: [{ id: "image_0", u: unsafeDirectory, p: "avatar.png", w: 1, h: 1 }]
+        assets: [{ id: "image_0", u: rawDirectory, p: rawPath, w: 1, h: 1 }]
       }));
 
       const opened = await session.openLocalFilePath(lottiePath, "fileButton");
-      assert.notEqual(opened.model.status, "playing", unsafeDirectory);
+      assert.notEqual(opened.model.status, "playing", `${rawDirectory} + ${rawPath}`);
       assert.equal(opened.model.rightPanel.issues.some((issue) =>
         issue.code === "invalid_file" && issue.pathRedacted === true
-      ), true, `${unsafeDirectory}: ${JSON.stringify(opened.model.rightPanel.issues)}`);
+      ), true, `${rawDirectory} + ${rawPath}: ${JSON.stringify(opened.model.rightPanel.issues)}`);
       assert.doesNotMatch(JSON.stringify(opened), /auto-svga-lottie-absolute-root-|\/Users\//u);
     }
   } finally {

@@ -178,6 +178,7 @@ test("fails closed for malformed JSON and redacts local source paths", async () 
 test("fails closed for unsafe or missing external image references", async () => {
   for (const [asset, reason] of [
     [{ id: "img_abs", p: "/Users/designer/asset.png" }, "unsafe_image_reference"],
+    [{ id: "img_package_abs", u: "/i/", p: "/avatar.png" }, "unsafe_image_reference"],
     [{ id: "img_parent", u: "images", p: "../asset.png" }, "unsafe_image_reference"],
     [{ id: "img_file", p: "file:///Users/designer/asset.png" }, "unsafe_image_reference"],
     [{ id: "img_missing", u: "images/" }, "missing_image_reference"]

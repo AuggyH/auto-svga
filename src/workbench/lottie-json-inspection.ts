@@ -421,6 +421,7 @@ function normalizeImageReference(
 }
 
 function normalizeLottieImageReference(rawDirectory: string, rawPath: string): string {
+  if (!isDeterministicRelativePath(rawPath)) return "";
   const directory = rawDirectory.replace(/[\\/]+$/u, "");
   if (directory === "/i") return `@lottie-root/i/${rawPath}`;
   if (directory === "@lottie-root" || directory.startsWith("@lottie-root/")) return "";

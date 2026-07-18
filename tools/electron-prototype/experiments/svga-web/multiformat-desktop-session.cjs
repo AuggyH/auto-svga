@@ -1801,6 +1801,7 @@ function isSafeRuntimeImageValue(value) {
 }
 
 function normalizeLottieRuntimeImageReference(rawDirectory, rawPath) {
+  if (!isDeterministicRuntimeRelativePath(rawPath)) return "";
   const directory = rawDirectory.replace(/[\\/]+$/u, "");
   if (directory === "/i") return `@lottie-root/i/${rawPath}`;
   if (directory === "@lottie-root" || directory.startsWith("@lottie-root/")) return "";
