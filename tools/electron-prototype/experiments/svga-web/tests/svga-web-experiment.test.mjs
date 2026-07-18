@@ -9753,6 +9753,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.equal(report.passed, true);
   assert.ok(report.checks.some((check) => check.name === "stylesheet-order" && check.passed === true));
   assert.ok(report.checks.some((check) => check.name === "focus-visible-covered-by-ui-layers" && check.passed === true));
+  assert.ok(report.checks.some((check) => check.name === "owner-visible-custom-properties-resolve" && check.passed === true));
   assert.ok(report.checks.some((check) => check.name === "reduced-motion-covered" && check.passed === true));
   assert.ok(report.checks.some((check) => check.name === "foreground-validation-rule-documented" && check.passed === true));
   assert.ok(report.checks.some((check) => check.name === "launch-page-copy-stays-minimal" && check.passed === true));

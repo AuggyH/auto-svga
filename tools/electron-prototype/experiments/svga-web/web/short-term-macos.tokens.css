@@ -251,7 +251,7 @@
   --asv-component-icon-button-shadow: none;
   --asv-component-mode-switch-width: 152px;
   --asv-component-mode-switch-height: 42px;
-  --asv-component-mode-switch-gap: var(--asv-space-0);
+  --asv-component-mode-switch-gap: var(--asv-base-space-0);
   --asv-component-mode-switch-padding: var(--asv-space-1);
   --asv-component-mode-switch-shadow: none;
   --asv-component-mode-switch-backdrop-filter: none;
@@ -507,12 +507,13 @@
   --asv-component-state-info-header-padding-block: var(--asv-file-header-padding-block);
   --asv-component-state-info-body-padding-block-start: var(--asv-space-4);
   --asv-component-state-info-body-gap: var(--asv-space-3);
-  --asv-component-state-skeleton-line-height: var(--asv-control-height-sm);
+  --asv-component-state-skeleton-line-height: var(--asv-base-space-16);
   --asv-component-state-skeleton-line-radius: var(--asv-radius-sm);
   --asv-component-state-skeleton-line-background: color-mix(in srgb, var(--asv-color-text-tertiary) 14%, transparent);
   --asv-component-state-skeleton-line-width: 68%;
   --asv-component-state-skeleton-line-width-secondary: 48%;
   --asv-component-state-text-color: var(--asv-color-text-secondary);
+  --asv-component-state-text-line-height: 20px;
   --asv-component-layer-row-min-height: 56px;
   --asv-component-layer-row-gap: var(--asv-base-space-10);
   --asv-component-layer-row-padding-block: var(--asv-space-1);

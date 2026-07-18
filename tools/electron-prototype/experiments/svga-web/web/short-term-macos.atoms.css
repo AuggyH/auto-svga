@@ -267,7 +267,7 @@ button.danger {
   width: var(--asv-empty-state-replaceable-icon-size);
   height: var(--asv-empty-state-replaceable-icon-size);
   border: var(--asv-empty-state-icon-border);
-  border-radius: var(--asv-radius-full);
+  border-radius: var(--asv-radius-pill);
   background: var(--asv-empty-state-icon-background);
 }
 
@@ -287,7 +287,7 @@ button.danger {
   bottom: calc(var(--asv-space-1) * -1);
   width: var(--asv-space-2);
   height: var(--asv-space-2);
-  border-radius: var(--asv-radius-full);
+  border-radius: var(--asv-radius-pill);
   background: currentColor;
   content: "";
 }

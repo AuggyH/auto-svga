@@ -893,7 +893,7 @@ canvas {
   margin: 0;
   color: var(--asv-component-state-text-color);
   font-size: var(--asv-type-size-body);
-  line-height: var(--asv-type-line-normal);
+  line-height: var(--asv-component-state-text-line-height);
 }
 
 .rightSurfaceBody > .factGrid,

@@ -305,6 +305,25 @@ function collectMissingTokenValues(source, expectedTokens) {
   return missing;
 }
 
+function collectUnresolvedCustomPropertyReferences(cssSources) {
+  const definitions = new Set();
+  const references = [];
+  for (const [file, source] of cssSources) {
+    for (const match of source.matchAll(/(--asv-[\w-]+)\s*:/g)) {
+      definitions.add(match[1]);
+    }
+    for (const match of source.matchAll(/var\(\s*(--asv-[\w-]+)(\s*,)?/g)) {
+      references.push({
+        file,
+        name: match[1],
+        hasFallback: Boolean(match[2]),
+        line: lineNumber(source, match.index ?? 0)
+      });
+    }
+  }
+  return references.filter((reference) => !reference.hasFallback && !definitions.has(reference.name));
+}
+
 function collectMappedValues(designSystemMap, fieldName, sections = designSystemCatalogSections) {
   return sections
     .flatMap((section) => designSystemMap[section] ?? [])
@@ -565,8 +584,10 @@ async function main() {
   const cssFiles = (await readdir(webRoot))
     .filter((file) => file.startsWith("short-term-macos") && file.endsWith(".css"))
     .sort();
+  const cssSources = new Map();
   for (const cssFile of cssFiles) {
     const source = await readFile(path.join(webRoot, cssFile), "utf8");
+    cssSources.set(cssFile, source);
     if (cssFile !== "short-term-macos.tokens.css") {
       const rawColors = collectRawColors(source);
       record(`no-raw-color-outside-tokens:${cssFile}`, rawColors.length === 0, { rawColors });
@@ -580,6 +601,10 @@ async function main() {
       });
     }
   }
+  const unresolvedCustomPropertyReferences = collectUnresolvedCustomPropertyReferences(cssSources);
+  record("owner-visible-custom-properties-resolve", unresolvedCustomPropertyReferences.length === 0, {
+    unresolvedCustomPropertyReferences
+  });
 
   const atoms = await readFile(path.join(webRoot, "short-term-macos.atoms.css"), "utf8");
   const tokens = await readFile(path.join(webRoot, "short-term-macos.tokens.css"), "utf8");

@@ -363,8 +363,8 @@
 }
 
 .factMoreInfo summary:focus-visible {
-  outline: var(--asv-focus-ring);
-  outline-offset: var(--asv-focus-offset);
+  outline: none;
+  box-shadow: var(--asv-focus);
 }
 
 .factMoreInfoGrid {
