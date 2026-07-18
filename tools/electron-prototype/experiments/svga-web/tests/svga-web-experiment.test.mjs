@@ -1608,12 +1608,14 @@ test("macOS Info.plist security audit rejects arbitrary network, unused permissi
   assert.ok(audit.finderDocumentAssociations.includes("CFBundleDocumentTypes"));
 });
 
-test("macOS native picker proof uses the real owner action and rejects disabled Open before autoplay", async () => {
+test("macOS native picker proof binds the Standard Additions process and rejects disabled selection before autoplay", async () => {
   const source = await readFile(
     path.join(experimentRoot, "scripts/run-macos-native-multiformat-picker-proof.mjs"),
     "utf8"
   );
   assert.match(source, /__autoSvgaShortTermActions\.openFromHostDialog/);
+  assert.match(source, /waitForNewPickerPid/);
+  assert.match(source, /exactProcessPids\("osascript"\)/);
   assert.match(source, /AXDefaultButton/);
   assert.match(source, /openButtonEnabled/);
   assert.match(source, /native Open button remained disabled/);
@@ -2970,13 +2972,8 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
   const openFromPicker = async (filePath, label) => {
     const pickerResult = await chooseMultiFormatLocalFile({
       platform: "darwin",
-      async showOpenDialog(options) {
-        assert.deepEqual(options.filters, [
-          { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["*"] }
-        ]);
-        assert.deepEqual(options.properties, ["openFile"]);
-        return { canceled: false, filePaths: [filePath] };
-      }
+      async runDarwinPicker() { return { status: "selected", filePath }; },
+      readStats: () => ({ isFile: () => true })
     });
     assert.deepEqual(pickerResult, { status: "selected", filePath });
     return withTerminalTestDeadline(session.openLocalFilePath(pickerResult.filePath, "fileButton"), label);

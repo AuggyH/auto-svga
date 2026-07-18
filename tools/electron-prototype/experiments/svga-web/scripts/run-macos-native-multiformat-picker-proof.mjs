@@ -254,40 +254,37 @@ function run(argv) {
   const directoryPath = String(argv[1]);
   const basename = String(argv[2]);
   const events = Application("System Events");
-  const owner = events.applicationProcesses.byName("Auto SVGA");
-  if (!owner.exists() || Number(owner.unixId()) !== ownerPid) throw new Error("owner_process_missing");
+  const owner = events.applicationProcesses().find((process) => Number(process.unixId()) === ownerPid);
+  if (!owner) throw new Error("owner_process_missing");
   owner.frontmost.set(true);
 
-  function ownerSheet() {
+  function ownerPanel() {
     try {
       const windows = owner.windows();
-      for (const window of windows) {
-        const sheets = window.sheets();
-        if (sheets.length > 0) return sheets[0];
-      }
+      return windows.length > 0 ? windows[0] : null;
     } catch {}
     return null;
   }
 
-  function defaultButton(sheet) {
+  function defaultButton(panel) {
     let buttons = [];
-    try { buttons = sheet.buttons(); } catch {}
+    try { buttons = panel.buttons(); } catch {}
     for (const button of buttons) {
       try {
         const subrole = String(button.subrole() || "");
         const name = String(button.name() || "");
-        if (subrole === "AXDefaultButton" || name === "Open" || name === "打开") return button;
+        if (subrole === "AXDefaultButton" || name === "Choose" || name === "选取") return button;
       } catch {}
     }
     return null;
   }
 
-  let sheet = null;
-  for (let attempt = 0; attempt < 80 && !sheet; attempt += 1) {
-    sheet = ownerSheet();
-    if (!sheet) delay(0.1);
+  let panel = null;
+  for (let attempt = 0; attempt < 80 && !panel; attempt += 1) {
+    panel = ownerPanel();
+    if (!panel) delay(0.1);
   }
-  if (!sheet) throw new Error("native_open_panel_missing");
+  if (!panel) throw new Error("native_open_panel_missing");
   events.keystroke("g", { using: ["command down", "shift down"] });
   delay(0.4);
   events.keystroke(directoryPath);
@@ -295,12 +292,12 @@ function run(argv) {
   delay(0.9);
   events.keystroke(basename);
   delay(0.7);
-  sheet = ownerSheet();
-  let button = sheet ? defaultButton(sheet) : null;
+  panel = ownerPanel();
+  let button = panel ? defaultButton(panel) : null;
   for (let attempt = 0; attempt < 40 && !button; attempt += 1) {
     delay(0.1);
-    sheet = ownerSheet();
-    button = sheet ? defaultButton(sheet) : null;
+    panel = ownerPanel();
+    button = panel ? defaultButton(panel) : null;
   }
   if (!button) throw new Error("native_open_button_missing");
   const enabled = Boolean(button.enabled());
@@ -330,22 +327,19 @@ function runNativePanelCancel(pid) {
 function run(argv) {
   const ownerPid = Number(argv[0]);
   const events = Application("System Events");
-  const owner = events.applicationProcesses.byName("Auto SVGA");
-  if (!owner.exists() || Number(owner.unixId()) !== ownerPid) throw new Error("owner_process_missing");
+  const owner = events.applicationProcesses().find((process) => Number(process.unixId()) === ownerPid);
+  if (!owner) throw new Error("owner_process_missing");
   owner.frontmost.set(true);
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try {
       const windows = owner.windows();
       for (const window of windows) {
-        const sheets = window.sheets();
-        for (const sheet of sheets) {
-          const buttons = sheet.buttons();
-          for (const button of buttons) {
-            const name = String(button.name() || "");
-            if (name === "Cancel" || name === "取消") {
-              button.click();
-              return JSON.stringify({ cancelled: true, buttonName: name });
-            }
+        const buttons = window.buttons();
+        for (const button of buttons) {
+          const name = String(button.name() || "");
+          if (name === "Cancel" || name === "取消") {
+            button.click();
+            return JSON.stringify({ cancelled: true, buttonName: name });
           }
         }
       }
@@ -361,6 +355,28 @@ function run(argv) {
     stdio: ["ignore", "pipe", "pipe"]
   });
   return JSON.parse(output.trim());
+}
+
+function exactProcessPids(name) {
+  try {
+    return execFileSync("/usr/bin/pgrep", ["-x", name], { encoding: "utf8" })
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map(Number)
+      .filter(Number.isInteger);
+  } catch {
+    return [];
+  }
+}
+
+async function waitForNewPickerPid(beforePids) {
+  const before = new Set(beforePids);
+  return waitFor(() => exactProcessPids("osascript").find((pid) => !before.has(pid)), {
+    timeoutMs: 8000,
+    intervalMs: 50,
+    label: "Standard Additions picker process"
+  });
 }
 
 const rendererSnapshotExpression = String.raw`(() => {
@@ -400,9 +416,11 @@ function rendererReadyForFormat(snapshot, row) {
   return snapshot.runtimeCanvas.width > 0 && snapshot.runtimeCanvas.height > 0 && snapshot.videoReadyState >= 2;
 }
 
-async function proveRow(client, pid, row) {
+async function proveRow(client, row) {
+  const beforePickerPids = exactProcessPids("osascript");
   await client.evaluate("void window.__autoSvgaShortTermActions.openFromHostDialog()");
-  const picker = runNativePanelSelection(pid, row.filePath);
+  const pickerPid = await waitForNewPickerPid(beforePickerPids);
+  const picker = runNativePanelSelection(pickerPid, row.filePath);
   if (!picker.openButtonEnabled || !picker.submitted) {
     throw new Error(`${row.alias} native Open button remained disabled.`);
   }
@@ -476,11 +494,13 @@ async function main() {
       { timeoutMs: 15000, label: "owner Open action" }
     );
     const results = [];
-    for (const row of rows) results.push(await proveRow(client, child.pid, row));
+    for (const row of rows) results.push(await proveRow(client, row));
 
     const beforeCancel = await client.evaluate(rendererSnapshotExpression);
+    const beforeCancelPickerPids = exactProcessPids("osascript");
     await client.evaluate("void window.__autoSvgaShortTermActions.openFromHostDialog()");
-    const cancel = runNativePanelCancel(child.pid);
+    const cancelPickerPid = await waitForNewPickerPid(beforeCancelPickerPids);
+    const cancel = runNativePanelCancel(cancelPickerPid);
     const afterCancel = await waitFor(async () => {
       const snapshot = await client.evaluate(rendererSnapshotExpression);
       return snapshot.fileIdentity === beforeCancel.fileIdentity && snapshot.format === beforeCancel.format

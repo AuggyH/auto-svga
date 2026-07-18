@@ -22,10 +22,15 @@ import {
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const {
+  DARWIN_MULTI_FORMAT_PICKER_JXA,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,
+  parseDarwinPickerOutput,
+  runDarwinMultiFormatPicker,
   validateMultiFormatPickerSelection
 } = require("../multiformat-native-picker.cjs");
+
+const regularFileStats = () => ({ isFile: () => true });
 
 function source(relativePath) {
   return readFileSync(path.join(experimentRoot, relativePath), "utf8");
@@ -145,7 +150,7 @@ test("host chooser cancellation cannot enter loading or resize the Launch window
   assert.match(openBody, /resolveMultiFormatChooserOutcome/u);
 });
 
-test("macOS multi-format picker clears native type admission and validates the selected extension in the host", () => {
+test("macOS multi-format picker uses bounded Standard Additions and validates selection in the host", async () => {
   const mainSource = source("main.cjs");
   const pickerSource = source("multiformat-native-picker.cjs");
   const openStart = mainSource.indexOf("async function openMultiFormatFile()");
@@ -154,25 +159,45 @@ test("macOS multi-format picker clears native type admission and validates the s
 
   assert.match(openBody, /chooseMultiFormatLocalFile/u);
   assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
+  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /Application\.currentApplication\(\)/u);
+  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /includeStandardAdditions = true/u);
+  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /chooseFile/u);
+  assert.doesNotMatch(DARWIN_MULTI_FORMAT_PICKER_JXA, /System Events|function run\(argv\)/u);
 
   const options = createMultiFormatOpenDialogOptions("darwin");
-  assert.deepEqual(options.filters, [
-    { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["*"] }
-  ]);
+  assert.deepEqual(options.filters[0].extensions, ["svga", "json", "mp4"]);
   assert.deepEqual(options.properties, ["openFile"]);
   assert.deepEqual(createMultiFormatOpenDialogOptions("win32").filters[0].extensions, ["svga", "json", "mp4"]);
   for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.JSON", "/private/tmp/example.mp4"]) {
-    assert.deepEqual(validateMultiFormatPickerSelection(filePath), { status: "selected", filePath });
+    assert.deepEqual(validateMultiFormatPickerSelection(filePath, regularFileStats), { status: "selected", filePath });
   }
-  assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.txt"), {
+  assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.txt", regularFileStats), {
     status: "failed",
     code: "unsupported_file_type",
     message: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
     pathRedacted: true
   });
+  assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.svga", () => ({ isFile: () => false })), {
+    status: "failed",
+    code: "file_picker_failed",
+    message: "无法打开文件选择器，源文件没有被修改。",
+    pathRedacted: true
+  });
+
+  const calls = [];
+  assert.deepEqual(await runDarwinMultiFormatPicker(async (command, args, options) => {
+    calls.push({ command, args, options });
+    return { stdout: JSON.stringify({ status: "selected", filePath: "/private/tmp/example.svga" }) };
+  }), { status: "selected", filePath: "/private/tmp/example.svga" });
+  assert.equal(calls[0].command, "/usr/bin/osascript");
+  assert.deepEqual(calls[0].args.slice(0, 3), ["-l", "JavaScript", "-e"]);
+  assert.equal(calls[0].args.length, 4);
+  assert.doesNotMatch(calls[0].args.join("\n"), /\/private\/tmp\/example\.svga/u);
+  assert.deepEqual(parseDarwinPickerOutput('{"status":"cancelled"}\n'), { status: "cancelled" });
+  assert.equal(parseDarwinPickerOutput("not-json").code, "file_picker_failed");
 });
 
-test("multi-format native picker is owned by the active BrowserWindow and fails typed without an owner", async () => {
+test("non-Darwin native picker remains owned by the active BrowserWindow", async () => {
   const mainSource = source("main.cjs");
   const openStart = mainSource.indexOf("async function openMultiFormatFile()");
   const openEnd = mainSource.indexOf("async function openDroppedMultiFormatFile", openStart);
@@ -186,7 +211,7 @@ test("multi-format native picker is owned by the active BrowserWindow and fails 
   assert.match(ownerHelper, /dialog\.showOpenDialog\(activeMainWindow, options\)/);
 
   const ownerMissing = await chooseMultiFormatLocalFile({
-    platform: "darwin",
+    platform: "win32",
     async showOpenDialog() {
       throw new Error("active picker owner unavailable at /Users/alice/Secret Project/input.svga");
     }
@@ -217,37 +242,26 @@ test("host picker cancellation waits for the human decision without a renderer d
 });
 
 test("host picker returns cancel, selected formats, and redacted invalid input without opening early", async () => {
-  const observedOptions = [];
   for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.json", "/private/tmp/example.mp4"]) {
     const result = await chooseMultiFormatLocalFile({
       platform: "darwin",
-      async showOpenDialog(options) {
-        observedOptions.push(options);
-        return { canceled: false, filePaths: [filePath] };
-      }
+      async runDarwinPicker() { return { status: "selected", filePath }; },
+      readStats: regularFileStats
     });
     assert.deepEqual(result, { status: "selected", filePath });
   }
   assert.deepEqual(await chooseMultiFormatLocalFile({
     platform: "darwin",
-    async showOpenDialog() {
-      return { canceled: true, filePaths: [] };
-    }
+    async runDarwinPicker() { return { status: "cancelled" }; }
   }), { status: "cancelled" });
-  assert.equal(observedOptions.length, 3);
-  assert.ok(observedOptions.every((options) => (
-    options.filters.length === 1
-    && options.filters[0].extensions.join(",") === "*"
-  )));
-  assert.ok(observedOptions.every(({ properties }) => properties.length === 1 && properties[0] === "openFile"));
 });
 
 test("unsupported picker selection stays typed and mutation-free through the renderer contract", async () => {
   const authority = { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 };
   const hostResult = await chooseMultiFormatLocalFile({
     platform: "darwin",
-    async showOpenDialog() {
-      return { canceled: false, filePaths: ["/Users/alice/Secret Project/input.txt"] };
+    async runDarwinPicker() {
+      return { status: "selected", filePath: "/Users/alice/Secret Project/input.txt" };
     }
   });
   if (hostResult.status === "selected") authority.sessionOpenCalls += 1;
@@ -286,7 +300,7 @@ test("picker exception stays typed and mutation-free through the renderer contra
   const authority = { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 };
   const hostResult = await chooseMultiFormatLocalFile({
     platform: "darwin",
-    async showOpenDialog() {
+    async runDarwinPicker() {
       throw new Error("Picker failed at /Users/alice/Secret Project/input.svga");
     }
   });
