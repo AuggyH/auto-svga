@@ -3972,14 +3972,21 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     const [imageGroup, capabilityGroup, diagnosticGroup] = nodes.assetList.children;
     assert.equal(nodes.assetList.children.length, 3);
     assert.equal(nodes.assetFilterTabs.dataset.presentation, "summary");
+    const summaryText = (child) => child.children.map((part) => part.textContent).join("");
     assert.deepEqual(
-      nodes.assetFilterTabs.children.map((child) => child.textContent),
+      nodes.assetFilterTabs.children.map(summaryText),
       ["全部 (5)", "图片 (3)", "问题 (3)"]
     );
     assert.deepEqual(
       nodes.assetFilterTabs.children.map((child) => child.dataset.summaryId),
       ["all", "images", "issues"]
     );
+    for (const child of nodes.assetFilterTabs.children) {
+      assert.deepEqual(
+        child.children.map((part) => part.className),
+        ["assetSummaryLabel", "assetSummaryCount"]
+      );
+    }
     assert.equal(imageGroup.dataset.empty, "false");
     assert.equal(capabilityGroup.dataset.empty, "false");
     assert.equal(diagnosticGroup.dataset.status, "warning");

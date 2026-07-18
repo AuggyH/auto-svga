@@ -1013,6 +1013,21 @@ canvas {
   white-space: nowrap;
 }
 
+.assetSummaryLabel,
+.assetSummaryCount {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assetSummaryLabel {
+  color: inherit;
+}
+
+.assetSummaryCount {
+  color: var(--asv-asset-summary-count-color);
+}
+
 .assetSummaryItem[data-summary-id="all"] {
   background: var(--asv-asset-filter-tab-selected-bg);
   color: var(--asv-asset-filter-tab-selected-color);

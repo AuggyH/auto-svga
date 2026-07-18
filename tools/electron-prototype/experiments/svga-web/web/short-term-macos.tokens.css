@@ -387,6 +387,7 @@
   --asv-component-asset-summary-line-height: 14px;
   --asv-component-asset-summary-font-weight: var(--asv-type-auxiliary-weight);
   --asv-component-asset-summary-color: var(--asv-color-text-secondary);
+  --asv-component-asset-summary-count-color: var(--asv-color-text-tertiary);
   --asv-component-asset-group-gap: var(--asv-space-1);
   --asv-component-asset-group-section-gap: var(--asv-space-3);
   --asv-component-asset-group-header-gap: var(--asv-space-2);
@@ -946,6 +947,7 @@
   --asv-asset-summary-line-height: var(--asv-component-asset-summary-line-height);
   --asv-asset-summary-font-weight: var(--asv-component-asset-summary-font-weight);
   --asv-asset-summary-color: var(--asv-component-asset-summary-color);
+  --asv-asset-summary-count-color: var(--asv-component-asset-summary-count-color);
   --asv-asset-group-gap: var(--asv-component-asset-group-gap);
   --asv-asset-group-section-gap: var(--asv-component-asset-group-section-gap);
   --asv-asset-group-header-gap: var(--asv-component-asset-group-header-gap);

@@ -724,7 +724,13 @@ export function createMultiFormatDesktopPreviewController({
     summary.dataset.summaryId = item.id;
     summary.dataset.count = String(item.count);
     summary.setAttribute("role", "listitem");
-    summary.textContent = `${item.label} (${item.count})`;
+    const labelNode = document.createElement("span");
+    labelNode.className = "assetSummaryLabel";
+    labelNode.textContent = item.label;
+    const countNode = document.createElement("span");
+    countNode.className = "assetSummaryCount";
+    countNode.textContent = ` (${item.count})`;
+    summary.replaceChildren(labelNode, countNode);
     const label = rowLabel(item.label, String(item.count));
     summary.title = label;
     summary.setAttribute("aria-label", label);
