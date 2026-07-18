@@ -133,6 +133,37 @@ test("short-term metric values split units only for simple numeric facts", async
   }), /302 <span class="factValueUnit">B<\/span>[\s\S]*242 <span class="factValueUnit">B<\/span>/);
 });
 
+test("short-term thumbnail renderer follows frozen image sequence and audio variants", async () => {
+  const { renderThumbnailHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-thumbnail-renderers.mjs")).href);
+  const imageDataUrl = "data:image/png;base64,AA==";
+  const model = {
+    thumbnails: {
+      imageDataUrlsByResourceId: {
+        image_0: imageDataUrl,
+        image_1: imageDataUrl,
+        image_2: imageDataUrl,
+        image_3: imageDataUrl
+      }
+    }
+  };
+
+  const imageHtml = renderThumbnailHtml({ type: "image", resourceIds: ["image_0"] }, model);
+  const sequenceHtml = renderThumbnailHtml({
+    type: "sequence-four-grid",
+    resourceIds: ["image_0", "image_1", "image_2", "image_3"]
+  }, model);
+  const audioHtml = renderThumbnailHtml({ type: "music" }, model);
+  const emptyAudioHtml = renderThumbnailHtml({ type: "audio-empty" }, model);
+
+  assert.equal((imageHtml.match(/<img /g) ?? []).length, 1);
+  assert.equal((sequenceHtml.match(/<img /g) ?? []).length, 4);
+  assert.match(audioHtml, /data-component="ThumbnailAudioIcon"/);
+  assert.match(audioHtml, /data-state="available"/);
+  assert.match(emptyAudioHtml, /data-component="ThumbnailAudioIcon"/);
+  assert.match(emptyAudioHtml, /data-state="empty"/);
+  assert.doesNotMatch(`${audioHtml}${emptyAudioHtml}`, />音频<|无音频/u);
+});
+
 test("short-term right surface normalizes core fact labels to frozen design copy", async () => {
   const {
     factDisplayLabel,
@@ -519,7 +550,7 @@ test("short-term asset filters support roving keyboard model and interaction han
 
 test("short-term asset empty filters follow frozen no-sequence and no-audio states", async () => {
   const { overviewTabView, assetFilterTabCopy, assetFilterEmptyCopy } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs")).href);
-  const { renderAssetList } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-renderers.mjs")).href);
+  const { createAssetRow, renderAssetList } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-renderers.mjs")).href);
   const originalDocument = globalThis.document;
 
   try {
@@ -553,6 +584,37 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
     assert.equal(nodes.assetList.children.length, 1);
     assert.match(nodes.assetList.children[0].innerHTML, /300×300 · 41\.8 KB/u);
     assert.doesNotMatch(nodes.assetList.children[0].innerHTML, /300 x 300/u);
+    assert.match(nodes.assetList.children[0].innerHTML, /data-component="ThumbnailFrame" data-variant="image"/);
+
+    const sequenceRow = createAssetRow({
+      kind: "sequence",
+      name: "序列帧",
+      dimensions: "300 x 300",
+      fileSize: "2.7 MB",
+      findingCodes: [],
+      thumbnail: {
+        type: "sequence-four-grid",
+        resourceIds: ["frame_0", "frame_1", "frame_2", "frame_3"]
+      }
+    }, model);
+    const audioRow = createAssetRow({
+      kind: "audio",
+      name: "音频资产",
+      dimensions: "",
+      fileSize: "2.3 s",
+      findingCodes: [],
+      thumbnail: { type: "music" }
+    }, {
+      ...model,
+      overview: {
+        ...model.overview,
+        audioGroup: { status: "available", copy: "" }
+      }
+    });
+    assert.match(sequenceRow.innerHTML, /data-component="ThumbnailFrame" data-variant="sequence"/);
+    assert.match(audioRow.innerHTML, /data-component="ThumbnailFrame" data-variant="audio"/);
+    assert.match(audioRow.innerHTML, /data-component="ThumbnailAudioIcon"/);
+    assert.doesNotMatch(audioRow.innerHTML, />音频<|无音频/u);
 
     renderAssetList(nodes, view, model, "sequence");
     assert.deepEqual(
@@ -6702,6 +6764,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-toolbar-control-bg: var\(--asv-component-toolbar-control-background\)/);
   assert.match(shortTermTokens, /--asv-component-asset-list-gap: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-thumbnail-size: 48px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-sequence-cell-size: 16px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-sequence-gap: 4px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-audio-icon-width: 17px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-audio-icon-height: 32px/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-audio-icon-color: var\(--asv-color-text-tertiary\)/);
   assert.match(shortTermTokens, /--asv-component-right-panel-width: 360px/);
   assert.match(shortTermTokens, /--asv-component-right-panel-padding: var\(--asv-space-4\)/);
   assert.match(shortTermTokens, /--asv-component-right-surface-content-width: calc\(var\(--asv-component-right-panel-width\) - \(var\(--asv-component-right-panel-padding\) \* 2\)\)/);
@@ -8516,6 +8583,8 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
   assert.match(dataComponentAllowlist, /DragDecisionOverlay/);
   assert.match(dataComponentAllowlist, /CanvasToast/);
+  assert.match(dataComponentAllowlist, /ThumbnailFrame/);
+  assert.match(dataComponentAllowlist, /ThumbnailAudioIcon/);
   assert.match(source, /const disallowedLaunchCopyPatterns = \[/);
   assert.match(source, /launch-page-copy-stays-minimal/);
   assert.match(source, /const disallowedLegacySurfaceCopyPatterns = \[/);

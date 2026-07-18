@@ -44,6 +44,7 @@ export function createOverviewMoreInfoDisclosure(facts) {
 
 export function createAssetRow(asset, model) {
   const row = document.createElement("article");
+  const thumbnailVariant = asset.kind === "sequence" ? "sequence" : asset.kind === "audio" ? "audio" : "image";
   row.className = "assetRow";
   row.dataset.component = asset.kind === "sequence" ? "SequenceThumbnail" : asset.kind === "audio" ? "AudioAssetRow" : "AssetRow";
   row.dataset.kind = asset.kind;
@@ -57,7 +58,7 @@ export function createAssetRow(asset, model) {
   const badgeClass = asset.findingCodes.length > 0 ? " review" : "";
   row.title = `${asset.name} ${detail}`;
   row.innerHTML = `
-    <span class="thumb ${asset.kind === "sequence" ? "sequence" : asset.kind === "audio" ? "audio" : ""}">${renderThumbnailHtml(asset.thumbnail, model)}</span>
+    <span class="thumb ${thumbnailVariant === "image" ? "" : thumbnailVariant}" data-component="ThumbnailFrame" data-variant="${thumbnailVariant}">${renderThumbnailHtml(asset.thumbnail, model)}</span>
     <span class="rowText"><strong>${escapeHtml(asset.name)}</strong><span>${escapeHtml(detail)}</span></span>
     ${badgeCopy ? `<span class="badge${badgeClass}">${escapeHtml(badgeCopy)}</span>` : ""}
   `;

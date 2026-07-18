@@ -3,10 +3,11 @@ import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs"
 
 export function createEditLayerRow(asset, model) {
   const row = document.createElement("article");
+  const thumbnailVariant = asset.kind === "sequence" ? "sequence" : "image";
   row.className = "layerRow";
   row.dataset.component = "LayerRow";
   row.innerHTML = `
-    <span class="thumb ${asset.kind === "sequence" ? "sequence" : ""}">${renderThumbnailHtml(asset.thumbnail, model)}</span>
+    <span class="thumb ${thumbnailVariant === "sequence" ? "sequence" : ""}" data-component="ThumbnailFrame" data-variant="${thumbnailVariant}">${renderThumbnailHtml(asset.thumbnail, model)}</span>
     <span class="layerRowText"><strong>${escapeHtml(asset.name)}</strong></span>
   `;
   return row;

@@ -37,7 +37,7 @@ export function createReplaceableImageRow(item, index, options) {
   if (options.renaming) {
     row.innerHTML = `
       <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-      <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
+      <span class="thumb" data-component="ThumbnailFrame" data-variant="image">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
       <label class="rowText renameEditor">新 imageKey
         <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
       </label>
@@ -55,7 +55,7 @@ export function createReplaceableImageRow(item, index, options) {
       : `<button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(label)} 操作">${rowMenuIconHtml}</button>`;
     row.innerHTML = `
       <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-      <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
+      <span class="thumb" data-component="ThumbnailFrame" data-variant="image">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
       <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(detail)}</span></span>
       ${trailingAction}
     `;

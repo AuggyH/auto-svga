@@ -49,6 +49,8 @@ const allowedDataComponents = new Set([
   "MetricOptimizationEntry",
   "AssetRow",
   "AssetFilterTabs",
+  "ThumbnailFrame",
+  "ThumbnailAudioIcon",
   "SequenceThumbnail",
   "AudioAssetRow",
   "ReplaceableImageRow",
