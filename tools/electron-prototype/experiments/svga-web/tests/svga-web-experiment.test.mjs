@@ -4148,15 +4148,9 @@ test("0.2 replaceable empty state uses frozen Figma copy and section state", asy
     assert.equal(nodes.replaceableList.children.length, 1);
     assert.equal(nodes.replaceableList.children[0].className, "emptyText");
     assert.equal(nodes.replaceableList.children[0].dataset.component, "InlineStatus");
-    assert.equal(nodes.replaceableList.children[0].dataset.variant, "explanatory");
-    assert.deepEqual(
-      nodes.replaceableList.children[0].children.map((child) => child.textContent),
-      [
-        "未发现可替换元素",
-        "仅包含自动命名资源（如 img_000），",
-        "不满足可替换元素命名规则"
-      ]
-    );
+    assert.equal(nodes.replaceableList.children[0].dataset.variant, undefined);
+    assert.equal(nodes.replaceableList.children[0].textContent, "未发现可替换元素");
+    assert.equal(nodes.replaceableList.children[0].children.length, 0);
     assert.equal(nodes.replaceableList.dataset.empty, "false");
     assert.equal(nodes.textElementList.children.length, 0);
     assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
@@ -4166,7 +4160,7 @@ test("0.2 replaceable empty state uses frozen Figma copy and section state", asy
   }
 });
 
-test("0.1 replaceable empty state keeps imageKey module and Figma explanatory copy", async () => {
+test("0.1 replaceable empty state keeps imageKey module and Figma single-line copy", async () => {
   const {
     renderShortTermReplaceableImages,
     renderShortTermRuntimeTextElements
@@ -4198,15 +4192,9 @@ test("0.1 replaceable empty state keeps imageKey module and Figma explanatory co
     const empty = nodes.replaceableList.children[0];
     assert.equal(empty.className, "emptyText");
     assert.equal(empty.dataset.component, "InlineStatus");
-    assert.equal(empty.dataset.variant, "explanatory");
-    assert.deepEqual(
-      empty.children.map((child) => child.textContent),
-      [
-        "未发现可替换元素",
-        "仅包含自动命名资源（如 img_000），",
-        "不满足可替换元素命名规则"
-      ]
-    );
+    assert.equal(empty.dataset.variant, undefined);
+    assert.equal(empty.textContent, "未发现可替换元素");
+    assert.equal(empty.children.length, 0);
   } finally {
     globalThis.document = originalDocument;
   }

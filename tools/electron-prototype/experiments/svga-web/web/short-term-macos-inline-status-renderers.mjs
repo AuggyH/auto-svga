@@ -24,8 +24,5 @@ export function createInlineStatusText(copy, details = []) {
 }
 
 export function createReplaceableEmptyStatus() {
-  return createInlineStatusText("未发现可替换元素", [
-    "仅包含自动命名资源（如 img_000），",
-    "不满足可替换元素命名规则"
-  ]);
+  return createInlineStatusText("未发现可替换元素");
 }

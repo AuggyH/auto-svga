@@ -122,7 +122,7 @@ test("multi-format owner copy hides host and runtime implementation language", (
   assert.match(controllerSource, /createReplaceableEmptyStatus/u);
   assert.doesNotMatch(controllerSource, /仅包含自动命名资源/u);
   assert.match(inlineStatusSource, /未发现可替换元素/u);
-  assert.match(inlineStatusSource, /仅包含自动命名资源（如 img_000），/u);
+  assert.doesNotMatch(inlineStatusSource, /仅包含自动命名资源|不满足可替换元素命名规则/u);
   assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount, hasReplacementPreview\)/u);
   assert.match(controllerSource, /\.launchPrompt p"\)\?\.replaceChildren\("拖拽文件到此处"\)/u);
   assert.doesNotMatch(controllerSource, /拖拽 SVGA \/ Lottie JSON \/ VAP MP4 到此处/u);
