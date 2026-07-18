@@ -11,6 +11,7 @@ import {
   showShortTermCanvasToast,
   showShortTermDragDecisionOverlay
 } from "./short-term-macos-drag-decision-surface.mjs";
+import { createInlineStatusText } from "./short-term-macos-inline-status-renderers.mjs";
 import {
   applyShortTermAppearance,
   closeShortTermSettings,
@@ -881,8 +882,13 @@ export function createMultiFormatDesktopPreviewController({
         publicRuntimeReplacementTargets
       )
     }));
-    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(imageCount, textCount);
-    nodes.replaceableList.closest?.(".replaceableSection")?.setAttribute("data-empty", imageCount + textCount > 0 ? "false" : "true");
+    const totalCount = imageCount + textCount;
+    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount);
+    nodes.replaceableList.closest?.(".replaceableSection")?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
+    if (totalCount === 0) {
+      nodes.replaceableList.replaceChildren(createInlineStatusText("未发现可替换元素"));
+      return;
+    }
     nodes.replaceableList.replaceChildren(...targets.map((target, index) => createReplaceableImageRow(target, index, {
       model,
       selected: state.selectedImageKey === target.imageKey,
@@ -892,11 +898,8 @@ export function createMultiFormatDesktopPreviewController({
     })));
   }
 
-  function replaceableElementSummaryCopy(imageCount, textCount) {
-    if (imageCount > 0 && textCount > 0) return `${imageCount} 个图片 · ${textCount} 个文本`;
-    if (imageCount > 0) return `${imageCount} 个可替换图片`;
-    if (textCount > 0) return `${textCount} 个可替换文本`;
-    return "未发现可替换元素";
+  function replaceableElementSummaryCopy(totalCount) {
+    return `(${Math.max(0, totalCount)})`;
   }
 
   function renderTextTargets() {
@@ -914,6 +917,7 @@ export function createMultiFormatDesktopPreviewController({
         replacementActive: Boolean(active)
       };
     });
+    nodes.textElementList.dataset.empty = targets.length > 0 ? "false" : "true";
     replaceRuntimeTextRows(nodes.textElementList, targets.map((target, index) => createTextElementRow(target, index, {
       selected: state.selectedTextKey === target.textKey,
       replacementActive: target.replacementActive

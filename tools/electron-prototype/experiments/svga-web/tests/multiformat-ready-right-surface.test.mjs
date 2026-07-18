@@ -323,7 +323,7 @@ test("SVGA, Lottie, and VAP ready right surfaces share the owner snapshot hierar
     assert.equal(panel.assetInventory.summary.replaceableItems, 2);
     assert.deepEqual(
       multiFormatInventorySummaryItems(panel.assetInventory.summary).map((item) => `${item.id}:${item.count}`),
-      ["images:1", "texts:1"]
+      ["all:2", "images:1", "texts:1"]
     );
     assert.equal(panel.assetInventory.groups.length, 2);
     assert.equal(panel.assetInventory.groups.every((group) => group.replaceableCount === 1), true);
@@ -466,7 +466,8 @@ test("ready workspace right surface keeps tokenized density and containment cont
   assert.match(molecules, /\.resetImagePreviewButton:focus-visible\s*\{[^}]*box-shadow:\s*var\(--asv-focus\)/su);
   assert.match(molecules, /\.replacementRowActions\s*\{[^}]*max-width:\s*100%/su);
   assert.match(components, /\.assetRow \.badge\s*\{[^}]*text-overflow:\s*ellipsis/su);
-  assert.match(modules, /\.assetFilterTabs\[data-presentation="summary"\]\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/su);
+  assert.match(modules, /\.assetFilterTabs\[data-presentation="summary"\]\s*\{[^}]*flex-wrap:\s*wrap/su);
+  assert.match(modules, /\.assetSummaryItem\[data-summary-id="all"\]\s*\{[^}]*background:\s*var\(--asv-asset-filter-tab-selected-bg\)/su);
   assert.match(modules, /\.assetGroup\[data-status="warning"\] \.assetGroupHeader\s*\{[^}]*background:\s*var\(--asv-asset-group-header-warning-bg\)/su);
   assert.match(modules, /\.assetGroup\[data-status="blocked"\] \.assetGroupHeader\s*\{[^}]*background:\s*var\(--asv-asset-group-header-blocked-bg\)/su);
   assert.match(modules, /\.assetGroup\[data-empty="true"\] \.assetGroupHeader\s*\{[^}]*opacity:\s*var\(--asv-asset-group-empty-opacity\)/su);

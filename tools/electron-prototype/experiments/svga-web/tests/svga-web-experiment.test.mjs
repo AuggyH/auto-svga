@@ -1116,6 +1116,97 @@ test("short-term drag decision hit testing keeps Compare opt-in at the top", asy
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "open");
 });
 
+test("0.2 multi-format drag affordance accepts Lottie and VAP while keeping Compare SVGA-only", async () => {
+  const dragDecisionModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/multiformat-product-conformance.mjs"
+  )).href);
+  const dragDecisionSurface = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-drag-decision-surface.mjs"
+  )).href);
+  const target = {
+    getBoundingClientRect: () => ({
+      left: 0,
+      top: 0,
+      width: 1280,
+      height: 800
+    })
+  };
+  const dragEvent = (name, clientY = 40) => ({
+    clientY,
+    dataTransfer: { files: [{ name }] }
+  });
+
+  const svgaDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("frame.svga"), {
+    activeFormat: "svga"
+  });
+  assert.equal(svgaDecision.supported, true);
+  assert.equal(svgaDecision.compareAvailable, true);
+  assert.equal(svgaDecision.focusZone, "compare");
+
+  const lottieDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("motion.json"), {
+    activeFormat: "lottie"
+  });
+  assert.equal(lottieDecision.supported, true);
+  assert.equal(lottieDecision.compareAvailable, false);
+  assert.equal(lottieDecision.focusZone, "open");
+
+  const vapDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("fusion.mp4"), {
+    activeFormat: "vap"
+  });
+  assert.equal(vapDecision.supported, true);
+  assert.equal(vapDecision.compareAvailable, false);
+  assert.equal(vapDecision.focusZone, "open");
+
+  const unsupportedDecision = dragDecisionModel.multiFormatDragDecisionForEvent(target, dragEvent("preview.gif"), {
+    activeFormat: "lottie"
+  });
+  assert.equal(unsupportedDecision.supported, false);
+  assert.equal(unsupportedDecision.compareAvailable, false);
+  assert.equal(unsupportedDecision.focusZone, "open");
+
+  const createZone = (dragZone) => {
+    const strong = { textContent: "" };
+    return {
+      dataset: { dragZone },
+      hidden: false,
+      attributes: {},
+      strong,
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+      },
+      querySelector(selector) {
+        return selector === "strong" ? strong : null;
+      }
+    };
+  };
+  const compareZone = createZone("compare");
+  const openZone = createZone("open");
+  const overlay = {
+    hidden: true,
+    dataset: {},
+    querySelectorAll(selector) {
+      return selector === "[data-drag-zone]" ? [compareZone, openZone] : [];
+    }
+  };
+
+  dragDecisionSurface.showShortTermDragDecisionOverlay(overlay, lottieDecision);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.dataset.status, "supported");
+  assert.equal(overlay.dataset.focusZone, "open");
+  assert.equal(overlay.dataset.compareAvailable, "false");
+  assert.equal(compareZone.hidden, true);
+  assert.equal(compareZone.attributes["aria-hidden"], "true");
+  assert.equal(openZone.hidden, false);
+  assert.equal(openZone.strong.textContent, "打开新文件");
+
+  dragDecisionSurface.showShortTermDragDecisionOverlay(overlay, unsupportedDecision);
+  assert.equal(overlay.dataset.status, "unsupported");
+  assert.equal(overlay.dataset.focusZone, "open");
+  assert.equal(openZone.strong.textContent, "不支持的文件格式");
+});
+
 test("short-term optimization result UI fails closed for no-benefit output", async () => {
   const optimizationModel = await import(pathToFileURL(path.join(
     experimentRoot,
@@ -3869,10 +3960,11 @@ test("0.2 replaceable summary includes text-only Lottie and VAP targets", async 
       assert.equal(controller.handlers.beginHostFileOpen({ eventId: fixture.eventId }), true);
       assert.equal(await controller.handlers.completeHostFileOpen({ eventId: fixture.eventId, result }), true);
 
-      assert.equal(nodes.replaceableSummary.textContent, "1 个可替换文本");
-      assert.doesNotMatch(nodes.replaceableSummary.textContent, /没有可替换图片/u);
+      assert.equal(nodes.replaceableSummary.textContent, "(1)");
+      assert.doesNotMatch(nodes.replaceableSummary.textContent, /没有可替换图片|未发现可替换元素/u);
       assert.equal(nodes.replaceableList.children.length, 0);
       assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "false");
+      assert.equal(nodes.textElementList.dataset.empty, "false");
       const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
       assert.ok(input);
       assert.equal(input.value, fixture.initialText);
@@ -3920,10 +4012,14 @@ test("0.2 replaceable empty state uses frozen Figma copy and section state", asy
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "lottie-no-replaceable" }), true);
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "lottie-no-replaceable", result }), true);
 
-    assert.equal(nodes.replaceableSummary.textContent, "未发现可替换元素");
-    assert.equal(nodes.replaceableList.children.length, 0);
+    assert.equal(nodes.replaceableSummary.textContent, "(0)");
+    assert.equal(nodes.replaceableList.children.length, 1);
+    assert.equal(nodes.replaceableList.children[0].className, "emptyText");
+    assert.equal(nodes.replaceableList.children[0].dataset.component, "InlineStatus");
+    assert.equal(nodes.replaceableList.children[0].textContent, "未发现可替换元素");
     assert.equal(nodes.textElementList.children.length, 0);
     assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
+    assert.equal(nodes.textElementList.dataset.empty, "true");
   } finally {
     globalThis.document = originalDocument;
   }

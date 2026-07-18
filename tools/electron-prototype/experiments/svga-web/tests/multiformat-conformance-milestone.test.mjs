@@ -118,7 +118,8 @@ test("multi-format owner copy hides host and runtime implementation language", (
   assert.match(controllerSource, /无法更新替换预览，源文件没有被修改。/u);
   assert.match(controllerSource, /文件加载超时，请重新打开文件。源文件没有被修改。/u);
   assert.match(controllerSource, /资产列表/u);
-  assert.match(controllerSource, /个可替换图片/u);
+  assert.match(controllerSource, /未发现可替换元素/u);
+  assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount\)/u);
   assert.match(controllerSource, /renderFailureMessage\(nodes, ownerFailureCopy\(error\)\)/u);
   assert.doesNotMatch(controllerSource, /renderFailureMessage\(nodes, error instanceof Error \? error\.message/u);
 });
@@ -429,8 +430,8 @@ test("multi-format inventory summary exposes only meaningful localized counts", 
     unsupportedOrMissingCount: 0
   }), [
     { id: "images", label: "图片", count: 4 },
-    { id: "sequences", label: "序列", count: 12 },
-    { id: "media", label: "媒体", count: 1 }
+    { id: "sequences", label: "序列帧", count: 12 },
+    { id: "media", label: "音视频", count: 1 }
   ]);
 });
 
