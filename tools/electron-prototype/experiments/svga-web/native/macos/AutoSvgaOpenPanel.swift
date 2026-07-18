@@ -6,19 +6,30 @@ private struct PickerResult: Encodable {
     let filePath: String?
 }
 
-private func writeResult(status: String, filePath: String? = nil) {
-    let result = PickerResult(status: status, filePath: filePath)
-    guard let data = try? JSONEncoder().encode(result) else {
-        FileHandle.standardOutput.write(Data("{\"status\":\"failed\"}\n".utf8))
-        return
+private final class PickerResultWriter {
+    private var didWrite = false
+
+    func finish(status: String, filePath: String? = nil, exitCode: Int32 = 0) -> Never {
+        guard !didWrite else {
+            exit(1)
+        }
+        didWrite = true
+
+        let result = PickerResult(status: status, filePath: filePath)
+        let data = (try? JSONEncoder().encode(result))
+            ?? Data("{\"status\":\"failed\"}".utf8)
+        FileHandle.standardOutput.write(data)
+        FileHandle.standardOutput.write(Data("\n".utf8))
+        FileHandle.standardOutput.synchronizeFile()
+        FileHandle.standardOutput.closeFile()
+        exit(exitCode)
     }
-    FileHandle.standardOutput.write(data)
-    FileHandle.standardOutput.write(Data("\n".utf8))
 }
 
+private let writer = PickerResultWriter()
+
 guard CommandLine.arguments.count == 1 else {
-    writeResult(status: "failed")
-    exit(2)
+    writer.finish(status: "failed", exitCode: 2)
 }
 
 let application = NSApplication.shared
@@ -45,12 +56,11 @@ panel.allowsOtherFileTypes = true
 switch panel.runModal() {
 case .OK:
     guard let selectedPath = panel.url?.path, !selectedPath.isEmpty else {
-        writeResult(status: "failed")
-        exit(1)
+        writer.finish(status: "failed", exitCode: 1)
     }
-    writeResult(status: "selected", filePath: selectedPath)
+    writer.finish(status: "selected", filePath: selectedPath)
 case .cancel:
-    writeResult(status: "cancelled")
+    writer.finish(status: "cancelled")
 default:
-    writeResult(status: "failed")
+    writer.finish(status: "failed", exitCode: 1)
 }

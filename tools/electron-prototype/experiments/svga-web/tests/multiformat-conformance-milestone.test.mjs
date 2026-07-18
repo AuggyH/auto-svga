@@ -178,6 +178,12 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(helperSource, /canChooseDirectories\s*=\s*false/u);
   assert.match(helperSource, /finishLaunching\(\)[\s\S]*activate\(ignoringOtherApps:\s*true\)/u);
   assert.match(helperSource, /runModal\(\)/u);
+  assert.match(helperSource, /final class PickerResultWriter/u);
+  assert.match(helperSource, /private var didWrite = false/u);
+  assert.match(helperSource, /FileHandle\.standardOutput\.synchronizeFile\(\)/u);
+  assert.match(helperSource, /func finish\([\s\S]*\) -> Never/u);
+  assert.match(helperSource, /case \.OK:[\s\S]*writer\.finish\(status: "selected"/u);
+  assert.match(helperSource, /case \.cancel:[\s\S]*writer\.finish\(status: "cancelled"/u);
   assert.doesNotMatch(helperSource, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
   assert.match(helperInfoPlist, /local\.auto-svga\.open-panel/u);
   assert.match(helperInfoPlist, /LSUIElement[\s\S]*<true\/>/u);
@@ -251,6 +257,8 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.equal(existsSync(channelRoot), false);
   assert.deepEqual(parseDarwinPickerOutput('{"status":"cancelled"}\n'), { status: "cancelled" });
   assert.equal(parseDarwinPickerOutput("not-json").code, "file_picker_failed");
+  assert.equal(parseDarwinPickerOutput('{"status":"cancelled","filePath":"/private/tmp/leaked.svga"}').code, "file_picker_failed");
+  assert.equal(parseDarwinPickerOutput('{"status":"selected","filePath":"/private/tmp/example.svga","extra":true}').code, "file_picker_failed");
 });
 
 test("macOS picker result channel fails closed on cancellation, replacement, growth, launch failure, and overlap", async () => {

@@ -70,8 +70,19 @@ function parseDarwinPickerOutput(stdout) {
   }
   try {
     const value = JSON.parse(stdout.trim());
-    if (value?.status === "cancelled") return { status: "cancelled" };
-    if (value?.status === "selected" && typeof value.filePath === "string" && value.filePath.trim()) {
+    if (!value || Array.isArray(value) || typeof value !== "object") return failedPickerResult();
+    const keys = Object.keys(value).sort();
+    if (value.status === "cancelled" && keys.length === 1 && keys[0] === "status") {
+      return { status: "cancelled" };
+    }
+    if (
+      value.status === "selected"
+      && keys.length === 2
+      && keys[0] === "filePath"
+      && keys[1] === "status"
+      && typeof value.filePath === "string"
+      && value.filePath.trim()
+    ) {
       return { status: "selected", filePath: value.filePath };
     }
   } catch {}
