@@ -14,6 +14,7 @@ export function collectShortTermNodes() {
     previewDragOverlay: document.querySelector("#previewDragOverlay"),
     compareDragOverlay: document.querySelector("#compareDragOverlay"),
     canvasToast: document.querySelector("#canvasToast"),
+    unsupportedDropRecovery: document.querySelector("#unsupportedDropRecovery"),
     primaryCanvas: document.querySelector("#primaryCanvas"),
     playbackErrorRecovery: document.querySelector("#playbackErrorRecovery"),
     playbackErrorMessage: document.querySelector("#playbackErrorMessage"),

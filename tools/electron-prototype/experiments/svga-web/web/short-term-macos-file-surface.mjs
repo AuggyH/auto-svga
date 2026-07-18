@@ -214,3 +214,16 @@ export function resetShortTermLaunchSurface({
   setView("launch");
   refreshRecentFiles?.().catch(() => {});
 }
+
+export function showShortTermUnsupportedDropState({
+  nodes,
+  state,
+  stopAllPlayback,
+  setView
+}) {
+  clearShortTermCurrentFile({ state, stopAllPlayback });
+  state.mode = "preview";
+  state.tab = "overview";
+  hideShortTermSaveBanner(nodes);
+  setView("unsupported");
+}

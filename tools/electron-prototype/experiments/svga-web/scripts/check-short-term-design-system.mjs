@@ -107,6 +107,8 @@ const requiredPageStates = [
   "Loading",
   "Load failed",
   "Playback error",
+  "Drag decision overlay",
+  "Unsupported drop",
   "Preview ready",
   "Preview replaceable",
   "General comparing",
@@ -124,6 +126,10 @@ const requiredFigmaPageStates = [
   { figma: "预览 / 优化结果对比", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"] },
   { figma: "对比 / 空态", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
   { figma: "对比 / 双文件已加载", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "对比 / 拖拽中", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "拖拽 / 已有文件_拖入对比", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
+  { figma: "拖拽 / 格式不支持_拖拽中", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
+  { figma: "拖拽 / 格式不支持_Drop后", codePageState: "Unsupported drop", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
   { figma: "编辑 / 默认", codePageState: "Edit reserved", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "EditReservedModule", "PreviewCanvasModule"] },
   { figma: "参考 / 设置面板", codePageState: "Settings dialog", frame: { width: 1280, height: 800 }, rootModules: ["SettingsDialogModule"] }
 ];
@@ -493,6 +499,7 @@ async function main() {
 
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
+  const unsupportedSection = page.match(/<section class="view stateView workbenchStateView unsupportedDropView" data-view="unsupported"[\s\S]*?<\/section>\s*<\/section>/)?.[0] ?? "";
   const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
   record("loading-and-load-failed-states-keep-recovery-contract",
     /aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"/.test(loadingSection)
@@ -833,6 +840,19 @@ async function main() {
     && /<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*data-page-state="Load failed"/.test(page)
     && /id="playbackErrorRecovery"[^>]*data-page-state="Playback error"/.test(page)
     && /\.workbenchStateView\s*\{[^}]*place-items: stretch/s.test(pageStatesCss));
+  record("drag-decision-follows-frozen-typography-and-owner-zone-contract",
+    /--asv-component-drag-overlay-label-size:\s*var\(--asv-type-size-metric\)/.test(tokens)
+    && /--asv-component-drag-overlay-label-line-height:\s*22px/.test(tokens)
+    && /--asv-component-drag-overlay-label-weight:\s*var\(--asv-type-weight-semibold\)/.test(tokens)
+    && /--asv-component-drag-overlay-grid-rows:\s*1fr 3fr/.test(tokens)
+    && /\.dragDecisionZone strong\s*\{[\s\S]*line-height:\s*var\(--asv-drag-overlay-label-line-height\)/.test(modules)
+    && !/--asv-component-drag-overlay-label-size:\s*(?:30|36)px/.test(tokens));
+  record("unsupported-drop-keeps-workbench-recovery-shell",
+    /data-page-state="Unsupported drop"/.test(unsupportedSection)
+    && /data-role="UnsupportedDropCanvasRecovery"/.test(unsupportedSection)
+    && /id="unsupportedDropRecovery"[^>]*data-component="ErrorRecoveryPanel"/.test(unsupportedSection)
+    && /data-state="disabled"/.test(unsupportedSection)
+    && /\.unsupportedDropView\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/.test(pageStatesCss));
 
   record("page-state-surface-trace-contract", /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/.test(page)
     && /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/.test(page)
@@ -880,7 +900,7 @@ async function main() {
     && /--asv-workbench-min-width:\s*var\(--asv-layout-workbench-min-width\)/.test(tokens)
     && /body\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(baseCss)
     && /\.macApp\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(pageStatesCss)
-    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="failed"\]\s*\{[\s\S]*min-width:\s*var\(--asv-workbench-min-width\)[\s\S]*min-height:\s*var\(--asv-workbench-min-height\)/.test(pageStatesCss)
+    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="unsupported"\]\s*\{[\s\S]*min-width:\s*var\(--asv-workbench-min-width\)[\s\S]*min-height:\s*var\(--asv-workbench-min-height\)/.test(pageStatesCss)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
   record("figma-page-frame-layout-contract-covered", /--asv-layout-page-launch-frame-width:\s*640px/.test(tokens)

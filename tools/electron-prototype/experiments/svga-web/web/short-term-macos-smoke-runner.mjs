@@ -631,14 +631,13 @@ async function runShortTermSmoke({
     dataTransfer: unsupportedDragTransfer
   }));
   await waitForSmokeCondition(() => (
-    state.view === "launch"
+    state.view === "unsupported"
     && !state.sourceBytes
-    && nodes.canvasToast.textContent.includes("不支持的文件格式")
+    && nodes.unsupportedDropRecovery.textContent.includes("不支持的文件格式")
   ), 2_000);
   await waitForSmokeFrame();
-  const unsupportedDropClearedCanvas = state.view === "launch" && !state.sourceBytes && !state.model;
-  const unsupportedDropToastVisible = nodes.canvasToast.hidden === false
-    && nodes.canvasToast.textContent.includes("不支持的文件格式");
+  const unsupportedDropClearedCanvas = state.view === "unsupported" && !state.sourceBytes && !state.model;
+  const unsupportedDropToastVisible = nodes.unsupportedDropRecovery.textContent.includes("不支持的文件格式");
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,

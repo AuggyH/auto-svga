@@ -59,6 +59,7 @@ export function viewCopy(view) {
     launch: "等待打开",
     loading: "正在打开",
     failed: "打开失败",
+    unsupported: "格式不支持",
     preview: "预览",
     compare: "对比",
     edit: "编辑预留"

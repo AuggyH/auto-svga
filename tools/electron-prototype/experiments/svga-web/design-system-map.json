@@ -108,6 +108,42 @@
       "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-compare-model.mjs"]
     },
     {
+      "figma": "对比 / 拖拽中",
+      "codePageState": "Drag decision overlay",
+      "appStates": ["compare"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "GeneralCompareModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-model.mjs", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "拖拽 / 已有文件_拖入对比",
+      "codePageState": "Drag decision overlay",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-model.mjs", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "拖拽 / 格式不支持_拖拽中",
+      "codePageState": "Drag decision overlay",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-model.mjs", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "拖拽 / 格式不支持_Drop后",
+      "codePageState": "Unsupported drop",
+      "appStates": ["unsupported"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.components.css", "web/short-term-macos.page-states.css", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-controller.mjs", "web/multiformat-desktop-preview-controller.mjs"]
+    },
+    {
       "figma": "编辑 / 默认",
       "codePageState": "Edit reserved",
       "appStates": ["edit"],

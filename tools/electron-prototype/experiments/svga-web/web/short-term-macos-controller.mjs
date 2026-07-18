@@ -71,7 +71,8 @@ import {
   loadShortTermOpenedSource,
   openShortTermRecentSource,
   openShortTermSourceFromHostDialog,
-  resetShortTermLaunchSurface
+  resetShortTermLaunchSurface,
+  showShortTermUnsupportedDropState
 } from "./short-term-macos-file-surface.mjs";
 import {
   createShortTermSaveFailureProofOutput,
@@ -96,7 +97,6 @@ import {
   dragDecisionForEvent,
   hideShortTermCanvasToast,
   hideShortTermDragDecisionOverlays,
-  showShortTermCanvasToast,
   showShortTermDragDecisionOverlay
 } from "./short-term-macos-drag-decision-surface.mjs";
 import {
@@ -270,15 +270,12 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     hideCanvasDragDecision();
     if (!decision.file) return;
     if (!decision.supported) {
-      resetShortTermLaunchSurface({
+      showShortTermUnsupportedDropState({
         nodes,
         state,
         stopAllPlayback,
-        setTab,
-        setView,
-        refreshRecentFiles
+        setView
       });
-      showShortTermCanvasToast(nodes, "不支持的文件格式");
       renderCommandState();
       return;
     }

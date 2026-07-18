@@ -473,7 +473,7 @@
   font-size: var(--asv-drag-overlay-label-size);
   font-weight: var(--asv-drag-overlay-label-weight);
   letter-spacing: 0;
-  line-height: 1.2;
+  line-height: var(--asv-drag-overlay-label-line-height);
   white-space: normal;
 }
 

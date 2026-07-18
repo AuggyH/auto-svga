@@ -1599,6 +1599,79 @@ test("short-term drag decision hit testing keeps Compare opt-in at the top", asy
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "open");
 });
 
+test("unsupported drop keeps the workbench shell and follows the frozen drag hierarchy", async () => {
+  const fileSurface = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-file-surface.mjs"
+  )).href);
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const shortTermController = await readFile(path.join(experimentRoot, "web/short-term-macos-controller.mjs"), "utf8");
+  const multiFormatController = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
+
+  assert.match(tokens, /--asv-type-size-metric:\s*15px/);
+  assert.match(tokens, /--asv-component-drag-overlay-label-size:\s*var\(--asv-type-size-metric\)/);
+  assert.match(tokens, /--asv-component-drag-overlay-label-line-height:\s*22px/);
+  assert.match(tokens, /--asv-component-drag-overlay-label-weight:\s*var\(--asv-type-weight-semibold\)/);
+  assert.match(modules, /\.dragDecisionZone strong\s*\{[\s\S]*line-height:\s*var\(--asv-drag-overlay-label-line-height\)/);
+  assert.doesNotMatch(tokens, /--asv-component-drag-overlay-label-size:\s*(?:30|36)px/);
+  assert.match(page, /data-view="unsupported"[^>]*data-page-state="Unsupported drop"/);
+  assert.match(page, /data-role="UnsupportedDropCanvasRecovery"/);
+  assert.match(page, /data-view="unsupported"[\s\S]*data-state="disabled"/);
+  assert.match(shortTermController, /showShortTermUnsupportedDropState/);
+  assert.match(multiFormatController, /closeFile\(\{ nextView: "unsupported" \}\)/);
+  assert.match(multiFormatController, /const nextView = options\.nextView === "unsupported" \? "unsupported" : "launch"/);
+  assert.match(multiFormatController, /clearSurfaces\(\);\s*setView\(nextView\);/);
+
+  const saveBanner = {
+    hidden: false,
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    }
+  };
+  const state = {
+    sourceBytes: new Uint8Array([1]),
+    previewBytes: new Uint8Array([1]),
+    sourceId: "source-a",
+    displayName: "frame.svga",
+    model: { status: "ready" },
+    selectedImageKey: "image-a",
+    selectedTextKey: "text-a",
+    assetFilter: "images",
+    renameImageKey: "image-b",
+    textPreview: "preview",
+    textPreviewValues: { "text-a": "preview" },
+    activeOutput: { kind: "optimization" },
+    cleanSaveAsVisible: true,
+    mode: "edit",
+    tab: "replaceable"
+  };
+  let stopped = 0;
+  let view = "preview";
+
+  fileSurface.showShortTermUnsupportedDropState({
+    nodes: { saveBanner },
+    state,
+    stopAllPlayback() {
+      stopped += 1;
+    },
+    setView(nextView) {
+      view = nextView;
+    }
+  });
+
+  assert.equal(stopped, 1);
+  assert.equal(state.sourceBytes, undefined);
+  assert.equal(state.previewBytes, undefined);
+  assert.equal(state.model, undefined);
+  assert.equal(state.mode, "preview");
+  assert.equal(state.tab, "overview");
+  assert.equal(saveBanner.hidden, true);
+  assert.equal(view, "unsupported");
+});
+
 test("0.2 multi-format drag affordance accepts Lottie and VAP while keeping Compare SVGA-only", async () => {
   const dragDecisionModel = await import(pathToFileURL(path.join(
     experimentRoot,
@@ -7356,7 +7429,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermComponents, /\.stateCard\.error h1\s*\{[^}]*color: var\(--asv-danger\)/s);
   assert.match(page, /class="toolbarButton primary stateRecoveryButton"/);
   assert.match(page, /class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true"/);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.view,[\s\S]*\.macApp\[data-app-state="failed"\] \.view\s*\{[^}]*grid-row: 2/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.view,[\s\S]*\.macApp\[data-app-state="unsupported"\] \.view\s*\{[^}]*grid-row: 2/s);
   assert.match(shortTermPageStates, /\.workbenchStateView\s*\{[^}]*place-items: stretch/s);
   assert.match(shortTermComponents, /\.appDialog\[data-status="warning"\]::before/);
   assert.match(shortTermComponents, /\.dialogHeader/);
@@ -7564,10 +7637,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="launch"\]/);
   assert.match(shortTermStyles, /body\s*\{[^}]*min-width: var\(--asv-launch-min-width\)[^}]*min-height: var\(--asv-launch-min-height\)/s);
   assert.match(shortTermPageStates, /\.macApp\s*\{[^}]*min-width: var\(--asv-launch-min-width\)[^}]*min-height: var\(--asv-launch-min-height\)/s);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="failed"\]\s*\{[^}]*min-width: var\(--asv-workbench-min-width\)[^}]*min-height: var\(--asv-workbench-min-height\)/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="unsupported"\]\s*\{[^}]*min-width: var\(--asv-workbench-min-width\)[^}]*min-height: var\(--asv-workbench-min-height\)/s);
   assert.match(shortTermPageStates, /\.launchView\s*\{[^}]*place-items: stretch/s);
   assert.match(shortTermPageStates, /\.macApp > \.saveBanner\s*\{[^}]*grid-row: 1/s);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="failed"\] \.view\s*\{[^}]*grid-row: 2/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="unsupported"\] \.view\s*\{[^}]*grid-row: 2/s);
   assert.match(shortTermPageStates, /\.previewView,\s*\.workbenchStateView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.compareView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-columns: var\(--asv-left-width\) minmax\(var\(--asv-edit-canvas-min-width\), 1fr\) minmax\(var\(--asv-edit-right-panel-min-width\), var\(--asv-right-panel-width\)\)/s);

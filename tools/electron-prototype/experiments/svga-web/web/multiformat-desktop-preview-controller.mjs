@@ -6,9 +6,7 @@ import {
 } from "./short-term-macos-dom-state.mjs";
 import { closeOpenDialog } from "./short-term-macos-dialog-model.mjs";
 import {
-  hideShortTermCanvasToast,
   hideShortTermDragDecisionOverlays,
-  showShortTermCanvasToast,
   showShortTermDragDecisionOverlay
 } from "./short-term-macos-drag-decision-surface.mjs";
 import { createReplaceableEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
@@ -229,8 +227,7 @@ export function createMultiFormatDesktopPreviewController({
       return svgaController.handlers.dropCanvasFile?.(event, target, overlay);
     }
     if (!decision.supported) {
-      await closeFile();
-      showShortTermCanvasToast(nodes, "不支持的文件格式");
+      await closeFile({ nextView: "unsupported" });
       renderCommandState();
       return;
     }
@@ -247,7 +244,8 @@ export function createMultiFormatDesktopPreviewController({
     hideShortTermDragDecisionOverlays(nodes);
   }
 
-  async function closeFile() {
+  async function closeFile(options = {}) {
+    const nextView = options.nextView === "unsupported" ? "unsupported" : "launch";
     if (svgaWorkflowActive()) {
       await svgaController?.handlers?.closeFile?.();
       if (!state.sourceBytes) activeFormat = "";
@@ -268,7 +266,7 @@ export function createMultiFormatDesktopPreviewController({
     state.tab = "overview";
     activeFormat = "";
     clearSurfaces();
-    setView("launch");
+    setView(nextView);
   }
 
   async function control(action, input = {}) {

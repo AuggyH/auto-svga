@@ -621,9 +621,9 @@
   --asv-component-optimization-result-summary-line-height: 17px;
   --asv-component-optimization-result-summary-color: var(--asv-color-text-secondary);
   --asv-component-optimization-result-muted-title-color: var(--asv-color-text-secondary);
-  --asv-component-drag-overlay-label-size: 36px;
-  --asv-component-drag-overlay-label-size-compact: 30px;
-  --asv-component-drag-overlay-label-weight: 750;
+  --asv-component-drag-overlay-label-size: var(--asv-type-size-metric);
+  --asv-component-drag-overlay-label-line-height: 22px;
+  --asv-component-drag-overlay-label-weight: var(--asv-type-weight-semibold);
   --asv-component-drag-overlay-grid-rows: 1fr 3fr;
   --asv-component-drag-overlay-single-row: 1fr;
   --asv-component-drag-overlay-zone-opacity: 0.86;
@@ -1191,6 +1191,7 @@
   --asv-optimization-result-summary-color: var(--asv-component-optimization-result-summary-color);
   --asv-optimization-result-muted-title-color: var(--asv-component-optimization-result-muted-title-color);
   --asv-drag-overlay-label-size: var(--asv-component-drag-overlay-label-size);
+  --asv-drag-overlay-label-line-height: var(--asv-component-drag-overlay-label-line-height);
   --asv-drag-overlay-label-weight: var(--asv-component-drag-overlay-label-weight);
   --asv-drag-overlay-grid-rows: var(--asv-component-drag-overlay-grid-rows);
   --asv-drag-overlay-single-row: var(--asv-component-drag-overlay-single-row);
@@ -1413,6 +1414,5 @@
     --asv-component-asset-row-min-height: 44px;
     --asv-component-compare-canvas-header-height: 34px;
     --asv-component-compare-metric-row-min-height: 42px;
-    --asv-component-drag-overlay-label-size: var(--asv-component-drag-overlay-label-size-compact);
   }
 }
