@@ -22,12 +22,15 @@ import {
 import {
   clearShortTermPlaybackCanvas,
   mountShortTermPlayback,
+  replayShortTermPlaybackGroup,
   replayShortTermPlayback,
   renderShortTermPlaybackProgress,
-  shortTermActivePlaybackKey,
+  shortTermActivePlaybackKeys,
   stopAllShortTermPlayback,
   stopShortTermPlayback,
+  toggleShortTermPlaybackGroup,
   toggleShortTermPlayback,
+  toggleShortTermPlaybackLoopGroup,
   toggleShortTermPlaybackLoop
 } from "./short-term-macos-playback-surface.mjs";
 import {
@@ -116,6 +119,19 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       playbackProgress: nodes.editPlaybackProgress,
       playbackTime: nodes.editPlaybackTime
     }, state.editPlayback);
+    renderShortTermPlaybackProgress({
+      playbackProgress: nodes.comparePlaybackProgress,
+      playbackTime: nodes.comparePlaybackTime
+    }, state.compareAPlayback ?? state.compareBPlayback);
+  }
+
+  function hasMountedPlayback() {
+    return Boolean(
+      state.primaryPlayback
+      || state.editPlayback
+      || state.compareAPlayback
+      || state.compareBPlayback
+    );
   }
 
   function stopPlaybackProgressLoop() {
@@ -128,7 +144,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     if (playbackProgressFrame) return;
     const tick = () => {
       renderPlaybackProgress();
-      playbackProgressFrame = state.primaryPlayback || state.editPlayback ? requestAnimationFrame(tick) : 0;
+      playbackProgressFrame = hasMountedPlayback() ? requestAnimationFrame(tick) : 0;
     };
     tick();
   }
@@ -156,12 +172,16 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     }
     if (mode === "edit") {
       stopPlayback("primary");
+      stopPlayback("compareA");
+      stopPlayback("compareB");
       setView("edit");
       renderEditReserved();
       mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
       return;
     }
     stopPlayback("edit");
+    stopPlayback("compareA");
+    stopPlayback("compareB");
     setTab("overview");
     setView("preview");
     mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
@@ -523,6 +543,8 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function showOptimizationComparison() {
+    stopPlayback("primary");
+    stopPlayback("edit");
     await showShortTermOptimizationComparison({
       nodes,
       state,
@@ -542,6 +564,8 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function enterGeneralCompare() {
+    stopPlayback("primary");
+    stopPlayback("edit");
     return enterShortTermGeneralCompare({
       nodes,
       state,
@@ -563,9 +587,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     if (key === "primary") {
       hidePlaybackFailureRecovery(nodes);
     }
-    if (key === "primary" || key === "edit") {
-      startPlaybackProgressLoop();
-    }
+    startPlaybackProgressLoop();
     return playback;
   }
 
@@ -580,9 +602,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
 
   function stopPlayback(key) {
     stopShortTermPlayback({ state, key });
-    if ((key === "primary" || key === "edit") && !state.primaryPlayback && !state.editPlayback) {
-      stopPlaybackProgressLoop();
-    }
+    if (!hasMountedPlayback()) stopPlaybackProgressLoop();
   }
 
   function stopAllPlayback() {
@@ -591,25 +611,38 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   function togglePrimaryPlayback() {
-    toggleShortTermPlayback({
-      state,
-      key: shortTermActivePlaybackKey(state),
-      onPlaybackStateChange: renderCommandState
-    });
+    const keys = shortTermActivePlaybackKeys(state);
+    if (keys.length > 1) {
+      toggleShortTermPlaybackGroup({ state, keys, onPlaybackStateChange: renderCommandState });
+      return;
+    }
+    if (keys[0]) toggleShortTermPlayback({ state, key: keys[0], onPlaybackStateChange: renderCommandState });
   }
 
   function replayPrimary() {
-    replayShortTermPlayback({
-      state,
-      key: shortTermActivePlaybackKey(state),
-      onPlaybackStateChange: renderCommandState
-    });
+    const keys = shortTermActivePlaybackKeys(state);
+    if (keys.length > 1) {
+      replayShortTermPlaybackGroup({ state, keys, onPlaybackStateChange: renderCommandState });
+      return;
+    }
+    if (keys[0]) replayShortTermPlayback({ state, key: keys[0], onPlaybackStateChange: renderCommandState });
   }
 
   function togglePrimaryPlaybackLoop() {
+    const keys = shortTermActivePlaybackKeys(state);
+    if (state.view === "compare" && keys.length) {
+      toggleShortTermPlaybackLoopGroup({
+        state,
+        keys: ["compareA", "compareB"],
+        groupKey: "compare",
+        onPlaybackStateChange: renderCommandState
+      });
+      return;
+    }
+    if (!keys[0]) return;
     toggleShortTermPlaybackLoop({
       state,
-      key: shortTermActivePlaybackKey(state),
+      key: keys[0],
       onPlaybackStateChange: renderCommandState
     });
   }

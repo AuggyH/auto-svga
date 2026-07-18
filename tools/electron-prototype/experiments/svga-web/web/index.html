@@ -416,15 +416,15 @@
               </div>
             </div>
           </section>
-          <div class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled">
+          <div class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls">
             <div class="playbackActions" data-component="PlaybackButtonGroup">
-              <button type="button" class="playbackIconButton" aria-label="重播" title="重播" disabled>
+              <button type="button" class="playbackIconButton" data-action="replay" aria-label="重播" title="重播" disabled>
                 <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
                   <path d="M7.8 4.6v3.2H4.6"></path>
                 </svg>
               </button>
-              <button type="button" class="playbackIconButton primary" data-playback-state="paused" aria-label="播放" title="播放" disabled>
+              <button type="button" class="playbackIconButton primary" data-action="play-pause" data-playback-state="paused" aria-label="播放" title="播放" disabled>
                 <svg class="playbackIcon playbackIconPlay" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M8 5.5v13l10-6.5-10-6.5Z"></path>
                 </svg>
@@ -434,12 +434,12 @@
                 </svg>
               </button>
             </div>
-            <div class="playbackProgress" role="progressbar" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="playbackProgress" id="comparePlaybackProgress" role="progressbar" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <span></span>
             </div>
-            <span class="playbackTime">0:00 / 0:00</span>
+            <span class="playbackTime" id="comparePlaybackTime">0:00 / 0:00</span>
             <div class="playbackRightActions" data-component="PlaybackButtonGroup">
-              <button type="button" class="playbackIconButton" aria-label="循环播放" title="循环播放" disabled>
+              <button type="button" class="playbackIconButton isSelected" data-action="loop-toggle" aria-label="循环播放" title="循环播放" aria-pressed="true" disabled>
                 <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M17 2.8l3.2 3.2L17 9.2"></path>
                   <path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6h12.2"></path>

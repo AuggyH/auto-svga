@@ -2,17 +2,23 @@ import {
   clearCanvas,
   mountPlayback,
   playbackProgressView,
+  replayPlaybackGroup,
   replayPlayback,
   replayPrimaryPlayback,
   stopAllPlayback,
   stopPlayback,
   togglePlayback,
+  togglePlaybackGroup,
   togglePlaybackLoop,
+  togglePlaybackLoopGroup,
   togglePrimaryPlaybackLoop,
   svgaWebPlayerPrototype,
   togglePrimaryPlayback
 } from "./short-term-macos-playback-model.mjs";
-import { activePlaybackKey } from "./short-term-macos-playback-control-model.mjs";
+import {
+  activePlaybackKey,
+  activePlaybackKeys
+} from "./short-term-macos-playback-control-model.mjs";
 
 export async function mountShortTermPlayback({
   state,
@@ -56,6 +62,14 @@ export function replayShortTermPlayback({ state, key, onPlaybackStateChange }) {
   return replayPlayback(state, key, onPlaybackStateChange);
 }
 
+export function toggleShortTermPlaybackGroup({ state, keys, onPlaybackStateChange }) {
+  return togglePlaybackGroup(state, keys, onPlaybackStateChange);
+}
+
+export function replayShortTermPlaybackGroup({ state, keys, onPlaybackStateChange }) {
+  return replayPlaybackGroup(state, keys, onPlaybackStateChange);
+}
+
 export function toggleShortTermPrimaryPlaybackLoop({ state, onPlaybackStateChange }) {
   togglePrimaryPlaybackLoop(state, onPlaybackStateChange);
 }
@@ -64,8 +78,16 @@ export function toggleShortTermPlaybackLoop({ state, key, onPlaybackStateChange 
   return togglePlaybackLoop(state, key, onPlaybackStateChange);
 }
 
+export function toggleShortTermPlaybackLoopGroup({ state, keys, groupKey, onPlaybackStateChange }) {
+  return togglePlaybackLoopGroup(state, keys, groupKey, onPlaybackStateChange);
+}
+
 export function shortTermActivePlaybackKey(state) {
   return activePlaybackKey(state);
+}
+
+export function shortTermActivePlaybackKeys(state) {
+  return activePlaybackKeys(state);
 }
 
 export function renderShortTermPlaybackProgress(nodes, playback) {

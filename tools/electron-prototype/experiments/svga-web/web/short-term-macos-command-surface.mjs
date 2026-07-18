@@ -7,7 +7,9 @@ import { activePlaybackKey } from "./short-term-macos-playback-control-model.mjs
 export function renderShortTermCommandSurface({ bridge, documentRef = document, state, canEditText }) {
   const playbackKey = activePlaybackKey(state);
   const activePlayback = state[`${playbackKey}Playback`];
-  const activePlaybackLooping = state[`${playbackKey}PlaybackLooping`];
+  const activePlaybackLooping = state.view === "compare"
+    ? state.comparePlaybackLooping
+    : state[`${playbackKey}PlaybackLooping`];
   const commandState = buildCommandState({
     view: state.view,
     mode: state.mode,

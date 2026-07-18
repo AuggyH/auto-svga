@@ -1,10 +1,15 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import { toParserArrayBuffer } from "./short-term-macos-byte-model.mjs";
 import {
+  replayPlaybackGroupState,
   replayPlaybackState,
+  togglePlaybackGroupState,
   togglePlaybackState
 } from "./short-term-macos-playback-control-model.mjs";
-import { togglePlaybackLoopState } from "./short-term-macos-playback-loop-model.mjs";
+import {
+  togglePlaybackLoopGroupState,
+  togglePlaybackLoopState
+} from "./short-term-macos-playback-loop-model.mjs";
 import { playbackCanvasFitSize } from "./short-term-macos-playback-fit-model.mjs";
 
 export async function mountPlayback({
@@ -90,6 +95,18 @@ export function replayPrimaryPlayback(playbackState, onPlaybackStateChange = () 
   return replayPlayback(playbackState, "primary", onPlaybackStateChange);
 }
 
+export function togglePlaybackGroup(playbackState, keys, onPlaybackStateChange = () => {}) {
+  const playbacks = togglePlaybackGroupState(playbackState, keys);
+  if (playbacks.length) onPlaybackStateChange();
+  return playbacks;
+}
+
+export function replayPlaybackGroup(playbackState, keys, onPlaybackStateChange = () => {}) {
+  const playbacks = replayPlaybackGroupState(playbackState, keys);
+  if (playbacks.length) onPlaybackStateChange();
+  return playbacks;
+}
+
 export function togglePlaybackLoop(playbackState, key, onPlaybackStateChange = () => {}) {
   const { playback, looping } = togglePlaybackLoopState(playbackState, key);
   if (playback) {
@@ -101,6 +118,15 @@ export function togglePlaybackLoop(playbackState, key, onPlaybackStateChange = (
 
 export function togglePrimaryPlaybackLoop(playbackState, onPlaybackStateChange = () => {}) {
   return togglePlaybackLoop(playbackState, "primary", onPlaybackStateChange);
+}
+
+export function togglePlaybackLoopGroup(playbackState, keys, groupKey, onPlaybackStateChange = () => {}) {
+  const result = togglePlaybackLoopGroupState(playbackState, keys, groupKey);
+  for (const playback of result.playbacks) {
+    playback.player.set({ loop: result.looping, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
+  }
+  onPlaybackStateChange();
+  return result;
 }
 
 export function clearCanvas(canvas) {

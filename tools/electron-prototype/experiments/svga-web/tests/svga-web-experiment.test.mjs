@@ -441,6 +441,127 @@ test("short-term keyed playback controls operate Edit without mutating Preview",
   assert.equal(state.editPlayback.looping, false);
   assert.equal(state.primaryPlaybackLooping, true);
   assert.equal(state.primaryPlayback.looping, true);
+
+});
+
+test("short-term Compare playback controls synchronize every loaded slot", async () => {
+  const {
+    activePlaybackKeys,
+    replayPlaybackGroupState,
+    togglePlaybackGroupState
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-playback-control-model.mjs")).href);
+  const { togglePlaybackLoopGroupState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-playback-loop-model.mjs")).href);
+  const calls = [];
+  const player = (slot) => ({
+    pause() { calls.push(`${slot}:pause`); },
+    start() { calls.push(`${slot}:start`); },
+    clear() { calls.push(`${slot}:clear`); }
+  });
+  const state = {
+    view: "compare",
+    comparePlaybackLooping: true,
+    compareAPlayback: { playing: true, hasPlayed: true, looping: true, player: player("A") },
+    compareBPlayback: { playing: true, hasPlayed: true, looping: true, player: player("B") },
+    primaryPlayback: { playing: true, looping: true }
+  };
+
+  assert.deepEqual(activePlaybackKeys(state), ["compareA", "compareB"]);
+
+  togglePlaybackGroupState(state, activePlaybackKeys(state));
+  assert.equal(state.compareAPlayback.playing, false);
+  assert.equal(state.compareBPlayback.playing, false);
+  assert.equal(state.primaryPlayback.playing, true);
+  assert.deepEqual(calls, ["A:pause", "B:pause"]);
+
+  togglePlaybackGroupState(state, activePlaybackKeys(state));
+  assert.equal(state.compareAPlayback.playing, true);
+  assert.equal(state.compareBPlayback.playing, true);
+  assert.deepEqual(calls, ["A:pause", "B:pause", "A:start", "B:start"]);
+
+  replayPlaybackGroupState(state, activePlaybackKeys(state));
+  assert.deepEqual(calls, [
+    "A:pause", "B:pause", "A:start", "B:start",
+    "A:clear", "A:start", "B:clear", "B:start"
+  ]);
+
+  const loopView = togglePlaybackLoopGroupState(state, activePlaybackKeys(state), "compare");
+  assert.equal(loopView.looping, false);
+  assert.equal(state.comparePlaybackLooping, false);
+  assert.equal(state.compareAPlaybackLooping, false);
+  assert.equal(state.compareBPlaybackLooping, false);
+  assert.equal(state.compareAPlayback.looping, false);
+  assert.equal(state.compareBPlayback.looping, false);
+  assert.equal(state.primaryPlayback.looping, true);
+
+  const waitingState = {
+    view: "compare",
+    comparePlaybackLooping: true,
+    compareAPlayback: { playing: false, looping: true, player: player("waiting-A") }
+  };
+  const waitingLoopView = togglePlaybackLoopGroupState(waitingState, ["compareA", "compareB"], "compare");
+  assert.equal(waitingLoopView.looping, false);
+  assert.equal(waitingState.compareAPlaybackLooping, false);
+  assert.equal(waitingState.compareBPlaybackLooping, false);
+});
+
+test("short-term Compare playback bar is disabled only while every slot is empty", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const smokeRunner = await readFile(path.join(experimentRoot, "web/short-term-macos-smoke-runner.mjs"), "utf8");
+  const compareView = page.match(/<section class="view compareView"[\s\S]*?<section class="view editView"/)?.[0] ?? "";
+
+  assert.match(compareView, /class="playbackBar comparePlaybackBar"[^>]*data-component="PlaybackControls"/);
+  assert.match(compareView, /data-action="replay"/);
+  assert.match(compareView, /data-action="play-pause"/);
+  assert.match(compareView, /data-action="loop-toggle"/);
+  assert.match(compareView, /id="comparePlaybackProgress"/);
+  assert.match(compareView, /id="comparePlaybackTime"/);
+  assert.doesNotMatch(compareView, /class="playbackBar comparePlaybackBar"[^>]*data-state="disabled"/);
+  assert.doesNotMatch(modules, /\.comparePlaybackBar\s*\{[^}]*pointer-events:\s*none/su);
+  assert.match(smokeRunner, /Compare playback controls did not activate for loaded slot A/);
+  assert.match(smokeRunner, /comparePlayPauseButton\.click\(\);[\s\S]*state\.compareAPlayback\?\.playing === false[\s\S]*comparePlayPauseButton\.click\(\);[\s\S]*state\.compareAPlayback\?\.playing === true/);
+  assert.match(smokeRunner, /compareLoopButton\.click\(\);[\s\S]*state\.comparePlaybackLooping/);
+});
+
+test("short-term Compare B inherits the waiting A playback state", async () => {
+  const { openShortTermCompareBFromHost } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-surface.mjs")).href);
+  const mountCalls = [];
+  const nodes = {
+    compareCanvasB: {},
+    compareCanvasTitleB: { textContent: "" },
+    compareCanvasMetaB: { textContent: "" },
+    compareCanvasWrapB: { dataset: {} },
+    compareInfoB: { innerHTML: "" }
+  };
+  const state = {
+    sourceBytes: new Uint8Array([1]),
+    view: "compare",
+    comparePlaybackLooping: false,
+    compareAPlayback: { playing: false },
+    model: { overview: { facts: [] } },
+    displayName: "A.svga"
+  };
+
+  await openShortTermCompareBFromHost({
+    bridge: {
+      async openSvgaFile() {
+        return { status: "opened", basename: "B.svga", bytes: new Uint8Array([2, 3]) };
+      }
+    },
+    nodes,
+    state,
+    openFromHostDialog() {},
+    enterGeneralCompare() {},
+    async inspectShortTerm() { return { overview: { facts: [] } }; },
+    async mountPlayback(key, _canvas, _bytes, options) { mountCalls.push({ key, options }); },
+    async refreshRecentFiles() {}
+  });
+
+  assert.deepEqual(mountCalls, [{
+    key: "compareB",
+    options: { start: false, loop: false }
+  }]);
+  assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "loaded");
 });
 
 test("short-term command state synchronizes duplicate Preview and Edit playback controls", async () => {
@@ -7628,8 +7749,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="playbackProgress" id="playbackProgress" role="progressbar" aria-label="播放进度"/);
   assert.match(page, /class="playbackTime" id="playbackTime">0:00 \/ 0:00<\/span>/);
   assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
-  assert.match(page, /class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled"/);
-  assert.match(page, /class="playbackIconButton primary" data-playback-state="paused" aria-label="播放" title="播放" disabled/);
+  assert.match(page, /class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls"/);
+  assert.match(page, /id="comparePlaybackProgress"[^>]*aria-valuenow="0"/);
+  assert.match(page, /id="comparePlaybackTime">0:00 \/ 0:00<\/span>/);
+  assert.match(page, /class="playbackIconButton primary"(?=[^>]*data-action="play-pause")(?=[^>]*data-playback-state="paused")(?=[^>]*disabled)[^>]*>/);
   assert.match(page, /最近打开/);
   assert.match(page, /class="launchDropIcon fileDropIcon"/);
   assert.match(page, />拖拽文件到此处<\/p>/);
@@ -8136,7 +8259,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.layerPanelHeader\s*\{[^}]*min-height: var\(--asv-layer-panel-header-height\)/s);
   assert.match(shortTermModules, /\.layerPanelHeader h1\s*\{[^}]*font-size: var\(--asv-layer-panel-header-title-size\)/s);
   assert.match(shortTermModules, /\.layerList\s*\{[^}]*gap: var\(--asv-layer-list-gap\)/s);
-  assert.match(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
+  assert.doesNotMatch(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
   assert.match(shortTermModules, /\.compareInfo\s*\{[^}]*gap: var\(--asv-right-panel-section-gap\)/s);
   assert.match(shortTermModules, /\.compareInfo\s*\{[^}]*padding: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)/s);
   assert.match(shortTermTokens, /--asv-component-compare-mode-header-min-height: 54px/);
@@ -8832,17 +8955,23 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackSurface, /export function toggleShortTermPlayback/);
   assert.match(shortTermPlaybackSurface, /export function replayShortTermPrimaryPlayback/);
   assert.match(shortTermPlaybackSurface, /export function replayShortTermPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function replayShortTermPlaybackGroup/);
   assert.match(shortTermPlaybackSurface, /export function toggleShortTermPlaybackLoop/);
+  assert.match(shortTermPlaybackSurface, /export function toggleShortTermPlaybackLoopGroup/);
   assert.match(shortTermPlaybackSurface, /export function shortTermActivePlaybackKey/);
+  assert.match(shortTermPlaybackSurface, /export function shortTermActivePlaybackKeys/);
   assert.match(shortTermPlaybackSurface, /export function renderShortTermPlaybackProgress/);
   assert.match(shortTermController, /requestAnimationFrame\(tick\)/);
   assert.match(shortTermController, /cancelAnimationFrame\(playbackProgressFrame\)/);
   assert.match(shortTermController, /if \(key === "primary"\) \{\s+hidePlaybackFailureRecovery\(nodes\);\s+\}/);
-  assert.match(shortTermController, /if \(key === "primary" \|\| key === "edit"\) \{\s+startPlaybackProgressLoop\(\);\s+\}/);
-  assert.match(shortTermController, /state\.primaryPlayback \|\| state\.editPlayback \? requestAnimationFrame\(tick\) : 0/);
+  assert.match(shortTermController, /function hasMountedPlayback\(\)/);
+  assert.match(shortTermController, /playbackProgressFrame = hasMountedPlayback\(\) \? requestAnimationFrame\(tick\) : 0/);
+  assert.match(shortTermController, /startPlaybackProgressLoop\(\);/);
   assert.match(shortTermController, /playbackProgress: nodes\.editPlaybackProgress/);
   assert.match(shortTermController, /playbackTime: nodes\.editPlaybackTime/);
-  assert.match(shortTermController, /key: shortTermActivePlaybackKey\(state\)/);
+  assert.match(shortTermController, /playbackProgress: nodes\.comparePlaybackProgress/);
+  assert.match(shortTermController, /playbackTime: nodes\.comparePlaybackTime/);
+  assert.match(shortTermController, /const keys = shortTermActivePlaybackKeys\(state\)/);
   assert.match(shortTermPlaybackSurface, /export function clearShortTermPlaybackCanvas/);
   assert.match(shortTermPlaybackSurface, /export function shortTermPlayerPrototype/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);

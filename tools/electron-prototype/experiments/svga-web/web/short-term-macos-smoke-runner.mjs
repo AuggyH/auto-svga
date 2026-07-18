@@ -479,6 +479,30 @@ async function runShortTermSmoke({
   await waitForSmokeCondition(() => state.view === "compare", 2_000);
   await waitForCanvasPixels(nodes.compareCanvasA, 2_500);
   await captureSmokeArtifact("short-term-general-compare");
+  const comparePlayPauseButton = nodes.compareView.querySelector("[data-action='play-pause']");
+  const compareLoopButton = nodes.compareView.querySelector("[data-action='loop-toggle']");
+  if (
+    comparePlayPauseButton?.disabled !== false
+    || compareLoopButton?.disabled !== false
+    || state.compareAPlayback?.playing !== true
+  ) {
+    throw new Error("Compare playback controls did not activate for loaded slot A");
+  }
+  comparePlayPauseButton.click();
+  await waitForSmokeCondition(() => state.compareAPlayback?.playing === false, 2_000);
+  comparePlayPauseButton.click();
+  await waitForSmokeCondition(() => state.compareAPlayback?.playing === true, 2_000);
+  const compareLoopingBeforeToggle = state.comparePlaybackLooping !== false;
+  compareLoopButton.click();
+  await waitForSmokeCondition(
+    () => (state.comparePlaybackLooping !== false) !== compareLoopingBeforeToggle,
+    2_000
+  );
+  compareLoopButton.click();
+  await waitForSmokeCondition(
+    () => (state.comparePlaybackLooping !== false) === compareLoopingBeforeToggle,
+    2_000
+  );
   const compareExitButton = nodes.compareInfoB?.querySelector("[data-action='back-preview']");
   const compareExitButtonRect = compareExitButton?.getBoundingClientRect();
   const compareTitlebarRect = document.querySelector(".titlebar")?.getBoundingClientRect();

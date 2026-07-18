@@ -44,9 +44,10 @@ export async function renderShortTermOptimizationCompare({
   setCompareSlot("B", model.resultTitle || "优化结果", undefined, "优化副本");
   renderCompareInfo("A", "原始文件", state.model, state.displayName);
   renderShortTermOptimizationCompareResult({ nodes, model });
+  const comparePlaybackOptions = { loop: state.comparePlaybackLooping !== false };
   await Promise.all([
-    mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
-    mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
+    mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes, comparePlaybackOptions),
+    mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes, comparePlaybackOptions)
   ]);
   markShortTermCompareSlotLoaded({ nodes, slot: "A" });
   markShortTermCompareSlotLoaded({ nodes, slot: "B" });

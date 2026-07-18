@@ -1446,10 +1446,6 @@ canvas {
   display: none;
 }
 
-.comparePlaybackBar {
-  pointer-events: none;
-}
-
 .compareInfo {
   display: grid;
   align-content: start;
