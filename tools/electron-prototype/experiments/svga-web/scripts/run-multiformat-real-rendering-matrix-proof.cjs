@@ -898,9 +898,18 @@ function assertExpectedOwnerFacts(input, snapshot) {
   }
   if (input.requireCanvasRisk === true) {
     const canvasFact = model?.rightPanel?.facts?.find((fact) => fact.id === "dimensions");
-    const riskIssues = model?.rightPanel?.issues?.filter((issue) => issue.details?.reason === "vap_dimensions_over_1504") ?? [];
-    if (canvasFact?.status !== "warning" || canvasFact.value !== "750 x 1624" || riskIssues.length !== 1 || riskIssues[0]?.severity !== "warning") {
-      throw new Error(`${input.label} did not preserve one truthful oversized Canvas risk while playing: ${JSON.stringify({ canvasFact, riskIssues, snapshot: compactSnapshot(snapshot) })}`);
+    const ownerIssues = model?.rightPanel?.issues ?? [];
+    const riskIssues = ownerIssues.filter((issue) =>
+      issue?.code === "owner_issue"
+      && issue?.severity === "warning"
+      && issue?.message === "当前文件存在无法显示的检查问题。"
+      && issue?.pathRedacted === true
+    );
+    if (canvasFact?.status !== "warning"
+      || canvasFact.value !== "750 x 1624"
+      || ownerIssues.length !== 1
+      || riskIssues.length !== 1) {
+      throw new Error(`${input.label} did not preserve one truthful oversized Canvas risk while playing: ${JSON.stringify({ canvasFact, ownerIssues, snapshot: compactSnapshot(snapshot) })}`);
     }
   }
 }
