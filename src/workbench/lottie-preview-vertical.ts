@@ -21,6 +21,7 @@ import {
   type LottieSvgRendererLoader
 } from "./lottie-svg-playback-adapter.js";
 import {
+  LOTTIE_JSON_MAX_BYTES,
   MOTION_FORMAT_PROBE_MAX_BYTES,
   MULTIFORMAT_PREVIEW_WP1_GATE,
   MotionFormatProbeService,
@@ -79,6 +80,7 @@ export interface HiddenLottiePreviewHostResourceRead {
 export interface HiddenLottiePreviewHost {
   statLocalFile(localPath: string): Promise<HiddenLottiePreviewHostFileStat>;
   readLocalFileRange(localPath: string, offset: number, length: number): Promise<Uint8Array>;
+  readLocalFile?(input: { localPath: string; maxBytes: number }): Promise<Uint8Array>;
   readAdjacentResource(input: {
     sourceLocalPath: string;
     relativePath: string;
@@ -465,9 +467,14 @@ export class HiddenLottiePreviewVerticalSession {
         name: displayName,
         sizeBytes,
         mediaType: stat.mediaType ?? mediaTypeFromPath(displayName),
+        boundedFullReadMaxBytes: host.readLocalFile ? LOTTIE_JSON_MAX_BYTES : undefined,
         async read() {
-          if (!Number.isFinite(sizeBytes) || sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES) {
-            throw new Error("A bounded range read is required for this local motion source.");
+          if (!Number.isFinite(sizeBytes) || sizeBytes < 0 || sizeBytes > LOTTIE_JSON_MAX_BYTES) {
+            throw new Error("A bounded full read is required for this local Lottie source.");
+          }
+          if (sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES) {
+            if (!host.readLocalFile) throw new Error("A bounded full read is required for this local Lottie source.");
+            return host.readLocalFile({ localPath, maxBytes: LOTTIE_JSON_MAX_BYTES });
           }
           return host.readLocalFileRange(localPath, 0, MOTION_FORMAT_PROBE_MAX_BYTES);
         },
@@ -860,12 +867,14 @@ async function inlineResolvedImageData(
     const rangeSource = source as MotionAssetSource & {
       readRange?: (offset: number, length: number) => Promise<Uint8Array>;
     };
-    const bytes = rangeSource.readRange
-      ? await rangeSource.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+    const bytes = source.sizeBytes > LOTTIE_JSON_MAX_BYTES
+      ? undefined
       : source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
-        ? undefined
-        : await source.read();
-    if (!bytes || source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES || bytes.byteLength > MOTION_FORMAT_PROBE_MAX_BYTES) {
+        ? await source.read()
+        : rangeSource.readRange
+          ? await rangeSource.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+          : await source.read();
+    if (!bytes || source.sizeBytes > LOTTIE_JSON_MAX_BYTES || bytes.byteLength > LOTTIE_JSON_MAX_BYTES) {
       return {
         issues: [issue("parse_precondition", "Complete bounded JSON is required for hidden Lottie playback.", "error", {
           reason: "complete_bounded_animation_data_required"
@@ -880,11 +889,11 @@ async function inlineResolvedImageData(
       ? inlineTextLayerValues(transformedWithImages, textValues)
       : transformedWithImages;
     const transformedBytes = new TextEncoder().encode(JSON.stringify(transformed));
-    if (transformedBytes.byteLength > MOTION_FORMAT_PROBE_MAX_BYTES) {
+    if (transformedBytes.byteLength > LOTTIE_JSON_MAX_BYTES) {
       return {
         issues: [issue("capability", "Resolved Lottie animationData exceeds the hidden playback bound.", "error", {
           reason: "resolved_animation_data_too_large",
-          maxBytes: MOTION_FORMAT_PROBE_MAX_BYTES
+          maxBytes: LOTTIE_JSON_MAX_BYTES
         }, source.id)]
       };
     }

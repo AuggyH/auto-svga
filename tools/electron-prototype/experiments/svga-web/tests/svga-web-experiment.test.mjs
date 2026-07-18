@@ -3038,6 +3038,94 @@ test("0.2 installed file-open source keeps bounded embedded-image Lottie playabl
   }
 });
 
+test("0.2 host intake keeps large embedded-image Lottie separate from VAP sidecar binding", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-large-embedded-lottie-"));
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "large-embedded-lottie.json");
+  const pixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR42mP8z8AABQMBgF7gywAAAABJRU5ErkJggg==";
+  const assets = Array.from({ length: 26 }, (_value, index) => ({
+    id: `image_${index}`,
+    w: 1,
+    h: 1,
+    e: 1,
+    p: pixel
+  }));
+  const layers = assets.map((asset, index) => ({
+    ind: index + 1,
+    ty: 2,
+    nm: `Embedded image ${index + 1}`,
+    refId: asset.id,
+    ip: 0,
+    op: 24,
+    st: 0,
+    ks: {
+      o: { a: 0, k: 100 },
+      r: { a: 0, k: 0 },
+      p: { a: 0, k: [562.5, 562.5, 0] },
+      a: { a: 0, k: [0.5, 0.5, 0] },
+      s: { a: 0, k: [100, 100, 100] }
+    }
+  }));
+  const document = {
+    v: "5.7.0",
+    w: 1125,
+    h: 1125,
+    fr: 24,
+    ip: 0,
+    op: 24,
+    assets,
+    layers,
+    meta: { taskPadding: "x".repeat(405_000) }
+  };
+
+  try {
+    await writeFile(lottiePath, JSON.stringify(document));
+    const originalBytes = await readFile(lottiePath);
+    assert.ok(originalBytes.byteLength > 262_144);
+    assert.ok(originalBytes.byteLength < 5 * 1024 * 1024);
+    const originalSha256 = createHash("sha256").update(originalBytes).digest("hex");
+
+    const result = await withTerminalTestDeadline(
+      session.openLocalFilePath(lottiePath, "fileOpenEvent"),
+      "large-embedded-lottie-open"
+    );
+    assert.equal(result.status, "opened");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(result.model.detectedFormat, "lottie");
+    assert.equal(result.model.status, "playing");
+    assert.equal(result.model.rightPanel.assets.length, 26);
+    assert.equal(result.model.rightPanel.assetInventory.summary.imageCount, 26);
+    assert.equal(result.model.rightPanel.assetInventory.summary.textCount, 0);
+    assert.equal(result.model.rightPanel.assetInventory.summary.unsupportedOrMissingCount, 0);
+    assert.equal(result.model.rightPanel.issues.some((issue) => issue.code === "unsupported_feature"), false);
+
+    const runtime = await session.prepareRuntimePreview({
+      sourceId: result.sourceId,
+      format: "lottie",
+      requestId: result.model.requestId,
+      replacements: result.model.replacement
+    });
+    assert.equal(runtime.status, "prepared");
+    assert.equal(runtime.animationData.v, "5.7.0");
+    assert.equal(runtime.animationData.w, 1125);
+    assert.equal(runtime.animationData.h, 1125);
+    assert.equal(runtime.animationData.fr, 24);
+    assert.equal(runtime.animationData.op - runtime.animationData.ip, 24);
+    assert.equal(runtime.animationData.layers.length, 26);
+    assert.equal(runtime.animationData.assets.length, 26);
+    assert.equal(runtime.animationData.assets.every((asset) => asset.e === 1 && asset.p.startsWith("data:image/")), true);
+    assert.equal(createHash("sha256").update(await readFile(lottiePath)).digest("hex"), originalSha256);
+    assert.doesNotMatch(JSON.stringify({ result, runtime }), /auto-svga-large-embedded-lottie|\/Users|C:\\\\Users/);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
 test("0.2 strict-CSP Lottie runtime blocks unsafe or malformed expression shapes", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-expression-block-"));
   const session = createMultiFormatDesktopPreviewSession({
