@@ -875,6 +875,14 @@ test("real-rendering evidence binds the current routed material aliases without 
   assert.doesNotMatch(proofSource, /Users\/huangtengxin\/Downloads/u);
 });
 
+test("real-rendering matrix follows owner autoplay without toggling it off", () => {
+  const proofSource = source("scripts/run-multiformat-real-rendering-matrix-proof.cjs");
+  const functionSource = extractFunctionSource(proofSource, "async function provePlayableFormat");
+
+  assert.match(functionSource, /modelStatus\(snapshot\) === "playing"/u);
+  assert.doesNotMatch(functionSource, /runInPage\(`\$\{input\.label\} play`/u);
+});
+
 test("real-rendering VAP Canvas risk oracle requires one canonical owner warning", () => {
   const proofSource = source("scripts/run-multiformat-real-rendering-matrix-proof.cjs");
   const functionSource = extractFunctionSource(proofSource, "function assertExpectedOwnerFacts");

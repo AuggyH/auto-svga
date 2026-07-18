@@ -266,7 +266,7 @@ async function main() {
 async function provePlayableFormat(input) {
   const openAction = await openFileInProduct(input.filePath, input.label);
   const loadedSnapshot = await waitForPage(`${input.label} mounted`, () => pageSnapshot(), (snapshot) =>
-    modelStatus(snapshot) === "previewReady"
+    modelStatus(snapshot) === "playing"
       && modelFormat(snapshot) === input.format
       && snapshot.runtimeMountState === "loaded"
       && snapshot.runtimeFormat === input.format
@@ -283,7 +283,6 @@ async function provePlayableFormat(input) {
   const loadedPixels = await captureRuntimePixels(input.format);
   assertRenderablePixels(input.label, "loaded", loadedPixels, { requireBackingStore: input.format === "svga" });
 
-  await runInPage(`${input.label} play`, "window.__autoSvgaShortTermActions.playPause()");
   const playingFirst = await waitForPage(`${input.label} playing first sample`, () => pageSnapshot(), (snapshot) =>
     modelStatus(snapshot) === "playing"
       && modelFormat(snapshot) === input.format
