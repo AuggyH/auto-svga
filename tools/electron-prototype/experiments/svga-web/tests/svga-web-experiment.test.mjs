@@ -266,6 +266,9 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(loadingSection, /data-module="PreviewCanvasModule"/);
   assert.match(loadingSection, /data-module="StateRecoveryModule"/);
   assert.match(loadingSection, /data-role="LoadingCanvasRecovery"/);
+  assert.match(loadingSection, /<h1>正在加载…<\/h1>/);
+  assert.match(loadingSection, /<p id="loadingMessage"><\/p>/);
+  assert.doesNotMatch(loadingSection, /读取文件并准备预览。|解析文件并准备预览。|正在打开最近文件。/);
   assert.match(loadingSection, /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/);
   assert.match(loadingSection, /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/);
   assert.doesNotMatch(loadingSection, staleStateContentPattern);
@@ -274,6 +277,8 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(failedSection, /data-module="PreviewCanvasModule"/);
   assert.match(failedSection, /data-module="StateRecoveryModule"/);
   assert.match(failedSection, /data-role="FailureCanvasRecovery"/);
+  assert.match(failedSection, /文件加载失败/);
+  assert.match(failedSection, /文件格式不受支持或已损坏/);
   assert.match(failedSection, /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/);
   assert.match(failedSection, /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/);
   assert.doesNotMatch(failedSection, staleStateContentPattern);
@@ -7450,8 +7455,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /escapeHtml\(title\)/);
   assert.match(shortTermFeedbackModel, /escapeHtml\(message \|\| ""\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
-  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, "正在打开最近文件。"\)/);
-  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, "解析文件并准备预览。"\)/);
+  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, ""\)/);
+  assert.doesNotMatch(shortTermFileSurface, /正在打开最近文件。|解析文件并准备预览。/);
   assert.match(shortTermFileSurface, /renderFileHeader\(nodes, "等待打开文件", "-"\)/);
   assert.match(shortTermPreviewSurface, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta\)/);
   assert.match(shortTermController, /renderMessage: \(copy\) => renderDiscardMessage\(nodes, copy\)/);

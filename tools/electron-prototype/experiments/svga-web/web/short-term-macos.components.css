@@ -43,6 +43,10 @@
   color: var(--asv-muted);
 }
 
+.stateCard p:empty {
+  display: none;
+}
+
 .stateCard.error h1 {
   color: var(--asv-text);
 }

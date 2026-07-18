@@ -14,7 +14,7 @@ import { toUint8Array } from "./short-term-macos-byte-model.mjs";
 
 export function renderShortTermRecentOpenLoading({ nodes, setView }) {
   setView("loading");
-  renderLoadingMessage(nodes, "正在打开最近文件。");
+  renderLoadingMessage(nodes, "");
 }
 
 export async function openShortTermSourceFromHostDialog({
@@ -167,7 +167,7 @@ export function prepareShortTermSourceLoad({
   state.cleanSaveAsVisible = false;
   clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   setView("loading");
-  renderLoadingMessage(nodes, "解析文件并准备预览。");
+  renderLoadingMessage(nodes, "");
 }
 
 export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
