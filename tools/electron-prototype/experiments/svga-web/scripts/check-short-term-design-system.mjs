@@ -111,6 +111,7 @@ const requiredPageStates = [
   "Unsupported drop",
   "Preview ready",
   "Preview replaceable",
+  "Save feedback",
   "General comparing",
   "Edit reserved"
 ];
@@ -130,6 +131,9 @@ const requiredFigmaPageStates = [
   { figma: "拖拽 / 已有文件_拖入对比", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "拖拽 / 格式不支持_拖拽中", codePageState: "Drag decision overlay", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "拖拽 / 格式不支持_Drop后", codePageState: "Unsupported drop", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
+  { figma: "保存 / 保存中", codePageState: "Save feedback", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"] },
+  { figma: "保存 / 保存成功", codePageState: "Save feedback", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"] },
+  { figma: "保存 / 保存失败", codePageState: "Save feedback", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "SaveStateModule"] },
   { figma: "编辑 / 默认", codePageState: "Edit reserved", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "EditReservedModule", "PreviewCanvasModule"] },
   { figma: "参考 / 设置面板", codePageState: "Settings dialog", frame: { width: 1280, height: 800 }, rootModules: ["SettingsDialogModule"] }
 ];
@@ -642,16 +646,24 @@ async function main() {
     && /\.rightSurfaceBody,\s*\.compareInfo,\s*\.layerPanel,\s*\.reservedPanel\s*\{[\s\S]*scrollbar-width: none/.test(modules)
     && /\.rightSurfaceBody::-webkit-scrollbar,[\s\S]*\.reservedPanel::-webkit-scrollbar\s*\{[\s\S]*width: var\(--asv-scrollable-surface-scrollbar-size\)[\s\S]*height: var\(--asv-scrollable-surface-scrollbar-size\)/.test(modules));
   record("figma-save-feedback-banner-stays-in-contextual-right-surface-flow",
-    /class="saveFeedbackOutlet" data-save-feedback-outlet="overview">[\s\S]*id="saveBanner"/.test(page)
+    /class="saveFeedbackOutlet" data-save-feedback-outlet="overview">[\s\S]*id="saveBanner"[^>]*data-module="SaveStateModule"[^>]*data-page-state="Save feedback"/.test(page)
       && /class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"/.test(page)
       && !/<header class="titlebar"[\s\S]*?<\/header>\s*<section class="saveBanner"/.test(page)
       && /--asv-component-save-banner-min-height:\s*36px/.test(tokens)
       && /--asv-component-save-banner-gap:\s*var\(--asv-base-space-10\)/.test(tokens)
       && /--asv-component-save-banner-radius:\s*var\(--asv-radius-sm\)/.test(tokens)
+      && /--asv-component-save-banner-font-size:\s*var\(--asv-type-size-footnote\)/.test(tokens)
+      && /--asv-component-save-banner-line-height:\s*18px/.test(tokens)
+      && /--asv-component-save-banner-title-weight:\s*var\(--asv-type-weight-medium\)/.test(tokens)
       && /--asv-component-save-banner-icon-size:\s*var\(--asv-base-space-20\)/.test(tokens)
+      && /--asv-component-save-banner-icon-border-width:\s*3px/.test(tokens)
+      && /--asv-component-save-banner-loading-background:\s*var\(--asv-color-status-info-bg\)/.test(tokens)
+      && /--asv-component-save-banner-success-background:\s*transparent/.test(tokens)
+      && /--asv-component-save-banner-danger-background:\s*var\(--asv-color-status-danger-bg\)/.test(tokens)
       && /\.saveFeedbackOutlet\s*\{[\s\S]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/.test(modules)
-      && /\.saveBanner\s*\{[\s\S]*justify-content: center[\s\S]*border-radius: var\(--asv-save-banner-radius\)/.test(modules)
+      && /\.saveBanner\s*\{[\s\S]*justify-content: center[\s\S]*border-radius: var\(--asv-save-banner-radius\)[\s\S]*font-size: var\(--asv-save-banner-font-size\)[\s\S]*line-height: var\(--asv-save-banner-line-height\)/.test(modules)
       && /\.saveBanner\[data-status="loading"\]::before\s*\{[\s\S]*animation: spin var\(--asv-save-banner-icon-duration\)/.test(modules)
+      && /\.saveBanner strong\s*\{[\s\S]*color: currentColor/.test(modules)
       && /\.macApp > \.saveBanner\s*\{[\s\S]*grid-row: 1/.test(pageStatesCss));
   record("figma-r4-launch-module-contract-covered", /data-view="launch"[^>]*data-module="LaunchModule"/.test(page)
     && /class="launchCanvas"[^>]*data-component="LaunchDropCanvas"/.test(page)

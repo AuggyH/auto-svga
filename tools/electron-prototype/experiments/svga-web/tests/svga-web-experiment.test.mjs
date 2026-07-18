@@ -457,17 +457,32 @@ test("short-term save feedback follows the frozen right-surface placement contra
   const pageStates = await readFile(path.join(experimentRoot, "web/short-term-macos.page-states.css"), "utf8");
   const { applySaveFeedbackPlacement } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);
 
-  assert.match(page, /class="saveFeedbackOutlet" data-save-feedback-outlet="overview"[\s\S]*id="saveBanner"/);
+  assert.match(page, /class="saveFeedbackOutlet" data-save-feedback-outlet="overview"[\s\S]*id="saveBanner"[^>]*data-page-state="Save feedback"/);
   assert.match(page, /class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"/);
   assert.doesNotMatch(page, /<header class="titlebar"[\s\S]*?<\/header>\s*<section class="saveBanner"/);
   assert.match(tokens, /--asv-component-save-banner-min-height: 36px/);
   assert.match(tokens, /--asv-component-save-banner-gap: var\(--asv-base-space-10\)/);
   assert.match(tokens, /--asv-component-save-banner-radius: var\(--asv-radius-sm\)/);
+  assert.match(tokens, /--asv-component-save-banner-font-size: var\(--asv-type-size-footnote\)/);
+  assert.match(tokens, /--asv-component-save-banner-line-height: 18px/);
+  assert.match(tokens, /--asv-component-save-banner-title-weight: var\(--asv-type-weight-medium\)/);
+  assert.match(tokens, /--asv-component-save-banner-icon-border-width: 3px/);
+  assert.match(tokens, /--asv-component-save-banner-loading-background: var\(--asv-color-status-info-bg\)/);
+  assert.match(tokens, /--asv-component-save-banner-loading-color: var\(--asv-color-action-primary\)/);
+  assert.match(tokens, /--asv-component-save-banner-success-background: transparent/);
+  assert.match(tokens, /--asv-component-save-banner-success-color: var\(--asv-color-status-success\)/);
+  assert.match(tokens, /--asv-component-save-banner-danger-background: var\(--asv-color-status-danger-bg\)/);
+  assert.match(tokens, /--asv-component-save-banner-danger-color: var\(--asv-color-status-danger\)/);
   assert.match(modules, /\.saveFeedbackOutlet\s*\{[^}]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/s);
   assert.match(modules, /\.saveBanner\s*\{[^}]*justify-content: center/s);
   assert.match(modules, /\.saveBanner\s*\{[^}]*border-radius: var\(--asv-save-banner-radius\)/s);
+  assert.match(modules, /\.saveBanner\s*\{[^}]*font-size: var\(--asv-save-banner-font-size\)[^}]*line-height: var\(--asv-save-banner-line-height\)/s);
   assert.match(modules, /\.saveBanner::before\s*\{[^}]*width: var\(--asv-save-banner-icon-size\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="loading"\]\s*\{[^}]*background: var\(--asv-save-banner-loading-bg\)[^}]*color: var\(--asv-save-banner-loading-color\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="success"\]\s*\{[^}]*background: var\(--asv-save-banner-success-bg\)[^}]*color: var\(--asv-save-banner-success-color\)/s);
   assert.match(modules, /\.saveBanner\[data-status="danger"\]\s*\{[^}]*background: var\(--asv-save-banner-danger-bg\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="success"\]::before,[\s\S]*\.saveBanner\[data-status="danger"\]::before\s*\{[^}]*border-color: var\(--asv-save-banner-icon-track-color\)[^}]*border-top-color: currentColor[^}]*border-right-color: currentColor[^}]*border-bottom-color: currentColor/s);
+  assert.match(modules, /\.saveBanner strong\s*\{[^}]*color: currentColor/s);
   assert.match(pageStates, /\.macApp > \.saveBanner\s*\{[^}]*grid-row: 1/s);
 
   const overviewOutlet = { name: "overview", append(node) { node.parentElement = this; } };

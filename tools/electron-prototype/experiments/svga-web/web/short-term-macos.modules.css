@@ -116,6 +116,8 @@
   border-radius: var(--asv-save-banner-radius);
   background: var(--asv-save-banner-bg);
   box-shadow: var(--asv-save-banner-shadow);
+  font-size: var(--asv-save-banner-font-size);
+  line-height: var(--asv-save-banner-line-height);
 }
 
 .saveBanner::before {
@@ -124,45 +126,49 @@
   box-sizing: border-box;
   width: var(--asv-save-banner-icon-size);
   height: var(--asv-save-banner-icon-size);
-  border: var(--asv-save-banner-icon-border-width) solid currentColor;
+  border: var(--asv-save-banner-icon-border-width) solid var(--asv-save-banner-icon-track-color);
   border-radius: 50%;
+}
+
+.saveBanner[data-status="loading"] {
+  background: var(--asv-save-banner-loading-bg);
+  color: var(--asv-save-banner-loading-color);
 }
 
 .saveBanner[data-status="success"] {
   background: var(--asv-save-banner-success-bg);
-  color: var(--asv-success);
-}
-
-.saveBanner[data-status="success"]::before {
-  border-color: var(--asv-success);
+  color: var(--asv-save-banner-success-color);
 }
 
 .saveBanner[data-status="warning"] {
   background: var(--asv-save-banner-warning-bg);
-  color: var(--asv-warning);
-}
-
-.saveBanner[data-status="warning"]::before {
-  border-color: var(--asv-warning);
+  color: var(--asv-save-banner-warning-color);
 }
 
 .saveBanner[data-status="danger"] {
   background: var(--asv-save-banner-danger-bg);
-  color: var(--asv-danger);
+  color: var(--asv-save-banner-danger-color);
 }
 
+.saveBanner[data-status="success"]::before,
+.saveBanner[data-status="warning"]::before,
 .saveBanner[data-status="danger"]::before {
-  border-color: var(--asv-danger);
+  border-color: var(--asv-save-banner-icon-track-color);
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  border-bottom-color: currentColor;
 }
 
 .saveBanner[data-status="loading"]::before {
-  border-color: var(--asv-action);
-  border-top-color: transparent;
+  border-color: var(--asv-save-banner-icon-track-color);
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  border-bottom-color: currentColor;
   animation: spin var(--asv-save-banner-icon-duration) linear infinite;
 }
 
 .saveBanner strong {
-  color: var(--asv-text);
+  color: currentColor;
   font-weight: var(--asv-save-banner-title-weight);
 }
 
