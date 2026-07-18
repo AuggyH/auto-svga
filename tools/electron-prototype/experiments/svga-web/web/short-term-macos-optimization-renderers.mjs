@@ -32,6 +32,7 @@ export function renderOptimizationRunningState(nodes, active) {
   nodes.panelOptimization.dataset.workflowState = running ? "running" : "idle";
   nodes.panelOptimization.setAttribute("aria-busy", running ? "true" : "false");
   nodes.optimizationProgress.hidden = !running;
+  nodes.runOptimizationButton.hidden = running;
   if (running) {
     nodes.runOptimizationButton.disabled = true;
     nodes.closeOptimizationButton.disabled = true;

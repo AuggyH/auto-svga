@@ -176,19 +176,8 @@ button.danger {
   letter-spacing: var(--asv-asset-row-detail-letter-spacing);
 }
 
-.findingImpact {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-  color: var(--asv-finding-row-impact-color);
-  font-family: var(--asv-font);
-  font-size: var(--asv-finding-row-impact-size);
-  line-height: var(--asv-finding-row-impact-line-height);
-  white-space: nowrap;
-}
-
 .findingRow .badge {
-  grid-column: 3;
+  grid-column: 2;
   grid-row: 1;
   align-self: center;
   min-height: var(--asv-finding-row-badge-min-height);

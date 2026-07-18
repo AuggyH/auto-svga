@@ -553,13 +553,10 @@
   --asv-component-finding-row-title-color: var(--asv-color-text-primary);
   --asv-component-finding-row-summary-size: var(--asv-type-size-caption);
   --asv-component-finding-row-summary-line-height: 16px;
-  --asv-component-finding-row-impact-size: var(--asv-type-size-caption);
-  --asv-component-finding-row-impact-line-height: 16px;
-  --asv-component-finding-row-impact-color: var(--asv-color-text-tertiary);
   --asv-component-finding-row-badge-min-height: 22px;
   --asv-component-finding-row-badge-radius: var(--asv-radius-md);
   --asv-component-finding-row-badge-padding-inline: var(--asv-space-2);
-  --asv-component-finding-row-badge-font-size: var(--asv-type-size-caption);
+  --asv-component-finding-row-badge-font-size: var(--asv-type-size-micro);
   --asv-component-row-action-height: 24px;
   --asv-component-row-action-disabled-opacity: 0.42;
   --asv-component-row-menu-size: 26px;
@@ -1207,9 +1204,6 @@
   --asv-finding-row-title-color: var(--asv-component-finding-row-title-color);
   --asv-finding-row-summary-size: var(--asv-component-finding-row-summary-size);
   --asv-finding-row-summary-line-height: var(--asv-component-finding-row-summary-line-height);
-  --asv-finding-row-impact-size: var(--asv-component-finding-row-impact-size);
-  --asv-finding-row-impact-line-height: var(--asv-component-finding-row-impact-line-height);
-  --asv-finding-row-impact-color: var(--asv-component-finding-row-impact-color);
   --asv-finding-row-badge-min-height: var(--asv-component-finding-row-badge-min-height);
   --asv-finding-row-badge-radius: var(--asv-component-finding-row-badge-radius);
   --asv-finding-row-badge-padding-inline: var(--asv-component-finding-row-badge-padding-inline);

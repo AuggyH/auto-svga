@@ -511,7 +511,7 @@
 
 .findingRow {
   position: relative;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--asv-finding-row-gap);
   align-items: center;
   min-height: var(--asv-finding-row-min-height);

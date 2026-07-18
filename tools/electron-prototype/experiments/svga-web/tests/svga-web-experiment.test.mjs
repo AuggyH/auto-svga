@@ -737,6 +737,7 @@ test("short-term save banner states expose direct accessible page-state semantic
 
 test("short-term optimization running state uses the Figma progress hierarchy without fabricated values", async () => {
   const { renderOptimizationRunningState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-optimization-renderers.mjs")).href);
+  const { renderOptimizationFindingHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
   const attributes = new Map();
   const nodes = {
     panelOptimization: {
@@ -747,7 +748,7 @@ test("short-term optimization running state uses the Figma progress hierarchy wi
     },
     optimizationProgress: { hidden: true },
     optimizationProgressBar: { attributes: { role: "progressbar" } },
-    runOptimizationButton: { disabled: false },
+    runOptimizationButton: { disabled: false, hidden: false },
     closeOptimizationButton: { disabled: false }
   };
 
@@ -757,6 +758,7 @@ test("short-term optimization running state uses the Figma progress hierarchy wi
   assert.equal(attributes.get("aria-busy"), "true");
   assert.equal(nodes.optimizationProgress.hidden, false);
   assert.equal(nodes.runOptimizationButton.disabled, true);
+  assert.equal(nodes.runOptimizationButton.hidden, true);
   assert.equal(nodes.closeOptimizationButton.disabled, true);
   assert.equal(nodes.optimizationProgressBar.attributes.role, "progressbar");
   assert.equal(Object.hasOwn(nodes.optimizationProgressBar.attributes, "aria-valuenow"), false);
@@ -766,6 +768,7 @@ test("short-term optimization running state uses the Figma progress hierarchy wi
   assert.equal(nodes.panelOptimization.dataset.workflowState, "idle");
   assert.equal(attributes.get("aria-busy"), "false");
   assert.equal(nodes.optimizationProgress.hidden, true);
+  assert.equal(nodes.runOptimizationButton.hidden, false);
   assert.equal(nodes.closeOptimizationButton.disabled, false);
 
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
@@ -779,6 +782,16 @@ test("short-term optimization running state uses the Figma progress hierarchy wi
   assert.match(tokens, /--asv-component-optimization-progress-label-size:\s*var\(--asv-type-size-footnote\)/u);
   assert.match(modules, /\.optimizationProgressBarFill\s*\{[\s\S]*animation:\s*optimization-progress-indeterminate/u);
   assert.match(modules, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/u);
+
+  const candidateHtml = renderOptimizationFindingHtml({
+    title: "移除未引用图片资源",
+    summary: "可安全移除",
+    disposition: "safeExecutable",
+    count: 1,
+    estimatedFileSizeImpact: "0.3 MiB"
+  });
+  assert.match(candidateHtml, /<p>可安全移除 · 0\.3 MiB<\/p>/u);
+  assert.doesNotMatch(candidateHtml, /findingImpact/u);
 });
 
 test("short-term save feedback follows the frozen right-surface placement contract", async () => {
@@ -8119,7 +8132,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-finding-row-unsupported-bg: var\(--asv-component-finding-row-unsupported-background\)/);
   assert.match(shortTermTokens, /--asv-finding-row-title-line-height: var\(--asv-component-finding-row-title-line-height\)/);
   assert.match(shortTermTokens, /--asv-finding-row-summary-size: var\(--asv-component-finding-row-summary-size\)/);
-  assert.match(shortTermTokens, /--asv-finding-row-impact-color: var\(--asv-component-finding-row-impact-color\)/);
+  assert.doesNotMatch(shortTermTokens, /--asv-(?:component-)?finding-row-impact-/);
+  assert.match(shortTermTokens, /--asv-component-finding-row-badge-font-size: var\(--asv-type-size-micro\)/);
   assert.match(shortTermTokens, /--asv-finding-row-badge-min-height: var\(--asv-component-finding-row-badge-min-height\)/);
   assert.doesNotMatch(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-component-thumbnail-text-icon-width: 32px/);
@@ -8218,7 +8232,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.layerRow \.thumb\s*\{[^}]*width: var\(--asv-layer-row-thumb-size\)/s);
   assert.match(shortTermComponents, /\.layerRowText strong\s*\{[^}]*text-overflow: ellipsis/s);
   assert.match(shortTermComponents, /\.layerRowText strong\s*\{[^}]*font-weight: var\(--asv-layer-row-title-weight\)/s);
-  assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto auto/s);
+  assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto/s);
   assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*gap: var\(--asv-finding-row-gap\)/s);
   assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*background: var\(--asv-finding-row-bg\)/s);
   assert.match(shortTermComponents, /\.findingRow strong\s*\{[^}]*font-weight: var\(--asv-finding-row-title-weight\)/s);
@@ -8227,9 +8241,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.findingRow p\s*\{[^}]*white-space: nowrap/s);
   assert.match(shortTermComponents, /\.findingRow\[data-disposition="reviewOnly"\]\s*\{[^}]*background: var\(--asv-finding-row-review-bg\)/s);
   assert.match(shortTermComponents, /\.findingRow\[data-disposition="unsupported"\]\s*\{[^}]*background: var\(--asv-finding-row-unsupported-bg\)/s);
-  assert.match(shortTermAtoms, /\.findingImpact\s*\{[^}]*grid-column: 2/s);
-  assert.match(shortTermAtoms, /\.findingImpact\s*\{[^}]*font-size: var\(--asv-finding-row-impact-size\)/s);
-  assert.match(shortTermAtoms, /\.findingRow \.badge\s*\{[^}]*grid-column: 3/s);
+  assert.doesNotMatch(shortTermAtoms, /\.findingImpact\s*\{/s);
+  assert.match(shortTermAtoms, /\.findingRow \.badge\s*\{[^}]*grid-column: 2/s);
   assert.match(shortTermAtoms, /\.findingRow \.badge\s*\{[^}]*min-height: var\(--asv-finding-row-badge-min-height\)/s);
   assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*gap: var\(--asv-replaceable-row-gap\)/s);
   assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*border-bottom: var\(--asv-replaceable-row-divider\)/s);

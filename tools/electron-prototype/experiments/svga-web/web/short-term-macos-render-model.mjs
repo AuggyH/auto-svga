@@ -96,12 +96,14 @@ export function renderOptimizationFindingHtml(item) {
   const impactCopy = item.estimatedFileSizeImpact && item.estimatedFileSizeImpact !== "-"
     ? item.estimatedFileSizeImpact
     : item.estimatedDecodedMemoryImpact;
+  const summaryCopy = impactCopy && impactCopy !== "-" && !item.summary.includes(impactCopy)
+    ? `${item.summary} · ${impactCopy}`
+    : item.summary;
   const badgeClass = item.disposition === "safeExecutable"
     ? "safe"
     : item.disposition === "reviewOnly" ? "review" : "unsupported";
   return `
-    <div><strong>${escapeHtml(item.title)}${escapeHtml(countCopy)}</strong><p>${escapeHtml(item.summary)}</p></div>
-    <span class="findingImpact">${escapeHtml(impactCopy || "-")}</span>
+    <div><strong>${escapeHtml(item.title)}${escapeHtml(countCopy)}</strong><p>${escapeHtml(summaryCopy)}</p></div>
     <span class="badge ${badgeClass}">${dispositionCopy(item.disposition)}</span>
   `;
 }
