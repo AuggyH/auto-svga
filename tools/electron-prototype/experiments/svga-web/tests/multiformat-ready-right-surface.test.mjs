@@ -509,6 +509,38 @@ test("playback recovery and launch empty state follow the frozen page-state geom
   assert.doesNotMatch(modules, /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/u);
 });
 
+test("edit reserved surface follows the frozen placeholder hierarchy", async () => {
+  const [page, tokens, modules] = await Promise.all([
+    "index.html",
+    "short-term-macos.tokens.css",
+    "short-term-macos.modules.css"
+  ].map((file) => readFile(path.join(experimentRoot, "web", file), "utf8")));
+
+  const reservedStart = page.indexOf('<aside class="reservedPanel"');
+  const reservedEnd = page.indexOf("</aside>", reservedStart);
+  assert.notEqual(reservedStart, -1);
+  assert.notEqual(reservedEnd, -1);
+  const reservedPanel = page.slice(reservedStart, reservedEnd);
+
+  assert.match(reservedPanel, /data-role="EditReservedPlaceholder"/u);
+  assert.match(reservedPanel, /<h2>编辑操作区<\/h2>/u);
+  assert.match(reservedPanel, /<span>短期版本保留占位<\/span>/u);
+  assert.match(reservedPanel, /<span>高级功能后续规划<\/span>/u);
+  assert.doesNotMatch(reservedPanel, /<(?:button|input|select|textarea)\b/u);
+
+  assert.match(tokens, /--asv-component-edit-reserved-gap:\s*var\(--asv-space-2\)/u);
+  assert.match(tokens, /--asv-component-edit-reserved-title-size:\s*var\(--asv-type-size-body\)/u);
+  assert.match(tokens, /--asv-component-edit-reserved-title-weight:\s*var\(--asv-type-weight-medium\)/u);
+  assert.match(tokens, /--asv-component-edit-reserved-title-color:\s*var\(--asv-color-text-secondary\)/u);
+  assert.match(tokens, /--asv-component-edit-reserved-message-size:\s*var\(--asv-type-size-caption\)/u);
+  assert.match(tokens, /--asv-component-edit-reserved-message-color:\s*var\(--asv-color-text-tertiary\)/u);
+  assert.match(modules, /\.reservedPanel\s*\{[^}]*display:\s*grid[^}]*place-items:\s*center/su);
+  assert.match(modules, /\.editReservedPlaceholder\s*\{[^}]*gap:\s*var\(--asv-edit-reserved-gap\)[^}]*text-align:\s*center/su);
+  assert.match(modules, /\.editReservedPlaceholder h2\s*\{[^}]*font-size:\s*var\(--asv-edit-reserved-title-size\)[^}]*font-weight:\s*var\(--asv-edit-reserved-title-weight\)/su);
+  assert.match(modules, /\.editReservedPlaceholder p\s*\{[^}]*font-size:\s*var\(--asv-edit-reserved-message-size\)/su);
+  assert.match(modules, /\.editReservedPlaceholder p\s*\{[^}]*color:\s*var\(--asv-edit-reserved-message-color\)/su);
+});
+
 test("launch recent module remains present for unavailable, empty, and non-empty states", () => {
   const createNodes = () => {
     const recentBlock = new FakeElement();

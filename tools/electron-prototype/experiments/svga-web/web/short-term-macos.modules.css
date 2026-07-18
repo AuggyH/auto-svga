@@ -1755,6 +1755,39 @@ canvas {
 }
 
 .reservedPanel {
-  display: block;
+  display: grid;
+  place-items: center;
+  padding: var(--asv-edit-reserved-padding-block) var(--asv-edit-reserved-padding-inline);
   box-shadow: inset var(--asv-side-surface-separator-width) 0 0 var(--asv-side-surface-separator);
+}
+
+.editReservedPlaceholder {
+  display: grid;
+  justify-items: center;
+  gap: var(--asv-edit-reserved-gap);
+  max-width: 100%;
+  text-align: center;
+}
+
+.editReservedPlaceholder h2,
+.editReservedPlaceholder p {
+  margin: 0;
+}
+
+.editReservedPlaceholder h2 {
+  color: var(--asv-edit-reserved-title-color);
+  font-size: var(--asv-edit-reserved-title-size);
+  font-weight: var(--asv-edit-reserved-title-weight);
+  line-height: var(--asv-edit-reserved-title-line-height);
+}
+
+.editReservedPlaceholder p {
+  color: var(--asv-edit-reserved-message-color);
+  font-size: var(--asv-edit-reserved-message-size);
+  font-weight: var(--asv-edit-reserved-message-weight);
+  line-height: var(--asv-edit-reserved-message-line-height);
+}
+
+.editReservedPlaceholder p span {
+  display: block;
 }
