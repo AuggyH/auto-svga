@@ -22,6 +22,7 @@ import {
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const {
+  DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,
@@ -155,6 +156,7 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   const mainSource = source("main.cjs");
   const pickerSource = source("multiformat-native-picker.cjs");
   const helperSource = source("native/macos/AutoSvgaOpenPanel.swift");
+  const helperInfoPlist = source("native/macos/AutoSvgaOpenPanel.Info.plist");
   const openStart = mainSource.indexOf("async function openMultiFormatFile()");
   const openEnd = mainSource.indexOf("async function openDroppedMultiFormatFile", openStart);
   const openBody = mainSource.slice(openStart, openEnd);
@@ -162,6 +164,7 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(openBody, /chooseMultiFormatLocalFile/u);
   assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME, "asv-open-panel");
+  assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME, "Auto SVGA File Picker.app");
   assert.match(helperSource, /import AppKit/u);
   assert.match(helperSource, /NSOpenPanel\(\)/u);
   assert.match(helperSource, /allowedContentTypes\s*=\s*\[\]/u);
@@ -172,6 +175,9 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(helperSource, /finishLaunching\(\)[\s\S]*activate\(ignoringOtherApps:\s*true\)/u);
   assert.match(helperSource, /runModal\(\)/u);
   assert.doesNotMatch(helperSource, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
+  assert.match(helperInfoPlist, /local\.auto-svga\.open-panel/u);
+  assert.match(helperInfoPlist, /LSUIElement[\s\S]*<true\/>/u);
+  assert.doesNotMatch(helperInfoPlist, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
   assert.doesNotMatch(pickerSource, /osascript|chooseFile|System Events/u);
 
   assert.equal(
@@ -179,14 +185,14 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
       moduleDirectory: "/repo/tools/electron-prototype/experiments/svga-web",
       resourcesPath: "/Electron/Resources"
     }),
-    "/repo/tools/electron-prototype/experiments/svga-web/.runtime/native/asv-open-panel"
+    "/repo/tools/electron-prototype/experiments/svga-web/.runtime/native/Auto SVGA File Picker.app/Contents/MacOS/asv-open-panel"
   );
   assert.equal(
     resolveDarwinMultiFormatPickerHelperPath({
       moduleDirectory: "/Applications/Auto SVGA.app/Contents/Resources/app.asar",
       resourcesPath: "/Applications/Auto SVGA.app/Contents/Resources"
     }),
-    "/Applications/Auto SVGA.app/Contents/Resources/native/asv-open-panel"
+    "/Applications/Auto SVGA.app/Contents/Resources/native/Auto SVGA File Picker.app/Contents/MacOS/asv-open-panel"
   );
 
   const options = createMultiFormatOpenDialogOptions("darwin");

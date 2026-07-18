@@ -24,6 +24,9 @@ import {
   distributionChannel,
   finalAcceptanceOwner,
   macosPackagerArgs,
+  nativePickerHelperBundleIdentifier,
+  nativePickerHelperBundleName,
+  nativePickerHelperInfoPlistSourceRelativePath,
   nativePickerHelperName,
   nativePickerHelperSourceRelativePath,
   ownerVisibleLabel,
@@ -1426,7 +1429,13 @@ async function createPackagedProofFixture({
         nativePickerHelper: {
           source: nativePickerHelperSourceRelativePath,
           sourceSha256,
-          runtimePath: `native/${nativePickerHelperName}`,
+          infoPlistSource: nativePickerHelperInfoPlistSourceRelativePath,
+          infoPlistSha256: createHash("sha256")
+            .update(await readFile(path.join(experimentRoot, nativePickerHelperInfoPlistSourceRelativePath)))
+            .digest("hex"),
+          bundleIdentifier: nativePickerHelperBundleIdentifier,
+          bundleRuntimePath: `native/${nativePickerHelperBundleName}`,
+          runtimePath: `native/${nativePickerHelperBundleName}/Contents/MacOS/${nativePickerHelperName}`,
           executableSha256: createHash("sha256").update(nativePickerHelperBytes).digest("hex"),
           sizeBytes: nativePickerHelperBytes.byteLength,
           ...nativePickerHelperManifestOverrides
@@ -1457,8 +1466,13 @@ async function createPackagedProofFixture({
   const packagedAsarPath = path.join(resources, "app.asar");
   await asar.createPackage(asarSource, packagedAsarPath);
   if (!omitNativePickerHelper) {
-    const helperPath = path.join(resources, "native", nativePickerHelperName);
+    const helperBundlePath = path.join(resources, "native", nativePickerHelperBundleName);
+    const helperPath = path.join(helperBundlePath, "Contents", "MacOS", nativePickerHelperName);
     await mkdir(path.dirname(helperPath), { recursive: true });
+    await copyFile(
+      path.join(experimentRoot, nativePickerHelperInfoPlistSourceRelativePath),
+      path.join(helperBundlePath, "Contents", "Info.plist")
+    );
     await writeFile(helperPath, nativePickerHelperBytes);
     await chmod(helperPath, nativePickerHelperMode);
   }

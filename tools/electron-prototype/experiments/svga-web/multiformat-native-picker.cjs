@@ -7,6 +7,7 @@ const { promisify } = require("node:util");
 
 const SUPPORTED_MULTI_FORMAT_EXTENSIONS = new Set([".svga", ".json", ".mp4"]);
 const execFileAsync = promisify(execFile);
+const DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME = "Auto SVGA File Picker.app";
 const DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME = "asv-open-panel";
 
 function createMultiFormatOpenDialogOptions() {
@@ -68,9 +69,16 @@ function resolveDarwinMultiFormatPickerHelperPath({
 } = {}) {
   const packaged = moduleDirectory.endsWith(`${path.sep}app.asar`)
     || moduleDirectory.includes(`${path.sep}app.asar${path.sep}`);
-  return packaged
-    ? path.join(resourcesPath, "native", DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME)
-    : path.join(moduleDirectory, ".runtime", "native", DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME);
+  const nativeRoot = packaged
+    ? path.join(resourcesPath, "native")
+    : path.join(moduleDirectory, ".runtime", "native");
+  return path.join(
+    nativeRoot,
+    DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME,
+    "Contents",
+    "MacOS",
+    DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME
+  );
 }
 
 async function runDarwinMultiFormatPicker(
@@ -111,6 +119,7 @@ async function chooseMultiFormatLocalFile({
 }
 
 module.exports = {
+  DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME,
   DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,

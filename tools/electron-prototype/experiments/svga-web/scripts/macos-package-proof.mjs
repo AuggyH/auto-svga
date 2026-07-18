@@ -37,9 +37,14 @@ const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements
 const appIconSourcePath = path.join(experimentRoot, "packaging/macos/app-icon-source.png");
 const appIconPath = path.join(experimentRoot, "packaging/macos/app-icon.icns");
 export const nativePickerHelperName = "asv-open-panel";
+export const nativePickerHelperBundleName = "Auto SVGA File Picker.app";
+export const nativePickerHelperBundleIdentifier = "local.auto-svga.open-panel";
 export const nativePickerHelperSourceRelativePath = "native/macos/AutoSvgaOpenPanel.swift";
-export const nativePickerHelperPackagedRelativePath = `native/${nativePickerHelperName}`;
+export const nativePickerHelperInfoPlistSourceRelativePath = "native/macos/AutoSvgaOpenPanel.Info.plist";
+export const nativePickerHelperBundlePackagedRelativePath = `native/${nativePickerHelperBundleName}`;
+export const nativePickerHelperPackagedRelativePath = `${nativePickerHelperBundlePackagedRelativePath}/Contents/MacOS/${nativePickerHelperName}`;
 const nativePickerHelperSourcePath = path.join(experimentRoot, nativePickerHelperSourceRelativePath);
+const nativePickerHelperInfoPlistSourcePath = path.join(experimentRoot, nativePickerHelperInfoPlistSourceRelativePath);
 export const windowPlacementPackagedSourceFiles = [
   "main.cjs",
   "acceptance-startup-placement-proof.cjs",
@@ -453,6 +458,10 @@ export function packagedNativePickerHelperPath(packagedAsarPath) {
   return path.join(path.dirname(packagedAsarPath), nativePickerHelperPackagedRelativePath);
 }
 
+export function packagedNativePickerHelperInfoPlistPath(packagedAsarPath) {
+  return path.join(path.dirname(packagedAsarPath), nativePickerHelperBundlePackagedRelativePath, "Contents/Info.plist");
+}
+
 function skippedPackagedRuntimeClosure(packagedAsarPath, skippedReason) {
   return {
     asarPath: path.relative(repoRoot, packagedAsarPath),
@@ -470,7 +479,11 @@ function skippedPackagedRuntimeClosure(packagedAsarPath, skippedReason) {
       validated: false,
       source: nativePickerHelperSourceRelativePath,
       sourceSha256: null,
-      runtimePath: `native/${nativePickerHelperName}`,
+      infoPlistSource: nativePickerHelperInfoPlistSourceRelativePath,
+      infoPlistSha256: null,
+      bundleIdentifier: nativePickerHelperBundleIdentifier,
+      bundleRuntimePath: `native/${nativePickerHelperBundleName}`,
+      runtimePath: nativePickerHelperPackagedRelativePath,
       packagedPath: path.relative(repoRoot, packagedNativePickerHelperPath(packagedAsarPath)),
       executableSha256: null,
       executable: false,
@@ -543,6 +556,7 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
     const helperManifest = runtimeManifest?.nativePickerHelper;
     const helperPath = packagedNativePickerHelperPath(packagedAsarPath);
     const expectedSourceSha256 = createHash("sha256").update(readFileSync(nativePickerHelperSourcePath)).digest("hex");
+    const expectedInfoPlistSha256 = createHash("sha256").update(readFileSync(nativePickerHelperInfoPlistSourcePath)).digest("hex");
     let nativePickerHelper = {
       ...base.nativePickerHelper,
       sourceSha256: typeof helperManifest?.sourceSha256 === "string" ? helperManifest.sourceSha256 : null,
@@ -557,10 +571,21 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
     if (helperManifest?.sourceSha256 !== expectedSourceSha256) {
       findings.push("native picker helper source hash does not match source");
     }
-    if (helperManifest?.runtimePath !== `native/${nativePickerHelperName}`) {
+    if (helperManifest?.infoPlistSource !== nativePickerHelperInfoPlistSourceRelativePath
+      || helperManifest?.infoPlistSha256 !== expectedInfoPlistSha256) {
+      findings.push("native picker helper Info.plist binding is missing or stale");
+    }
+    if (helperManifest?.bundleIdentifier !== nativePickerHelperBundleIdentifier
+      || helperManifest?.bundleRuntimePath !== `native/${nativePickerHelperBundleName}`) {
+      findings.push("native picker helper bundle identity is missing or stale");
+    }
+    if (helperManifest?.runtimePath !== nativePickerHelperPackagedRelativePath) {
       findings.push("native picker helper runtime path is missing or stale");
     }
     try {
+      const packagedInfoPlistSha256 = createHash("sha256")
+        .update(readFileSync(packagedNativePickerHelperInfoPlistPath(packagedAsarPath)))
+        .digest("hex");
       const link = lstatSync(helperPath);
       const helperStats = statSync(helperPath);
       const executableSha256 = createHash("sha256").update(readFileSync(helperPath)).digest("hex");
@@ -570,6 +595,9 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
         && helperStats.size > 0
         && (helperStats.mode & 0o111) !== 0;
       if (!executable) findings.push("packaged native picker helper is not one executable regular file");
+      if (packagedInfoPlistSha256 !== expectedInfoPlistSha256) {
+        findings.push("packaged native picker helper Info.plist does not match source");
+      }
       if (helperManifest?.executableSha256 !== executableSha256) {
         findings.push("packaged native picker helper hash does not match runtime manifest");
       }
@@ -581,9 +609,15 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
         validated: executable
           && helperManifest?.source === nativePickerHelperSourceRelativePath
           && helperManifest?.sourceSha256 === expectedSourceSha256
-          && helperManifest?.runtimePath === `native/${nativePickerHelperName}`
+          && helperManifest?.infoPlistSource === nativePickerHelperInfoPlistSourceRelativePath
+          && helperManifest?.infoPlistSha256 === expectedInfoPlistSha256
+          && packagedInfoPlistSha256 === expectedInfoPlistSha256
+          && helperManifest?.bundleIdentifier === nativePickerHelperBundleIdentifier
+          && helperManifest?.bundleRuntimePath === `native/${nativePickerHelperBundleName}`
+          && helperManifest?.runtimePath === nativePickerHelperPackagedRelativePath
           && helperManifest?.executableSha256 === executableSha256
           && helperManifest?.sizeBytes === helperStats.size,
+        infoPlistSha256: packagedInfoPlistSha256,
         executableSha256,
         executable,
         sizeBytes: helperStats.size

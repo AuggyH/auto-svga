@@ -13,7 +13,10 @@ const repoRoot = path.resolve(experimentRoot, "../../../..");
 const runtimeRoot = path.join(experimentRoot, ".runtime");
 const execFileAsync = promisify(execFile);
 const nativePickerHelperSourcePath = path.join(experimentRoot, "native/macos/AutoSvgaOpenPanel.swift");
-const nativePickerHelperRuntimePath = path.join(runtimeRoot, "native/asv-open-panel");
+const nativePickerHelperInfoPlistSourcePath = path.join(experimentRoot, "native/macos/AutoSvgaOpenPanel.Info.plist");
+const nativePickerHelperBundleRuntimePath = path.join(runtimeRoot, "native/Auto SVGA File Picker.app");
+const nativePickerHelperInfoPlistRuntimePath = path.join(nativePickerHelperBundleRuntimePath, "Contents/Info.plist");
+const nativePickerHelperRuntimePath = path.join(nativePickerHelperBundleRuntimePath, "Contents/MacOS/asv-open-panel");
 const webBaselineFixturePath = path.join(repoRoot, "examples/avatar_frame_basic/output/avatar_frame_basic.svga");
 const expectedVendorHashes = new Map([
   ["svga-web-2.4.4.js", "6235bc9802e76dd517343123ec730d25e02c4d476b66b81ef26befe7881f3c50"]
@@ -80,6 +83,7 @@ console.log("svga-web strict-CSP experiment runtime prepared");
 
 async function prepareDarwinPickerHelper() {
   await mkdir(path.dirname(nativePickerHelperRuntimePath), { recursive: true });
+  await cp(nativePickerHelperInfoPlistSourcePath, nativePickerHelperInfoPlistRuntimePath);
   await execFileAsync("/usr/bin/xcrun", [
     "swiftc",
     "-O",
@@ -93,8 +97,9 @@ async function prepareDarwinPickerHelper() {
     maxBuffer: 1024 * 1024
   });
   await chmod(nativePickerHelperRuntimePath, 0o755);
-  const [sourceBytes, executableBytes, executableStats] = await Promise.all([
+  const [sourceBytes, infoPlistBytes, executableBytes, executableStats] = await Promise.all([
     readFile(nativePickerHelperSourcePath),
+    readFile(nativePickerHelperInfoPlistRuntimePath),
     readFile(nativePickerHelperRuntimePath),
     stat(nativePickerHelperRuntimePath)
   ]);
@@ -104,7 +109,11 @@ async function prepareDarwinPickerHelper() {
   return {
     source: "native/macos/AutoSvgaOpenPanel.swift",
     sourceSha256: createHash("sha256").update(sourceBytes).digest("hex"),
-    runtimePath: "native/asv-open-panel",
+    infoPlistSource: "native/macos/AutoSvgaOpenPanel.Info.plist",
+    infoPlistSha256: createHash("sha256").update(infoPlistBytes).digest("hex"),
+    bundleIdentifier: "local.auto-svga.open-panel",
+    bundleRuntimePath: "native/Auto SVGA File Picker.app",
+    runtimePath: "native/Auto SVGA File Picker.app/Contents/MacOS/asv-open-panel",
     executableSha256: createHash("sha256").update(executableBytes).digest("hex"),
     sizeBytes: executableStats.size
   };
