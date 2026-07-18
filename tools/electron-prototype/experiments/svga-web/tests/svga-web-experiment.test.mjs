@@ -1134,9 +1134,9 @@ test("short-term general compare keeps A facts visible while waiting for B", asy
   assert.match(html, /data-compare-state="waiting-b"/);
   assert.match(html, /data-slot="A" data-state="loaded"[\s\S]*头像框 A\.svga/);
   assert.match(html, /data-slot="B" data-state="empty"[\s\S]*文件未打开[\s\S]*data-action="open-compare-b"/);
-  assert.match(html, /class="compareMetricColumn"[^>]*data-slot="A"[^>]*data-state="loaded"[\s\S]*data-fact-id="fileSize"[\s\S]*data-fact-id="canvas"/);
+  assert.match(html, /class="compareMetricColumn"[^>]*data-slot="A"[^>]*data-state="loaded"[\s\S]*data-fact-id="fileSize"[\s\S]*data-fact-id="duration"[\s\S]*data-fact-id="canvas"/);
   assert.match(html, /class="compareMetricColumn"[^>]*data-slot="B"[^>]*data-state="empty"[^>]*aria-hidden="true"/);
-  assert.equal((html.match(/data-diff="uncompared"/g) ?? []).length, 4);
+  assert.equal((html.match(/data-diff="uncompared"/g) ?? []).length, 5);
   assert.doesNotMatch(html, /data-diff="unavailable"/);
 });
 
@@ -7963,8 +7963,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-fact-grid-padding-block: var\(--asv-space-3\)/);
   assert.match(shortTermTokens, /--asv-component-fact-grid-row-gap: var\(--asv-space-4\)/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 56px/);
+  assert.match(shortTermTokens, /--asv-component-fact-cell-label-size: var\(--asv-type-size-caption\)/);
+  assert.match(shortTermTokens, /--asv-component-fact-cell-label-line-height: 16px/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-value-size: var\(--asv-type-size-metric\)/);
-  assert.match(shortTermTokens, /--asv-component-fact-cell-unit-size: var\(--asv-type-size-footnote\)/);
+  assert.match(shortTermTokens, /--asv-component-fact-cell-unit-size: var\(--asv-type-size-caption\)/);
   assert.match(shortTermTokens, /--asv-fact-cell-unit-color: var\(--asv-component-fact-cell-unit-color\)/);
   assert.match(shortTermTokens, /--asv-component-metric-entry-font-size: var\(--asv-type-size-micro\)/);
   assert.match(shortTermTokens, /--asv-fact-cell-meta-gap: var\(--asv-component-fact-cell-meta-gap\)/);

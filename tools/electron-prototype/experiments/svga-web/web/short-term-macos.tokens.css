@@ -343,15 +343,15 @@
   --asv-component-fact-cell-min-height: 56px;
   --asv-component-fact-cell-gap: var(--asv-space-1);
   --asv-component-fact-cell-meta-gap: 0px;
-  --asv-component-fact-cell-label-size: var(--asv-type-size-micro);
-  --asv-component-fact-cell-label-line-height: 14px;
+  --asv-component-fact-cell-label-size: var(--asv-type-size-caption);
+  --asv-component-fact-cell-label-line-height: 16px;
   --asv-component-fact-cell-label-letter-spacing: 0;
   --asv-component-fact-cell-label-color: var(--asv-color-text-secondary);
   --asv-component-fact-cell-value-size: var(--asv-type-size-metric);
   --asv-component-fact-cell-value-line-height: 22px;
   --asv-component-fact-cell-value-color: var(--asv-color-text-primary);
   --asv-component-fact-cell-unit-gap: var(--asv-base-space-4);
-  --asv-component-fact-cell-unit-size: var(--asv-type-size-footnote);
+  --asv-component-fact-cell-unit-size: var(--asv-type-size-caption);
   --asv-component-fact-cell-unit-weight: var(--asv-type-weight-regular);
   --asv-component-fact-cell-unit-color: var(--asv-color-text-tertiary);
   --asv-component-fact-status-strip-width: 2px;

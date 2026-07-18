@@ -11,6 +11,7 @@ export function overviewFactGroups(model) {
   const requiredIds = new Set([
     "fileSize",
     "decodedMemory",
+    "duration",
     "runtimeStructure",
     "runtimeObjectCount",
     "animationFrameRecordCount",

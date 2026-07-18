@@ -38,6 +38,21 @@ test("runtime structure overview facts keep secondary detail accessible", () => 
   assert.deepEqual(overviewVisibleFacts(model), groups.summary);
 });
 
+test("default preview facts retain the frozen duration row", () => {
+  const facts = [
+    { id: "fileSize", label: "文件大小", value: "2.4 MiB", status: "pass" },
+    { id: "decodedMemory", label: "内存占用", value: "20.6 MiB", status: "pass" },
+    { id: "duration", label: "动画时长", value: "3 s", status: "pass" },
+    { id: "fps", label: "帧率", value: "30 fps", status: "pass" },
+    { id: "canvas", label: "画布尺寸", value: "300 × 300 px", status: "pass" }
+  ];
+
+  assert.deepEqual(
+    overviewFactGroups({ overview: { facts } }).summary.map((fact) => fact.id),
+    ["fileSize", "decodedMemory", "duration", "fps", "canvas"]
+  );
+});
+
 test("owner-visible right panel contains more info disclosure markers", async () => {
   const [renderModel, overviewModel, overviewRenderers, componentStyles] = await Promise.all([
     readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8"),
