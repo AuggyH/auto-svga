@@ -133,6 +133,35 @@ test("short-term metric values split units only for simple numeric facts", async
   }), /302 <span class="factValueUnit">B<\/span>[\s\S]*242 <span class="factValueUnit">B<\/span>/);
 });
 
+test("short-term right surface normalizes core fact labels to frozen design copy", async () => {
+  const {
+    factDisplayLabel,
+    renderCompareFactCellHtml,
+    renderOverviewFactCellHtml
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
+  const legacyFacts = [
+    { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "warning" },
+    { id: "decodedMemory", label: "估算内存", value: "20.6 MiB", status: "pass" },
+    { id: "canvas", label: "画布", value: "300 x 300 px", status: "pass" },
+    { id: "fps", label: "FPS", value: "30 fps", status: "pass" }
+  ];
+  const labels = legacyFacts.map(factDisplayLabel);
+  const html = [
+    renderOverviewFactCellHtml(legacyFacts[0]),
+    renderOverviewFactCellHtml(legacyFacts[1]),
+    renderCompareFactCellHtml(legacyFacts[2]),
+    renderCompareFactCellHtml(legacyFacts[3])
+  ].join("");
+
+  assert.deepEqual(labels, ["文件大小", "内存占用", "画布尺寸", "帧率"]);
+  assert.match(html, /文件大小/);
+  assert.match(html, /内存占用/);
+  assert.match(html, /画布尺寸/);
+  assert.match(html, /帧率/);
+  assert.doesNotMatch(html, /文件体积|估算内存|>画布<|>FPS</);
+  assert.match(html, /aria-label="文件大小可优化"/);
+});
+
 test("short-term playback loop toggle updates player loop state", async () => {
   const { togglePrimaryPlaybackLoopState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-playback-loop-model.mjs")).href);
   const state = {
@@ -338,6 +367,8 @@ test("short-term general compare renders loaded A/B facts through shared metric 
   assert.match(html, /data-slot="B"/);
   assert.match(html, /2.4 <span class="factValueUnit">MiB<\/span>/);
   assert.match(html, /1.2 <span class="factValueUnit">MiB<\/span>/);
+  assert.match(html, /文件大小/);
+  assert.doesNotMatch(html, /文件体积/);
   assert.equal((html.match(/data-diff="different"/g) ?? []).length, 2);
   assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
 });

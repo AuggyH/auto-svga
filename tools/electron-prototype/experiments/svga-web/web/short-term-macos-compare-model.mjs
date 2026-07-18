@@ -1,5 +1,6 @@
 import {
   escapeHtml,
+  factDisplayLabel,
   overviewVisibleFacts,
   renderCompareFactCellHtml,
   renderMetricValueHtml,
@@ -57,7 +58,7 @@ function compareAlignedFacts(rowIds, facts, peerFacts) {
       id,
       fact,
       peer,
-      label: fact?.label || peer?.label || id
+      label: factDisplayLabel(fact || peer || { id, label: id })
     };
   });
 }
@@ -79,7 +80,7 @@ function renderCompareColumnFactHtml({ id, fact, peer, label }) {
   }
   return `
     <div class="compareMetricCell" data-component="FactCell" data-fact-id="${escapeHtml(id)}" data-status="${escapeHtml(fact.status || "unknown")}" data-diff="${escapeHtml(diff)}">
-      <span>${escapeHtml(fact.label)}</span>
+      <span>${escapeHtml(factDisplayLabel(fact))}</span>
       <strong>${renderMetricValueHtml(fact.value)}</strong>
     </div>
   `;

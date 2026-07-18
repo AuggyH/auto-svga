@@ -1,5 +1,6 @@
 import {
   escapeHtml,
+  factDisplayLabel,
   formatDisplayDetailCopy,
   renderOverviewFactCellHtml
 } from "./short-term-macos-render-model.mjs";
@@ -20,7 +21,7 @@ export function createOverviewFactCell(fact) {
   cell.dataset.role = "ProductionSpecInlineRow";
   cell.dataset.factId = fact.id;
   cell.dataset.status = fact.status;
-  cell.title = `${fact.label}: ${fact.value}`;
+  cell.title = `${factDisplayLabel(fact)}: ${fact.value}`;
   cell.innerHTML = renderOverviewFactCellHtml(fact);
   return cell;
 }
