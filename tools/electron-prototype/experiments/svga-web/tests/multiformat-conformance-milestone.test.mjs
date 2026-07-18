@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 import {
   containMotionMedia,
   multiFormatDragDecisionForEvent,
@@ -862,6 +863,48 @@ test("real-rendering evidence binds the current routed material aliases without 
   assert.match(proofSource, /AUTO_SVGA_SKIP_FUSION_FIXTURE === "1"/u);
   assert.match(proofSource, /status: "notRun", reason: "task_owned_fusion_fixture_unavailable"/u);
   assert.doesNotMatch(proofSource, /Users\/huangtengxin\/Downloads/u);
+});
+
+test("real-rendering VAP Canvas risk oracle requires one canonical owner warning", () => {
+  const proofSource = source("scripts/run-multiformat-real-rendering-matrix-proof.cjs");
+  const functionSource = extractFunctionSource(proofSource, "function assertExpectedOwnerFacts");
+  const context = vm.createContext({ compactSnapshot: (snapshot) => snapshot });
+  const assertExpectedOwnerFacts = vm.runInContext(`(${functionSource})`, context);
+  const input = { label: "OWNER-VAP-A", requireCanvasRisk: true };
+  const ownerWarning = {
+    code: "owner_issue",
+    severity: "warning",
+    message: "当前文件存在无法显示的检查问题。",
+    pathRedacted: true
+  };
+  const snapshot = {
+    hostModel: {
+      model: {
+        rightPanel: {
+          facts: [{ id: "dimensions", label: "画布", status: "warning", value: "750 x 1624" }],
+          issues: [ownerWarning]
+        }
+      }
+    }
+  };
+
+  assert.doesNotThrow(() => assertExpectedOwnerFacts(input, snapshot));
+  assert.throws(() => assertExpectedOwnerFacts(input, {
+    hostModel: { model: { rightPanel: { ...snapshot.hostModel.model.rightPanel, issues: [] } } }
+  }), /one truthful oversized Canvas risk/u);
+  assert.throws(() => assertExpectedOwnerFacts(input, {
+    hostModel: { model: { rightPanel: { ...snapshot.hostModel.model.rightPanel, issues: [ownerWarning, ownerWarning] } } }
+  }), /one truthful oversized Canvas risk/u);
+  assert.throws(() => assertExpectedOwnerFacts(input, {
+    hostModel: {
+      model: {
+        rightPanel: {
+          ...snapshot.hostModel.model.rightPanel,
+          issues: [{ severity: "warning", details: { reason: "vap_dimensions_over_1504" } }]
+        }
+      }
+    }
+  }), /one truthful oversized Canvas risk/u);
 });
 
 test("real-material source proof validates the private binding and emits aliases only", () => {
