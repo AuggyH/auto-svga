@@ -870,6 +870,8 @@ export function createMultiFormatDesktopPreviewController({
   function renderReplaceableTargets() {
     const model = state.model;
     const rightPanel = projectMultiFormatRightPanel(model);
+    const imageCount = (rightPanel.imageTargets ?? []).length;
+    const textCount = (rightPanel.textTargets ?? []).length;
     const targets = (rightPanel.imageTargets ?? []).map((target) => ({
       ...target,
       replacementActive: multiFormatActiveReplacementForPublicTarget(
@@ -879,9 +881,7 @@ export function createMultiFormatDesktopPreviewController({
         publicRuntimeReplacementTargets
       )
     }));
-    nodes.replaceableSummary.textContent = targets.length
-      ? `${targets.length} 个可替换图片`
-      : "当前文件没有可替换图片。";
+    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(imageCount, textCount);
     nodes.replaceableList.replaceChildren(...targets.map((target, index) => createReplaceableImageRow(target, index, {
       model,
       selected: state.selectedImageKey === target.imageKey,
@@ -889,6 +889,13 @@ export function createMultiFormatDesktopPreviewController({
       directReplace: true,
       replacementActive: target.replacementActive
     })));
+  }
+
+  function replaceableElementSummaryCopy(imageCount, textCount) {
+    if (imageCount > 0 && textCount > 0) return `${imageCount} 个图片 · ${textCount} 个文本`;
+    if (imageCount > 0) return `${imageCount} 个可替换图片`;
+    if (textCount > 0) return `${textCount} 个可替换文本`;
+    return "当前文件没有可替换图片或文本。";
   }
 
   function renderTextTargets() {

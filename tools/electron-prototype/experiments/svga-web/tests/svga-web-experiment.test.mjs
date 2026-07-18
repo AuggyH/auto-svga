@@ -3800,6 +3800,79 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
   }
 });
 
+test("0.2 replaceable summary includes text-only Lottie and VAP targets", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    for (const fixture of [
+      {
+        format: "lottie",
+        eventId: "lottie-text-only",
+        textKey: "text:1",
+        displayName: "Greeting",
+        initialText: "Original greeting"
+      },
+      {
+        format: "vap",
+        eventId: "vap-text-only",
+        textKey: "title",
+        displayName: "title",
+        initialText: "VAP 融合文字"
+      }
+    ]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      globalThis.document = createMultiFormatControllerTestDocument(nodes);
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const controller = createMultiFormatDesktopPreviewController({
+        bridge: {
+          updateShortTermMenuState() {
+            return Promise.resolve();
+          },
+          setShortTermWindowMode() {
+            return Promise.resolve();
+          }
+        },
+        nodes,
+        state,
+        svgaController: { handlers: { deactivateForMultiFormat() {}, renderCommandState() {} } }
+      });
+      const textTargets = [{
+        textKey: fixture.textKey,
+        displayName: fixture.displayName,
+        initialText: fixture.initialText,
+        placeholder: "输入文字以预览",
+        resetDisabled: false
+      }];
+      const result = createRuntimeMountOpenResult(fixture.format, {
+        sourceId: `${fixture.eventId}-source`,
+        imageTargets: [],
+        textTargets
+      });
+
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: fixture.eventId }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({ eventId: fixture.eventId, result }), true);
+
+      assert.equal(nodes.replaceableSummary.textContent, "1 个可替换文本");
+      assert.doesNotMatch(nodes.replaceableSummary.textContent, /没有可替换图片/u);
+      assert.equal(nodes.replaceableList.children.length, 0);
+      const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
+      assert.ok(input);
+      assert.equal(input.value, fixture.initialText);
+      assert.equal(input.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
+    }
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("0.2 playback meta uses closed renderer-owned status and format semantics", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
@@ -8622,6 +8695,40 @@ function createSessionBackedMultiFormatRuntimeMountTestBridge(session) {
 
 function createRuntimeMountOpenResult(format, options = {}) {
   const activeReplacements = Array.isArray(options.active) ? options.active : [];
+  const defaultImageTargets = format === "lottie"
+    ? [{
+        imageKey: "avatar",
+        resourceId: "avatar",
+        displayName: "Avatar",
+        detail: "120 x 80"
+      }]
+    : format === "vap"
+      ? [{
+          imageKey: "avatar",
+          resourceId: "avatar",
+          displayName: "avatar",
+          detail: "VAP 融合图片 · 120 x 80"
+        }]
+      : [];
+  const defaultTextTargets = format === "lottie"
+    ? [{
+        textKey: "text:1",
+        displayName: "Greeting",
+        initialText: "Original greeting",
+        placeholder: "输入文字以预览",
+        resetDisabled: false
+      }]
+    : format === "vap"
+      ? [{
+          textKey: "title",
+          displayName: "title",
+          initialText: "VAP 融合文字",
+          placeholder: "输入文字以预览",
+          resetDisabled: false
+        }]
+      : [];
+  const imageTargets = Array.isArray(options.imageTargets) ? options.imageTargets : defaultImageTargets;
+  const textTargets = Array.isArray(options.textTargets) ? options.textTargets : defaultTextTargets;
   const ownerRightPanelSnapshotEnvelope = createTestOwnerRightPanelSnapshotEnvelope({
     facts: [{ id: "format", label: "格式", value: format.toUpperCase(), status: "pass" }],
     assetInventory: {
@@ -8631,47 +8738,17 @@ function createRuntimeMountOpenResult(format, options = {}) {
       groups: [],
       summary: {
         totalItems: 0,
-        replaceableItems: 0,
-        imageCount: 0,
-        textCount: format === "lottie" || format === "vap" ? 1 : 0,
+        replaceableItems: imageTargets.length + textTargets.length,
+        imageCount: imageTargets.length,
+        textCount: textTargets.length,
         sequenceFrameCount: 0,
         audioVideoCount: 0,
         unsupportedOrMissingCount: 0
       },
       capabilityMarkers: []
     },
-    imageTargets: format === "lottie"
-      ? [{
-          imageKey: "avatar",
-          resourceId: "avatar",
-          displayName: "Avatar",
-          detail: "120 x 80"
-        }]
-      : format === "vap"
-        ? [{
-            imageKey: "avatar",
-            resourceId: "avatar",
-            displayName: "avatar",
-            detail: "VAP 融合图片 · 120 x 80"
-          }]
-        : [],
-    textTargets: format === "lottie"
-      ? [{
-          textKey: "text:1",
-          displayName: "Greeting",
-          initialText: "Original greeting",
-          placeholder: "输入文字以预览",
-          resetDisabled: false
-        }]
-      : format === "vap"
-        ? [{
-            textKey: "title",
-            displayName: "title",
-            initialText: "VAP 融合文字",
-            placeholder: "输入文字以预览",
-            resetDisabled: false
-          }]
-        : []
+    imageTargets,
+    textTargets
   }, options.sourceId ?? (format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb"));
   return {
     status: "opened",
