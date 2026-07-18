@@ -37,8 +37,8 @@ export function saveBannerView(title, message, tone = bannerTone(title)) {
   };
 }
 
-export function sourceUnmodifiedMessage(message) {
-  return `${message || "未知错误"} 源文件没有被修改。`;
+export function sourceUnmodifiedMessage() {
+  return "源文件没有被修改。";
 }
 
 export function buildCurrentStateSummary(input) {

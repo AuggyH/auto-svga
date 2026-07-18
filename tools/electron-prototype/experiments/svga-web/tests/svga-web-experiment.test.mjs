@@ -385,6 +385,7 @@ test("short-term save banner states expose direct accessible page-state semantic
     sourceUnmodifiedMessage
   } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs")).href);
   const { showSaveFeedbackBanner, clearSaveFeedbackBanner } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs")).href);
+  const { showShortTermOperationFailure } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-surface.mjs")).href);
 
   assert.equal(bannerTone("正在保存并验证输出…"), "loading");
   assert.equal(bannerTone("优化执行中…"), "loading");
@@ -439,13 +440,40 @@ test("short-term save banner states expose direct accessible page-state semantic
   assert.equal(attributes.get("aria-live"), "polite");
   assert.equal(attributes.get("aria-busy"), "false");
 
-  assert.equal(sourceUnmodifiedMessage("磁盘写入失败。"), "磁盘写入失败。 源文件没有被修改。");
+  assert.equal(sourceUnmodifiedMessage(), "源文件没有被修改。");
+  let errorCoercions = 0;
+  const rawHostError = {
+    [Symbol.toPrimitive]() {
+      errorCoercions += 1;
+      return "write failed at /Users/alice/Secret/output.svga";
+    }
+  };
+  let commandStateRenderCount = 0;
+  showShortTermOperationFailure({
+    nodes: { saveBanner: node },
+    state: {
+      sourceBytes: new Uint8Array([1]),
+      view: "preview",
+      activeOutput: null,
+      saveStatus: "idle"
+    },
+    setMode() {
+      assert.fail("preview operation failure must not change mode");
+    },
+    renderCommandState() {
+      commandStateRenderCount += 1;
+    }
+  }, "替换未完成。", rawHostError);
+  assert.equal(errorCoercions, 0);
+  assert.equal(commandStateRenderCount, 1);
+  assert.equal(node.innerHTML, "<strong>替换未完成。</strong><span> 源文件没有被修改。</span>");
+  assert.doesNotMatch(node.innerHTML, /Users|alice|Secret|write failed/i);
   const saveSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-save-surface.mjs"), "utf8");
   const commandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
-  assert.match(saveSurface, /import \{ sourceUnmodifiedMessage \} from "\.\/short-term-macos-feedback-model\.mjs";/);
+  assert.doesNotMatch(saveSurface, /sourceUnmodifiedMessage/);
   assert.match(saveSurface, /showSaveBanner\("正在保存并验证输出…", ""\)/);
   assert.match(saveSurface, /showSaveBanner\("已保存", ""\)/);
-  assert.match(saveSurface, /showSaveBanner\("保存失败，请重试", sourceUnmodifiedMessage/);
+  assert.match(saveSurface, /showSaveBanner\("保存失败，请重试", ""\)/);
   assert.match(commandState, /正在保存并验证输出/);
   assert.doesNotMatch(commandState, /正在验证保存输出/);
 });
@@ -8207,7 +8235,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermController, /renderMessage: \(copy\) => renderDiscardMessage\(nodes, copy\)/);
   assert.match(shortTermDialogModel, /renderMessage\(message\)/);
   assert.match(shortTermFeedbackSurface, /renderFailureMessage\(nodes, SHORT_TERM_LOAD_FAILURE_COPY\)/);
-  assert.match(shortTermFeedbackSurface, /message: sourceUnmodifiedMessage\(message\)/);
+  assert.match(shortTermFeedbackSurface, /message: sourceUnmodifiedMessage\(\)/);
+  assert.doesNotMatch(shortTermFeedbackSurface, /String\(error\)|error\.message/);
   assert.match(shortTermFileSurface, /state\.sourceBytes = new Uint8Array\(bytes\)/);
   assert.match(shortTermFileSurface, /state\.sourceBytes = undefined/);
   assert.match(shortTermFileSurface, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);

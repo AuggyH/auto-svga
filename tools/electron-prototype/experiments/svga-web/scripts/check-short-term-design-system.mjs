@@ -356,6 +356,9 @@ async function main() {
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
   const overviewRenderer = await readFile(path.join(webRoot, "short-term-macos-overview-renderers.mjs"), "utf8");
   const optimizationRenderer = await readFile(path.join(webRoot, "short-term-macos-optimization-renderers.mjs"), "utf8");
+  const feedbackModel = await readFile(path.join(webRoot, "short-term-macos-feedback-model.mjs"), "utf8");
+  const feedbackSurface = await readFile(path.join(webRoot, "short-term-macos-feedback-surface.mjs"), "utf8");
+  const saveSurface = await readFile(path.join(webRoot, "short-term-macos-save-surface.mjs"), "utf8");
   const recentFilesModel = await readFile(path.join(webRoot, "short-term-macos-recent-files-model.mjs"), "utf8");
   const renderModel = await readFile(path.join(webRoot, "short-term-macos-render-model.mjs"), "utf8");
   const compareModel = await readFile(path.join(webRoot, "short-term-macos-compare-model.mjs"), "utf8");
@@ -696,6 +699,12 @@ async function main() {
       && /\.saveBanner\[data-status="loading"\]::before\s*\{[\s\S]*animation: spin var\(--asv-save-banner-icon-duration\)/.test(modules)
       && /\.saveBanner strong\s*\{[\s\S]*color: currentColor/.test(modules)
       && /\.macApp > \.saveBanner\s*\{[\s\S]*grid-row: 1/.test(pageStatesCss));
+  record("figma-save-feedback-copy-stays-renderer-owned-and-path-free",
+    /export function sourceUnmodifiedMessage\(\)\s*\{[\s\S]*return "源文件没有被修改。"/.test(feedbackModel)
+      && /message: sourceUnmodifiedMessage\(\)/.test(feedbackSurface)
+      && !/String\(error\)|error\.message/.test(feedbackSurface)
+      && /showSaveBanner\("保存失败，请重试", ""\)/.test(saveSurface)
+      && !/sourceUnmodifiedMessage|String\(error\)|error\.message/.test(saveSurface));
   record("figma-r4-launch-module-contract-covered", /data-view="launch"[^>]*data-module="LaunchModule"/.test(page)
     && /class="launchCanvas"[^>]*data-component="LaunchDropCanvas"/.test(page)
     && /class="launchPrompt"[^>]*data-component="FileDropTarget"[^>]*data-role="LaunchEmptyCanvas"/.test(page)
