@@ -834,7 +834,7 @@ export function createMultiFormatDesktopPreviewController({
       }))
     ];
     nodes.findingList.setAttribute("role", "list");
-    nodes.findingList.setAttribute("aria-label", "优化");
+    nodes.findingList.setAttribute("aria-label", "格式检查");
     nodes.findingList.replaceChildren(...issues.map((issue) => {
       const copy = issueDisplayCopy(issue);
       const severity = issueSeverity(issue.severity);

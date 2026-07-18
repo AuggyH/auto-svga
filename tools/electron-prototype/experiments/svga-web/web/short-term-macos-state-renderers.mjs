@@ -5,6 +5,10 @@ export function renderLoadingMessage(nodes, copy) {
 export function renderFileHeader(nodes, displayName, playbackMeta) {
   nodes.fileIdentity.textContent = displayName;
   nodes.playbackMeta.textContent = playbackMeta;
+  if (!playbackMeta) {
+    delete nodes.playbackMeta.dataset.status;
+    delete nodes.playbackMeta.dataset.format;
+  }
 }
 
 export function renderDiscardMessage(nodes, copy) {

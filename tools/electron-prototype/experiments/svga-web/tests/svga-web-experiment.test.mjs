@@ -3553,6 +3553,9 @@ test("0.2 composed open cancellation preserves active authority while accepted f
       nodes.playbackProgress.style["--asv-playback-progress"] = "64%";
       nodes.playbackProgress.children[0].style.width = "64%";
       nodes.playbackTime.textContent = "0:32 / 0:50";
+      nodes.playbackMeta.textContent = "VAP · 120 x 80 · 0:50 · 播放中";
+      nodes.playbackMeta.dataset.status = "playing";
+      nodes.playbackMeta.dataset.format = "vap";
       await controller.handlers.openFromHostDialog();
       assert.equal(state.model, activeModel, `${format} cancel must preserve model`);
       assert.equal(state.sourceId, activeSourceId, `${format} cancel must preserve source`);
@@ -3575,6 +3578,9 @@ test("0.2 composed open cancellation preserves active authority while accepted f
       assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "0%", `${format} failure must reset progress token`);
       assert.equal(nodes.playbackProgress.children[0].style.width, "0%", `${format} failure must reset progress bar`);
       assert.equal(nodes.playbackTime.textContent, "0:00 / 0:00", `${format} failure must reset playback time`);
+      assert.equal(nodes.playbackMeta.textContent, "", `${format} failure must clear playback meta copy`);
+      assert.equal(nodes.playbackMeta.dataset.status, undefined, `${format} failure must clear playback meta status`);
+      assert.equal(nodes.playbackMeta.dataset.format, undefined, `${format} failure must clear playback meta format`);
       assert.equal(state.model, undefined, `${format} failure must clear model`);
       assert.equal(state.sourceBytes, undefined, `${format} failure must clear source bytes`);
       assert.equal(state.previewBytes, undefined, `${format} failure must clear preview bytes`);
@@ -3782,6 +3788,7 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
 
     const [issueRow, unsupportedFeatureRow] = nodes.findingList.children;
     assert.equal(nodes.findingList.attributes.role, "list");
+    assert.equal(nodes.findingList.attributes["aria-label"], "格式检查");
     assert.equal(issueRow.attributes.role, "listitem");
     assert.equal(issueRow.dataset.component, "FindingRow");
     assert.equal(issueRow.dataset.disposition, "reviewOnly");
