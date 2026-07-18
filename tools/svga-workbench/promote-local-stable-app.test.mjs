@@ -216,6 +216,9 @@ function promoteFixtureDependencies(fixture, overrides = {}) {
     clearXattr: () => {},
     writeXattr: () => {},
     renameDurably: (source, destination) => swapFixtureRename(source, destination),
+    launchServicesRecordSettleAttempts: 2,
+    launchServicesRecordSettleDelayMs: 0,
+    sleep: () => {},
     stagingRoot,
     promotionJournalPath,
     promotionManifestPath,
@@ -648,7 +651,7 @@ test("promotion requires an existing real target parent before source inspection
   }
 });
 
-test("promotion remediates quarantined parent and migrates legacy previous app before exchange", () => {
+test("promotion remediates quarantined parent and migrates legacy previous app after stale-record cleanup", () => {
   const fixture = makeRollbackFixture();
   try {
     const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
@@ -705,7 +708,7 @@ test("promotion remediates quarantined parent and migrates legacy previous app b
     assert.equal(manifest.remediation.legacyPrevious.required, true);
     assert.equal(manifest.remediation.legacyPrevious.migrated, true);
     assert.equal(manifest.before.legacyPrevious.buildInfo.buildCommit, legacyPreviousBefore.buildInfo.buildCommit);
-    assert.deepEqual(events, ["migrate-legacy-previous", "clear-parent-quarantine"]);
+    assert.deepEqual(events, ["clear-parent-quarantine", "migrate-legacy-previous"]);
     assertPromotionTransactionClean(dependencies);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
@@ -745,6 +748,9 @@ test("promotion unregisters owned stale LaunchServices records before exchange a
       ],
       unregisterLaunchServicesRecord: (recordPath) => {
         removedRecords.push(recordPath);
+        if (recordPath === legacyPrevious) {
+          assert.equal(existsSync(legacyPrevious), true, "legacy previous app path must exist while unregistering its LS record");
+        }
         dependencies.launchServicesRecords = dependencies.launchServicesRecords.filter((record) => record.path !== recordPath);
         return true;
       },
@@ -793,6 +799,65 @@ test("promotion unregisters owned stale LaunchServices records before exchange a
       "duplicate LS records are retained in audit facts before deduped unregister"
     );
     assert.equal(manifest.remediation.launchServices.postRegistration.uniqueTarget.path, fixture.target);
+    assertPromotionTransactionClean(dependencies);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion waits for bounded LaunchServices dump settle after unregister", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
+    rmSync(fixture.previous, { recursive: true, force: true });
+    createFixtureApp(legacyPrevious, previousBuild, "legacy-previous");
+    const bundleIdentifier = "local.auto-svga.internal-prototype";
+    writeFixtureBundleIdentifier(fixture.target, bundleIdentifier, "installed");
+    writeFixtureBundleIdentifier(fixture.candidate, bundleIdentifier, "candidate");
+    writeFixtureBundleIdentifier(legacyPrevious, bundleIdentifier, "legacy-previous");
+    const installedBefore = fixtureInspector(fixture.target);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    const initialRecords = [
+      { bundleIdentifier, path: fixture.target, nodeMissing: false },
+      { bundleIdentifier, path: legacyPrevious, nodeMissing: false }
+    ];
+    let unregisterCalled = false;
+    let stalePostUnregisterRead = true;
+    let sleepCount = 0;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      launchServicesRecords: initialRecords,
+      readLaunchServicesRecords: (requestedBundleIdentifier) => {
+        if (requestedBundleIdentifier !== bundleIdentifier) return [];
+        if (unregisterCalled && stalePostUnregisterRead) {
+          stalePostUnregisterRead = false;
+          return initialRecords;
+        }
+        return dependencies.launchServicesRecords.filter((record) => record.bundleIdentifier === requestedBundleIdentifier);
+      },
+      unregisterLaunchServicesRecord: (recordPath) => {
+        assert.equal(recordPath, legacyPrevious);
+        assert.equal(existsSync(legacyPrevious), true, "legacy previous app path must exist while unregistering its stale record");
+        unregisterCalled = true;
+        dependencies.launchServicesRecords = dependencies.launchServicesRecords.filter((record) => record.path !== recordPath);
+        return true;
+      },
+      sleep: (milliseconds) => {
+        assert.equal(milliseconds, 0);
+        sleepCount += 1;
+      },
+      renameDurably: (source, destination) => renameSync(source, destination)
+    });
+
+    installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    });
+
+    assert.equal(sleepCount, 1, "promotion must wait once for stale LS dump convergence");
+    assert.deepEqual(dependencies.launchServicesRecords, [{ bundleIdentifier, path: fixture.target, nodeMissing: false }]);
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
     assertPromotionTransactionClean(dependencies);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
@@ -891,6 +956,8 @@ test("promotion stops before exchange when owned stale LaunchServices record can
     }), /stale records remain/);
     assert.equal(swapped, false, "failed LS stale-record removal must stop before exchange");
     assertBundleBinding(fixture.target, installedBefore);
+    assert.equal(existsSync(legacyPrevious), true, "legacy previous app must not be migrated before stale-record remediation settles");
+    assert.equal(existsSync(fixture.previous), false, "inert previous bundle must not be created after LS remediation failure");
     assert.equal(existsSync(dependencies.promotionJournalPath), true, "journal must remain for audited recovery after remediation failure");
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
@@ -1079,19 +1146,63 @@ test("promotion recovery restores parent quarantine after pre-exchange remediati
     }), /parent quarantine remediation/);
     assert.equal(quarantineValue, null, "interrupted remediation cleared quarantine before recovery");
     assertBundleBinding(fixture.target, installedBefore);
-    assertBundleBinding(fixture.previous, legacyPreviousBefore);
-    assert.equal(existsSync(legacyPrevious), false, "legacy previous app has been migrated to inert rollback path");
+    assertBundleBinding(legacyPrevious, legacyPreviousBefore);
+    assert.equal(existsSync(fixture.previous), false, "legacy previous app must not migrate before stale-record remediation settles");
 
     const result = recoverPromotionFixture(dependencies, {
       readXattr: dependencies.readXattr,
       writeXattr: dependencies.writeXattr
     });
     assert.equal(result.disposition, "aborted-before-exchange");
-    assert.equal(result.remediationRetained, true);
+    assert.equal(result.remediationRetained, false);
+    assert.equal(result.legacyPreviousRestored, false);
     assert.equal(quarantineValue, "0081;00000000;Chrome;", "pre-exchange recovery restores captured parent quarantine");
     assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(legacyPrevious, legacyPreviousBefore);
+    assert.equal(existsSync(fixture.previous), false, "recovery preserves legacy previous app when migration never happened");
+    assertPromotionTransactionClean(dependencies);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion recovery restores legacy previous app after pre-exchange migration interruption", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
+    rmSync(fixture.previous, { recursive: true, force: true });
+    createFixtureApp(legacyPrevious, previousBuild, "legacy-previous");
+    const sharedIdentifier = "local.auto-svga.internal-prototype";
+    writeFixtureBundleIdentifier(fixture.target, sharedIdentifier, "installed");
+    writeFixtureBundleIdentifier(fixture.candidate, sharedIdentifier, "candidate");
+    writeFixtureBundleIdentifier(legacyPrevious, sharedIdentifier, "legacy-previous");
+    const installedBefore = fixtureInspector(fixture.target);
+    const legacyPreviousBefore = fixtureInspector(legacyPrevious);
+    const dependencies = promoteFixtureDependencies(fixture, {
+      renameDurably: (source, destination) => renameSync(source, destination),
+      checkpoint: (phase) => {
+        if (phase === "after-legacy-previous-migration") {
+          throw new Error("simulated crash after legacy previous migration");
+        }
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /legacy previous migration/);
+    assertBundleBinding(fixture.target, installedBefore);
+    assert.equal(existsSync(legacyPrevious), false, "fixture must leave legacy path missing after interrupted migration");
     assertBundleBinding(fixture.previous, legacyPreviousBefore);
-    assert.equal(existsSync(legacyPrevious), false, "recovery keeps the LaunchServices-inert previous representation");
+
+    const result = recoverPromotionFixture(dependencies);
+    assert.equal(result.disposition, "aborted-before-exchange");
+    assert.equal(result.legacyPreviousRestored, true);
+    assert.equal(result.remediationRetained, false);
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(legacyPrevious, legacyPreviousBefore);
+    assert.equal(existsSync(fixture.previous), false, "pre-exchange recovery restores the legacy previous path for the next unregister");
     assertPromotionTransactionClean(dependencies);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });

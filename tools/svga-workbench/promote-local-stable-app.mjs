@@ -42,6 +42,8 @@ const rollbackManifestRoot = path.join(localStableRoot, "rollback-manifests");
 const rollbackJournalRoot = path.join(localStableRoot, "rollback-journals");
 const launchServicesRegisterTool = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
 export const launchServicesDumpMaxBufferBytes = 64 * 1024 * 1024;
+const launchServicesRecordSettleAttempts = 6;
+const launchServicesRecordSettleDelayMs = 250;
 
 function usage() {
   return [
@@ -320,6 +322,11 @@ function removeDurably(filePath) {
   fsyncDirectory(path.dirname(filePath));
 }
 
+function sleepSync(milliseconds) {
+  if (!milliseconds || milliseconds <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
 function assertRealDirectory(directoryPath, label) {
   let stat;
   try {
@@ -381,6 +388,12 @@ function appPayloadMatches(identity, expected) {
     && identity.sizeBytes === expected.sizeBytes
     && identity.runtimeClosure?.validated === true
     && identity.runtimeClosure?.missingEntries?.length === 0;
+}
+
+function appRootInodeMatches(identity, expected) {
+  if (!identity || !expected?.rootObject) return false;
+  return identity.rootObject?.dev === expected.rootObject.dev
+    && identity.rootObject?.ino === expected.rootObject.ino;
 }
 
 function defaultPromotionStagedAppPath(targetParent, operationId) {
@@ -799,17 +812,23 @@ function applyLaunchServicesRecordRemediation({ dependencies, plan }) {
     dependencies.unregisterLaunchServicesRecord(record.path);
     removals.push({ ...record, removed: true });
   }
-  const recordsAfter = dependencies.readLaunchServicesRecords(plan.bundleIdentifier);
-  const afterPlan = planLaunchServicesRecordRemediation({
-    records: recordsAfter,
-    target: plan.target,
-    legacyBackupTarget: plan.legacyBackupTarget,
-    bundleIdentifier: plan.bundleIdentifier,
-    pathExists: dependencies.pathExists
-  });
-  if ((afterPlan.removals ?? []).length > 0) {
+  let afterPlan;
+  const attempts = Math.max(1, dependencies.launchServicesRecordSettleAttempts);
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const recordsAfter = dependencies.readLaunchServicesRecords(plan.bundleIdentifier);
+    afterPlan = planLaunchServicesRecordRemediation({
+      records: recordsAfter,
+      target: plan.target,
+      legacyBackupTarget: plan.legacyBackupTarget,
+      bundleIdentifier: plan.bundleIdentifier,
+      pathExists: dependencies.pathExists
+    });
+    if ((afterPlan.removals ?? []).length === 0) break;
+    if (attempt < attempts - 1) dependencies.sleep(dependencies.launchServicesRecordSettleDelayMs);
+  }
+  if ((afterPlan?.removals ?? []).length > 0) {
     throw new Error(
-      `LaunchServices stale records remain after remediation: ${afterPlan.removals.map((record) => record.path).join(", ")}`
+      `LaunchServices stale records remain after bounded remediation settle: ${afterPlan.removals.map((record) => record.path).join(", ")}`
     );
   }
   return {
@@ -1100,6 +1119,8 @@ function promotionInstallDependencies(overrides = {}) {
     createStagedAppPath: defaultPromotionStagedAppPath,
     fsyncDirectory,
     inspectBundle: inspectAppBundle,
+    launchServicesRecordSettleAttempts,
+    launchServicesRecordSettleDelayMs,
     listDirectory: readdirSync,
     planLaunchServicesInstallState,
     pathExists: existsSync,
@@ -1122,6 +1143,7 @@ function promotionInstallDependencies(overrides = {}) {
     writeManifestExclusive: writeJsonExclusive,
     now: () => new Date(),
     checkpoint: () => {},
+    sleep: sleepSync,
     ...overrides
   };
 }
@@ -1176,6 +1198,67 @@ function cleanupCompletedPromotion({ dependencies, journal, journalPath }) {
   return afterCleanup;
 }
 
+function restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPath }) {
+  const hasLegacyAuthority = Boolean(journal.legacyBackupTarget && journal.expected?.legacyPreviousBefore);
+  const migrationRecorded = journal.remediation?.legacyPrevious?.migrated === true;
+  const migrationInferred = hasLegacyAuthority
+    && existsSync(journal.backupTarget)
+    && !existsSync(journal.legacyBackupTarget);
+  if (!migrationRecorded && !migrationInferred) {
+    return { journal, restored: false };
+  }
+  if (!journal.legacyBackupTarget) {
+    throw new Error("Promotion journal marked legacy previous migrated without a legacy backup target");
+  }
+  if (existsSync(journal.legacyBackupTarget)) {
+    const legacyIdentity = dependencies.inspectBundle(journal.legacyBackupTarget);
+    if (!appPayloadMatches(legacyIdentity, journal.expected.legacyPreviousBefore)) {
+      throw new Error("Existing legacy previous app does not match journal authority");
+    }
+    const remediation = {
+      ...journal.remediation,
+      legacyPrevious: {
+        ...journal.remediation.legacyPrevious,
+        migrated: false,
+        restored: false
+      }
+    };
+    return {
+      journal: updatePromotionJournalPhase(dependencies, journalPath, { ...journal, remediation }, "legacy-previous-restored"),
+      restored: false
+    };
+  }
+  if (!existsSync(journal.backupTarget)) {
+    throw new Error(`Migrated legacy previous bundle is missing: ${journal.backupTarget}`);
+  }
+  const migratedIdentity = dependencies.inspectBundle(journal.backupTarget);
+  if (!appPayloadMatches(migratedIdentity, journal.expected.previousBefore)
+    || !appPayloadMatches(migratedIdentity, journal.expected.legacyPreviousBefore)
+    || !appRootInodeMatches(migratedIdentity, journal.expected.previousBefore)
+    || !appRootInodeMatches(migratedIdentity, journal.expected.legacyPreviousBefore)) {
+    throw new Error("Migrated legacy previous bundle does not match journal inode/payload authority");
+  }
+  journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "restoring-legacy-previous");
+  dependencies.renameDurably(journal.backupTarget, journal.legacyBackupTarget);
+  const restoredIdentity = dependencies.inspectBundle(journal.legacyBackupTarget);
+  if (!appPayloadMatches(restoredIdentity, journal.expected.legacyPreviousBefore)
+    || !appRootInodeMatches(restoredIdentity, journal.expected.legacyPreviousBefore)) {
+    throw new Error("Restored legacy previous app does not match journal authority");
+  }
+  const remediation = {
+    ...journal.remediation,
+    legacyPrevious: {
+      ...journal.remediation.legacyPrevious,
+      migrated: false,
+      restored: true
+    }
+  };
+  return {
+    journal: updatePromotionJournalPhase(dependencies, journalPath, { ...journal, remediation }, "legacy-previous-restored"),
+    restored: true
+  };
+}
+
 export function recoverPromotionTransaction({
   journalPath = promotionExchangeJournalPath,
   dependencies: dependencyOverrides = {}
@@ -1187,6 +1270,8 @@ export function recoverPromotionTransaction({
 
   if (state.state === "original-roles") {
     if (existsSync(journal.stagingRoot)) dependencies.removeDurably(journal.stagingRoot);
+    const legacyRestore = restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPath });
+    journal = legacyRestore.journal;
     if (journal.remediation?.targetParentQuarantine?.before) {
       restoreTargetParentQuarantine({
         dependencies,
@@ -1199,7 +1284,8 @@ export function recoverPromotionTransaction({
     return {
       disposition: "aborted-before-exchange",
       mutationPerformed: false,
-      remediationRetained: journal.remediation?.legacyPrevious?.migrated === true
+      remediationRetained: journal.remediation?.legacyPrevious?.migrated === true,
+      legacyPreviousRestored: legacyRestore.restored === true
     };
   }
 
@@ -1328,25 +1414,6 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     journalCreated = true;
     resolvedDependencies.checkpoint("after-promotion-journal");
 
-    if (installStatePlan.migrateLegacyPrevious) {
-      if (existsSync(backupTarget)) throw new Error(`Inert previous bundle already exists before migration: ${backupTarget}`);
-      resolvedDependencies.checkpoint("before-legacy-previous-migration");
-      resolvedDependencies.renameDurably(legacyBackupTarget, backupTarget);
-      resolvedDependencies.checkpoint("after-legacy-previous-migration");
-      const migratedPrevious = resolvedDependencies.inspectBundle(backupTarget);
-      assertSameAppPayload(legacyPreviousBefore, migratedPrevious, "Migrated legacy previous bundle");
-      previousBefore = migratedPrevious;
-      remediation.legacyPrevious.migrated = true;
-      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
-        ...journal,
-        expected: {
-          ...journal.expected,
-          previousBefore: compactAppIdentity(previousBefore)
-        },
-        remediation
-      }, "legacy-previous-migrated");
-    }
-
     if (installStatePlan.targetParentQuarantine) {
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
         ...journal,
@@ -1386,6 +1453,25 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       remediation
     }, "launch-services-stale-records-remediated");
     resolvedDependencies.checkpoint("after-launch-services-stale-record-remediation");
+
+    if (installStatePlan.migrateLegacyPrevious) {
+      if (existsSync(backupTarget)) throw new Error(`Inert previous bundle already exists before migration: ${backupTarget}`);
+      resolvedDependencies.checkpoint("before-legacy-previous-migration");
+      resolvedDependencies.renameDurably(legacyBackupTarget, backupTarget);
+      resolvedDependencies.checkpoint("after-legacy-previous-migration");
+      const migratedPrevious = resolvedDependencies.inspectBundle(backupTarget);
+      assertSameAppPayload(legacyPreviousBefore, migratedPrevious, "Migrated legacy previous bundle");
+      previousBefore = migratedPrevious;
+      remediation.legacyPrevious.migrated = true;
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
+        ...journal,
+        expected: {
+          ...journal.expected,
+          previousBefore: compactAppIdentity(previousBefore)
+        },
+        remediation
+      }, "legacy-previous-migrated");
+    }
 
     if (installedBefore) {
       assertRealDirectory(target, "Installed app");
