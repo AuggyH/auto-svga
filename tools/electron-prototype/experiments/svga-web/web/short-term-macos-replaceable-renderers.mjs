@@ -83,8 +83,13 @@ export function renderReplaceableImages(nodes, view, model) {
 export function renderReplaceableEmptyState(nodes) {
   const noImages = nodes.replaceableList.dataset.empty === "true";
   const noTexts = nodes.textElementList.dataset.empty === "true";
-  if (!noImages || !noTexts) return;
-  nodes.replaceableList.closest(".replaceableSection")?.setAttribute("data-empty", "true");
+  const section = nodes.replaceableList.closest(".replaceableSection");
+  if (!noImages || !noTexts) {
+    section?.removeAttribute("data-page-state");
+    return;
+  }
+  section?.setAttribute("data-empty", "true");
+  section?.setAttribute("data-page-state", "no-replaceable");
   nodes.replaceableList.dataset.empty = "false";
   nodes.replaceableList.replaceChildren(createReplaceableEmptyStatus());
 }

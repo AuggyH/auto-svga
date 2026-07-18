@@ -892,7 +892,13 @@ export function createMultiFormatDesktopPreviewController({
         publicRuntimeReplacementTargets
       ));
     nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount, hasReplacementPreview);
-    nodes.replaceableList.closest?.(".replaceableSection")?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
+    const replaceableSection = nodes.replaceableList.closest?.(".replaceableSection");
+    replaceableSection?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
+    if (totalCount === 0) {
+      replaceableSection?.setAttribute("data-page-state", "no-replaceable");
+    } else {
+      replaceableSection?.removeAttribute("data-page-state");
+    }
     nodes.replaceableList.dataset.empty = totalCount > 0 && targets.length === 0 ? "true" : "false";
     if (totalCount === 0) {
       nodes.replaceableList.replaceChildren(createReplaceableEmptyStatus());

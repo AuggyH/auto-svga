@@ -112,6 +112,11 @@ export function renderAssetList(nodes, view, model, activeFilter = "all") {
   renderAssetFilterTabs(nodes, view, nextFilter);
   const emptyCopy = visibleAssets.length === 0 ? assetFilterEmptyCopy(nextFilter) : "";
   if (emptyCopy) {
+    nodes.assetList.dataset.pageState = nextFilter === "sequence" ? "no-sequence" : "no-audio";
+  } else {
+    delete nodes.assetList.dataset.pageState;
+  }
+  if (emptyCopy) {
     nodes.assetList.replaceChildren(createAssetEmptyStatus(emptyCopy, nextFilter));
     return;
   }

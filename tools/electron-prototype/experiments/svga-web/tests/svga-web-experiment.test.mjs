@@ -1009,6 +1009,7 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
     assert.equal(nodes.assetList.children[0].dataset.component, "InlineStatus");
     assert.equal(nodes.assetList.children[0].dataset.variant, "asset");
     assert.equal(nodes.assetList.children[0].dataset.kind, "sequence");
+    assert.equal(nodes.assetList.dataset.pageState, "no-sequence");
     assert.deepEqual(
       nodes.assetList.children[0].children.map((child) => child.className),
       ["emptyStateIcon", "emptyTextTitle"]
@@ -1019,11 +1020,30 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
     renderAssetList(nodes, view, model, "audio");
     assert.equal(nodes.assetList.children.length, 1);
     assert.equal(nodes.assetList.children[0].dataset.kind, "audio");
+    assert.equal(nodes.assetList.dataset.pageState, "no-audio");
     assert.equal(nodes.assetList.children[0].children[0].children.length, 2);
     assert.equal(nodes.assetList.children[0].textContent, "当前文件暂无音频资产");
   } finally {
     globalThis.document = originalDocument;
   }
+});
+
+test("preview imageKey dirty header exposes and clears the unsaved marker", async () => {
+  const { renderFileHeader } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs")).href);
+  const nodes = {
+    fileIdentity: new FakeDomElement("h1"),
+    playbackMeta: new FakeDomElement("p")
+  };
+
+  renderFileHeader(nodes, "文件名.svga", "300×300 / 30 fps", { dirty: true });
+  assert.equal(nodes.fileIdentity.textContent, "文件名.svga *");
+  assert.equal(nodes.fileIdentity.dataset.dirty, "true");
+  assert.equal(nodes.fileIdentity.attributes["aria-label"], "文件名.svga，存在未保存更改");
+
+  renderFileHeader(nodes, "已保存.svga", "300×300 / 30 fps", { dirty: false });
+  assert.equal(nodes.fileIdentity.textContent, "已保存.svga");
+  assert.equal(nodes.fileIdentity.dataset.dirty, "false");
+  assert.equal(nodes.fileIdentity.attributes["aria-label"], "已保存.svga");
 });
 
 async function createPackagedProofFixture({
@@ -4774,6 +4794,7 @@ test("0.2 replaceable empty state uses frozen Figma copy and section state", asy
     assert.equal(nodes.replaceableList.dataset.empty, "false");
     assert.equal(nodes.textElementList.children.length, 0);
     assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.pageState, "no-replaceable");
     assert.equal(nodes.textElementList.dataset.empty, "true");
   } finally {
     globalThis.document = originalDocument;
@@ -4808,6 +4829,7 @@ test("0.1 replaceable empty state keeps imageKey module and Figma single-line co
     assert.equal(nodes.replaceableList.dataset.empty, "false");
     assert.equal(nodes.textElementList.dataset.empty, "true");
     assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.pageState, "no-replaceable");
     assert.equal(nodes.replaceableList.children.length, 1);
     const empty = nodes.replaceableList.children[0];
     assert.equal(empty.className, "emptyText");
@@ -8056,7 +8078,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStateRenderers, /export function renderDiscardMessage/);
   assert.match(shortTermStateRenderers, /export function renderFailureMessage/);
   assert.match(shortTermStateRenderers, /nodes\.loadingMessage\.textContent = copy/);
-  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = displayName/);
+  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = dirty \? `\$\{displayName\} \*` : displayName/);
   assert.match(shortTermStateRenderers, /nodes\.discardMessage\.textContent = copy/);
   assert.match(shortTermStateRenderers, /nodes\.errorMessage\.textContent = copy/);
   assert.doesNotMatch(shortTermEditReservedRenderers, /export function applyCompareSlotView|export function markCompareSlotLoaded|export function applyCompareTraceView|export function renderCompareInfoPanel/);
@@ -8108,7 +8130,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, ""\)/);
   assert.doesNotMatch(shortTermFileSurface, /正在打开最近文件。|解析文件并准备预览。/);
   assert.match(shortTermFileSurface, /renderFileHeader\(nodes, "等待打开文件", "-"\)/);
-  assert.match(shortTermPreviewSurface, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta\)/);
+  assert.match(shortTermPreviewSurface, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta, \{[\s\S]*dirty: state\.activeOutput\?\.kind === "rename"[\s\S]*\}\)/);
   assert.match(shortTermController, /renderMessage: \(copy\) => renderDiscardMessage\(nodes, copy\)/);
   assert.match(shortTermDialogModel, /renderMessage\(message\)/);
   assert.match(shortTermFeedbackSurface, /renderFailureMessage\(nodes, sourceUnmodifiedMessage\(message\)\)/);
@@ -8119,7 +8141,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /nodes\.(loadingMessage|fileIdentity|playbackMeta|discardMessage|errorMessage)\.textContent\s*=/);
   assert.doesNotMatch(shortTermEntry, /renderLoadingMessage\(nodes, "正在打开最近文件。"\)|renderLoadingMessage\(nodes, "解析文件并准备预览。"\)|renderFileHeader\(nodes, "等待打开文件", "-"\)|state\.sourceBytes = new Uint8Array\(bytes\)|state\.sourceBytes = undefined|hideShortTermSaveBanner\(nodes\)/);
   assert.match(shortTermStateRenderers, /nodes\.loadingMessage\.textContent = copy/);
-  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = displayName/);
+  assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = dirty \? `\$\{displayName\} \*` : displayName/);
   assert.match(shortTermStateRenderers, /nodes\.playbackMeta\.textContent = playbackMeta/);
   assert.match(shortTermStateRenderers, /nodes\.discardMessage\.textContent = copy/);
   assert.match(shortTermStateRenderers, /nodes\.errorMessage\.textContent = copy/);
