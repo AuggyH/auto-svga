@@ -562,10 +562,19 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
     assert.equal(nodes.assetList.children.length, 1);
     assert.equal(nodes.assetList.children[0].className, "emptyText");
     assert.equal(nodes.assetList.children[0].dataset.component, "InlineStatus");
+    assert.equal(nodes.assetList.children[0].dataset.variant, "asset");
+    assert.equal(nodes.assetList.children[0].dataset.kind, "sequence");
+    assert.deepEqual(
+      nodes.assetList.children[0].children.map((child) => child.className),
+      ["emptyStateIcon", "emptyTextTitle"]
+    );
+    assert.equal(nodes.assetList.children[0].children[0].children.length, 2);
     assert.equal(nodes.assetList.children[0].textContent, "当前文件暂无序列帧资产");
 
     renderAssetList(nodes, view, model, "audio");
     assert.equal(nodes.assetList.children.length, 1);
+    assert.equal(nodes.assetList.children[0].dataset.kind, "audio");
+    assert.equal(nodes.assetList.children[0].children[0].children.length, 2);
     assert.equal(nodes.assetList.children[0].textContent, "当前文件暂无音频资产");
   } finally {
     globalThis.document = originalDocument;
@@ -4148,9 +4157,14 @@ test("0.2 replaceable empty state uses frozen Figma copy and section state", asy
     assert.equal(nodes.replaceableList.children.length, 1);
     assert.equal(nodes.replaceableList.children[0].className, "emptyText");
     assert.equal(nodes.replaceableList.children[0].dataset.component, "InlineStatus");
-    assert.equal(nodes.replaceableList.children[0].dataset.variant, undefined);
+    assert.equal(nodes.replaceableList.children[0].dataset.variant, "asset");
+    assert.equal(nodes.replaceableList.children[0].dataset.kind, "replaceable");
     assert.equal(nodes.replaceableList.children[0].textContent, "未发现可替换元素");
-    assert.equal(nodes.replaceableList.children[0].children.length, 0);
+    assert.deepEqual(
+      nodes.replaceableList.children[0].children.map((child) => child.className),
+      ["emptyStateIcon", "emptyTextTitle"]
+    );
+    assert.equal(nodes.replaceableList.children[0].children[0].children.length, 0);
     assert.equal(nodes.replaceableList.dataset.empty, "false");
     assert.equal(nodes.textElementList.children.length, 0);
     assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
@@ -4192,9 +4206,14 @@ test("0.1 replaceable empty state keeps imageKey module and Figma single-line co
     const empty = nodes.replaceableList.children[0];
     assert.equal(empty.className, "emptyText");
     assert.equal(empty.dataset.component, "InlineStatus");
-    assert.equal(empty.dataset.variant, undefined);
+    assert.equal(empty.dataset.variant, "asset");
+    assert.equal(empty.dataset.kind, "replaceable");
     assert.equal(empty.textContent, "未发现可替换元素");
-    assert.equal(empty.children.length, 0);
+    assert.deepEqual(
+      empty.children.map((child) => child.className),
+      ["emptyStateIcon", "emptyTextTitle"]
+    );
+    assert.equal(empty.children[0].children.length, 0);
   } finally {
     globalThis.document = originalDocument;
   }
@@ -6804,6 +6823,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
   assert.match(shortTermTokens, /--asv-component-empty-state-width: 312px/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-gap: var\(--asv-space-3\)/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-icon-size: 30px/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-replaceable-icon-size: 28px/);
+  assert.match(shortTermTokens, /--asv-empty-state-icon-size: var\(--asv-component-empty-state-icon-size\)/);
+  assert.match(shortTermTokens, /--asv-empty-state-replaceable-icon-size: var\(--asv-component-empty-state-replaceable-icon-size\)/);
   assert.match(shortTermTokens, /--asv-component-state-surface-width/);
   assert.match(shortTermTokens, /--asv-state-surface-width: var\(--asv-component-state-surface-width\)/);
   assert.match(shortTermTokens, /--asv-component-state-canvas-checker-size: var\(--asv-component-preview-checker-size\)/);
@@ -6858,6 +6882,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermAtoms, /\.emptyText\s*\{[^}]*background: transparent/s);
   assert.match(shortTermAtoms, /\.emptyText\s*\{[^}]*width: min\(var\(--asv-empty-state-width\), 100%\)/s);
   assert.doesNotMatch(shortTermAtoms, /\.emptyText\s*\{[^}]*border: 1px dashed/s);
+  assert.match(shortTermAtoms, /\.emptyText\[data-variant="asset"\]\s*\{[^}]*gap: var\(--asv-empty-state-gap\)/s);
+  assert.match(shortTermAtoms, /\.emptyStateIcon\[data-kind="replaceable"\]\s*\{[^}]*width: var\(--asv-empty-state-replaceable-icon-size\)/s);
+  assert.match(shortTermAtoms, /\.emptyStateNote\s*\{[^}]*background: currentColor/s);
   assert.match(shortTermAtoms, /:focus-visible/);
   assert.match(shortTermMolecules, /\.toolbarButton/);
   assert.match(shortTermMolecules, /\.buttonIcon\s*\{[^}]*flex: 0 0 auto/s);

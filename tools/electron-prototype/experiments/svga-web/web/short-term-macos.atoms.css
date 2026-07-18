@@ -223,6 +223,53 @@ button.danger {
   justify-items: center;
 }
 
+.emptyText[data-variant="asset"] {
+  gap: var(--asv-empty-state-gap);
+}
+
+.emptyStateIcon {
+  position: relative;
+  display: block;
+  width: var(--asv-empty-state-icon-size);
+  height: var(--asv-empty-state-icon-size);
+  color: var(--asv-empty-state-icon-color);
+}
+
+.emptyStateIcon[data-kind="replaceable"] {
+  width: var(--asv-empty-state-replaceable-icon-size);
+  height: var(--asv-empty-state-replaceable-icon-size);
+  border: var(--asv-empty-state-icon-border);
+  border-radius: var(--asv-radius-full);
+  background: var(--asv-empty-state-icon-background);
+}
+
+.emptyStateNote {
+  position: absolute;
+  top: var(--asv-space-1);
+  left: var(--asv-space-2);
+  width: var(--asv-space-1);
+  height: var(--asv-space-4);
+  border-radius: var(--asv-radius-sm);
+  background: currentColor;
+}
+
+.emptyStateNote::after {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--asv-space-1) * -1);
+  width: var(--asv-space-2);
+  height: var(--asv-space-2);
+  border-radius: var(--asv-radius-full);
+  background: currentColor;
+  content: "";
+}
+
+.emptyStateNote + .emptyStateNote {
+  top: var(--asv-space-2);
+  left: calc(var(--asv-space-4) + var(--asv-space-1));
+  height: var(--asv-space-3);
+}
+
 .emptyTextTitle,
 .emptyTextDetail {
   min-width: 0;
@@ -232,6 +279,10 @@ button.danger {
 .emptyTextTitle {
   color: var(--asv-empty-state-text-color);
   font-weight: var(--asv-right-section-title-weight);
+}
+
+.emptyText[data-variant="asset"] .emptyTextTitle {
+  font-weight: var(--asv-type-weight-regular);
 }
 
 .emptyTextDetail {

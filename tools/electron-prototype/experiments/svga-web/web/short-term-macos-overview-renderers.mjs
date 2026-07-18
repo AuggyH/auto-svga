@@ -11,7 +11,7 @@ import {
   filteredAssetsForTab,
   normalizedAssetFilter
 } from "./short-term-macos-overview-model.mjs";
-import { createInlineStatusText } from "./short-term-macos-inline-status-renderers.mjs";
+import { createAssetEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
 export function createOverviewFactCell(fact) {
@@ -111,7 +111,7 @@ export function renderAssetList(nodes, view, model, activeFilter = "all") {
   renderAssetFilterTabs(nodes, view, nextFilter);
   const emptyCopy = visibleAssets.length === 0 ? assetFilterEmptyCopy(nextFilter) : "";
   if (emptyCopy) {
-    nodes.assetList.replaceChildren(createInlineStatusText(emptyCopy));
+    nodes.assetList.replaceChildren(createAssetEmptyStatus(emptyCopy, nextFilter));
     return;
   }
   nodes.assetList.replaceChildren(...visibleAssets.map((asset) => createAssetRow(asset, model)));

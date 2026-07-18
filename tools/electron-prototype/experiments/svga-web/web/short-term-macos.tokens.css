@@ -417,9 +417,14 @@
   --asv-component-replace-image-action-font-size: var(--asv-type-size-caption);
   --asv-component-replace-image-action-font-weight: var(--asv-type-weight-medium);
   --asv-component-empty-state-width: 312px;
-  --asv-component-empty-state-gap: var(--asv-space-2);
+  --asv-component-empty-state-gap: var(--asv-space-3);
   --asv-component-empty-state-padding-block: var(--asv-space-1);
   --asv-component-empty-state-radius: var(--asv-radius-sm);
+  --asv-component-empty-state-icon-size: 30px;
+  --asv-component-empty-state-replaceable-icon-size: 28px;
+  --asv-component-empty-state-icon-color: var(--asv-color-text-tertiary);
+  --asv-component-empty-state-icon-background: var(--asv-color-surface-canvas);
+  --asv-component-empty-state-icon-border: 1px solid color-mix(in srgb, var(--asv-color-text-tertiary) 44%, transparent);
   --asv-component-empty-state-text-size: var(--asv-type-size-footnote);
   --asv-component-empty-state-text-line-height: 18px;
   --asv-component-empty-state-text-color: var(--asv-color-text-tertiary);
@@ -972,6 +977,11 @@
   --asv-empty-state-gap: var(--asv-component-empty-state-gap);
   --asv-empty-state-padding-block: var(--asv-component-empty-state-padding-block);
   --asv-empty-state-radius: var(--asv-component-empty-state-radius);
+  --asv-empty-state-icon-size: var(--asv-component-empty-state-icon-size);
+  --asv-empty-state-replaceable-icon-size: var(--asv-component-empty-state-replaceable-icon-size);
+  --asv-empty-state-icon-color: var(--asv-component-empty-state-icon-color);
+  --asv-empty-state-icon-background: var(--asv-component-empty-state-icon-background);
+  --asv-empty-state-icon-border: var(--asv-component-empty-state-icon-border);
   --asv-empty-state-text-size: var(--asv-component-empty-state-text-size);
   --asv-empty-state-text-line-height: var(--asv-component-empty-state-text-line-height);
   --asv-empty-state-text-color: var(--asv-component-empty-state-text-color);
