@@ -630,8 +630,8 @@ test("accepted R12 shell affordances remain present in the composed 0.2 shell", 
   assert.match(htmlSource, /class="canvasModeSwitch compareModeSwitch"/u);
   assert.match(htmlSource, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a"/u);
   assert.match(htmlSource, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b"/u);
-  assert.doesNotMatch(compareModelSource, /comparePairOpenButton/u);
-  assert.doesNotMatch(compareModelSource, /data-action="open-compare-a"|data-action="open-compare-b"/u);
+  assert.match(compareModelSource, /comparePairOpenButton/u);
+  assert.match(compareModelSource, /"open-compare-a" : "open-compare-b"/u);
   assert.match(compareModelSource, /compareExitButton/u);
   assert.match(controllerSource, /loadDroppedCompareFile,/u);
   assert.match(domStateSource, /rightSurfaceHeader\.hidden = surfaceState === "optimization"/u);

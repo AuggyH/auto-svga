@@ -102,6 +102,20 @@ function renderCompareMetricColumns(aModel, bModel) {
   return `${renderCompareMetricColumnHtml("A", rowIds, aFacts, bFacts)}${renderCompareMetricColumnHtml("B", rowIds, bFacts, aFacts)}`;
 }
 
+function renderComparePairSlotHtml(slot, model, displayName) {
+  const state = model ? "loaded" : "empty";
+  const openAction = slot === "A" ? "open-compare-a" : "open-compare-b";
+  const openButton = model ? "" : `
+    <button class="toolbarButton primary comparePairOpenButton" data-component="ToolbarButton" type="button" data-action="${openAction}" aria-label="打开 ${slot} 文件">打开文件</button>
+  `;
+  return `
+    <div data-slot="${slot}" data-state="${state}">
+      <strong>${escapeHtml(displayName || "未打开文件")}</strong>
+      ${openButton}
+    </div>
+  `;
+}
+
 export function renderGeneralComparePanelHtml({
   aTitle = "A 文件",
   aModel,
@@ -119,12 +133,8 @@ export function renderGeneralComparePanelHtml({
       ${actionHtml}
     </section>
     <section class="comparePairHeader" aria-label="对比文件">
-      <div>
-        <strong>${escapeHtml(aDisplayName || "未打开文件")}</strong>
-      </div>
-      <div>
-        <strong>${escapeHtml(bDisplayName || "未打开文件")}</strong>
-      </div>
+      ${renderComparePairSlotHtml("A", aModel, aDisplayName)}
+      ${renderComparePairSlotHtml("B", bModel, bDisplayName)}
     </section>
     ${rows ? `<section class="compareMetricGrid" aria-label="对比信息">${rows}</section>` : ""}
   `;

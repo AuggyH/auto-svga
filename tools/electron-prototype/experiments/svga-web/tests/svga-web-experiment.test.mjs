@@ -524,19 +524,38 @@ test("short-term general compare renders loaded A/B facts through shared metric 
   assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
 });
 
-test("short-term general compare keeps open actions on canvas, not in right panel", async () => {
+test("short-term general compare exposes missing-slot open actions in the right panel", async () => {
   const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
 
-  const html = renderGeneralComparePanelHtml({
+  const emptyHtml = renderGeneralComparePanelHtml({
     actions: ['<button class="toolbarButton primary" type="button" data-action="exit-compare">退出对比</button>']
   });
+  const waitingHtml = renderGeneralComparePanelHtml({
+    aModel: { overview: { facts: [] } },
+    aDisplayName: "a.svga"
+  });
+  const loadedHtml = renderGeneralComparePanelHtml({
+    aModel: { overview: { facts: [] } },
+    aDisplayName: "a.svga",
+    bModel: { overview: { facts: [] } },
+    bDisplayName: "b.svga"
+  });
 
-  assert.match(html, /<h2>对比模式<\/h2>/);
-  assert.equal((html.match(/未打开文件/g) ?? []).length, 2);
-  assert.match(html, /data-action="exit-compare"/);
-  assert.doesNotMatch(html, /comparePairOpenButton/);
-  assert.doesNotMatch(html, /data-action="open-compare-a"/);
-  assert.doesNotMatch(html, /data-action="open-compare-b"/);
+  assert.match(emptyHtml, /<h2>对比模式<\/h2>/);
+  assert.equal((emptyHtml.match(/未打开文件/g) ?? []).length, 2);
+  assert.match(emptyHtml, /data-action="exit-compare"/);
+  assert.equal((emptyHtml.match(/comparePairOpenButton/g) ?? []).length, 2);
+  assert.match(emptyHtml, /data-slot="A" data-state="empty"[\s\S]*data-action="open-compare-a"/);
+  assert.match(emptyHtml, /data-slot="B" data-state="empty"[\s\S]*data-action="open-compare-b"/);
+
+  assert.match(waitingHtml, /data-slot="A" data-state="loaded"[\s\S]*<strong>a\.svga<\/strong>/);
+  assert.doesNotMatch(waitingHtml, /data-action="open-compare-a"/);
+  assert.match(waitingHtml, /data-slot="B" data-state="empty"[\s\S]*data-action="open-compare-b"/);
+
+  assert.match(loadedHtml, /data-slot="A" data-state="loaded"[\s\S]*<strong>a\.svga<\/strong>/);
+  assert.match(loadedHtml, /data-slot="B" data-state="loaded"[\s\S]*<strong>b\.svga<\/strong>/);
+  assert.doesNotMatch(loadedHtml, /comparePairOpenButton/);
+  assert.doesNotMatch(loadedHtml, /data-action="open-compare-[ab]"/);
 });
 
 test("short-term general compare marks asymmetric visible facts unavailable", async () => {

@@ -1417,6 +1417,12 @@ canvas {
   white-space: nowrap;
 }
 
+.comparePairOpenButton {
+  width: var(--asv-compare-open-button-width);
+  min-height: var(--asv-compare-open-button-height);
+  padding: 0 var(--asv-space-2);
+}
+
 .compareMetricGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

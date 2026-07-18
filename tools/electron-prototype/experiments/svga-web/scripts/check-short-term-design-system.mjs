@@ -694,6 +694,11 @@ async function main() {
     && /--asv-component-compare-empty-prompt-width:\s*var\(--asv-component-launch-content-width\)/.test(tokens)
     && /\.compareEmptyPrompt\s*\{[\s\S]*gap: var\(--asv-compare-empty-prompt-gap\)[\s\S]*width: min\(var\(--asv-compare-empty-prompt-width\), 100%\)/.test(modules)
     && /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareEmptyPrompt\s*\{[\s\S]*display: none/.test(modules));
+  record("compare-right-panel-missing-slots-use-open-action-contract", /function renderComparePairSlotHtml\(slot, model, displayName\)/.test(compareModel)
+    && /const openAction = slot === "A" \? "open-compare-a" : "open-compare-b"/.test(compareModel)
+    && /class="toolbarButton primary comparePairOpenButton"/.test(compareModel)
+    && /data-state="\$\{state\}"/.test(compareModel)
+    && /\.comparePairOpenButton\s*\{[\s\S]*width: var\(--asv-compare-open-button-width\)[\s\S]*min-height: var\(--asv-compare-open-button-height\)/.test(modules));
   record("optimization-detail-uses-figma-r5-candidate-row-contract", /dataset\.component = "OptimizationFindingRow"/.test(optimizationRenderer)
     && /dataset\.role = "OptimizationCandidateRow"/.test(optimizationRenderer)
     && /--asv-component-finding-row-min-height:\s*62px/.test(tokens)
