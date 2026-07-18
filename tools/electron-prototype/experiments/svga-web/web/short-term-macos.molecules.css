@@ -191,6 +191,31 @@
   min-width: 0;
 }
 
+.replaceableIdentity,
+.runtimeTextActions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.replaceableIdentity {
+  gap: var(--asv-space-3);
+  overflow: hidden;
+}
+
+.replaceableIdentity .thumb {
+  flex: 0 0 auto;
+}
+
+.replaceableIdentity .rowText {
+  flex: 1 1 auto;
+}
+
+.runtimeTextActions {
+  justify-self: end;
+  gap: var(--asv-space-2);
+}
+
 .inlineActions {
   display: flex;
   gap: var(--asv-space-1);

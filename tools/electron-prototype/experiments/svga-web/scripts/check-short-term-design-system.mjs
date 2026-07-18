@@ -51,6 +51,7 @@ const allowedDataComponents = new Set([
   "AssetFilterTabs",
   "ThumbnailFrame",
   "ThumbnailAudioIcon",
+  "ThumbnailTextIcon",
   "SequenceThumbnail",
   "AudioAssetRow",
   "ReplaceableImageRow",

@@ -133,6 +133,14 @@ button.danger {
   transform: rotate(var(--asv-thumb-audio-icon-head-rotation));
 }
 
+.thumbnailTextIcon {
+  display: block;
+  width: var(--asv-thumb-text-icon-width);
+  height: var(--asv-thumb-text-icon-height);
+  border-radius: var(--asv-radius-xs);
+  background: var(--asv-thumb-text-icon-color);
+}
+
 .thumb img {
   display: block;
   width: 100%;
@@ -149,15 +157,6 @@ button.danger {
 .rowText {
   min-width: 0;
   overflow: hidden;
-}
-
-.rowIndex {
-  align-self: center;
-  color: var(--asv-subtle);
-  font-family: var(--asv-font);
-  font-size: var(--asv-row-index-font-size);
-  font-weight: var(--asv-row-index-font-weight);
-  text-align: center;
 }
 
 .rowText strong,

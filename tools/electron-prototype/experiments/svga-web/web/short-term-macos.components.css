@@ -485,17 +485,13 @@
   background: var(--asv-danger);
 }
 
-.replaceableRow {
-  grid-template-columns: var(--asv-row-index-width) var(--asv-thumb-size) minmax(0, 1fr) auto;
+.replaceableRow,
+.textElementRow {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .replaceableRow.isRenaming {
-  grid-template-columns: var(--asv-row-index-width) var(--asv-thumb-size) minmax(0, 1fr) auto;
   align-items: end;
-}
-
-.textElementRow {
-  grid-template-columns: var(--asv-row-index-width) minmax(0, 0.8fr) minmax(var(--asv-runtime-text-input-min-width), 1fr) auto;
 }
 
 .replaceableRow,
@@ -529,11 +525,6 @@
 .replaceableRow:focus-visible,
 .textElementRow:focus-visible {
   box-shadow: var(--asv-focus);
-}
-
-.replaceableRow .rowIndex,
-.textElementRow .rowIndex {
-  color: var(--asv-replaceable-row-index-color);
 }
 
 .replaceableRow .rowText strong,

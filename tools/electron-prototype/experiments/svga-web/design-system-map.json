@@ -138,7 +138,7 @@
     },
     {
       "figma": "Atom/缩略图框",
-      "codeComponents": ["ThumbnailFrame", "ThumbnailAudioIcon", "AssetRow", "LayerRow", "ReplaceableImageRow"],
+      "codeComponents": ["ThumbnailFrame", "ThumbnailAudioIcon", "ThumbnailTextIcon", "AssetRow", "LayerRow", "ReplaceableImageRow"],
       "codeModules": ["OverviewInformationModule", "EditReservedModule"],
       "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-thumbnail-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
     },
@@ -230,7 +230,7 @@
     },
     {
       "figma": "Molecule/资源列表行",
-      "codeComponents": ["AssetRow", "AudioAssetRow", "ThumbnailFrame", "ThumbnailAudioIcon", "ReplaceableImageRow", "ReplaceableTextRow"],
+      "codeComponents": ["AssetRow", "AudioAssetRow", "ThumbnailFrame", "ThumbnailAudioIcon", "ThumbnailTextIcon", "ReplaceableImageRow", "ReplaceableTextRow"],
       "codeModules": ["OverviewInformationModule", "ReplaceableElementsSurface"],
       "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
     },

@@ -164,6 +164,53 @@ test("short-term thumbnail renderer follows frozen image sequence and audio vari
   assert.doesNotMatch(`${audioHtml}${emptyAudioHtml}`, />音频<|无音频/u);
 });
 
+test("short-term replaceable rows follow frozen image and text composition", async () => {
+  const {
+    createReplaceableImageRow,
+    createTextElementRow
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-renderers.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const imageRow = createReplaceableImageRow({
+      displayName: "avatar",
+      imageKey: "avatar",
+      resourceId: "image_0",
+      dimensions: "300 x 300",
+      fileSize: "41.8 KB"
+    }, 0, {
+      model: { thumbnails: { imageDataUrlsByResourceId: {} } },
+      selected: false,
+      renaming: false,
+      directReplace: true
+    });
+    const textRow = createTextElementRow({
+      displayName: "username",
+      textKey: "username",
+      initialText: "设计师命名，可替换",
+      inputValue: "username",
+      placeholder: "输入文字"
+    }, 0, {
+      selected: false,
+      replacementActive: false
+    });
+
+    for (const row of [imageRow, textRow]) {
+      assert.doesNotMatch(row.innerHTML, /class="rowIndex"/);
+      assert.match(row.innerHTML, /class="replaceableIdentity"/);
+    }
+    assert.match(imageRow.innerHTML, /data-component="ThumbnailFrame" data-variant="image"/);
+    assert.match(imageRow.innerHTML, /class="replacementRowActions"/);
+    assert.match(textRow.innerHTML, /data-component="ThumbnailFrame" data-variant="text"/);
+    assert.match(textRow.innerHTML, /data-component="ThumbnailTextIcon"/);
+    assert.match(textRow.innerHTML, /class="runtimeTextActions"/);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("short-term right surface normalizes core fact labels to frozen design copy", async () => {
   const {
     factDisplayLabel,
@@ -6934,9 +6981,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-finding-row-summary-size: var\(--asv-component-finding-row-summary-size\)/);
   assert.match(shortTermTokens, /--asv-finding-row-impact-color: var\(--asv-component-finding-row-impact-color\)/);
   assert.match(shortTermTokens, /--asv-finding-row-badge-min-height: var\(--asv-component-finding-row-badge-min-height\)/);
-  assert.match(shortTermTokens, /--asv-component-row-index-width/);
+  assert.doesNotMatch(shortTermTokens, /--asv-component-row-index-width/);
+  assert.match(shortTermTokens, /--asv-component-thumbnail-text-icon-width: 32px/);
+  assert.match(shortTermTokens, /--asv-thumb-text-icon-width: var\(--asv-component-thumbnail-text-icon-width\)/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
-  assert.match(shortTermTokens, /--asv-row-index-width/);
+  assert.doesNotMatch(shortTermTokens, /--asv-row-index-width/);
   assert.match(shortTermTokens, /--asv-focus-inset/);
   assert.match(shortTermTokens, /prefers-color-scheme: dark/);
   assert.match(shortTermTokens, /@media \(max-height: 780px\)/);
@@ -6944,7 +6993,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermAtoms, /button\.primary:disabled/);
   assert.match(shortTermAtoms, /\.spinner/);
   assert.match(shortTermAtoms, /\.thumb\.sequence/);
-  assert.match(shortTermAtoms, /\.rowIndex/);
+  assert.doesNotMatch(shortTermAtoms, /\.rowIndex/);
+  assert.match(shortTermAtoms, /\.thumbnailTextIcon\s*\{[^}]*width: var\(--asv-thumb-text-icon-width\)/s);
   assert.match(shortTermAtoms, /\.badge/);
   assert.match(shortTermAtoms, /\.emptyText\s*\{[^}]*background: transparent/s);
   assert.match(shortTermAtoms, /\.emptyText\s*\{[^}]*width: min\(var\(--asv-empty-state-width\), 100%\)/s);
@@ -8154,7 +8204,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEditReservedRenderers, /row\.className = "layerRow"/);
   assert.doesNotMatch(shortTermEditReservedRenderers, /row\.className = "assetRow"/);
   assert.match(shortTermEditReservedRenderers, /row\.dataset\.component = "LayerRow"/);
-  assert.match(shortTermReplaceableRenderers, /class="rowIndex"/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /class="rowIndex"/);
+  assert.match(shortTermReplaceableRenderers, /class="replaceableIdentity"/);
+  assert.match(shortTermReplaceableRenderers, /data-component="ThumbnailFrame" data-variant="text"/);
   assert.match(shortTermSmokeProofModel, /comparisonVisible/);
   assert.match(shortTermSmokeProofModel, /sourceBytesUnchanged/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermRenameProof/);
@@ -8585,6 +8637,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.match(dataComponentAllowlist, /CanvasToast/);
   assert.match(dataComponentAllowlist, /ThumbnailFrame/);
   assert.match(dataComponentAllowlist, /ThumbnailAudioIcon/);
+  assert.match(dataComponentAllowlist, /ThumbnailTextIcon/);
   assert.match(source, /const disallowedLaunchCopyPatterns = \[/);
   assert.match(source, /launch-page-copy-stays-minimal/);
   assert.match(source, /const disallowedLegacySurfaceCopyPatterns = \[/);

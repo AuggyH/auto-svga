@@ -268,6 +268,9 @@
   --asv-component-thumbnail-audio-icon-head-height: 7px;
   --asv-component-thumbnail-audio-icon-head-rotation: -18deg;
   --asv-component-thumbnail-audio-icon-color: var(--asv-color-text-tertiary);
+  --asv-component-thumbnail-text-icon-width: 32px;
+  --asv-component-thumbnail-text-icon-height: 12px;
+  --asv-component-thumbnail-text-icon-color: var(--asv-color-text-tertiary);
   --asv-component-right-panel-width: 360px;
   --asv-component-right-panel-padding: var(--asv-space-4);
   --asv-component-right-panel-safe-padding-block-start: var(--asv-component-right-panel-padding);
@@ -415,7 +418,6 @@
   --asv-component-replaceable-row-hover-background: color-mix(in srgb, var(--asv-color-surface-row-hover) 18%, transparent);
   --asv-component-replaceable-row-selected-background: color-mix(in srgb, var(--asv-color-surface-row-selected) 24%, transparent);
   --asv-component-replaceable-row-selected-shadow: none;
-  --asv-component-replaceable-row-index-color: color-mix(in srgb, var(--asv-color-text-tertiary) 76%, transparent);
   --asv-component-replaceable-row-detail-color: var(--asv-color-text-tertiary);
   --asv-component-replace-image-action-height: var(--asv-component-row-menu-size);
   --asv-component-replace-image-action-padding-inline: var(--asv-space-2);
@@ -504,9 +506,6 @@
   --asv-component-finding-row-badge-font-size: var(--asv-type-size-caption);
   --asv-component-row-action-height: 24px;
   --asv-component-row-action-disabled-opacity: 0.42;
-  --asv-component-row-index-width: 24px;
-  --asv-component-row-index-font-size: var(--asv-type-size-micro);
-  --asv-component-row-index-font-weight: var(--asv-type-weight-medium);
   --asv-component-row-menu-size: 26px;
   --asv-component-row-menu-icon-size: 14px;
   --asv-component-row-icon-stroke-width: 2;
@@ -843,6 +842,9 @@
   --asv-thumb-audio-icon-head-height: var(--asv-component-thumbnail-audio-icon-head-height);
   --asv-thumb-audio-icon-head-rotation: var(--asv-component-thumbnail-audio-icon-head-rotation);
   --asv-thumb-audio-icon-color: var(--asv-component-thumbnail-audio-icon-color);
+  --asv-thumb-text-icon-width: var(--asv-component-thumbnail-text-icon-width);
+  --asv-thumb-text-icon-height: var(--asv-component-thumbnail-text-icon-height);
+  --asv-thumb-text-icon-color: var(--asv-component-thumbnail-text-icon-color);
   --asv-right-panel-width: var(--asv-component-right-panel-width);
   --asv-right-panel-padding: var(--asv-component-right-panel-padding);
   --asv-right-panel-safe-padding-block-start: var(--asv-component-right-panel-safe-padding-block-start);
@@ -981,7 +983,6 @@
   --asv-replaceable-row-hover-bg: var(--asv-component-replaceable-row-hover-background);
   --asv-replaceable-row-selected-bg: var(--asv-component-replaceable-row-selected-background);
   --asv-replaceable-row-selected-shadow: var(--asv-component-replaceable-row-selected-shadow);
-  --asv-replaceable-row-index-color: var(--asv-component-replaceable-row-index-color);
   --asv-replaceable-row-detail-color: var(--asv-component-replaceable-row-detail-color);
   --asv-replace-image-action-height: var(--asv-component-replace-image-action-height);
   --asv-replace-image-action-padding-inline: var(--asv-component-replace-image-action-padding-inline);
@@ -1059,9 +1060,6 @@
   --asv-finding-row-badge-font-size: var(--asv-component-finding-row-badge-font-size);
   --asv-row-action-height: var(--asv-component-row-action-height);
   --asv-row-action-disabled-opacity: var(--asv-component-row-action-disabled-opacity);
-  --asv-row-index-width: var(--asv-component-row-index-width);
-  --asv-row-index-font-size: var(--asv-component-row-index-font-size);
-  --asv-row-index-font-weight: var(--asv-component-row-index-font-weight);
   --asv-row-menu-size: var(--asv-component-row-menu-size);
   --asv-row-menu-icon-size: var(--asv-component-row-menu-icon-size);
   --asv-row-icon-stroke-width: var(--asv-component-row-icon-stroke-width);

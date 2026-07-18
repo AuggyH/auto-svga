@@ -50,10 +50,22 @@ async function run() {
     const makeRows = (count, className, prefix) => Array.from({ length: count }, (_, index) => {
       const row = document.createElement("article");
       row.className = className;
-      row.innerHTML = '<span class="rowIndex">' + String(index + 1).padStart(2, "0") + '</span>'
-        + '<span class="rowText"><strong>' + prefix + ' ' + (index + 1) + '</strong>'
-        + '<span>1280 × 720 · 经过边界约束的较长信息文本</span></span>'
-        + '<button type="button" class="rowMenuButton" aria-label="操作">•••</button>';
+      const copy = '<span class="rowText"><strong>' + prefix + ' ' + (index + 1) + '</strong>'
+        + '<span>1280 × 720 · 经过边界约束的较长信息文本</span></span>';
+      const thumb = '<span class="thumb" data-component="ThumbnailFrame" data-variant="image"></span>';
+      if (className === "replaceableRow") {
+        row.innerHTML = '<span class="replaceableIdentity">' + thumb + copy + '</span>'
+          + '<button type="button" class="rowMenuButton" aria-label="操作">•••</button>';
+      } else if (className === "textElementRow") {
+        row.innerHTML = '<span class="replaceableIdentity">'
+          + '<span class="thumb" data-component="ThumbnailFrame" data-variant="text"><span class="thumbnailTextIcon"></span></span>'
+          + copy + '</span><span class="runtimeTextActions"><input class="runtimeTextInput" value="预览文本">'
+          + '<button type="button" class="runtimeTextResetButton" aria-label="重置">↻</button></span>';
+      } else if (className === "assetRow") {
+        row.innerHTML = thumb + copy + '<button type="button" class="rowMenuButton" aria-label="操作">•••</button>';
+      } else {
+        row.innerHTML = copy;
+      }
       return row;
     });
     document.querySelector("#factGrid").replaceChildren(...makeRows(8, "factCell", "格式信息"));
