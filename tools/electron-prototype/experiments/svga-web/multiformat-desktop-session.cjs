@@ -1547,6 +1547,7 @@ function verifySourceBinding(binding, maxBytes) {
 }
 
 function bindAdjacentVapcForSource(filePath) {
+  if (path.extname(filePath).toLowerCase() !== ".mp4") return undefined;
   const sidecarPath = findAdjacentVapcJsonPath(filePath);
   if (!sidecarPath) return undefined;
   return readBoundedFileBinding(sidecarPath, MULTIFORMAT_MAX_RANGE_BYTES);

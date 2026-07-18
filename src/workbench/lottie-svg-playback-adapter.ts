@@ -17,7 +17,10 @@ import {
   redactLocalPathsFromError,
   redactLocalPathsInValue
 } from "./local-path-redaction.js";
-import { MOTION_FORMAT_PROBE_MAX_BYTES } from "./motion-format-registry.js";
+import {
+  LOTTIE_JSON_MAX_BYTES,
+  MOTION_FORMAT_PROBE_MAX_BYTES
+} from "./motion-format-registry.js";
 
 export const LOTTIE_SVG_PLAYBACK_WP2B_GATE = "0.2-multiformat-preview-wp2b" as const;
 export const LOTTIE_WEB_SVG_ENTRYPOINT = "lottie-web/build/player/lottie_svg" as const;
@@ -443,12 +446,14 @@ async function readBoundedAnimationData(
     const rangeSource = source as MotionAssetSource & {
       readRange?: (offset: number, length: number) => Promise<Uint8Array>;
     };
-    const bytes = rangeSource.readRange
-      ? await rangeSource.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+    const bytes = source.sizeBytes > LOTTIE_JSON_MAX_BYTES
+      ? undefined
       : source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
-        ? undefined
-        : await source.read();
-    if (!bytes || source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES || bytes.byteLength > MOTION_FORMAT_PROBE_MAX_BYTES) {
+        ? await source.read()
+        : rangeSource.readRange
+          ? await rangeSource.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+          : await source.read();
+    if (!bytes || source.sizeBytes > LOTTIE_JSON_MAX_BYTES || bytes.byteLength > LOTTIE_JSON_MAX_BYTES) {
       return {
         issue: issue(feedback, "parse_precondition", "Complete bounded JSON is required for Lottie SVG playback.", {
           reason: "complete_bounded_animation_data_required"

@@ -41,6 +41,7 @@ import type {
 import type { VapInspectionSource } from "./vap-inspection.js";
 import type { VapRuntimeLoader } from "./vap-web-playback-adapter.js";
 import {
+  LOTTIE_JSON_MAX_BYTES,
   MOTION_FORMAT_PROBE_MAX_BYTES,
   MULTIFORMAT_PREVIEW_WP1_GATE,
   MotionFormatProbeService,
@@ -604,6 +605,7 @@ export class HiddenMultiFormatPreviewWorkspaceSession {
         name: displayName,
         sizeBytes,
         mediaType: stat.mediaType ?? mediaTypeFromPath(displayName),
+        boundedFullReadMaxBytes: host.readLocalFile ? LOTTIE_JSON_MAX_BYTES : undefined,
         vapcJsonBytes: adjacentVapc?.bytes,
         vapcJsonName: adjacentVapc?.displayName,
         async read() {

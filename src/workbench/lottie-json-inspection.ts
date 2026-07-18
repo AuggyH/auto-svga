@@ -12,7 +12,10 @@ import {
   redactLocalPathsFromError,
   redactLocalPathsInValue
 } from "./local-path-redaction.js";
-import { MOTION_FORMAT_PROBE_MAX_BYTES } from "./motion-format-registry.js";
+import {
+  LOTTIE_JSON_MAX_BYTES,
+  MOTION_FORMAT_PROBE_MAX_BYTES
+} from "./motion-format-registry.js";
 
 export const LOTTIE_JSON_INSPECTION_WP2A_GATE = "0.2-multiformat-preview-wp2a" as const;
 
@@ -258,19 +261,21 @@ async function readBoundedSample(
     if (!Number.isFinite(source.sizeBytes) || source.sizeBytes < 0) {
       return { truncated: true, issueReason: "bounded_read_required" };
     }
-    const bytes = source.readRange
-      ? await source.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+    const bytes = source.sizeBytes > LOTTIE_JSON_MAX_BYTES
+      ? undefined
       : source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
-        ? undefined
-        : await source.read();
+        ? await source.read()
+        : source.readRange
+          ? await source.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+          : await source.read();
     if (!bytes) {
       return { truncated: true, issueReason: "bounded_read_required" };
     }
     context?.onProgress?.({ phase: "lottie_json_read", completed: 1, total: 1 });
     return {
-      bytes: bytes.slice(0, MOTION_FORMAT_PROBE_MAX_BYTES),
-      truncated: source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
-        || bytes.byteLength > MOTION_FORMAT_PROBE_MAX_BYTES
+      bytes: bytes.slice(0, LOTTIE_JSON_MAX_BYTES),
+      truncated: source.sizeBytes > LOTTIE_JSON_MAX_BYTES
+        || bytes.byteLength > LOTTIE_JSON_MAX_BYTES
     };
   } catch (error) {
     return {

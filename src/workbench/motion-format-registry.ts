@@ -12,6 +12,7 @@ import {
 
 export const MULTIFORMAT_PREVIEW_WP1_GATE = "0.2-multiformat-preview-wp1" as const;
 export const MOTION_FORMAT_PROBE_MAX_BYTES = 262_144;
+export const LOTTIE_JSON_MAX_BYTES = 5 * 1024 * 1024;
 
 export type MotionFormatProbeStatus = "detected" | "candidate" | "unsupported" | "ambiguous";
 export type MotionFormatProbeIssueCode =
@@ -46,6 +47,7 @@ export interface MotionFormatDetectionResult extends Omit<FormatProbeResult, "is
 
 export interface MotionFormatProbeSource extends MotionAssetSource {
   readRange?(offset: number, length: number): Promise<Uint8Array>;
+  boundedFullReadMaxBytes?: number;
 }
 
 export interface MotionFormatProbeOptions {
@@ -285,21 +287,32 @@ async function readBoundedSample(
 ): Promise<BoundedSample> {
   try {
     context?.onProgress?.({ phase: "format_probe_read", completed: 0, total: 1 });
-    const bytes = source.readRange
-      ? await source.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
-      : !Number.isFinite(source.sizeBytes) || source.sizeBytes < 0 || source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
-        ? undefined
-        : await source.read();
+    const lottieFullReadAuthorized = isLottieJsonCandidate(source)
+      && Number.isFinite(source.sizeBytes)
+      && source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
+      && source.sizeBytes <= LOTTIE_JSON_MAX_BYTES
+      && Number.isFinite(source.boundedFullReadMaxBytes)
+      && Number(source.boundedFullReadMaxBytes) >= source.sizeBytes;
+    const maxBytes = lottieFullReadAuthorized ? LOTTIE_JSON_MAX_BYTES : MOTION_FORMAT_PROBE_MAX_BYTES;
+    const bytes = lottieFullReadAuthorized
+      ? await source.read()
+      : source.readRange
+        ? await source.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+        : !Number.isFinite(source.sizeBytes)
+          || source.sizeBytes < 0
+          || source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
+          ? undefined
+          : await source.read();
     if (!bytes) {
       return { truncated: true, issueReason: "bounded_read_required" };
     }
     context?.onProgress?.({ phase: "format_probe_read", completed: 1, total: 1 });
     return {
-      bytes: bytes.slice(0, MOTION_FORMAT_PROBE_MAX_BYTES),
+      bytes: bytes.slice(0, maxBytes),
       truncated: !Number.isFinite(source.sizeBytes)
         || source.sizeBytes < 0
-        || source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
-        || bytes.byteLength > MOTION_FORMAT_PROBE_MAX_BYTES
+        || source.sizeBytes > maxBytes
+        || bytes.byteLength > maxBytes
     };
   } catch (error) {
     return {
@@ -312,6 +325,15 @@ async function readBoundedSample(
       )
     };
   }
+}
+
+function isLottieJsonCandidate(source: MotionFormatProbeSource): boolean {
+  const mediaType = String(source.mediaType ?? "").trim().toLowerCase();
+  const name = String(source.name ?? "").trim().toLowerCase();
+  return name.endsWith(".json")
+    || mediaType === "application/json"
+    || mediaType === "application/lottie+json"
+    || mediaType === "application/vnd.lottie+json";
 }
 
 function detectSvga({ bytes, hasHint }: MotionFormatDetectorInput): MotionFormatDetectorResult {
