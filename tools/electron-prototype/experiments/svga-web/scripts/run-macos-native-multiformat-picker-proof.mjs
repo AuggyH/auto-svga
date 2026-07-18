@@ -216,12 +216,11 @@ async function connectProductPage(browserWebSocketUrl, child, readChildOutput) {
 }
 
 function runNativePanelSelection(pid, filePath) {
-  const directoryPath = path.dirname(filePath);
   const basename = path.basename(filePath);
   const script = String.raw`
 function run(argv) {
   const ownerPid = Number(argv[0]);
-  const directoryPath = String(argv[1]);
+  const filePath = String(argv[1]);
   const basename = String(argv[2]);
   const events = Application("System Events");
   const owner = events.applicationProcesses().find((process) => Number(process.unixId()) === ownerPid);
@@ -243,48 +242,9 @@ function run(argv) {
       try {
         const subrole = String(button.subrole() || "");
         const name = String(button.name() || "");
-        if (subrole === "AXDefaultButton" || name === "Choose" || name === "选取") return button;
+        if ((subrole === "AXDefaultButton" && name !== "Go" && name !== "前往") ||
+            name === "Open" || name === "打开" || name === "Choose" || name === "选取") return button;
       } catch {}
-    }
-    return null;
-  }
-
-  function exactFileRow(panel) {
-    let contents = [];
-    try { contents = panel.entireContents(); } catch {}
-    for (const element of contents) {
-      let name = "";
-      try { name = String(element.name() || ""); } catch {}
-      if (name !== basename) continue;
-      let candidate = element;
-      for (let depth = 0; depth < 8; depth += 1) {
-        try {
-          if (String(candidate.role() || "") === "AXRow") return candidate;
-          candidate = candidate.parent();
-        } catch {
-          break;
-        }
-      }
-    }
-    return null;
-  }
-
-  function selectExactFileRow(panel) {
-    for (let attempt = 0; attempt < 80; attempt += 1) {
-      const row = exactFileRow(panel);
-      if (row) {
-        try { row.click(); } catch {}
-        delay(0.1);
-        let selected = false;
-        try { selected = Boolean(row.selected()); } catch {}
-        if (!selected) {
-          try { row.selected.set(true); } catch {}
-          delay(0.1);
-          try { selected = Boolean(row.selected()); } catch {}
-        }
-        if (selected) return { row, role: String(row.role() || "") };
-      }
-      delay(0.1);
     }
     return null;
   }
@@ -297,12 +257,20 @@ function run(argv) {
   if (!panel) throw new Error("native_open_panel_missing");
   events.keystroke("g", { using: ["command down", "shift down"] });
   delay(0.4);
-  events.keystroke(directoryPath);
+  events.keystroke(filePath);
   events.keyCode(36);
-  delay(0.9);
+  delay(1.2);
   panel = ownerPanel();
-  const selection = panel ? selectExactFileRow(panel) : null;
-  if (!selection) throw new Error("native_file_row_not_selected");
+  if (!panel) {
+    return JSON.stringify({
+      openButtonFound: false,
+      openButtonEnabled: true,
+      submitted: true,
+      buttonName: "return",
+      requestedBasename: basename,
+      selectionMethod: "go-to-exact-file"
+    });
+  }
   let button = panel ? defaultButton(panel) : null;
   for (let attempt = 0; attempt < 40 && !button; attempt += 1) {
     delay(0.1);
@@ -319,14 +287,11 @@ function run(argv) {
     submitted: enabled,
     buttonName: name,
     requestedBasename: basename,
-    selectedBasename: basename,
-    selectedRole: selection.role,
-    selected: true,
-    selectionMethod: "exact-ax-row"
+    selectionMethod: "go-to-exact-file"
   });
 }`;
   const output = execFileSync("/usr/bin/osascript", [
-    "-l", "JavaScript", "-e", script, "--", String(pid), directoryPath, basename
+    "-l", "JavaScript", "-e", script, "--", String(pid), filePath, basename
   ], {
     encoding: "utf8",
     timeout: 20000,

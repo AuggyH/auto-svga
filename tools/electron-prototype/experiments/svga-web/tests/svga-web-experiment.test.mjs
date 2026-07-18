@@ -1834,10 +1834,9 @@ test("macOS native picker proof binds the Standard Additions process and rejects
   assert.match(source, /__autoSvgaShortTermActions\.openFromHostDialog/);
   assert.match(source, /waitForNewPickerPid/);
   assert.match(source, /exactProcessPids\("osascript"\)/);
-  assert.match(source, /AXRow/);
-  assert.match(source, /selected\(\)/);
-  assert.match(source, /selectionMethod: "exact-ax-row"/);
-  assert.doesNotMatch(source, /bounded-keyboard-basename/);
+  assert.match(source, /events\.keystroke\(filePath\)/);
+  assert.match(source, /selectionMethod: "go-to-exact-file"/);
+  assert.doesNotMatch(source, /entireContents|bounded-keyboard-basename|exact-ax-row/);
   assert.match(source, /AXDefaultButton/);
   assert.match(source, /openButtonEnabled/);
   assert.match(source, /native Open button remained disabled/);
