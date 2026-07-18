@@ -2096,7 +2096,7 @@ export function normalizeMultiFormatOpenOutcome(result) {
 }
 
 function applyProductCopy(documentRef = document) {
-  documentRef.querySelector(".launchPrompt p")?.replaceChildren("拖拽 SVGA / Lottie JSON / VAP MP4 到此处");
+  documentRef.querySelector(".launchPrompt p")?.replaceChildren("拖拽文件到此处");
   documentRef.querySelectorAll("[data-action='open'] span").forEach((node) => {
     node.textContent = "打开文件";
   });
