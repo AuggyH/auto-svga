@@ -915,7 +915,9 @@ async function main() {
   record("unsupported-drop-keeps-workbench-recovery-shell",
     /data-page-state="Unsupported drop"/.test(unsupportedSection)
     && /data-role="UnsupportedDropCanvasRecovery"/.test(unsupportedSection)
-    && /id="unsupportedDropRecovery"[^>]*data-component="ErrorRecoveryPanel"/.test(unsupportedSection)
+    && /class="stateCard error stateFailureCard unsupportedDropRecoveryPanel"[^>]*id="unsupportedDropRecovery"[^>]*data-component="ErrorRecoveryPanel"/.test(unsupportedSection)
+    && /class="stateFailureIcon" aria-hidden="true"/.test(unsupportedSection)
+    && !/class="stateCard error playbackErrorPanel unsupportedDropRecoveryPanel"/.test(unsupportedSection)
     && /data-state="disabled"/.test(unsupportedSection)
     && /\.unsupportedDropView\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/.test(pageStatesCss));
 

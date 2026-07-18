@@ -193,16 +193,15 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <div class="canvasWrap stateCanvasWrap" data-component="ErrorRecoveryPanel" data-role="UnsupportedDropCanvasRecovery">
-            <div class="stateCard error playbackErrorPanel unsupportedDropRecoveryPanel" id="unsupportedDropRecovery" data-component="ErrorRecoveryPanel">
-              <span class="playbackErrorIcon" aria-hidden="true">
+            <div class="stateCard error stateFailureCard unsupportedDropRecoveryPanel" id="unsupportedDropRecovery" data-component="ErrorRecoveryPanel">
+              <span class="stateFailureIcon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9"></circle>
-                  <path d="M9 9l6 6"></path>
-                  <path d="M15 9l-6 6"></path>
+                  <path d="m8 8 8 8"></path>
+                  <path d="m16 8-8 8"></path>
                 </svg>
               </span>
               <h1>不支持的文件格式</h1>
-              <button class="toolbarButton primary stateRecoveryButton playbackRecoveryButton" type="button" data-action="open">打开文件</button>
+              <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">打开文件</button>
             </div>
           </div>
           <div class="playbackBar statePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled">

@@ -1740,6 +1740,9 @@ test("unsupported drop keeps the workbench shell and follows the frozen drag hie
   assert.doesNotMatch(tokens, /--asv-component-drag-overlay-label-size:\s*(?:30|36)px/);
   assert.match(page, /data-view="unsupported"[^>]*data-page-state="Unsupported drop"/);
   assert.match(page, /data-role="UnsupportedDropCanvasRecovery"/);
+  assert.match(page, /class="stateCard error stateFailureCard unsupportedDropRecoveryPanel"[^>]*id="unsupportedDropRecovery"/);
+  assert.match(page, /id="unsupportedDropRecovery"[\s\S]*?class="stateFailureIcon" aria-hidden="true">[\s\S]*?<svg[^>]*>[\s\S]*?<\/svg>/);
+  assert.doesNotMatch(page, /class="stateCard error playbackErrorPanel unsupportedDropRecoveryPanel"/);
   assert.match(page, /data-view="unsupported"[\s\S]*data-state="disabled"/);
   assert.match(shortTermController, /showShortTermUnsupportedDropState/);
   assert.match(multiFormatController, /closeFile\(\{ nextView: "unsupported" \}\)/);
