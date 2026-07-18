@@ -13,7 +13,7 @@ export function normalizeSaveBannerStatus(status) {
 }
 
 export function bannerTone(title) {
-  if (/正在/.test(title)) return "loading";
+  if (/正在|执行中/.test(title)) return "loading";
   if (/失败|未完成|未通过/.test(title)) return "danger";
   if (/没有|不支持|取消/.test(title)) return "warning";
   if (/已/.test(title)) return "success";

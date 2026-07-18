@@ -92,7 +92,7 @@ export async function runShortTermOptimizationWorkflow({
   if (!state.sourceBytes) return;
   if (!(await confirmDiscardUnsavedOutput("执行安全优化会放弃当前未保存的 SVGA 输出。"))) return;
   setTab("optimization");
-  showSaveBanner("正在执行安全优化。", "只处理当前可安全执行的项目。");
+  showSaveBanner("优化执行中…", "正在生成优化文件，请勿关闭…");
   try {
     const result = await optimizeShortTermSvga({
       bytes: state.sourceBytes,

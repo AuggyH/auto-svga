@@ -194,6 +194,7 @@ test("short-term save banner states expose direct accessible page-state semantic
   const { showSaveFeedbackBanner, clearSaveFeedbackBanner } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs")).href);
 
   assert.equal(bannerTone("正在保存并验证输出…"), "loading");
+  assert.equal(bannerTone("优化执行中…"), "loading");
   assert.equal(bannerTone("已保存"), "success");
   assert.equal(bannerTone("保存失败，请重试"), "danger");
   assert.equal(bannerTone("已取消保存。"), "warning");
@@ -7453,7 +7454,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /export function saveBannerView/);
   assert.match(shortTermFeedbackModel, /export function sourceUnmodifiedMessage/);
   assert.match(shortTermFeedbackModel, /escapeHtml\(title\)/);
-  assert.match(shortTermFeedbackModel, /escapeHtml\(message \|\| ""\)/);
+  assert.match(shortTermFeedbackModel, /const messageHtml = message \?/);
+  assert.match(shortTermFeedbackModel, /escapeHtml\(message\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
   assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, ""\)/);
   assert.doesNotMatch(shortTermFileSurface, /正在打开最近文件。|解析文件并准备预览。/);
@@ -7623,6 +7625,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationSurface, /prependOptimizationResult\(nodes, model\.resultTitle, model\.resultSummary, tone\)/);
   assert.doesNotMatch(shortTermEntry, /createOptimizationFindingRow|createInlineStatusText|createMessageRow|nodes\.optimizationSummary\.textContent|nodes\.findingList\.replaceChildren|nodes\.findingList\.prepend/);
   assert.match(shortTermOptimizationSurface, /from "\.\/short-term-macos-optimization-renderers\.mjs"/);
+  assert.match(shortTermOptimizationSurface, /showSaveBanner\("优化执行中…", "正在生成优化文件，请勿关闭…"\)/);
+  assert.doesNotMatch(shortTermOptimizationSurface, /正在执行安全优化。|只处理当前可安全执行的项目。/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-optimization-model\.mjs"|from "\.\/short-term-macos-optimization-renderers\.mjs"|optimizationTabView|optimizationResultTone|prependOptimizationResult|renderOptimizationFindings/);
   assert.match(shortTermOptimizationRenderers, /nodes\.optimizationSummary\.textContent = view\.summaryCopy/);
   assert.match(shortTermOptimizationRenderers, /nodes\.runOptimizationButton\.textContent = view\.runButtonCopy/);
