@@ -23,6 +23,7 @@ import {
   candidateChannel,
   distributionChannel,
   finalAcceptanceOwner,
+  inspectSvgaDocumentTypeDeclaration,
   inspectSvgaUtiDeclaration,
   macosPackagerArgs,
   ownerVisibleLabel,
@@ -1195,7 +1196,7 @@ async function createPackagedProofFixture({
   };
 }
 
-test("macOS internal package declares SVGA as content without claiming Finder document handling", async () => {
+test("macOS internal package declares one bounded SVGA Viewer association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
   const entitlements = await readFile(path.join(experimentRoot, "packaging/macos/entitlements.plist"), "utf8");
   assert.equal(appName, "Auto SVGA");
@@ -1221,14 +1222,15 @@ test("macOS internal package declares SVGA as content without claiming Finder do
     await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
     /"short-term-window-placement-store\.cjs"/
   );
-  assert.doesNotMatch(plist, /CFBundleDocumentTypes/);
-  assert.doesNotMatch(plist, /CFBundleTypeRole[\s\S]*Viewer/);
-  assert.doesNotMatch(plist, /LSHandlerRank[\s\S]*Alternate/);
+  assert.match(plist, /CFBundleDocumentTypes/);
+  assert.match(plist, /CFBundleTypeRole[\s\S]*Viewer/);
+  assert.match(plist, /LSHandlerRank[\s\S]*Alternate/);
   assert.match(plist, /UTExportedTypeDeclarations/);
   assert.match(plist, /com\.auto-svga\.svga/);
   assert.match(plist, /UTTypeConformsTo[\s\S]*public\.data[\s\S]*public\.content/);
   assert.match(plist, /public\.filename-extension[\s\S]*svga/);
   assert.equal(inspectSvgaUtiDeclaration(plist).valid, true);
+  assert.equal(inspectSvgaDocumentTypeDeclaration(plist).valid, true);
   assert.doesNotMatch(plist, /NSAllowsArbitraryLoads/);
   assert.doesNotMatch(plist, /NSCameraUsageDescription/);
   assert.doesNotMatch(plist, /NSMicrophoneUsageDescription/);
@@ -1285,7 +1287,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.equal(proof.distribution.notarized, false);
   assert.equal(proof.distribution.productionApproved, false);
   assert.equal(proof.distribution.finalPackagedAppAcceptanceOwner, finalAcceptanceOwner);
-  assert.deepEqual(proof.documentTypes, []);
+  assert.deepEqual(proof.documentTypes, ["svga"]);
   assert.equal(proof.documentAssociationPolicy.svgaFinderOpen, "not-declared");
   assert.match(proof.documentAssociationPolicy.reason, /in-app file picker and drag\/drop only/);
   assert.match(proof.knownRisks.join(" "), /Finder double-click/);
@@ -1296,7 +1298,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.equal(proof.infoPlistSecurityAudit.packagedApp.passed, true);
   assert.equal(proof.metadataSecurity.noArbitraryNetworkLoads, true);
   assert.equal(proof.metadataSecurity.noUnnecessaryPermissionUsageDescriptions, true);
-  assert.equal(proof.metadataSecurity.noFinderDocumentAssociation, true);
+  assert.equal(proof.metadataSecurity.noUnexpectedFinderDocumentAssociation, true);
   assert.match(proof.packagingScaffold.extendInfoPath, /packaging\/macos\/Info\.plist$/);
   assert.match(proof.packagingScaffold.appIconPath, /packaging\/macos\/app-icon\.icns$/);
   assert.match(proof.packagingScaffold.packagedInfoPlistPath, /Auto SVGA\.app\/Contents\/Info\.plist$/);
@@ -1561,7 +1563,7 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
   }
 });
 
-test("macOS Info.plist security audit accepts only the canonical SVGA content declaration", async () => {
+test("macOS Info.plist security audit accepts only the canonical SVGA content and Viewer declarations", async () => {
   const canonicalPlist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
   assert.equal(auditInfoPlistSecurity(canonicalPlist).passed, true);
 
@@ -1574,6 +1576,10 @@ test("macOS Info.plist security audit accepts only the canonical SVGA content de
     "    <dict><key>UTTypeIdentifier</key><string>local.auto-svga.other</string></dict>\n  </array>\n  <key>AutoSVGAFinalPackagedAppAcceptanceOwner</key>"
   );
   assert.equal(auditInfoPlistSecurity(extraExport).passed, false);
+
+  const defaultHandler = canonicalPlist.replace("    <string>Alternate</string>", "    <string>Owner</string>");
+  assert.equal(auditInfoPlistSecurity(defaultHandler).passed, false);
+  assert.ok(auditInfoPlistSecurity(defaultHandler).finderDocumentAssociations.includes("CFBundleDocumentTypes"));
 
   const imported = canonicalPlist.replace(
     "<key>UTExportedTypeDeclarations</key>",
@@ -1600,7 +1606,6 @@ test("macOS Info.plist security audit rejects arbitrary network, unused permissi
   assert.ok(audit.permissionUsageDescriptions.includes("NSMicrophoneUsageDescription"));
   assert.ok(audit.permissionUsageDescriptions.includes("NSBluetoothAlwaysUsageDescription"));
   assert.ok(audit.finderDocumentAssociations.includes("CFBundleDocumentTypes"));
-  assert.ok(audit.finderDocumentAssociations.includes("svga-filename-extension"));
 });
 
 test("macOS native picker proof uses the real owner action and rejects disabled Open before autoplay", async () => {

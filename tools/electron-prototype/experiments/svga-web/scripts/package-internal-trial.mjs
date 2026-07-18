@@ -140,7 +140,6 @@ function sanitizePackagedInfoPlist() {
     "NSBluetoothPeripheralUsageDescription",
     "NSCameraUsageDescription",
     "NSMicrophoneUsageDescription",
-    "CFBundleDocumentTypes",
     "UTImportedTypeDeclarations"
   ];
   for (const key of removableKeys) {

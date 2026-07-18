@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { inspectSvgaUtiDeclaration } from "./macos-package-proof.mjs";
+import { inspectSvgaDocumentTypeDeclaration, inspectSvgaUtiDeclaration } from "./macos-package-proof.mjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
@@ -74,8 +74,8 @@ function validateAppBundle(sourceHead) {
     if (!stats.isFile() || stats.size <= 0) throw new Error("Native picker App is missing a required packaged file.");
   }
   const infoPlist = readFileSync(infoPlistPath, "utf8");
-  if (!inspectSvgaUtiDeclaration(infoPlist).valid) {
-    throw new Error("Packaged App does not contain the canonical SVGA content-type declaration.");
+  if (!inspectSvgaUtiDeclaration(infoPlist).valid || !inspectSvgaDocumentTypeDeclaration(infoPlist).valid) {
+    throw new Error("Packaged App does not contain the canonical SVGA native admission declarations.");
   }
   const asar = requireFromPrototype("@electron/asar");
   const buildInfo = JSON.parse(asar.extractFile(asarPath, ".runtime/build-info.json").toString("utf8"));
@@ -213,17 +213,23 @@ function createDevToolsWaiter(child) {
   child.stderr.on("data", onChunk);
   child.stdout.on("data", onChunk);
   child.once("exit", (code, signal) => rejectUrl(new Error(`Packaged App exited before DevTools readiness (${code ?? signal}).`)));
-  return promise;
+  return {
+    promise,
+    output: () => buffered.trim()
+  };
 }
 
-async function connectProductPage(browserWebSocketUrl) {
+async function connectProductPage(browserWebSocketUrl, child, readChildOutput) {
   const endpoint = new URL(browserWebSocketUrl);
   const listUrl = `http://${endpoint.host}/json/list`;
   const target = await waitFor(async () => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      throw new Error(`Packaged App exited during renderer startup (${child.exitCode ?? child.signalCode}): ${readChildOutput()}`);
+    }
     const response = await fetch(listUrl);
     if (!response.ok) return undefined;
     const targets = await response.json();
-    return targets.find((item) => item.type === "page" && /\/web\/index\.html/u.test(item.url));
+    return targets.find((item) => item.type === "page" && /^http:\/\/127\.0\.0\.1:\d+\/(?:$|\?)/u.test(item.url));
   }, { timeoutMs: 15000, label: "packaged product renderer" });
   return new CdpClient(target.webSocketDebuggerUrl).open();
 }
@@ -234,57 +240,51 @@ function run(argv) {
   const ownerPid = Number(argv[0]);
   const filePath = String(argv[1]);
   const events = Application("System Events");
-  const owner = events.applicationProcesses.whose({ unixId: ownerPid })()[0];
-  if (!owner) throw new Error("owner_process_missing");
+  const owner = events.applicationProcesses.byName("Auto SVGA");
+  if (!owner.exists() || Number(owner.unixId()) !== ownerPid) throw new Error("owner_process_missing");
   owner.frontmost.set(true);
 
-  function panelProcesses() {
-    const service = events.applicationProcesses().filter((process) => {
-      try { return String(process.name()).includes("Open and Save Panel Service (Auto SVGA)"); }
-      catch { return false; }
-    });
-    return [owner, ...service];
-  }
-
-  function walk(element, depth, result) {
-    if (depth > 14 || result.length > 4000) return;
-    result.push(element);
-    let children = [];
-    try { children = element.uiElements(); } catch {}
-    for (const child of children) walk(child, depth + 1, result);
-  }
-
-  function defaultButton() {
-    for (const process of panelProcesses()) {
-      let windows = [];
-      try { windows = process.windows(); } catch {}
+  function ownerSheet() {
+    try {
+      const windows = owner.windows();
       for (const window of windows) {
-        const elements = [];
-        walk(window, 0, elements);
-        for (const element of elements) {
-          try {
-            const role = element.role();
-            const subrole = element.subrole();
-            const name = String(element.name() || "");
-            if (role === "AXButton" && (subrole === "AXDefaultButton" || name === "Open" || name === "打开")) return element;
-          } catch {}
-        }
+        const sheets = window.sheets();
+        if (sheets.length > 0) return sheets[0];
       }
+    } catch {}
+    return null;
+  }
+
+  function defaultButton(sheet) {
+    let buttons = [];
+    try { buttons = sheet.buttons(); } catch {}
+    for (const button of buttons) {
+      try {
+        const subrole = String(button.subrole() || "");
+        const name = String(button.name() || "");
+        if (subrole === "AXDefaultButton" || name === "Open" || name === "打开") return button;
+      } catch {}
     }
     return null;
   }
 
-  for (let attempt = 0; attempt < 80 && !defaultButton(); attempt += 1) delay(0.1);
-  if (!defaultButton()) throw new Error("native_open_panel_missing");
+  let sheet = null;
+  for (let attempt = 0; attempt < 80 && !sheet; attempt += 1) {
+    sheet = ownerSheet();
+    if (!sheet) delay(0.1);
+  }
+  if (!sheet) throw new Error("native_open_panel_missing");
   events.keystroke("g", { using: ["command down", "shift down"] });
   delay(0.4);
   events.keystroke(filePath);
   events.keyCode(36);
   delay(0.9);
-  let button = defaultButton();
+  sheet = ownerSheet();
+  let button = sheet ? defaultButton(sheet) : null;
   for (let attempt = 0; attempt < 40 && !button; attempt += 1) {
     delay(0.1);
-    button = defaultButton();
+    sheet = ownerSheet();
+    button = sheet ? defaultButton(sheet) : null;
   }
   if (!button) throw new Error("native_open_button_missing");
   const enabled = Boolean(button.enabled());
@@ -305,8 +305,8 @@ function runNativePanelCancel(pid) {
 function run(argv) {
   const ownerPid = Number(argv[0]);
   const events = Application("System Events");
-  const owner = events.applicationProcesses.whose({ unixId: ownerPid })()[0];
-  if (!owner) throw new Error("owner_process_missing");
+  const owner = events.applicationProcesses.byName("Auto SVGA");
+  if (!owner.exists() || Number(owner.unixId()) !== ownerPid) throw new Error("owner_process_missing");
   owner.frontmost.set(true);
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try {
@@ -423,29 +423,28 @@ async function main() {
   registerTestApp(app.appBundle);
   const svgaContentTypeTree = readContentTypeTree(rows[0].filePath);
   mkdirSync(artifacts.userDataPath, { mode: 0o700 });
+  const childEnv = { ...process.env };
+  delete childEnv.AUTO_SVGA_PRODUCT_ARTIFACTS;
+  delete childEnv.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID;
 
   const child = spawn(app.executable, [
     `--user-data-dir=${artifacts.userDataPath}`,
     "--remote-debugging-port=0"
   ], {
     cwd: path.dirname(app.executable),
-    env: {
-      ...process.env,
-      AUTO_SVGA_PRODUCT_ARTIFACTS: "",
-      AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: ""
-    },
+    env: childEnv,
     stdio: ["ignore", "pipe", "pipe"]
   });
-  const browserUrlPromise = createDevToolsWaiter(child);
+  const devTools = createDevToolsWaiter(child);
   let client;
   let devToolsPort;
   try {
     const browserUrl = await Promise.race([
-      browserUrlPromise,
+      devTools.promise,
       delay(15000).then(() => { throw new Error("Packaged App DevTools endpoint timed out."); })
     ]);
     devToolsPort = Number(new URL(browserUrl).port);
-    client = await connectProductPage(browserUrl);
+    client = await connectProductPage(browserUrl, child, devTools.output);
     await waitFor(
       () => client.evaluate("Boolean(window.__autoSvgaShortTermActions?.openFromHostDialog)"),
       { timeoutMs: 15000, label: "owner Open action" }
@@ -474,7 +473,8 @@ async function main() {
         svgaUti: "com.auto-svga.svga",
         conformsTo: ["public.content", "public.data"],
         launchServicesResolvedAsContent: svgaContentTypeTree.includes("public.content"),
-        finderDocumentHandlerDeclared: false
+        documentRole: "Viewer",
+        handlerRank: "Alternate"
       },
       rows: results,
       cancel: { ...cancel, statePreserved: afterCancel.fileIdentity === beforeCancel.fileIdentity },

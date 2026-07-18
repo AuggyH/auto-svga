@@ -225,7 +225,7 @@ export async function buildMacosPackageProof(options = {}) {
       productionApproved: false,
       finalPackagedAppAcceptanceOwner: finalAcceptanceOwner
     },
-    documentTypes: [],
+    documentTypes: ["svga"],
     documentAssociationPolicy: {
       svgaFinderOpen: "not-declared",
       reason: "Phase-one internal package supports in-app file picker and drag/drop only; Finder document association is disabled until robust open-file support is approved."
@@ -261,7 +261,7 @@ export async function buildMacosPackageProof(options = {}) {
     metadataSecurity: {
       noArbitraryNetworkLoads: infoPlistSecurityAudit.arbitraryNetworkAllowances.length === 0,
       noUnnecessaryPermissionUsageDescriptions: infoPlistSecurityAudit.permissionUsageDescriptions.length === 0,
-      noFinderDocumentAssociation: infoPlistSecurityAudit.finderDocumentAssociations.length === 0,
+      noUnexpectedFinderDocumentAssociation: infoPlistSecurityAudit.finderDocumentAssociations.length === 0,
       localOnlySecurityPosture: true
     },
     infoPlistSecurityAudit,
@@ -335,7 +335,7 @@ export function validateProof(plist, proof, packagedPlist = plist) {
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
     ["unnotarized", proof.distribution.notarized === false && plist.includes("<key>AutoSVGANotarized</key>")],
     ["productionApprovedFalse", proof.distribution.productionApproved === false && plist.includes("<key>AutoSVGAProductionApproved</key>")],
-    ["noSvgaDocumentType", !plistKeyPresent(plist, "CFBundleDocumentTypes") && !plistKeyPresent(packagedPlist, "CFBundleDocumentTypes")],
+    ["canonicalSvgaDocumentType", inspectSvgaDocumentTypeDeclaration(plist).valid && inspectSvgaDocumentTypeDeclaration(packagedPlist).valid],
     ["canonicalSvgaContentType", inspectSvgaUtiDeclaration(plist).valid && inspectSvgaUtiDeclaration(packagedPlist).valid],
     ["iconArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg === "--icon=packaging/macos/app-icon")],
     ["extendInfoArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg.startsWith("--extend-info="))],
@@ -349,7 +349,7 @@ export function validateProof(plist, proof, packagedPlist = plist) {
     ["infoPlistSecurityAuditPassed", proof.infoPlistSecurityAudit?.passed === true && auditInfoPlistSecurity(plist).passed === true && auditInfoPlistSecurity(packagedPlist).passed === true],
     ["noArbitraryNetworkLoads", proof.metadataSecurity?.noArbitraryNetworkLoads === true],
     ["noUnnecessaryPermissionUsageDescriptions", proof.metadataSecurity?.noUnnecessaryPermissionUsageDescriptions === true],
-    ["noFinderDocumentAssociation", proof.metadataSecurity?.noFinderDocumentAssociation === true],
+    ["noUnexpectedFinderDocumentAssociation", proof.metadataSecurity?.noUnexpectedFinderDocumentAssociation === true],
     ["acceptanceOwner", proof.distribution.finalPackagedAppAcceptanceOwner === finalAcceptanceOwner]
   ];
   const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);
@@ -580,10 +580,11 @@ export function auditInfoPlistSecurity(plist) {
   const parsed = parseInfoPlist(plist);
   const arbitraryNetworkAllowances = forbiddenArbitraryNetworkKeys.filter((key) => plistBooleanTrue(plist, key));
   const permissionUsageDescriptions = forbiddenPermissionUsageDescriptionKeys.filter((key) => plistKeyPresent(plist, key));
-  const finderDocumentAssociations = ["CFBundleDocumentTypes", "UTImportedTypeDeclarations"]
+  const finderDocumentAssociations = ["UTImportedTypeDeclarations"]
     .filter((key) => Object.hasOwn(parsed ?? {}, key));
-  if (/\bsvga\b/i.test(JSON.stringify(parsed?.CFBundleDocumentTypes ?? null))) {
-    finderDocumentAssociations.push("svga-filename-extension");
+  const svgaDocumentType = inspectSvgaDocumentTypeDeclaration(plist, parsed);
+  if (Object.hasOwn(parsed ?? {}, "CFBundleDocumentTypes") && !svgaDocumentType.valid) {
+    finderDocumentAssociations.push("CFBundleDocumentTypes");
   }
   const svgaUti = inspectSvgaUtiDeclaration(plist, parsed);
   if (Object.hasOwn(parsed ?? {}, "UTExportedTypeDeclarations") && !svgaUti.valid) {
@@ -631,6 +632,38 @@ export function inspectSvgaUtiDeclaration(plist, parsed = parseInfoPlist(plist))
   }
   if (!hasExactStringSet(tags["public.filename-extension"], ["svga"]) || tags["public.mime-type"] !== "application/octet-stream") {
     return { valid: false, reason: "invalid_export_tag_values" };
+  }
+  return { valid: true, reason: null };
+}
+
+export function inspectSvgaDocumentTypeDeclaration(plist, parsed = parseInfoPlist(plist)) {
+  if (!parsed) return { valid: false, reason: "invalid_plist" };
+  const documentTypes = parsed.CFBundleDocumentTypes;
+  if (!Array.isArray(documentTypes) || documentTypes.length !== 1 || !isPlainObject(documentTypes[0])) {
+    return { valid: false, reason: "invalid_document_type_count" };
+  }
+  const declaration = documentTypes[0];
+  if (!hasExactKeys(declaration, [
+    "CFBundleTypeExtensions",
+    "CFBundleTypeName",
+    "CFBundleTypeRole",
+    "LSHandlerRank",
+    "LSItemContentTypes"
+  ])) {
+    return { valid: false, reason: "invalid_document_type_fields" };
+  }
+  if (
+    declaration.CFBundleTypeName !== "SVGA animation"
+    || declaration.CFBundleTypeRole !== "Viewer"
+    || declaration.LSHandlerRank !== "Alternate"
+  ) {
+    return { valid: false, reason: "invalid_document_type_identity" };
+  }
+  if (
+    !hasExactStringSet(declaration.CFBundleTypeExtensions, ["svga"])
+    || !hasExactStringSet(declaration.LSItemContentTypes, [svgaUtiIdentifier])
+  ) {
+    return { valid: false, reason: "invalid_document_type_bindings" };
   }
   return { valid: true, reason: null };
 }
