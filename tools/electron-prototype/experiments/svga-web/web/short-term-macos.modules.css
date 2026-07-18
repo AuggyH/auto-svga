@@ -1013,7 +1013,7 @@ canvas {
   white-space: nowrap;
 }
 
-.assetSummaryItem:first-child {
+.assetSummaryItem[data-summary-id="all"] {
   background: var(--asv-asset-filter-tab-selected-bg);
   color: var(--asv-asset-filter-tab-selected-color);
 }
