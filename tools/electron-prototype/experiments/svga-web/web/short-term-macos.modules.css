@@ -1219,12 +1219,66 @@ canvas {
   border-bottom: var(--asv-right-panel-section-divider);
 }
 
-.rightPanel[data-panel-state="optimization"] .saveFeedbackOutlet {
+.rightPanel[data-panel-state="optimization"] .optimizationProgress {
   order: 3;
+  display: grid;
+  justify-items: center;
+  gap: var(--asv-optimization-progress-gap);
+  width: min(var(--asv-optimization-progress-width), 100%);
+  padding: var(--asv-optimization-progress-padding-block) 0;
+  text-align: center;
+}
+
+.rightPanel[data-panel-state="optimization"] .optimizationProgress[hidden] {
+  display: none;
+}
+
+.optimizationProgressLabel,
+.optimizationProgressDetail {
+  margin: 0;
+}
+
+.optimizationProgressLabel {
+  color: var(--asv-action);
+  font-size: var(--asv-optimization-progress-label-size);
+  font-weight: var(--asv-optimization-progress-label-weight);
+  line-height: var(--asv-optimization-progress-label-line-height);
+}
+
+.optimizationProgressBar {
+  position: relative;
+  width: 100%;
+  height: var(--asv-optimization-progress-track-height);
+  overflow: hidden;
+  border-radius: var(--asv-optimization-progress-track-radius);
+  background: var(--asv-optimization-progress-track-background);
+}
+
+.optimizationProgressBarFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 36%;
+  border-radius: inherit;
+  background: var(--asv-action);
+  animation: optimization-progress-indeterminate var(--asv-optimization-progress-duration) ease-in-out infinite;
+}
+
+.optimizationProgressDetail {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--asv-muted);
+  font-size: var(--asv-optimization-progress-detail-size);
+  line-height: var(--asv-optimization-progress-detail-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rightPanel[data-panel-state="optimization"] .saveFeedbackOutlet {
+  order: 4;
 }
 
 .rightPanel[data-panel-state="optimization"] .optimizationDetailActions {
-  order: 4;
+  order: 5;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--asv-optimization-action-gap);
@@ -1243,6 +1297,20 @@ canvas {
   background: var(--asv-component-optimization-detail-secondary-background);
   color: var(--asv-component-optimization-detail-secondary-color);
   box-shadow: none;
+}
+
+@keyframes optimization-progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(90%); }
+  100% { transform: translateX(280%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .optimizationProgressBarFill {
+    width: 100%;
+    opacity: 0.55;
+    animation: none;
+  }
 }
 
 .rightPanel[data-panel-state="optimization"] .optimizationDetailActions .toolbarButton:not(.primary):hover {

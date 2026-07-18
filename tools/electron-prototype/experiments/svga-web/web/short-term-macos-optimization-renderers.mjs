@@ -27,6 +27,19 @@ export function renderOptimizationFindings(nodes, view) {
   nodes.findingList.replaceChildren(...view.groupedItems.map(createOptimizationFindingRow));
 }
 
+export function renderOptimizationRunningState(nodes, active) {
+  const running = Boolean(active);
+  nodes.panelOptimization.dataset.workflowState = running ? "running" : "idle";
+  nodes.panelOptimization.setAttribute("aria-busy", running ? "true" : "false");
+  nodes.optimizationProgress.hidden = !running;
+  if (running) {
+    nodes.runOptimizationButton.disabled = true;
+    nodes.closeOptimizationButton.disabled = true;
+    return;
+  }
+  nodes.closeOptimizationButton.disabled = false;
+}
+
 export function prependOptimizationResult(nodes, title, summary, tone) {
   nodes.findingList.prepend(createMessageRow(title, summary, tone));
 }

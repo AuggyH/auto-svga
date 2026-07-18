@@ -6,8 +6,10 @@ import {
 } from "./short-term-macos-optimization-model.mjs";
 import {
   prependOptimizationResult,
-  renderOptimizationFindings
+  renderOptimizationFindings,
+  renderOptimizationRunningState
 } from "./short-term-macos-optimization-renderers.mjs";
+import { clearShortTermSaveBanner } from "./short-term-macos-feedback-surface.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
 import {
   markShortTermCompareSlotLoaded,
@@ -92,7 +94,12 @@ export async function runShortTermOptimizationWorkflow({
   if (!state.sourceBytes) return;
   if (!(await confirmDiscardUnsavedOutput("执行安全优化会放弃当前未保存的 SVGA 输出。"))) return;
   setTab("optimization");
-  showSaveBanner("优化执行中…", "正在生成优化文件，请勿关闭…");
+  clearShortTermSaveBanner(nodes);
+  renderOptimizationRunningState(nodes, true);
+  const finishRunning = () => {
+    renderOptimizationRunningState(nodes, false);
+    renderShortTermOptimization({ nodes, model: state.model });
+  };
   try {
     const result = await optimizeShortTermSvga({
       bytes: state.sourceBytes,
@@ -101,6 +108,7 @@ export async function runShortTermOptimizationWorkflow({
     });
     const optimizedBytes = result.optimizedSvgaBase64 ? fromBase64(result.optimizedSvgaBase64) : undefined;
     if (!optimizedBytes?.byteLength || result.optimization?.status !== "optimized") {
+      finishRunning();
       showSaveBanner(result.optimization?.resultTitle || "没有可安全执行的优化项。", result.optimization?.resultSummary || "源文件没有被修改。");
       renderShortTermOptimizationResult({ nodes, model: result.optimization });
       return;
@@ -114,6 +122,7 @@ export async function runShortTermOptimizationWorkflow({
       summary: result.optimization.resultSummary,
       details: result.optimization
     });
+    finishRunning();
     await renderShortTermOptimizationCompare({
       nodes,
       state,
@@ -125,6 +134,7 @@ export async function runShortTermOptimizationWorkflow({
       mountPlayback
     });
   } catch (error) {
+    finishRunning();
     showOperationFailure("优化未完成。", error);
   }
 }

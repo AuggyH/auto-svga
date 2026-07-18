@@ -450,6 +450,50 @@ test("short-term save banner states expose direct accessible page-state semantic
   assert.doesNotMatch(commandState, /正在验证保存输出/);
 });
 
+test("short-term optimization running state uses the Figma progress hierarchy without fabricated values", async () => {
+  const { renderOptimizationRunningState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-optimization-renderers.mjs")).href);
+  const attributes = new Map();
+  const nodes = {
+    panelOptimization: {
+      dataset: {},
+      setAttribute(name, value) {
+        attributes.set(name, value);
+      }
+    },
+    optimizationProgress: { hidden: true },
+    optimizationProgressBar: { attributes: { role: "progressbar" } },
+    runOptimizationButton: { disabled: false },
+    closeOptimizationButton: { disabled: false }
+  };
+
+  renderOptimizationRunningState(nodes, true);
+
+  assert.equal(nodes.panelOptimization.dataset.workflowState, "running");
+  assert.equal(attributes.get("aria-busy"), "true");
+  assert.equal(nodes.optimizationProgress.hidden, false);
+  assert.equal(nodes.runOptimizationButton.disabled, true);
+  assert.equal(nodes.closeOptimizationButton.disabled, true);
+  assert.equal(nodes.optimizationProgressBar.attributes.role, "progressbar");
+  assert.equal(Object.hasOwn(nodes.optimizationProgressBar.attributes, "aria-valuenow"), false);
+
+  renderOptimizationRunningState(nodes, false);
+
+  assert.equal(nodes.panelOptimization.dataset.workflowState, "idle");
+  assert.equal(attributes.get("aria-busy"), "false");
+  assert.equal(nodes.optimizationProgress.hidden, true);
+  assert.equal(nodes.closeOptimizationButton.disabled, false);
+
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  assert.match(page, /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/u);
+  assert.doesNotMatch(page, /优化执行中…\s*65%|\(2\/3\)/u);
+  assert.match(tokens, /--asv-component-optimization-progress-track-height:\s*4px/u);
+  assert.match(tokens, /--asv-component-optimization-progress-label-size:\s*var\(--asv-type-size-footnote\)/u);
+  assert.match(modules, /\.optimizationProgressBarFill\s*\{[\s\S]*animation:\s*optimization-progress-indeterminate/u);
+  assert.match(modules, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/u);
+});
+
 test("short-term save feedback follows the frozen right-surface placement contract", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
@@ -8113,7 +8157,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationSurface, /prependOptimizationResult\(nodes, model\.resultTitle, model\.resultSummary, tone\)/);
   assert.doesNotMatch(shortTermEntry, /createOptimizationFindingRow|createInlineStatusText|createMessageRow|nodes\.optimizationSummary\.textContent|nodes\.findingList\.replaceChildren|nodes\.findingList\.prepend/);
   assert.match(shortTermOptimizationSurface, /from "\.\/short-term-macos-optimization-renderers\.mjs"/);
-  assert.match(shortTermOptimizationSurface, /showSaveBanner\("优化执行中…", "正在生成优化文件，请勿关闭…"\)/);
+  assert.match(shortTermOptimizationSurface, /clearShortTermSaveBanner\(nodes\)/);
+  assert.match(shortTermOptimizationSurface, /renderOptimizationRunningState\(nodes, true\)/);
+  assert.match(shortTermOptimizationSurface, /renderOptimizationRunningState\(nodes, false\)/);
+  assert.doesNotMatch(shortTermOptimizationSurface, /showSaveBanner\("优化执行中…", "正在生成优化文件，请勿关闭…"\)/);
   assert.doesNotMatch(shortTermOptimizationSurface, /正在执行安全优化。|只处理当前可安全执行的项目。/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-optimization-model\.mjs"|from "\.\/short-term-macos-optimization-renderers\.mjs"|optimizationTabView|optimizationResultTone|prependOptimizationResult|renderOptimizationFindings/);
   assert.match(shortTermOptimizationRenderers, /nodes\.optimizationSummary\.textContent = view\.summaryCopy/);

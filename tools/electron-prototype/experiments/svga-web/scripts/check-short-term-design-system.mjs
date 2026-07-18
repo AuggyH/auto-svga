@@ -57,6 +57,7 @@ const allowedDataComponents = new Set([
   "ReplaceableImageRow",
   "ReplaceableTextRow",
   "OptimizationFindingRow",
+  "OptimizationRunningState",
   "OptimizationResultCard",
   "OptimizationResultDetailRow",
   "CompareCanvasSurface",
@@ -92,6 +93,7 @@ const allowedModules = new Set([
   "OverviewInformationModule",
   "ReplaceableElementsSurface",
   "OptimizationDetailSurface",
+  "OptimizationRunningState",
   "GeneralCompareModule",
   "OptimizationCompareModule",
   "EditReservedModule",
@@ -124,6 +126,7 @@ const requiredFigmaPageStates = [
   { figma: "预览 / 默认", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "预览 / 可替换元素", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface"] },
   { figma: "预览 / 优化详情", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"] },
+  { figma: "预览 / 优化执行中", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface", "OptimizationRunningState"] },
   { figma: "预览 / 优化结果对比", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"] },
   { figma: "对比 / 空态", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
   { figma: "对比 / 双文件已加载", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
@@ -758,6 +761,12 @@ async function main() {
     && /\.findingRow\[data-disposition="unsupported"\]/.test(components)
     && /class="optimizationDetailActions"[\s\S]*data-action="run-optimization">一键优化<\/button>[\s\S]*data-action="close-optimization">放弃优化<\/button>/.test(page)
     && /\.optimizationDetailActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)/.test(modules));
+  record("optimization-running-uses-figma-progress-contract", /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/.test(page)
+    && /export function renderOptimizationRunningState/.test(optimizationRenderer)
+    && /--asv-component-optimization-progress-width:\s*312px/.test(tokens)
+    && /--asv-component-optimization-progress-track-height:\s*4px/.test(tokens)
+    && /\.optimizationProgressBarFill\s*\{[\s\S]*animation: optimization-progress-indeterminate/.test(modules)
+    && /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/.test(modules));
   record("optimization-result-metrics-use-figma-component-contract", /data-component="OptimizationResultCard" data-role="OptimizationMetricCell"/.test(baseCss + modules + components + renderModel)
     && /--asv-optimization-metric-min-height:\s*var\(--asv-component-optimization-metric-min-height\)/.test(tokens)
     && /gap:\s*var\(--asv-optimization-metric-gap\)/.test(modules)
