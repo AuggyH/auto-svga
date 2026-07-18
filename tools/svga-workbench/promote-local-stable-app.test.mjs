@@ -27,6 +27,7 @@ import {
 } from "./local-stable-recovery.mjs";
 import {
   installApp,
+  parseLaunchServicesDump,
   parseArgs,
   recoverPromotionCommand,
   recoverPromotionTransaction,
@@ -52,6 +53,7 @@ function createFixtureApp(appPath, buildCommit, marker = buildCommit) {
   mkdirSync(resources, { recursive: true });
   mkdirSync(executableRoot, { recursive: true });
   writeFileSync(path.join(contents, "Info.plist"), JSON.stringify({
+    bundleIdentifier: `local.auto-svga.fixture.${marker}`,
     name: "Auto SVGA",
     displayName: "Auto SVGA",
     executable: "Auto SVGA",
@@ -70,6 +72,17 @@ function createFixtureApp(appPath, buildCommit, marker = buildCommit) {
   }));
   writeFileSync(path.join(resources, "marker.txt"), marker);
   return appPath;
+}
+
+function writeFixtureBundleIdentifier(appPath, bundleIdentifier, marker = "rewritten") {
+  writeFileSync(path.join(appPath, "Contents/Info.plist"), JSON.stringify({
+    bundleIdentifier,
+    name: "Auto SVGA",
+    displayName: "Auto SVGA",
+    executable: "Auto SVGA",
+    shortVersion: "0.2.0-alpha.2",
+    marker
+  }));
 }
 
 function readFixturePlistIdentity(plistPath) {
@@ -100,6 +113,10 @@ function fixtureInspector(appPath) {
   });
 }
 
+function fixtureBundleIdentifier(appPath) {
+  return fixtureInspector(appPath).infoPlist.bundleIdentifier;
+}
+
 function bindingFromIdentity(identity) {
   return {
     buildCommit: identity.buildInfo.buildCommit,
@@ -112,7 +129,7 @@ function bindingFromIdentity(identity) {
 function makeRollbackFixture() {
   const root = createFixtureRoot();
   const target = createFixtureApp(path.join(root, "Auto SVGA.app"), installedBuild, "installed");
-  const previous = createFixtureApp(path.join(root, "Auto SVGA.previous.app"), previousBuild, "previous");
+  const previous = createFixtureApp(path.join(root, "Auto SVGA.previous.bundle"), previousBuild, "previous");
   const candidate = createFixtureApp(path.join(root, "Candidate.app"), candidateBuild, "candidate");
   const installedIdentity = fixtureInspector(target);
   const previousIdentity = fixtureInspector(previous);
@@ -159,7 +176,24 @@ function promoteFixtureDependencies(fixture, overrides = {}) {
   const stagingRoot = path.join(fixture.root, ".Auto-SVGA.promote-ASV-TEST-PROMOTION-001.stage.app");
   const promotionJournalPath = path.join(fixture.root, "evidence", "promotion-journal.json");
   const promotionManifestPath = path.join(fixture.root, "evidence", "promotion-manifest.json");
-  return {
+  const initialLaunchServicesRecords = overrides.launchServicesRecords ?? [];
+  const dependencies = {
+    launchServicesRecords: initialLaunchServicesRecords,
+    readLaunchServicesRecords: (bundleIdentifier) => (
+      dependencies.launchServicesRecords.filter((record) => record.bundleIdentifier === bundleIdentifier)
+    ),
+    unregisterLaunchServicesRecord: (recordPath) => {
+      dependencies.launchServicesRecords = dependencies.launchServicesRecords.filter((record) => record.path !== recordPath);
+      return true;
+    },
+    registerLaunchServices: (target) => {
+      const bundleIdentifier = fixtureBundleIdentifier(target);
+      dependencies.launchServicesRecords = dependencies.launchServicesRecords
+        .filter((record) => record.bundleIdentifier !== bundleIdentifier)
+        .concat([{ bundleIdentifier, path: target, nodeMissing: false }]);
+      return true;
+    },
+    pathExists: existsSync,
     inspectBundle: fixtureInspector,
     validateIdentity: (appPath) => fixtureInspector(appPath),
     clearQuarantine: () => {},
@@ -176,25 +210,44 @@ function promoteFixtureDependencies(fixture, overrides = {}) {
     }),
     preflightDestination: () => {},
     atomicSwap: (left, right) => swapFixtureDirectories(left, right),
+    readXattr: () => null,
+    clearXattr: () => {},
+    writeXattr: () => {},
+    renameDurably: (source, destination) => swapFixtureRename(source, destination),
     stagingRoot,
     promotionJournalPath,
     promotionManifestPath,
     ...overrides
   };
+  return dependencies;
+}
+
+function swapFixtureRename(source, destination) {
+  renameSync(source, destination);
 }
 
 function stagedPromotionApp(dependencies) {
   return dependencies.stagingRoot;
 }
 
+function promotionRecoveryFixtureDependencies(dependencies, overrides = {}) {
+  return {
+    inspectBundle: fixtureInspector,
+    atomicSwap: (left, right) => swapFixtureDirectories(left, right),
+    pathExists: existsSync,
+    readLaunchServicesRecords: dependencies.readLaunchServicesRecords,
+    registerLaunchServices: dependencies.registerLaunchServices,
+    unregisterLaunchServicesRecord: dependencies.unregisterLaunchServicesRecord,
+    readXattr: dependencies.readXattr,
+    writeXattr: dependencies.writeXattr,
+    ...overrides
+  };
+}
+
 function recoverPromotionFixture(dependencies, overrides = {}) {
   return recoverPromotionTransaction({
     journalPath: dependencies.promotionJournalPath,
-    dependencies: {
-      inspectBundle: fixtureInspector,
-      atomicSwap: (left, right) => swapFixtureDirectories(left, right),
-      ...overrides
-    }
+    dependencies: promotionRecoveryFixtureDependencies(dependencies, overrides)
   });
 }
 
@@ -210,6 +263,11 @@ function assertPromotionManifest(dependencies, expectedInstalled, expectedPrevio
   assert.equal(manifest.operation, "promote-local-stable-install-exchange");
   assert.equal(manifest.retrySafe, false);
   assert.equal(manifest.invocationCount, 1);
+  assert.equal(manifest.launchServicesRegistered, true);
+  assert.equal(
+    manifest.remediation.launchServices.postRegistration.uniqueTarget.path,
+    manifest.after.installed.appPath
+  );
   assert.deepEqual(bindingFromIdentity(manifest.after.installed), bindingFromIdentity(expectedInstalled));
   assert.deepEqual(bindingFromIdentity(manifest.after.previous), bindingFromIdentity(expectedPrevious));
 }
@@ -292,6 +350,47 @@ test("CLI parses separate inspect, rollback, and recovery modes with exact bindi
     AUTO_SVGA_LOCAL_STABLE_APP_PATH: "/tmp/env"
   }), /target.*environment/i);
   assert.throws(() => parseArgs(["--rollback-previous", "--use-existing"]), /do not accept packaging/);
+  assert.throws(() => parseArgs(["--skip-register"]), /LaunchServices postcheck/);
+});
+
+test("LaunchServices dump parser extracts same-bundle-id paths and missing-node records", () => {
+  const bundleIdentifier = "local.auto-svga.internal-prototype";
+  const dump = [
+    "bundle id: local.auto-svga.internal-prototype",
+    "path: /Users/huangtengxin/Applications/Auto SVGA.app",
+    "",
+    "identifier: local.auto-svga.internal-prototype",
+    "URL: /Users/huangtengxin/.codex/worktrees/p6/auto-svga/review/x/Auto SVGA.app",
+    "Bundle node not found on disk",
+    "",
+    "identifier: local.auto-svga.internal-prototype",
+    "URL: file:///Users/huangtengxin/.codex/worktrees/p6/auto-svga/review/y/Auto%20SVGA.app",
+    "Bundle node not found on disk",
+    "",
+    "identifier: other.bundle",
+    "path: /Applications/Other.app"
+  ].join("\n");
+  assert.deepEqual(parseLaunchServicesDump(dump, bundleIdentifier).map((record) => ({
+    bundleIdentifier: record.bundleIdentifier,
+    path: record.path,
+    nodeMissing: record.nodeMissing
+  })), [
+    {
+      bundleIdentifier,
+      path: "/Users/huangtengxin/Applications/Auto SVGA.app",
+      nodeMissing: false
+    },
+    {
+      bundleIdentifier,
+      path: "/Users/huangtengxin/.codex/worktrees/p6/auto-svga/review/x/Auto SVGA.app",
+      nodeMissing: true
+    },
+    {
+      bundleIdentifier,
+      path: "/Users/huangtengxin/.codex/worktrees/p6/auto-svga/review/y/Auto SVGA.app",
+      nodeMissing: true
+    }
+  ]);
 });
 
 test("inspect is behaviorally read-only for installed, previous, and candidate apps", () => {
@@ -358,7 +457,7 @@ test("promotion stages and validates as a target-parent sibling before installin
       "destination-preflight",
       "copy",
       "swap:Auto SVGA.app",
-      "swap:Auto SVGA.previous.app"
+      "swap:Auto SVGA.previous.bundle"
     ]);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
@@ -481,6 +580,362 @@ test("promotion requires an existing real target parent before source inspection
     assert.equal(existsSync(missingParent), false, "promotion must not create a missing target parent");
     assert.equal(inspected, false, "source inspection must wait for target parent authority");
     assert.equal(staged, false, "staging must not start without target parent authority");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion remediates quarantined parent and migrates legacy previous app before exchange", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
+    rmSync(fixture.previous, { recursive: true, force: true });
+    createFixtureApp(legacyPrevious, previousBuild, "legacy-previous");
+    const sharedIdentifier = "local.auto-svga.internal-prototype";
+    writeFixtureBundleIdentifier(fixture.target, sharedIdentifier, "installed");
+    writeFixtureBundleIdentifier(fixture.candidate, sharedIdentifier, "candidate");
+    writeFixtureBundleIdentifier(legacyPrevious, sharedIdentifier, "legacy-previous");
+    const installedBefore = fixtureInspector(fixture.target);
+    const legacyPreviousBefore = fixtureInspector(legacyPrevious);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    let quarantineValue = "0081;00000000;Chrome;";
+    const events = [];
+    const dependencies = promoteFixtureDependencies(fixture, {
+      readXattr: (filePath, name) => (
+        filePath === fixture.root && name === "com.apple.quarantine"
+          ? quarantineValue
+          : null
+      ),
+      clearXattr: (filePath, name) => {
+        assert.equal(filePath, fixture.root);
+        assert.equal(name, "com.apple.quarantine");
+        quarantineValue = null;
+        events.push("clear-parent-quarantine");
+      },
+      writeXattr: (filePath, name, value) => {
+        assert.equal(filePath, fixture.root);
+        assert.equal(name, "com.apple.quarantine");
+        quarantineValue = value;
+        events.push("restore-parent-quarantine");
+      },
+      renameDurably: (source, destination) => {
+        assert.equal(source, legacyPrevious);
+        assert.equal(destination, fixture.previous);
+        renameSync(source, destination);
+        events.push("migrate-legacy-previous");
+      }
+    });
+
+    const result = installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    });
+    assert.equal(result.backupTarget, fixture.previous);
+    assert.equal(quarantineValue, null, "successful commit leaves target-parent quarantine absent");
+    assert.equal(existsSync(legacyPrevious), false, "legacy .app previous must not remain as a LaunchServices collision");
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+    assertPromotionManifest(dependencies, candidateBefore, installedBefore);
+    const manifest = JSON.parse(readFileSync(dependencies.promotionManifestPath, "utf8"));
+    assert.equal(manifest.remediation.targetParentQuarantine.before, "0081;00000000;Chrome;");
+    assert.equal(manifest.remediation.legacyPrevious.required, true);
+    assert.equal(manifest.remediation.legacyPrevious.migrated, true);
+    assert.equal(manifest.before.legacyPrevious.buildInfo.buildCommit, legacyPreviousBefore.buildInfo.buildCommit);
+    assert.deepEqual(events, ["migrate-legacy-previous", "clear-parent-quarantine"]);
+    assertPromotionTransactionClean(dependencies);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion unregisters owned stale LaunchServices records before exchange and proves unique target after registration", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
+    rmSync(fixture.previous, { recursive: true, force: true });
+    createFixtureApp(legacyPrevious, previousBuild, "legacy-previous");
+    const bundleIdentifier = "local.auto-svga.internal-prototype";
+    writeFixtureBundleIdentifier(fixture.target, bundleIdentifier, "installed");
+    writeFixtureBundleIdentifier(fixture.candidate, bundleIdentifier, "candidate");
+    writeFixtureBundleIdentifier(legacyPrevious, bundleIdentifier, "legacy-previous");
+    const reviewStale = "/Users/huangtengxin/.codex/worktrees/review/auto-svga/review/p6/Auto SVGA.app";
+    const p6Stale = "/Users/huangtengxin/.codex/worktrees/p6/auto-svga/package/Auto SVGA.app";
+    const artifactStale = "/Users/huangtengxin/.codex/worktrees/d657/auto-svga/tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA.app";
+    const installedBefore = fixtureInspector(fixture.target);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    const removedRecords = [];
+    const dependencies = promoteFixtureDependencies(fixture, {
+      launchServicesRecords: [
+        { bundleIdentifier, path: fixture.target, nodeMissing: false },
+        { bundleIdentifier, path: legacyPrevious, nodeMissing: false },
+        { bundleIdentifier, path: reviewStale, nodeMissing: true },
+        { bundleIdentifier, path: p6Stale, nodeMissing: true },
+        { bundleIdentifier, path: artifactStale, nodeMissing: true }
+      ],
+      unregisterLaunchServicesRecord: (recordPath) => {
+        removedRecords.push(recordPath);
+        dependencies.launchServicesRecords = dependencies.launchServicesRecords.filter((record) => record.path !== recordPath);
+        return true;
+      },
+      renameDurably: (source, destination) => renameSync(source, destination)
+    });
+
+    installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    });
+
+    assert.deepEqual(removedRecords.sort(), [artifactStale, legacyPrevious, p6Stale, reviewStale].sort());
+    assert.deepEqual(dependencies.launchServicesRecords, [{ bundleIdentifier, path: fixture.target, nodeMissing: false }]);
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+    assert.equal(existsSync(legacyPrevious), false);
+    const manifest = JSON.parse(readFileSync(dependencies.promotionManifestPath, "utf8"));
+    assert.deepEqual(
+      manifest.remediation.launchServices.removals.map((record) => record.path).sort(),
+      [artifactStale, legacyPrevious, p6Stale, reviewStale].sort()
+    );
+    assert.equal(manifest.remediation.launchServices.postRegistration.uniqueTarget.path, fixture.target);
+    assertPromotionTransactionClean(dependencies);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion rejects unattributed stale LaunchServices record before copy or journal", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const bundleIdentifier = fixtureBundleIdentifier(fixture.candidate);
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    let copied = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      launchServicesRecords: [
+        { bundleIdentifier, path: "/Users/huangtengxin/Desktop/Deleted Auto SVGA.app", nodeMissing: true }
+      ],
+      copyBundle: () => {
+        copied = true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /not safely attributable/);
+    assert.equal(copied, false, "unattributed stale LS record must fail before candidate copy");
+    assert.equal(existsSync(dependencies.promotionJournalPath), false, "unattributed stale LS record must fail before journal");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion stops before exchange when owned stale LaunchServices record cannot be removed", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
+    rmSync(fixture.previous, { recursive: true, force: true });
+    createFixtureApp(legacyPrevious, previousBuild, "legacy-previous");
+    const bundleIdentifier = "local.auto-svga.internal-prototype";
+    writeFixtureBundleIdentifier(fixture.target, bundleIdentifier, "installed");
+    writeFixtureBundleIdentifier(fixture.candidate, bundleIdentifier, "candidate");
+    writeFixtureBundleIdentifier(legacyPrevious, bundleIdentifier, "legacy-previous");
+    const installedBefore = fixtureInspector(fixture.target);
+    let swapped = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      launchServicesRecords: [
+        { bundleIdentifier, path: fixture.target, nodeMissing: false },
+        { bundleIdentifier, path: legacyPrevious, nodeMissing: false }
+      ],
+      unregisterLaunchServicesRecord: () => true,
+      renameDurably: (source, destination) => renameSync(source, destination),
+      atomicSwap: () => {
+        swapped = true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /stale records remain/);
+    assert.equal(swapped, false, "failed LS stale-record removal must stop before exchange");
+    assertBundleBinding(fixture.target, installedBefore);
+    assert.equal(existsSync(dependencies.promotionJournalPath), true, "journal must remain for audited recovery after remediation failure");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion rejects unrelated same-identifier sibling app before destination probe or copy", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    const candidateIdentifier = fixtureInspector(fixture.candidate).infoPlist.bundleIdentifier;
+    const collision = createFixtureApp(path.join(fixture.root, "Other Auto SVGA.app"), previousBuild, "collision");
+    writeFixtureBundleIdentifier(collision, candidateIdentifier, "collision");
+    let destinationProbed = false;
+    let copied = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      preflightDestination: () => {
+        destinationProbed = true;
+      },
+      copyBundle: () => {
+        copied = true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /LaunchServices bundle identifier collision/);
+    assert.equal(destinationProbed, false, "same-id sibling must fail before destination write probe");
+    assert.equal(copied, false, "same-id sibling must fail before candidate copy");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
+    assert.equal(existsSync(dependencies.promotionJournalPath), false, "same-id sibling rejection must not publish a journal");
+    assert.equal(existsSync(dependencies.stagingRoot), false, "same-id sibling rejection must not create staging residue");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion stops before exchange when target-parent quarantine drifts during remediation", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    let readCount = 0;
+    let swapped = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      readXattr: (filePath, name) => {
+        if (filePath !== fixture.root || name !== "com.apple.quarantine") return null;
+        readCount += 1;
+        return readCount === 1 ? "0081;00000000;Chrome;" : "0081;11111111;Other;";
+      },
+      clearXattr: () => {
+        throw new Error("clearXattr must not run after quarantine drift");
+      },
+      atomicSwap: () => {
+        swapped = true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /Target parent quarantine changed before remediation/);
+    assert.equal(swapped, false, "quarantine drift must fail before atomic exchange");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
+    assert.equal(existsSync(dependencies.promotionJournalPath), true, "drift after journal leaves recovery authority");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion stops before exchange when legacy previous bytes drift during migration", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
+    rmSync(fixture.previous, { recursive: true, force: true });
+    createFixtureApp(legacyPrevious, previousBuild, "legacy-previous");
+    const sharedIdentifier = "local.auto-svga.internal-prototype";
+    writeFixtureBundleIdentifier(fixture.target, sharedIdentifier, "installed");
+    writeFixtureBundleIdentifier(fixture.candidate, sharedIdentifier, "candidate");
+    writeFixtureBundleIdentifier(legacyPrevious, sharedIdentifier, "legacy-previous");
+    const installedBefore = fixtureInspector(fixture.target);
+    const legacyPreviousBefore = fixtureInspector(legacyPrevious);
+    let swapped = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      renameDurably: (source, destination) => {
+        renameSync(source, destination);
+        writeFileSync(path.join(destination, "Contents", "Resources", "marker.txt"), "tampered-after-migration");
+      },
+      atomicSwap: () => {
+        swapped = true;
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /Migrated legacy previous bundle/);
+    assert.equal(swapped, false, "legacy byte drift must fail before atomic exchange");
+    assertBundleBinding(fixture.target, installedBefore);
+    assert.notEqual(
+      fixtureInspector(fixture.previous).stabilityFingerprint,
+      legacyPreviousBefore.stabilityFingerprint,
+      "fixture must prove the migrated rollback bytes drifted"
+    );
+    assert.equal(existsSync(dependencies.promotionJournalPath), true, "drift after journal leaves recovery authority");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion recovery restores parent quarantine after pre-exchange remediation interruption", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const legacyPrevious = path.join(fixture.root, "Auto SVGA.previous.app");
+    rmSync(fixture.previous, { recursive: true, force: true });
+    createFixtureApp(legacyPrevious, previousBuild, "legacy-previous");
+    const sharedIdentifier = "local.auto-svga.internal-prototype";
+    writeFixtureBundleIdentifier(fixture.target, sharedIdentifier, "installed");
+    writeFixtureBundleIdentifier(fixture.candidate, sharedIdentifier, "candidate");
+    writeFixtureBundleIdentifier(legacyPrevious, sharedIdentifier, "legacy-previous");
+    const installedBefore = fixtureInspector(fixture.target);
+    const legacyPreviousBefore = fixtureInspector(legacyPrevious);
+    let quarantineValue = "0081;00000000;Chrome;";
+    const dependencies = promoteFixtureDependencies(fixture, {
+      readXattr: (filePath, name) => (
+        filePath === fixture.root && name === "com.apple.quarantine"
+          ? quarantineValue
+          : null
+      ),
+      clearXattr: () => {
+        quarantineValue = null;
+      },
+      writeXattr: (_filePath, _name, value) => {
+        quarantineValue = value;
+      },
+      renameDurably: (source, destination) => renameSync(source, destination),
+      checkpoint: (phase) => {
+        if (phase === "after-target-parent-quarantine-remediation") {
+          throw new Error("simulated crash after parent quarantine remediation");
+        }
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /parent quarantine remediation/);
+    assert.equal(quarantineValue, null, "interrupted remediation cleared quarantine before recovery");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, legacyPreviousBefore);
+    assert.equal(existsSync(legacyPrevious), false, "legacy previous app has been migrated to inert rollback path");
+
+    const result = recoverPromotionFixture(dependencies, {
+      readXattr: dependencies.readXattr,
+      writeXattr: dependencies.writeXattr
+    });
+    assert.equal(result.disposition, "aborted-before-exchange");
+    assert.equal(result.remediationRetained, true);
+    assert.equal(quarantineValue, "0081;00000000;Chrome;", "pre-exchange recovery restores captured parent quarantine");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, legacyPreviousBefore);
+    assert.equal(existsSync(legacyPrevious), false, "recovery keeps the LaunchServices-inert previous representation");
+    assertPromotionTransactionClean(dependencies);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -741,10 +1196,7 @@ test("promotion recovery is reachable through CLI dispatch and is not replayed",
     const output = [];
     await runCli(["--recover-promotion"], {}, {
       promotionJournalPath: dependencies.promotionJournalPath,
-      promotionRecoveryDependencies: {
-        inspectBundle: fixtureInspector,
-        atomicSwap: (left, right) => swapFixtureDirectories(left, right)
-      },
+      promotionRecoveryDependencies: promotionRecoveryFixtureDependencies(dependencies),
       writeOutput: (value) => output.push(value)
     });
 
@@ -758,10 +1210,7 @@ test("promotion recovery is reachable through CLI dispatch and is not replayed",
 
     await assert.rejects(() => runCli(["--recover-promotion"], {}, {
       promotionJournalPath: dependencies.promotionJournalPath,
-      promotionRecoveryDependencies: {
-        inspectBundle: fixtureInspector,
-        atomicSwap: (left, right) => swapFixtureDirectories(left, right)
-      },
+      promotionRecoveryDependencies: promotionRecoveryFixtureDependencies(dependencies),
       writeOutput: () => {}
     }), /Promotion journal is missing/);
   } finally {
@@ -796,10 +1245,7 @@ test("promotion recovery command keeps residue when manifest hash authority drif
 
     assert.throws(() => recoverPromotionCommand({
       journalPath: dependencies.promotionJournalPath,
-      dependencies: {
-        inspectBundle: fixtureInspector,
-        atomicSwap: (left, right) => swapFixtureDirectories(left, right)
-      },
+      dependencies: promotionRecoveryFixtureDependencies(dependencies),
       writeOutput: () => {}
     }), /does not match journal/);
     assert.equal(existsSync(dependencies.promotionJournalPath), true, "journal must remain for audited recovery");
@@ -964,7 +1410,7 @@ test("rollback atomically swaps exact-bound apps and publishes a no-retry manife
     assert.equal(result.manifest.atomicPrimitive.name, "renameatx_np");
     assert.equal(existsSync(fixture.rollbackManifestPath), true);
     assert.equal(existsSync(fixture.rollbackJournalPath), false);
-    assert.equal(existsSync(path.join(fixture.root, `.Auto-SVGA.rollback-${fixture.rollbackId}.stage.app`)), false);
+    assert.equal(existsSync(path.join(fixture.root, `.Auto-SVGA.rollback-${fixture.rollbackId}.stage.bundle`)), false);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -1327,7 +1773,7 @@ test("recovery only completes the durable state and never starts a second rollba
       assert.equal(result.disposition, expectedDisposition);
       assertRoleState(fixture, expectedState);
       assert.equal(existsSync(fixture.rollbackJournalPath), false);
-      assert.equal(existsSync(path.join(fixture.root, `.Auto-SVGA.rollback-${fixture.rollbackId}.stage.app`)), false);
+      assert.equal(existsSync(path.join(fixture.root, `.Auto-SVGA.rollback-${fixture.rollbackId}.stage.bundle`)), false);
       assert.equal(existsSync(fixture.rollbackManifestPath), expectedState === "swapped-roles");
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });

@@ -22,6 +22,8 @@ import {
   atomicSwapApps,
   inspectAppBundle,
   inspectRecoveryState,
+  legacyPreviousAppPathForTarget,
+  previousBackupPathForTarget,
   recoverRollbackTransaction,
   rollbackPreviousApp
 } from "./local-stable-recovery.mjs";
@@ -60,7 +62,7 @@ function usage() {
     "  --use-existing        Reuse the current-head internal package instead of rebuilding.",
     "  --allow-dirty         Allow packaging from a dirty worktree. Not allowed by default.",
     "  --target <path>       Install target. Defaults to ~/Applications/Auto SVGA.app.",
-    "  --skip-register      Do not register the installed app with Launch Services.",
+    "  --skip-register      Deprecated; normal promotion requires LaunchServices postcheck.",
     "  --help                Show this help."
   ].join("\n");
 }
@@ -195,6 +197,15 @@ export function parseArgs(argv, env = process.env) {
     && (options.rollbackId || bindingOptionPresent)
   ) {
     throw new Error("Rollback identifiers and bindings require an explicit inspect, rollback, or recovery mode");
+  }
+  if (
+    !options.rollbackPrevious
+    && !options.recoverRollback
+    && !options.recoverPromotion
+    && !options.inspect
+    && options.skipRegister
+  ) {
+    throw new Error("--skip-register is not allowed for local-stable promotion; LaunchServices postcheck is mandatory");
   }
 
   return options;
@@ -422,14 +433,381 @@ function assertNoPromotionTransactionResidue({ journalPath, manifestPath }) {
   }
 }
 
+function readXattrValue(filePath, name) {
+  try {
+    return run("/usr/bin/xattr", ["-p", name, filePath], { stdio: "pipe" }).trim();
+  } catch (error) {
+    const stderr = error?.stderr?.toString?.() ?? "";
+    if (error?.status === 1 && /No such xattr/.test(stderr)) return null;
+    throw error;
+  }
+}
+
+function clearXattrValue(filePath, name) {
+  try {
+    run("/usr/bin/xattr", ["-d", name, filePath], { stdio: "ignore" });
+  } catch (error) {
+    const stderr = error?.stderr?.toString?.() ?? "";
+    if (error?.status === 1 && /No such xattr/.test(stderr)) return;
+    throw error;
+  }
+}
+
+function writeXattrValue(filePath, name, value) {
+  run("/usr/bin/xattr", ["-w", name, value, filePath], { stdio: "ignore" });
+}
+
+function readBundleIdentifier(appBundle) {
+  const plistPath = path.join(appBundle, "Contents/Info.plist");
+  if (!existsSync(plistPath)) return null;
+  try {
+    return plistValue(plistPath, "CFBundleIdentifier");
+  } catch {
+    try {
+      const plist = JSON.parse(readFileSync(plistPath, "utf8"));
+      return plist.CFBundleIdentifier ?? plist.bundleIdentifier ?? null;
+    } catch {
+      throw new Error(`Unable to read CFBundleIdentifier from sibling app: ${appBundle}`);
+    }
+  }
+}
+
+function sameExistingPath(left, right) {
+  if (!left || !right || !existsSync(left) || !existsSync(right)) return false;
+  return realpathSync.native(left) === realpathSync.native(right);
+}
+
+function normalizeLaunchServicesPath(recordPath) {
+  if (typeof recordPath !== "string" || recordPath.trim() === "") return null;
+  const withoutScheme = recordPath.trim().replace(/^file:\/\//, "");
+  try {
+    return path.resolve(decodeURI(withoutScheme));
+  } catch {
+    return path.resolve(withoutScheme);
+  }
+}
+
+export function parseLaunchServicesDump(dump, bundleIdentifier) {
+  const records = [];
+  const blocks = String(dump).split(/\n\s*\n/);
+  for (const block of blocks) {
+    if (!block.includes(bundleIdentifier)) continue;
+    const pathMatch = block.match(/^\s*(?:path|bundle path|url|URL)\s*:\s*(.+?)\s*$/im)
+      ?? block.match(/^\s*(\/.+?\.app)\s*$/im);
+    const identifierMatch = block.match(/^\s*(?:identifier|bundle id|bundle identifier|CFBundleIdentifier)\s*:\s*([^\s]+)\s*$/im);
+    const identifier = identifierMatch?.[1] ?? (block.includes(bundleIdentifier) ? bundleIdentifier : null);
+    const recordPath = normalizeLaunchServicesPath(pathMatch?.[1]);
+    if (identifier !== bundleIdentifier || !recordPath) continue;
+    records.push({
+      bundleIdentifier: identifier,
+      path: recordPath,
+      nodeMissing: /Bundle node not found on disk|node not found|No such file/i.test(block),
+      raw: block
+    });
+  }
+  return records;
+}
+
+function defaultReadLaunchServicesRecords(bundleIdentifier) {
+  const lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+  if (!existsSync(lsregister)) throw new Error(`LaunchServices registration tool is missing: ${lsregister}`);
+  const dump = run(lsregister, ["-dump"], { stdio: "pipe" });
+  return parseLaunchServicesDump(dump, bundleIdentifier);
+}
+
+function defaultUnregisterLaunchServicesRecord(recordPath) {
+  const lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+  if (!existsSync(lsregister)) throw new Error(`LaunchServices registration tool is missing: ${lsregister}`);
+  run(lsregister, ["-u", recordPath], { stdio: "ignore" });
+  return true;
+}
+
+function isRepositoryManagedLaunchServicesStalePath(recordPath) {
+  const normalized = normalizeLaunchServicesPath(recordPath);
+  if (!normalized || path.basename(normalized) !== "Auto SVGA.app") return false;
+  const safeRoots = [
+    "/Users/huangtengxin/.codex/worktrees",
+    "/Users/huangtengxin/.codex/visualizations",
+    "/private/tmp",
+    "/private/var/folders/vh/lkxvz3qn4wzbk5mbwxc9fb9r0000gn/T"
+  ];
+  if (!safeRoots.some((root) => normalized === root || normalized.startsWith(`${root}${path.sep}`))) return false;
+  return normalized.includes(`${path.sep}review${path.sep}`)
+    || normalized.includes(`${path.sep}.artifacts${path.sep}`)
+    || normalized.includes(`${path.sep}auto-svga${path.sep}`)
+    || normalized.includes(`${path.sep}auto-svga-`);
+}
+
+function launchServicesRecordPathMatches(recordPath, targetPath) {
+  const left = normalizeLaunchServicesPath(recordPath);
+  const right = normalizeLaunchServicesPath(targetPath);
+  if (!left || !right) return false;
+  if (left === right) return true;
+  if (existsSync(left) && existsSync(right)) return sameExistingPath(left, right);
+  return false;
+}
+
+function compactLaunchServicesRecord(record) {
+  return {
+    bundleIdentifier: record.bundleIdentifier,
+    path: record.path,
+    nodeMissing: Boolean(record.nodeMissing),
+    classification: record.classification,
+    reason: record.reason
+  };
+}
+
+function classifyLaunchServicesRecord({
+  record,
+  target,
+  legacyBackupTarget,
+  bundleIdentifier,
+  pathExists = existsSync
+}) {
+  if (record.bundleIdentifier !== bundleIdentifier) return { classification: "ignored", reason: "different-bundle-id" };
+  if (launchServicesRecordPathMatches(record.path, target) && pathExists(target)) {
+    return { classification: "target", reason: "installed-target" };
+  }
+  if (launchServicesRecordPathMatches(record.path, legacyBackupTarget)) {
+    return { classification: "removable", reason: "legacy-previous-app" };
+  }
+  const exists = pathExists(record.path);
+  if (!exists && isRepositoryManagedLaunchServicesStalePath(record.path)) {
+    return { classification: "removable", reason: "repository-managed-missing-record" };
+  }
+  return {
+    classification: "blocked",
+    reason: exists ? "same-bundle-id-usable-non-target-record" : "same-bundle-id-unattributed-missing-record"
+  };
+}
+
+function planLaunchServicesRecordRemediation({
+  records,
+  target,
+  legacyBackupTarget,
+  bundleIdentifier,
+  pathExists = existsSync
+}) {
+  const classifiedRecords = records.map((record) => ({
+    ...record,
+    ...classifyLaunchServicesRecord({ record, target, legacyBackupTarget, bundleIdentifier, pathExists })
+  }));
+  const blockers = classifiedRecords.filter((record) => record.classification === "blocked");
+  if (blockers.length > 0) {
+    throw new Error(
+      `LaunchServices same-bundle-id records are not safely attributable: ${
+        blockers.map((record) => `${record.path} (${record.reason})`).join(", ")
+      }`
+    );
+  }
+  return {
+    bundleIdentifier,
+    target,
+    legacyBackupTarget,
+    records: classifiedRecords.map(compactLaunchServicesRecord),
+    removals: classifiedRecords
+      .filter((record) => record.classification === "removable")
+      .map(compactLaunchServicesRecord)
+  };
+}
+
+function assertLaunchServicesUniqueTarget({
+  records,
+  target,
+  bundleIdentifier,
+  pathExists = existsSync
+}) {
+  const sameBundleRecords = records.filter((record) => record.bundleIdentifier === bundleIdentifier);
+  const targetRecords = sameBundleRecords.filter((record) => launchServicesRecordPathMatches(record.path, target) && pathExists(target));
+  const blockers = sameBundleRecords.filter((record) => !launchServicesRecordPathMatches(record.path, target));
+  if (targetRecords.length !== 1 || blockers.length > 0) {
+    throw new Error(
+      `LaunchServices post-registration is ambiguous for ${bundleIdentifier}: targetRecords=${targetRecords.length}, blockers=${
+        blockers.map((record) => record.path).join(", ") || "<none>"
+      }`
+    );
+  }
+  return {
+    bundleIdentifier,
+    uniqueTarget: compactLaunchServicesRecord({
+      ...targetRecords[0],
+      classification: "target",
+      reason: "post-registration-unique-target"
+    }),
+    records: sameBundleRecords.map((record) => compactLaunchServicesRecord({
+      ...record,
+      classification: launchServicesRecordPathMatches(record.path, target) ? "target" : "blocked",
+      reason: launchServicesRecordPathMatches(record.path, target) ? "post-registration-target" : "post-registration-blocker"
+    }))
+  };
+}
+
+function planLaunchServicesInstallState({
+  target,
+  backupTarget = previousBackupPathForTarget(target),
+  legacyBackupTarget = legacyPreviousAppPathForTarget(target),
+  sourceApp,
+  sourceIdentity,
+  targetParent = path.dirname(target),
+  readLaunchServicesRecords = defaultReadLaunchServicesRecords,
+  readXattr = readXattrValue,
+  readBundleIdentifier: readSiblingBundleIdentifier = readBundleIdentifier,
+  pathExists = existsSync,
+  listDirectory = readdirSync
+} = {}) {
+  const parentQuarantine = readXattr(targetParent, "com.apple.quarantine");
+
+  const bundleIdentifier = sourceIdentity?.infoPlist?.bundleIdentifier;
+  if (!bundleIdentifier) {
+    throw new Error("Candidate bundle identifier is unavailable for LaunchServices install-state validation");
+  }
+
+  const backupExists = existsSync(backupTarget);
+  const legacyExists = existsSync(legacyBackupTarget);
+  if (backupExists && legacyExists) {
+    throw new Error(`Both inert previous bundle and legacy previous app exist: ${backupTarget}, ${legacyBackupTarget}`);
+  }
+
+  const collisions = [];
+  for (const entryName of listDirectory(targetParent)) {
+    if (!entryName.endsWith(".app")) continue;
+    const siblingPath = path.join(targetParent, entryName);
+    if (sameExistingPath(siblingPath, target)) continue;
+    if (sameExistingPath(siblingPath, sourceApp)) continue;
+    const isLegacyPrevious = sameExistingPath(siblingPath, legacyBackupTarget);
+    const siblingIdentifier = readSiblingBundleIdentifier(siblingPath);
+    if (isLegacyPrevious && siblingIdentifier === bundleIdentifier) continue;
+    if (isLegacyPrevious) {
+      throw new Error(`Legacy previous app has unexpected bundle identifier ${siblingIdentifier ?? "<missing>"}`);
+    }
+    if (siblingIdentifier === bundleIdentifier) collisions.push(siblingPath);
+  }
+
+  if (collisions.length > 0) {
+    throw new Error(
+      `LaunchServices bundle identifier collision in target parent for ${bundleIdentifier}: ${collisions.join(", ")}`
+    );
+  }
+
+  const launchServices = planLaunchServicesRecordRemediation({
+    records: readLaunchServicesRecords(bundleIdentifier),
+    target,
+    legacyBackupTarget,
+    bundleIdentifier,
+    pathExists
+  });
+
+  return {
+    targetParent,
+    targetParentQuarantine: parentQuarantine,
+    backupTarget,
+    legacyBackupTarget,
+    migrateLegacyPrevious: legacyExists && !backupExists,
+    bundleIdentifier,
+    launchServices
+  };
+}
+
+function applyTargetParentQuarantineRemediation({ dependencies, targetParent, expectedValue }) {
+  if (!expectedValue) return { mutationPerformed: false, before: null, after: null };
+  const currentValue = dependencies.readXattr(targetParent, "com.apple.quarantine");
+  if (currentValue !== expectedValue) {
+    throw new Error(
+      `Target parent quarantine changed before remediation: expected ${expectedValue}, observed ${currentValue ?? "<absent>"}`
+    );
+  }
+  dependencies.clearXattr(targetParent, "com.apple.quarantine");
+  const after = dependencies.readXattr(targetParent, "com.apple.quarantine");
+  if (after !== null) {
+    throw new Error(`Target parent quarantine remediation did not clear the exact xattr; observed ${after}`);
+  }
+  return { mutationPerformed: true, before: expectedValue, after: null };
+}
+
+function restoreTargetParentQuarantine({ dependencies, targetParent, expectedValue }) {
+  if (!expectedValue) return { restored: false, value: null };
+  const currentValue = dependencies.readXattr(targetParent, "com.apple.quarantine");
+  if (currentValue === expectedValue) return { restored: false, value: expectedValue };
+  if (currentValue !== null) {
+    throw new Error(
+      `Cannot restore target parent quarantine because it changed to ${currentValue}; expected absent or ${expectedValue}`
+    );
+  }
+  dependencies.writeXattr(targetParent, "com.apple.quarantine", expectedValue);
+  const restoredValue = dependencies.readXattr(targetParent, "com.apple.quarantine");
+  if (restoredValue !== expectedValue) {
+    throw new Error(`Target parent quarantine restore failed; observed ${restoredValue ?? "<absent>"}`);
+  }
+  return { restored: true, value: restoredValue };
+}
+
+function applyLaunchServicesRecordRemediation({ dependencies, plan }) {
+  const removals = [];
+  for (const record of plan.removals ?? []) {
+    dependencies.unregisterLaunchServicesRecord(record.path);
+    removals.push({ ...record, removed: true });
+  }
+  const recordsAfter = dependencies.readLaunchServicesRecords(plan.bundleIdentifier);
+  const afterPlan = planLaunchServicesRecordRemediation({
+    records: recordsAfter,
+    target: plan.target,
+    legacyBackupTarget: plan.legacyBackupTarget,
+    bundleIdentifier: plan.bundleIdentifier,
+    pathExists: dependencies.pathExists
+  });
+  if ((afterPlan.removals ?? []).length > 0) {
+    throw new Error(
+      `LaunchServices stale records remain after remediation: ${afterPlan.removals.map((record) => record.path).join(", ")}`
+    );
+  }
+  return {
+    applied: true,
+    removals,
+    recordsAfter: afterPlan.records
+  };
+}
+
+function finalizePromotionLaunchServices({ dependencies, journal, journalPath }) {
+  if (journal.launchServicesRegistered !== true) {
+    dependencies.checkpoint("before-launch-services-registration");
+    if (dependencies.registerLaunchServices(journal.target) !== true) {
+      throw new Error("LaunchServices registration did not report success");
+    }
+    journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "launch-services-registered", {
+      launchServicesRegistered: true
+    });
+    dependencies.checkpoint("after-launch-services-registration");
+  }
+
+  const bundleIdentifier = journal.remediation?.launchServices?.bundleIdentifier;
+  if (!bundleIdentifier) throw new Error("Promotion journal is missing LaunchServices bundle identifier authority");
+  const postRegistration = assertLaunchServicesUniqueTarget({
+    records: dependencies.readLaunchServicesRecords(bundleIdentifier),
+    target: journal.target,
+    bundleIdentifier,
+    pathExists: dependencies.pathExists
+  });
+  const remediation = {
+    ...journal.remediation,
+    launchServices: {
+      ...journal.remediation.launchServices,
+      postRegistration
+    }
+  };
+  return updatePromotionJournalPhase(dependencies, journalPath, { ...journal, remediation }, "launch-services-postchecked");
+}
+
 function buildPromotionExchangeManifest({
   operationId,
   target,
   backupTarget,
+  legacyBackupTarget,
   sourceApp,
   stagedApp,
+  remediation,
   installedBefore,
   previousBefore,
+  legacyPreviousBefore,
   installedAfter,
   previousAfter,
   completedAt
@@ -443,11 +821,15 @@ function buildPromotionExchangeManifest({
     invocationCount: 1,
     target,
     backupTarget,
+    legacyBackupTarget,
     sourceApp,
     stagedApp,
+    launchServicesRegistered: true,
+    remediation,
     before: {
       installed: compactAppIdentity(installedBefore),
-      previous: compactAppIdentity(previousBefore)
+      previous: compactAppIdentity(previousBefore),
+      legacyPrevious: compactAppIdentity(legacyPreviousBefore)
     },
     after: {
       installed: compactAppIdentity(installedAfter),
@@ -460,14 +842,17 @@ function buildPromotionJournal({
   operationId,
   target,
   backupTarget,
+  legacyBackupTarget,
   sourceApp,
   stagingRoot,
   stagedApp,
   manifestPath,
+  remediation,
   sourceIdentity,
   stagedIdentity,
   installedBefore,
   previousBefore,
+  legacyPreviousBefore,
   phase,
   now
 }) {
@@ -477,10 +862,13 @@ function buildPromotionJournal({
     operationId,
     target,
     backupTarget,
+    legacyBackupTarget,
     sourceApp,
     stagingRoot,
     stagedApp,
     manifestPath,
+    remediation,
+    launchServicesRegistered: false,
     retrySafe: false,
     invocationCount: 1,
     phase,
@@ -490,7 +878,8 @@ function buildPromotionJournal({
       source: compactAppIdentity(sourceIdentity),
       stagedCandidate: compactAppIdentity(stagedIdentity),
       installedBefore: compactAppIdentity(installedBefore),
-      previousBefore: compactAppIdentity(previousBefore)
+      previousBefore: compactAppIdentity(previousBefore),
+      legacyPreviousBefore: compactAppIdentity(legacyPreviousBefore)
     }
   };
 }
@@ -510,19 +899,22 @@ function inspectIfExists(appPath, inspectBundle) {
   return existsSync(appPath) ? inspectBundle(appPath) : null;
 }
 
-function classifyPromotionTransaction({ installed, previous, stage, expected }) {
+function classifyPromotionTransaction({ installed, previous, legacyPrevious, stage, expected }) {
+  if (previous && legacyPrevious) return "ambiguous-role-bytes";
+  const previousCandidate = previous ?? legacyPrevious;
   const original = appPayloadMatches(installed, expected.installedBefore)
-    && appPayloadMatches(previous, expected.previousBefore)
+    && appPayloadMatches(previousCandidate, expected.previousBefore)
     && appPayloadMatches(stage, expected.stagedCandidate);
   if (original) return "original-roles";
 
   const afterFirstExchange = appPayloadMatches(installed, expected.stagedCandidate)
-    && appPayloadMatches(previous, expected.previousBefore)
+    && appPayloadMatches(previousCandidate, expected.previousBefore)
     && appPayloadMatches(stage, expected.installedBefore);
   if (afterFirstExchange) return "after-first-exchange";
 
   const complete = appPayloadMatches(installed, expected.stagedCandidate)
     && appPayloadMatches(previous, expected.installedBefore)
+    && !legacyPrevious
     && (!stage || appPayloadMatches(stage, expected.previousBefore));
   if (complete) return "complete";
 
@@ -532,14 +924,19 @@ function classifyPromotionTransaction({ installed, previous, stage, expected }) 
 function inspectPromotionTransaction(journal, inspectBundle) {
   const installed = inspectIfExists(journal.target, inspectBundle);
   const previous = inspectIfExists(journal.backupTarget, inspectBundle);
+  const legacyPrevious = journal.legacyBackupTarget
+    ? inspectIfExists(journal.legacyBackupTarget, inspectBundle)
+    : null;
   const stage = inspectIfExists(journal.stagedApp, inspectBundle);
   return {
     installed,
     previous,
+    legacyPrevious,
     stage,
     state: classifyPromotionTransaction({
       installed,
       previous,
+      legacyPrevious,
       stage,
       expected: journal.expected
     })
@@ -645,15 +1042,30 @@ function promotionInstallDependencies(overrides = {}) {
   return {
     atomicSwap: atomicSwapApps,
     clearQuarantine: (appBundle) => run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", appBundle], { stdio: "ignore" }),
+    clearXattr: clearXattrValue,
     copyBundle: (source, destination) => run("/usr/bin/ditto", [source, destination], { stdio: "inherit" }),
     createOperationId: defaultPromotionOperationId,
     createStagedAppPath: defaultPromotionStagedAppPath,
+    fsyncDirectory,
     inspectBundle: inspectAppBundle,
+    listDirectory: readdirSync,
+    planLaunchServicesInstallState,
+    pathExists: existsSync,
     promotionTransactionPaths: defaultPromotionTransactionPaths,
     preflightDestination: assertDestinationWritable,
+    readBundleIdentifier,
+    readLaunchServicesRecords: defaultReadLaunchServicesRecords,
+    readXattr: readXattrValue,
+    registerLaunchServices,
     removeDurably,
+    renameDurably: (source, destination) => {
+      renameSync(source, destination);
+      fsyncDirectory(path.dirname(destination));
+    },
     updateJournal: replaceJsonDurably,
     validateIdentity: validateAppIdentity,
+    unregisterLaunchServicesRecord: defaultUnregisterLaunchServicesRecord,
+    writeXattr: writeXattrValue,
     writeJournalInitial: writeJsonExclusive,
     writeManifestExclusive: writeJsonExclusive,
     now: () => new Date(),
@@ -685,10 +1097,13 @@ function publishPromotionExchangeManifest({ dependencies, journal, journalPath }
     operationId: journal.operationId,
     target: journal.target,
     backupTarget: journal.backupTarget,
+    legacyBackupTarget: journal.legacyBackupTarget,
     sourceApp: journal.sourceApp,
     stagedApp: journal.stagedApp,
+    remediation: journal.remediation,
     installedBefore: journal.expected.installedBefore,
     previousBefore: journal.expected.previousBefore,
+    legacyPreviousBefore: journal.expected.legacyPreviousBefore,
     installedAfter: state.installed,
     previousAfter: state.previous,
     completedAt: dependencies.now()
@@ -720,9 +1135,20 @@ export function recoverPromotionTransaction({
 
   if (state.state === "original-roles") {
     if (existsSync(journal.stagingRoot)) dependencies.removeDurably(journal.stagingRoot);
+    if (journal.remediation?.targetParentQuarantine?.before) {
+      restoreTargetParentQuarantine({
+        dependencies,
+        targetParent: journal.remediation.targetParent,
+        expectedValue: journal.remediation.targetParentQuarantine.before
+      });
+    }
     journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "aborted-before-exchange");
     dependencies.removeDurably(journalPath);
-    return { disposition: "aborted-before-exchange", mutationPerformed: false };
+    return {
+      disposition: "aborted-before-exchange",
+      mutationPerformed: false,
+      remediationRetained: journal.remediation?.legacyPrevious?.migrated === true
+    };
   }
 
   if (state.state === "after-first-exchange") {
@@ -740,6 +1166,7 @@ export function recoverPromotionTransaction({
     throw new Error(`Promotion journal state is not safely recoverable: ${state.state}`);
   }
 
+  journal = finalizePromotionLaunchServices({ dependencies, journal, journalPath });
   journal = publishPromotionExchangeManifest({ dependencies, journal, journalPath });
   cleanupCompletedPromotion({ dependencies, journal, journalPath });
   return { disposition: "completed-after-interrupted-exchange", mutationPerformed: true, manifestPath: journal.manifestPath };
@@ -748,7 +1175,8 @@ export function recoverPromotionTransaction({
 export function installApp({ sourceApp, target, dependencies = {} }) {
   const resolvedDependencies = promotionInstallDependencies(dependencies);
   const targetParent = path.dirname(target);
-  const backupTarget = path.join(targetParent, "Auto SVGA.previous.app");
+  const backupTarget = previousBackupPathForTarget(target);
+  const legacyBackupTarget = legacyPreviousAppPathForTarget(target);
   const operationId = resolvedDependencies.createOperationId();
   const transactionPaths = resolvedDependencies.promotionTransactionPaths(operationId);
   const journalPath = transactionPaths.journalPath;
@@ -765,6 +1193,19 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     assertNoPromotionTransactionResidue({ journalPath, manifestPath: exchangeManifestPath });
 
     const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp);
+    const installStatePlan = resolvedDependencies.planLaunchServicesInstallState({
+      target,
+      backupTarget,
+      legacyBackupTarget,
+      sourceApp,
+      sourceIdentity,
+      targetParent,
+      readXattr: resolvedDependencies.readXattr,
+      readBundleIdentifier: resolvedDependencies.readBundleIdentifier,
+      readLaunchServicesRecords: resolvedDependencies.readLaunchServicesRecords,
+      pathExists: resolvedDependencies.pathExists,
+      listDirectory: resolvedDependencies.listDirectory
+    });
     resolvedDependencies.preflightDestination(targetParent);
     assertNoPromotionResidue(targetParent);
 
@@ -784,25 +1225,115 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
 
     resolvedDependencies.checkpoint("after-staged-candidate-validation");
     const installedBefore = existsSync(target) ? resolvedDependencies.inspectBundle(target) : null;
-    const previousBefore = existsSync(backupTarget) ? resolvedDependencies.inspectBundle(backupTarget) : null;
+    const legacyPreviousBefore = installStatePlan.migrateLegacyPrevious
+      ? resolvedDependencies.inspectBundle(legacyBackupTarget)
+      : null;
+    let previousBefore = existsSync(backupTarget)
+      ? resolvedDependencies.inspectBundle(backupTarget)
+      : legacyPreviousBefore;
+    const remediation = {
+      targetParent,
+      targetParentQuarantine: {
+        name: "com.apple.quarantine",
+        before: installStatePlan.targetParentQuarantine,
+        after: installStatePlan.targetParentQuarantine ? null : null,
+        applied: false
+      },
+      legacyPrevious: {
+        from: legacyBackupTarget,
+        to: backupTarget,
+        required: installStatePlan.migrateLegacyPrevious,
+        migrated: false
+      },
+      launchServices: {
+        bundleIdentifier: installStatePlan.bundleIdentifier,
+        recordsBefore: installStatePlan.launchServices.records,
+        removals: installStatePlan.launchServices.removals,
+        applied: false,
+        recordsAfterRemediation: null,
+        postRegistration: null
+      }
+    };
     journal = buildPromotionJournal({
       operationId,
       target,
       backupTarget,
+      legacyBackupTarget,
       sourceApp,
       stagingRoot,
       stagedApp,
       manifestPath: exchangeManifestPath,
+      remediation,
       sourceIdentity,
       stagedIdentity,
       installedBefore,
       previousBefore,
+      legacyPreviousBefore,
       phase: "staged",
       now: resolvedDependencies.now()
     });
     resolvedDependencies.writeJournalInitial(journalPath, journal);
     journalCreated = true;
     resolvedDependencies.checkpoint("after-promotion-journal");
+
+    if (installStatePlan.migrateLegacyPrevious) {
+      if (existsSync(backupTarget)) throw new Error(`Inert previous bundle already exists before migration: ${backupTarget}`);
+      resolvedDependencies.checkpoint("before-legacy-previous-migration");
+      resolvedDependencies.renameDurably(legacyBackupTarget, backupTarget);
+      resolvedDependencies.checkpoint("after-legacy-previous-migration");
+      const migratedPrevious = resolvedDependencies.inspectBundle(backupTarget);
+      assertSameAppPayload(legacyPreviousBefore, migratedPrevious, "Migrated legacy previous bundle");
+      previousBefore = migratedPrevious;
+      remediation.legacyPrevious.migrated = true;
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
+        ...journal,
+        expected: {
+          ...journal.expected,
+          previousBefore: compactAppIdentity(previousBefore)
+        },
+        remediation
+      }, "legacy-previous-migrated");
+    }
+
+    if (installStatePlan.targetParentQuarantine) {
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
+        ...journal,
+        remediation
+      }, "target-parent-quarantine-remediation-planned");
+    }
+    const quarantineRemediation = applyTargetParentQuarantineRemediation({
+      dependencies: resolvedDependencies,
+      targetParent,
+      expectedValue: installStatePlan.targetParentQuarantine
+    });
+    if (quarantineRemediation.mutationPerformed) {
+      remediation.targetParentQuarantine.applied = true;
+      remediation.targetParentQuarantine.after = quarantineRemediation.after;
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
+        ...journal,
+        remediation
+      }, "target-parent-quarantine-remediated");
+      resolvedDependencies.checkpoint("after-target-parent-quarantine-remediation");
+    }
+
+    if (remediation.launchServices.removals.length > 0) {
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
+        ...journal,
+        remediation
+      }, "launch-services-stale-record-remediation-planned");
+    }
+    const launchServicesRemediation = applyLaunchServicesRecordRemediation({
+      dependencies: resolvedDependencies,
+      plan: installStatePlan.launchServices
+    });
+    remediation.launchServices.applied = launchServicesRemediation.applied;
+    remediation.launchServices.removals = launchServicesRemediation.removals;
+    remediation.launchServices.recordsAfterRemediation = launchServicesRemediation.recordsAfter;
+    journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, {
+      ...journal,
+      remediation
+    }, "launch-services-stale-records-remediated");
+    resolvedDependencies.checkpoint("after-launch-services-stale-record-remediation");
 
     if (installedBefore) {
       assertRealDirectory(target, "Installed app");
@@ -841,12 +1372,18 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after first promotion");
     }
 
+    journal = finalizePromotionLaunchServices({ dependencies: resolvedDependencies, journal, journalPath });
+    const launchServicesPostcheck = journal.remediation.launchServices.postRegistration;
     journal = publishPromotionExchangeManifest({ dependencies: resolvedDependencies, journal, journalPath });
     resolvedDependencies.checkpoint("after-exchange-manifest");
     cleanupCompletedPromotion({ dependencies: resolvedDependencies, journal, journalPath });
     transactionCompleted = true;
     resolvedDependencies.validateIdentity(target);
-    return { backupTarget: existsSync(backupTarget) ? backupTarget : undefined };
+    return {
+      backupTarget: existsSync(backupTarget) ? backupTarget : undefined,
+      launchServicesRegistered: journal.launchServicesRegistered === true,
+      launchServicesPostcheck
+    };
   } finally {
     if (stagingRoot && !journalCreated && !transactionCompleted) {
       rmSync(stagingRoot, { recursive: true, force: true });
@@ -926,7 +1463,6 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
 
   const packageInfo = loadAndValidatePackage(options);
   const installInfo = installApp({ sourceApp: packageInfo.sourceApp, target: options.target });
-  const launchServicesRegistered = options.skipRegister ? false : registerLaunchServices(options.target);
 
   const summary = {
     schemaVersion: 1,
@@ -940,7 +1476,8 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
     targetApp: options.target,
     targetSizeBytes: directorySizeBytes(options.target),
     backupApp: installInfo.backupTarget,
-    launchServicesRegistered,
+    launchServicesRegistered: installInfo.launchServicesRegistered,
+    launchServicesPostcheck: installInfo.launchServicesPostcheck,
     distribution: packageInfo.manifest.distribution,
     productionApproved: packageInfo.manifest.productionApproved
   };

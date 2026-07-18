@@ -275,6 +275,7 @@ export function readDefaultPlistIdentity(plistFile) {
       stdio: "pipe"
     }));
   return {
+    bundleIdentifier: plist.CFBundleIdentifier ?? plist.bundleIdentifier ?? null,
     name: plist.CFBundleName ?? plist.name,
     displayName: plist.CFBundleDisplayName ?? plist.displayName,
     executable: plist.CFBundleExecutable ?? plist.executable,
@@ -457,6 +458,18 @@ export function classifyRollbackState({ installed, previous, bindings, stage }) 
   return { state: "ambiguous-role-bytes", recoverable: false, stageValid };
 }
 
+export function previousBackupPathForTarget(target) {
+  return path.join(path.dirname(target), "Auto SVGA.previous.bundle");
+}
+
+export function legacyPreviousAppPathForTarget(target) {
+  return path.join(path.dirname(target), "Auto SVGA.previous.app");
+}
+
+function inspectBundleIfExists(appPath, inspectBundle) {
+  return existsSync(appPath) ? inspectBundle(appPath) : null;
+}
+
 export function inspectRecoveryState({
   target,
   candidateApp,
@@ -466,9 +479,11 @@ export function inspectRecoveryState({
   now = () => new Date(),
   readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"))
 }) {
-  const previous = path.join(path.dirname(target), "Auto SVGA.previous.app");
+  const previous = previousBackupPathForTarget(target);
+  const legacyPrevious = legacyPreviousAppPathForTarget(target);
   const installedIdentity = inspectBundle(target);
-  const previousIdentity = inspectBundle(previous);
+  const previousIdentity = inspectBundleIfExists(previous, inspectBundle);
+  const legacyPreviousIdentity = inspectBundleIfExists(legacyPrevious, inspectBundle);
   const result = {
     schemaVersion: 1,
     operation: "inspect-local-stable-recovery",
@@ -476,6 +491,9 @@ export function inspectRecoveryState({
     mutationPerformed: false,
     installed: installedIdentity,
     previous: previousIdentity,
+    previousPath: previous,
+    legacyPrevious: legacyPreviousIdentity,
+    legacyPreviousPath: legacyPrevious,
     candidate: inspectBundle(candidateApp)
   };
   if (rollbackJournalPath) {
@@ -555,7 +573,7 @@ function assertStableIdentity(before, after, label) {
 
 function assertRollbackPaths(target, previous) {
   if (path.basename(target) !== "Auto SVGA.app") throw new Error(`Unexpected target app name: ${target}`);
-  if (path.basename(previous) !== "Auto SVGA.previous.app") throw new Error(`Unexpected previous app name: ${previous}`);
+  if (path.basename(previous) !== "Auto SVGA.previous.bundle") throw new Error(`Unexpected previous bundle name: ${previous}`);
   if (path.dirname(target) !== path.dirname(previous)) throw new Error("Installed and previous app must share one directory");
   if (target === previous) throw new Error("Installed and previous app paths must be distinct");
 }
@@ -707,8 +725,8 @@ function defaultDependencies(overrides = {}) {
 }
 
 function rollbackPaths({ target, rollbackId, rollbackManifestPath, rollbackJournalPath }) {
-  const previous = path.join(path.dirname(target), "Auto SVGA.previous.app");
-  const stage = path.join(path.dirname(target), `.Auto-SVGA.rollback-${rollbackId}.stage.app`);
+  const previous = previousBackupPathForTarget(target);
+  const stage = path.join(path.dirname(target), `.Auto-SVGA.rollback-${rollbackId}.stage.bundle`);
   return {
     previous,
     stage,

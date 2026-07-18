@@ -15,12 +15,14 @@ import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer 
 import {
   appName,
   assertPackagedRuntimeClosure,
+  assertPackagedWindowPlacementSourceClosure,
   auditInfoPlistSecurity,
   buildMacosPackageProof,
   bundleIdentifier,
   bundleShortVersion,
   bundleVersion,
   candidateChannel,
+  classifyLaunchServicesLintResult,
   distributionChannel,
   finalAcceptanceOwner,
   macosPackagerArgs,
@@ -1691,6 +1693,16 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(packageScript, /COPYFILE_DISABLE/);
   assert.match(packageScript, /assertCleanZipEntries/);
   assert.match(packageScript, /sanitizePackagedInfoPlist/);
+  assert.match(packageScript, /sealPackagedAppForLaunchServices/);
+  assert.match(packageScript, /"--sign",\s*"-"/);
+  assert.ok(
+    packageScript.indexOf("sanitizePackagedInfoPlist();") < packageScript.indexOf("sealPackagedAppForLaunchServices();"),
+    "the internal app must be sealed after packaged Info.plist sanitation"
+  );
+  assert.ok(
+    packageScript.indexOf("sealPackagedAppForLaunchServices();") < packageScript.indexOf("createCleanAppArchive();"),
+    "the archive must contain the LaunchServices-ready sealed app"
+  );
   assert.match(packageScript, /NSAudioCaptureUsageDescription/);
   assert.match(
     extractFunctionSource(packageScript, "function sanitizePackagedInfoPlist()"),
@@ -1718,6 +1730,9 @@ test("macOS package proof manifest records audit boundaries without final App ac
   );
   assert.equal(proof.packagingScaffold.windowPlacementSourceClosure.validated, false);
   assert.equal(proof.packagingScaffold.windowPlacementSourceClosure.skippedReason, "packaged app validation disabled");
+  assert.equal(proof.packagingScaffold.launchServicesExecutableValidationRequired, false);
+  assert.equal(proof.packagingScaffold.launchServicesExecutableReadiness.validated, false);
+  assert.equal(proof.packagingScaffold.launchServicesExecutableReadiness.skippedReason, "packaged app validation disabled");
   assert.deepEqual(
     proof.packagingScaffold.windowPlacementSourceClosure.files.map((file) => file.path),
     windowPlacementPackagedSourceFiles
@@ -1755,6 +1770,107 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(mainProcess, /runtimeBuildInfoProductMilestoneId\(packagedRuntimeBuildInfo\) \?\? "short-term"/);
   assert.match(mainProcess, /\.runtime\/build-info\.json/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);
+});
+
+test("macOS package proof rejects LaunchServices-unready packaged executable authority", async () => {
+  const sourcePlist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
+  const proof = await buildMacosPackageProof({
+    appBundle: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app"),
+    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip"),
+    validatePackagedApp: false
+  });
+  const packagedPlist = sourcePlist.replace(
+    "</dict>",
+    "  <key>CFBundleExecutable</key>\n  <string>Auto SVGA</string>\n</dict>"
+  );
+
+  proof.packagingScaffold.packagedInfoPlistValidated = true;
+  proof.packagingScaffold.packagedRuntimeClosure = {
+    validated: true,
+    buildInfo: {
+      validated: true,
+      buildCommit: proof.buildCommit,
+      source: "package-internal-trial"
+    }
+  };
+  proof.packagingScaffold.windowPlacementSourceClosure = {
+    validated: true,
+    files: windowPlacementPackagedSourceFiles.map((filePath) => ({
+      path: filePath,
+      sourceSha256: "0".repeat(64),
+      packagedSha256: "0".repeat(64),
+      matchesSource: true
+    })),
+    authorities: Object.entries(windowPlacementPackagedSourceAuthorities).map(([authority, filePath]) => ({
+      authority,
+      path: filePath,
+      sourceSha256: "0".repeat(64),
+      packagedSha256: "0".repeat(64),
+      matchesSource: true
+    })),
+    missingEntries: [],
+    findings: []
+  };
+  proof.packagingScaffold.launchServicesExecutableValidationRequired = true;
+  proof.packagingScaffold.launchServicesExecutableReadiness = {
+    validated: false,
+    findings: [
+      "codesign verification failed: code has no resources but signature indicates they must be present"
+    ]
+  };
+
+  const disabledGate = structuredClone(proof);
+  disabledGate.packagingScaffold.launchServicesExecutableValidationRequired = false;
+  assert.throws(
+    () => validateProof(sourcePlist, disabledGate, packagedPlist),
+    /launchServicesExecutableValidationRequired/
+  );
+  assert.throws(
+    () => validateProof(sourcePlist, proof, packagedPlist),
+    /launchServicesExecutableReadiness/
+  );
+});
+
+test("macOS package proof treats LaunchServices Spotlight lint outage as environment-limited only with known-good reference failure", () => {
+  const spotlightFailure = {
+    passed: false,
+    stdout: "",
+    stderr: "failed to scan /Example.app: -10822\n from spotlight",
+    status: 1
+  };
+  const referenceFailure = {
+    appPath: "/System/Applications/Calculator.app",
+    result: {
+      passed: false,
+      stdout: "",
+      stderr: "failed to scan /System/Applications/Calculator.app: -10822\n from spotlight",
+      status: 1
+    }
+  };
+  const environmentLimited = classifyLaunchServicesLintResult(spotlightFailure, [referenceFailure]);
+  assert.equal(environmentLimited.passed, false);
+  assert.equal(environmentLimited.environmentLimited, true);
+  assert.equal(environmentLimited.referenceAppPath, "/System/Applications/Calculator.app");
+  assert.match(environmentLimited.environmentLimitedReason, /known-good system app/);
+
+  const candidateOnlyFailure = classifyLaunchServicesLintResult(spotlightFailure, [{
+    appPath: "/System/Applications/Calculator.app",
+    result: {
+      passed: true,
+      stdout: "",
+      stderr: "",
+      status: 0
+    }
+  }]);
+  assert.equal(candidateOnlyFailure.environmentLimited, false);
+
+  const nonSpotlightFailure = classifyLaunchServicesLintResult({
+    passed: false,
+    stdout: "",
+    stderr: "failed to scan /Example.app: -10827 kLSNoExecutableErr",
+    status: 1
+  }, [referenceFailure]);
+  assert.equal(nonSpotlightFailure.environmentLimited, false);
 });
 
 test("macOS package proof rejects packaged App identity drift", async () => {
@@ -1817,17 +1933,18 @@ test("macOS package proof rejects stale package version and channel identity", a
 test("macOS package proof rejects stale packaged runtime build identity", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-package-proof-"));
   try {
-    const { appBundle, archivePath } = await createPackagedProofFixture({
+    const expectedBuildCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repoRoot,
+      encoding: "utf8"
+    }).trim();
+    const { packagedAsarPath } = await createPackagedProofFixture({
       root,
       buildCommit: "stale-build-commit"
     });
 
-    await assert.rejects(
-      () => buildMacosPackageProof({
-        appBundle,
-        archivePath
-      }),
-      /packagedRuntimeClosure/
+    assert.throws(
+      () => assertPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit),
+      /packaged runtime buildCommit stale-build-commit/
     );
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -1855,22 +1972,19 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
         .map((dependency) => `${dependency.packageName}@${dependency.version}`),
       ["lottie-web@5.13.0", "video-animation-player@1.0.5"]
     );
-    const validProof = await buildMacosPackageProof({
-      appBundle: valid.appBundle,
-      archivePath: valid.archivePath
-    });
-    assert.equal(validProof.packagingScaffold.windowPlacementSourceClosure.validated, true);
-    assert.ok(validProof.packagingScaffold.windowPlacementSourceClosure.files.every((file) => (
+    const sourceClosure = await assertPackagedWindowPlacementSourceClosure(valid.packagedAsarPath);
+    assert.equal(sourceClosure.validated, true);
+    assert.ok(sourceClosure.files.every((file) => (
       file.matchesSource === true && file.sourceSha256 === file.packagedSha256
     )));
     assert.deepEqual(
-      Object.fromEntries(validProof.packagingScaffold.windowPlacementSourceClosure.authorities.map((entry) => [
+      Object.fromEntries(sourceClosure.authorities.map((entry) => [
         entry.authority,
         entry.path
       ])),
       windowPlacementPackagedSourceAuthorities
     );
-    assert.ok(validProof.packagingScaffold.windowPlacementSourceClosure.authorities.every((entry) => (
+    assert.ok(sourceClosure.authorities.every((entry) => (
       entry.matchesSource === true && entry.sourceSha256 === entry.packagedSha256
     )));
 
@@ -1882,10 +1996,7 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
       }
     });
     await assert.rejects(
-      () => buildMacosPackageProof({
-        appBundle: sourceDrift.appBundle,
-        archivePath: sourceDrift.archivePath
-      }),
+      () => assertPackagedWindowPlacementSourceClosure(sourceDrift.packagedAsarPath),
       /windowPlacementSourceClosure/
     );
 
@@ -1895,10 +2006,7 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
       omitWindowPlacementSourceFiles: ["acceptance-startup-placement-proof.cjs"]
     });
     await assert.rejects(
-      () => buildMacosPackageProof({
-        appBundle: missingPlacementProof.appBundle,
-        archivePath: missingPlacementProof.archivePath
-      }),
+      () => assertPackagedWindowPlacementSourceClosure(missingPlacementProof.packagedAsarPath),
       /windowPlacementSourceClosure/
     );
 

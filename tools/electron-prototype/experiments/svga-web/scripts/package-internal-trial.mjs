@@ -34,6 +34,7 @@ const appDirectory = path.join(artifactsRoot, `${appName}-darwin-arm64`);
 const appBundle = path.join(appDirectory, `${appName}.app`);
 const packagedAsarPath = path.join(appBundle, "Contents/Resources/app.asar");
 const packagedInfoPlist = path.join(appBundle, "Contents/Info.plist");
+const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements.plist");
 const archivePath = path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
 const manifestPath = path.join(artifactsRoot, "internal-trial-manifest.json");
 const runtimeBuildInfoPath = path.join(experimentRoot, ".runtime/build-info.json");
@@ -153,6 +154,24 @@ function sanitizePackagedInfoPlist() {
   }
 }
 
+function sealPackagedAppForLaunchServices() {
+  if (!existsSync(entitlementsPath)) {
+    throw new Error(`macOS package entitlements are missing: ${path.relative(repoRoot, entitlementsPath)}`);
+  }
+  run("codesign", [
+    "--force",
+    "--deep",
+    "--options",
+    "runtime",
+    "--entitlements",
+    entitlementsPath,
+    "--sign",
+    "-",
+    appBundle
+  ]);
+  run("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appBundle]);
+}
+
 async function findCachedElectronZip() {
   if (!existsSync(localElectronVersionPath)) return undefined;
   const electronVersion = (await readFile(localElectronVersionPath, "utf8")).trim();
@@ -195,6 +214,7 @@ async function main() {
     : macosPackagerArgs(artifactsRoot);
   run("../../node_modules/.bin/electron-packager", packagerArgs);
   sanitizePackagedInfoPlist();
+  sealPackagedAppForLaunchServices();
   assertPackagedRuntimeDependencies(buildCommit);
   createCleanAppArchive();
 
@@ -237,6 +257,7 @@ async function main() {
     appIcon: proof.appIcon,
     distribution: proof.distribution,
     packagedRuntimeClosure: proof.packagingScaffold.packagedRuntimeClosure,
+    launchServicesExecutableReadiness: proof.packagingScaffold.launchServicesExecutableReadiness,
     securityFlags: {
       contextIsolation: true,
       nodeIntegration: false,

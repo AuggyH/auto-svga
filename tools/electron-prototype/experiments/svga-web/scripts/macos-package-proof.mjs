@@ -33,7 +33,12 @@ const requireFromPrototype = createRequire(path.join(prototypeRoot, "package.jso
 const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const proofPath = path.join(artifactsRoot, "macos-package-proof.json");
 const plistPath = path.join(experimentRoot, "packaging/macos/Info.plist");
-const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements.plist");
+export const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements.plist");
+export const launchServicesRegisterTool = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+export const launchServicesLintReferenceApps = Object.freeze([
+  "/System/Applications/Calculator.app",
+  "/System/Applications/TextEdit.app"
+]);
 const appIconSourcePath = path.join(experimentRoot, "packaging/macos/app-icon-source.png");
 const appIconPath = path.join(experimentRoot, "packaging/macos/app-icon.icns");
 export const nativePickerHelperName = "asv-open-panel";
@@ -178,6 +183,7 @@ export async function buildMacosPackageProof(options = {}) {
   const packagedPlist = validatePackagedApp && existsSync(packagedPlistPath)
     ? await readFile(packagedPlistPath, "utf8")
     : sourcePlist;
+  const validateLaunchServicesExecutable = validatePackagedApp;
   const buildCommit = git(["rev-parse", "HEAD"]);
   const packagedRuntimeClosure = validatePackagedApp
     ? readPackagedRuntimeClosure(packagedAsarPath, buildCommit)
@@ -198,6 +204,12 @@ export async function buildMacosPackageProof(options = {}) {
     sourceInfoPlistSecurityAudit,
     packagedInfoPlistSecurityAudit
   });
+  const launchServicesExecutableReadiness = validateLaunchServicesExecutable
+    ? readLaunchServicesExecutableReadiness(appBundle, packagedPlist)
+    : skippedLaunchServicesExecutableReadiness(
+        appBundle,
+        validatePackagedApp ? "LaunchServices executable validation disabled" : "packaged app validation disabled"
+      );
   const appIconSourceStats = await stat(appIconSourcePath);
   const appIconStats = await stat(appIconPath);
   const appIconSourceSha256 = await sha256(appIconSourcePath);
@@ -289,6 +301,8 @@ export async function buildMacosPackageProof(options = {}) {
       packagedRuntimeBuildInfo: packagedRuntimeClosure.buildInfo,
       packagedRuntimeClosure,
       windowPlacementSourceClosure,
+      launchServicesExecutableValidationRequired: validateLaunchServicesExecutable,
+      launchServicesExecutableReadiness,
       entitlementsPath: path.relative(repoRoot, entitlementsPath),
       electronPackagerArgs: macosPackagerArgs(path.relative(experimentRoot, artifactsRoot))
     },
@@ -340,6 +354,8 @@ export function validateProof(plist, proof, packagedPlist = plist) {
     ["productIdentity", proof.productIdentity?.productVersion === productVersion && proof.productIdentity?.releaseStage === releaseStage && proof.productIdentity?.distributionChannel === distributionChannel && proof.productIdentity?.candidateChannel === candidateChannel && proof.productIdentity?.ownerVisibleLabel === ownerVisibleLabel],
     ["packagedRuntimeClosure", proof.packagingScaffold.packagedInfoPlistValidated !== true || (packagedRuntimeClosure?.validated === true && packagedRuntimeClosure?.buildInfo?.buildCommit === proof.buildCommit)],
     ["windowPlacementSourceClosure", (!windowPlacementClosureRequired || windowPlacementSourceClosure?.validated === true) && windowPlacementAuthoritiesMatch],
+    ["launchServicesExecutableValidationRequired", proof.packagingScaffold.packagedInfoPlistValidated !== true || proof.packagingScaffold.launchServicesExecutableValidationRequired === true],
+    ["launchServicesExecutableReadiness", proof.packagingScaffold.packagedInfoPlistValidated !== true || proof.packagingScaffold.launchServicesExecutableReadiness?.validated === true],
     ["internalUseOnly", proof.distribution.internalUseOnly === true && plist.includes("<key>AutoSVGAInternalUseOnly</key>")],
     ["distributionChannel", proof.distribution.channel === distributionChannel && proof.distribution.candidateChannel === candidateChannel && proof.distribution.packageCandidate === true],
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
@@ -364,6 +380,182 @@ export function validateProof(plist, proof, packagedPlist = plist) {
   ];
   const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length > 0) throw new Error(`macOS package proof failed: ${failed.join(", ")}`);
+}
+
+function skippedLaunchServicesExecutableReadiness(appBundle, skippedReason) {
+  return {
+    appBundlePath: path.relative(repoRoot, appBundle),
+    validated: false,
+    executableName: null,
+    executablePath: null,
+    executableMode: null,
+    executableSizeBytes: null,
+    fileIdentity: null,
+    codesignVerify: {
+      passed: false,
+      skippedReason
+    },
+    launchServicesLint: {
+      passed: false,
+      skippedReason
+    },
+    findings: [],
+    skippedReason
+  };
+}
+
+function readLaunchServicesExecutableReadiness(appBundle, packagedPlist) {
+  const base = skippedLaunchServicesExecutableReadiness(appBundle, undefined);
+  delete base.skippedReason;
+  const findings = [];
+  const executableName = plistStringValue(packagedPlist, "CFBundleExecutable");
+  const executablePath = executableName ? path.join(appBundle, "Contents/MacOS", executableName) : null;
+  let executableStats = null;
+  let fileIdentity = null;
+
+  if (!executableName) {
+    findings.push("packaged Info.plist is missing CFBundleExecutable");
+  } else if (!executablePath || !existsSync(executablePath)) {
+    findings.push(`packaged executable is missing: Contents/MacOS/${executableName}`);
+  } else {
+    try {
+      executableStats = statSyncNoThrow(executablePath);
+      if (!executableStats?.isFile()) findings.push(`packaged executable is not a regular file: Contents/MacOS/${executableName}`);
+      if ((executableStats?.mode & 0o111) === 0) findings.push(`packaged executable is not executable: Contents/MacOS/${executableName}`);
+    } catch (error) {
+      findings.push(error instanceof Error ? error.message : String(error));
+    }
+    const fileResult = runReadOnlyCommand("file", [executablePath]);
+    fileIdentity = commandText(fileResult);
+    if (fileResult.passed !== true) {
+      findings.push(`file(1) could not inspect packaged executable: ${fileIdentity}`);
+    } else if (!/Mach-O 64-bit executable arm64/.test(fileIdentity)) {
+      findings.push(`packaged executable is not an arm64 Mach-O executable: ${fileIdentity}`);
+    }
+  }
+
+  const codesignVerify = runReadOnlyCommand("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appBundle]);
+  if (codesignVerify.passed !== true) {
+    findings.push(`codesign verification failed: ${commandText(codesignVerify)}`);
+  }
+
+  const launchServicesLint = readLaunchServicesLint(appBundle);
+  if (launchServicesLint.passed !== true && launchServicesLint.environmentLimited !== true) {
+    findings.push(`LaunchServices lint failed: ${commandText(launchServicesLint)}`);
+  }
+
+  return {
+    ...base,
+    validated: findings.length === 0,
+    executableName,
+    executablePath: executablePath ? path.relative(repoRoot, executablePath) : null,
+    executableMode: executableStats ? `0${(executableStats.mode & 0o777).toString(8)}` : null,
+    executableSizeBytes: executableStats?.size ?? null,
+    fileIdentity,
+    codesignVerify: summarizeCommandResult(codesignVerify),
+    launchServicesLint,
+    findings
+  };
+}
+
+function readLaunchServicesLint(appBundle) {
+  if (!existsSync(launchServicesRegisterTool)) {
+    return {
+      ...summarizeCommandResult({
+        passed: false,
+        stdout: "",
+        stderr: `LaunchServices registration tool is missing: ${launchServicesRegisterTool}`,
+        status: null
+      }),
+      environmentLimited: false,
+      referenceAppPath: null,
+      referenceResult: null
+    };
+  }
+  const candidateResult = runReadOnlyCommand(launchServicesRegisterTool, ["-lint", appBundle]);
+  const referenceResults = launchServicesLintReferenceApps
+    .filter((referenceAppPath) => existsSync(referenceAppPath))
+    .map((referenceAppPath) => ({
+      appPath: referenceAppPath,
+      result: runReadOnlyCommand(launchServicesRegisterTool, ["-lint", referenceAppPath])
+    }));
+  return classifyLaunchServicesLintResult(candidateResult, referenceResults);
+}
+
+export function classifyLaunchServicesLintResult(candidateResult, referenceResults = []) {
+  const summary = summarizeCommandResult(candidateResult);
+  if (summary.passed === true) {
+    return {
+      ...summary,
+      environmentLimited: false,
+      referenceAppPath: null,
+      referenceResult: null
+    };
+  }
+  const matchingReference = referenceResults.find((reference) => (
+    isSpotlightLintUnavailable(candidateResult)
+    && isSpotlightLintUnavailable(reference.result)
+  ));
+  return {
+    ...summary,
+    environmentLimited: Boolean(matchingReference),
+    environmentLimitedReason: matchingReference
+      ? "LaunchServices lint returned -10822 from Spotlight for both the candidate and a known-good system app; static bundle, executable, Mach-O, and codesign gates remain authoritative."
+      : null,
+    referenceAppPath: matchingReference?.appPath ?? null,
+    referenceResult: matchingReference ? summarizeCommandResult(matchingReference.result) : null
+  };
+}
+
+function isSpotlightLintUnavailable(result) {
+  if (result?.passed === true) return false;
+  const text = commandText(result);
+  return /-10822/u.test(text) && /from spotlight/i.test(text);
+}
+
+function statSyncNoThrow(filePath) {
+  return statSync(filePath);
+}
+
+function runReadOnlyCommand(command, args) {
+  try {
+    const stdout = execFileSync(command, args, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    return {
+      passed: true,
+      stdout,
+      stderr: "",
+      status: 0
+    };
+  } catch (error) {
+    return {
+      passed: false,
+      stdout: error?.stdout?.toString?.() ?? "",
+      stderr: error?.stderr?.toString?.() ?? "",
+      status: typeof error?.status === "number" ? error.status : null
+    };
+  }
+}
+
+function commandText(result) {
+  return [result?.stdout, result?.stderr].filter(Boolean).join("\n").trim();
+}
+
+function summarizeCommandResult(result) {
+  return {
+    passed: result.passed === true,
+    status: result.status,
+    stdout: trimCommandOutput(result.stdout),
+    stderr: trimCommandOutput(result.stderr)
+  };
+}
+
+function trimCommandOutput(value) {
+  const text = String(value ?? "").trim();
+  return text.length > 2000 ? `${text.slice(0, 2000)}...<truncated>` : text;
 }
 
 function skippedPackagedWindowPlacementSourceClosure(sourceHashes, skippedReason) {
@@ -460,6 +652,27 @@ export function packagedNativePickerHelperPath(packagedAsarPath) {
 
 export function packagedNativePickerHelperInfoPlistPath(packagedAsarPath) {
   return path.join(path.dirname(packagedAsarPath), nativePickerHelperBundlePackagedRelativePath, "Contents/Info.plist");
+}
+
+export async function assertPackagedWindowPlacementSourceClosure(packagedAsarPath) {
+  const sourceHashes = Object.fromEntries(await Promise.all(
+    windowPlacementPackagedSourceFiles.map(async (relativePath) => [
+      relativePath,
+      await sha256(path.join(experimentRoot, relativePath))
+    ])
+  ));
+  const closure = readPackagedWindowPlacementSourceClosure(packagedAsarPath, sourceHashes);
+  const authoritiesMatch = Object.entries(windowPlacementPackagedSourceAuthorities).every(
+    ([authority, relativePath]) => closure?.authorities?.some((entry) => (
+      entry.authority === authority
+      && entry.path === relativePath
+      && entry.matchesSource === true
+    ))
+  );
+  if (closure.validated !== true || authoritiesMatch !== true) {
+    throw new Error(`windowPlacementSourceClosure failed: ${closure.findings.join("; ")}`);
+  }
+  return closure;
 }
 
 function skippedPackagedRuntimeClosure(packagedAsarPath, skippedReason) {
