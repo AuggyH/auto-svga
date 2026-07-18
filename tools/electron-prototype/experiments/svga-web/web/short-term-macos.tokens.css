@@ -229,14 +229,14 @@
   --asv-component-icon-button-selected-background: var(--asv-color-surface-control-selected);
   --asv-component-icon-button-selected-color: var(--asv-color-action-primary);
   --asv-component-icon-button-shadow: none;
-  --asv-component-mode-switch-width: 192px;
+  --asv-component-mode-switch-width: 152px;
   --asv-component-mode-switch-height: 42px;
   --asv-component-mode-switch-gap: var(--asv-space-0);
   --asv-component-mode-switch-padding: var(--asv-space-1);
   --asv-component-mode-switch-shadow: none;
   --asv-component-mode-switch-backdrop-filter: none;
   --asv-component-mode-button-color: var(--asv-color-text-secondary);
-  --asv-component-mode-button-width: 92px;
+  --asv-component-mode-button-width: 72px;
   --asv-component-mode-button-height: 34px;
   --asv-component-mode-button-padding-inline: var(--asv-space-3);
   --asv-component-mode-button-padding-block: var(--asv-space-2);
