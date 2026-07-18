@@ -1,6 +1,7 @@
 import { overviewTabView } from "./short-term-macos-overview-model.mjs";
 import { sha256Hex } from "./short-term-macos-byte-model.mjs";
 import { probeInvalidShortTermInspection } from "./short-term-macos-api-client.mjs";
+import { SHORT_TERM_LOAD_FAILURE_COPY } from "./short-term-macos-feedback-model.mjs";
 import { shortTermPlayerPrototype } from "./short-term-macos-playback-surface.mjs";
 import {
   collectShortTermDesignInteractionProof,
@@ -703,16 +704,16 @@ async function runShortTermSmoke({
   const recoverySourceSha256Before = await sha256Hex(state.sourceBytes);
   const invalidBytes = new Uint8Array([0, 1, 2, 3, 4]);
   await loadDroppedFile(new File([invalidBytes], "invalid.svga", { type: "application/octet-stream" }));
-  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("源文件没有被修改"), 4_000);
+  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent === SHORT_TERM_LOAD_FAILURE_COPY, 4_000);
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-load-failed");
   const loadFailedVisible = state.view === "failed"
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+    && nodes.errorMessage.textContent === SHORT_TERM_LOAD_FAILURE_COPY;
   const loadFailureCopy = nodes.errorMessage.textContent.trim();
   const noStaleMetadataAfterFailure = !state.sourceBytes
     && !state.model
     && !state.activeOutput
-    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+    && nodes.errorMessage.textContent === SHORT_TERM_LOAD_FAILURE_COPY;
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,

@@ -1,3 +1,5 @@
+import { SHORT_TERM_LOAD_FAILURE_COPY } from "./short-term-macos-feedback-model.mjs";
+
 export function createSmokeArtifactCapture(bridge) {
   const capturedArtifacts = [];
   const captureSmokeArtifact = async (scenario) => {
@@ -621,7 +623,7 @@ export function collectShortTermLoadFailureProof({
     invalidDropAttempted: true,
     loadFailedVisible,
     errorCopy: loadFailureCopy,
-    sourceFileUnmodifiedClaimVisible: loadFailureCopy.includes("源文件没有被修改"),
+    ownerFailureCopyVisible: loadFailureCopy === SHORT_TERM_LOAD_FAILURE_COPY,
     noStaleMetadataAfterFailure,
     invalidApiRejected,
     recoveryFileName,
@@ -644,7 +646,7 @@ export function collectShortTermLoadFailureProof({
   proof.passed = [
     proof.invalidDropAttempted,
     proof.loadFailedVisible,
-    proof.sourceFileUnmodifiedClaimVisible,
+    proof.ownerFailureCopyVisible,
     proof.noStaleMetadataAfterFailure,
     proof.invalidApiRejected,
     proof.recoveryLoaded,

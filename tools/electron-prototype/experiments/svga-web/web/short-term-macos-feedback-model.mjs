@@ -1,5 +1,7 @@
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
 
+export const SHORT_TERM_LOAD_FAILURE_COPY = "文件格式不受支持或已损坏";
+
 const SAVE_BANNER_A11Y = {
   danger: { role: "alert", ariaLive: "assertive", ariaBusy: "false" },
   loading: { role: "status", ariaLive: "polite", ariaBusy: "true" },

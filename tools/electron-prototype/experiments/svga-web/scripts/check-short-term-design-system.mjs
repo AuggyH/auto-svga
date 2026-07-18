@@ -593,6 +593,8 @@ async function main() {
     && /--asv-component-state-loading-label-size:\s*var\(--asv-type-size-footnote\)/.test(tokens)
     && /--asv-component-state-failure-icon-size:\s*var\(--asv-base-space-48\)/.test(tokens)
     && /--asv-component-state-failure-icon-background:\s*var\(--asv-color-status-danger\)/.test(tokens)
+    && /--asv-radius-xs:\s*var\(--asv-base-radius-2\)/.test(tokens)
+    && /--asv-radius-pill:\s*var\(--asv-base-radius-full\)/.test(tokens)
     && /--asv-component-state-failure-title-size:\s*var\(--asv-type-size-metric\)/.test(tokens)
     && /\.stateLoadingCard\s*>\s*\.spinner\s*\{[^}]*width:\s*var\(--asv-state-loading-indicator-size\);[^}]*height:\s*var\(--asv-state-loading-indicator-size\);/s.test(components)
     && /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s.test(components)

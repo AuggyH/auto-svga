@@ -78,9 +78,11 @@
   --asv-space-4: var(--asv-base-space-16);
   --asv-space-5: var(--asv-base-space-20);
   --asv-space-6: var(--asv-base-space-24);
+  --asv-radius-xs: var(--asv-base-radius-2);
   --asv-radius-sm: var(--asv-base-radius-4);
   --asv-radius-md: var(--asv-base-radius-8);
   --asv-radius-lg: var(--asv-base-radius-8);
+  --asv-radius-pill: var(--asv-base-radius-full);
   --asv-motion-duration-fast: 120ms;
   --asv-motion-duration-standard: 180ms;
   --asv-motion-duration-idle: 30s;

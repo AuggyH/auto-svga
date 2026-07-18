@@ -561,6 +561,7 @@ test("short-term loading and load-failed states expose recovery actions", async 
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
   const components = await readFile(path.join(experimentRoot, "web/short-term-macos.components.css"), "utf8");
+  const { showShortTermFailure } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-surface.mjs")).href);
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
@@ -593,6 +594,8 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(tokens, /--asv-component-state-loading-label-size:\s*var\(--asv-type-size-footnote\);/);
   assert.match(tokens, /--asv-component-state-failure-icon-size:\s*var\(--asv-base-space-48\);/);
   assert.match(tokens, /--asv-component-state-failure-icon-background:\s*var\(--asv-color-status-danger\);/);
+  assert.match(tokens, /--asv-radius-xs:\s*var\(--asv-base-radius-2\);/);
+  assert.match(tokens, /--asv-radius-pill:\s*var\(--asv-base-radius-full\);/);
   assert.match(tokens, /--asv-component-state-failure-title-size:\s*var\(--asv-type-size-metric\);/);
   assert.match(tokens, /--asv-component-state-recovery-action-width:\s*var\(--asv-component-file-header-action-width\);/);
   assert.match(components, /\.stateLoadingCard\s*\{[^}]*gap:\s*var\(--asv-state-loading-gap\);/s);
@@ -600,6 +603,12 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(components, /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s);
   assert.match(components, /\.stateFailureCard\s*>\s*h1\s*\{[^}]*font-size:\s*var\(--asv-state-failure-title-size\);[^}]*font-weight:\s*var\(--asv-state-failure-title-weight\);/s);
   assert.match(components, /\.stateLoadingCard\s*>\s*\.stateRecoveryButton,[\s\S]*?\.stateFailureCard\s*>\s*\.stateRecoveryButton\s*\{[^}]*min-width:\s*var\(--asv-state-recovery-action-width\);[^}]*min-height:\s*var\(--asv-state-recovery-action-height\);/s);
+
+  const errorMessage = { textContent: "" };
+  let view = "preview";
+  showShortTermFailure({ nodes: { errorMessage }, setView: (nextView) => { view = nextView; } }, new Error("Inspection failed /private/source.svga"));
+  assert.equal(view, "failed");
+  assert.equal(errorMessage.textContent, "文件格式不受支持或已损坏");
 });
 
 test("short-term preview right surface exposes page-state trace semantics", async () => {
@@ -8197,7 +8206,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPreviewSurface, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta, \{[\s\S]*dirty: state\.activeOutput\?\.kind === "rename"[\s\S]*\}\)/);
   assert.match(shortTermController, /renderMessage: \(copy\) => renderDiscardMessage\(nodes, copy\)/);
   assert.match(shortTermDialogModel, /renderMessage\(message\)/);
-  assert.match(shortTermFeedbackSurface, /renderFailureMessage\(nodes, sourceUnmodifiedMessage\(message\)\)/);
+  assert.match(shortTermFeedbackSurface, /renderFailureMessage\(nodes, SHORT_TERM_LOAD_FAILURE_COPY\)/);
+  assert.match(shortTermFeedbackSurface, /message: sourceUnmodifiedMessage\(message\)/);
   assert.match(shortTermFileSurface, /state\.sourceBytes = new Uint8Array\(bytes\)/);
   assert.match(shortTermFileSurface, /state\.sourceBytes = undefined/);
   assert.match(shortTermFileSurface, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);

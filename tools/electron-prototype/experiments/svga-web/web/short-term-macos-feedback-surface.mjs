@@ -1,5 +1,6 @@
 import {
   buildCurrentStateSummary,
+  SHORT_TERM_LOAD_FAILURE_COPY,
   sourceUnmodifiedMessage
 } from "./short-term-macos-feedback-model.mjs";
 import {
@@ -21,9 +22,8 @@ export function clearShortTermSaveBanner(nodes) {
   clearSaveFeedbackBanner(nodes.saveBanner);
 }
 
-export function showShortTermFailure({ nodes, setView }, error) {
-  const message = error instanceof Error ? error.message : String(error);
-  renderFailureMessage(nodes, sourceUnmodifiedMessage(message));
+export function showShortTermFailure({ nodes, setView }) {
+  renderFailureMessage(nodes, SHORT_TERM_LOAD_FAILURE_COPY);
   setView("failed");
 }
 

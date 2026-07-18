@@ -1161,7 +1161,7 @@ function validateShortTermLoadFailureProof(value) {
   if (!isBoundedString(value.invalidFileName, 160) || !value.invalidFileName.endsWith(".svga")) return undefined;
   if (!isBoundedString(value.playbackFailureFileName, 160) || !value.playbackFailureFileName.endsWith(".svga")) return undefined;
   if (!Number.isInteger(value.invalidSizeBytes) || value.invalidSizeBytes <= 0) return undefined;
-  if (!isBoundedString(value.errorCopy, 260) || !value.errorCopy.includes("源文件没有被修改")) return undefined;
+  if (value.errorCopy !== "文件格式不受支持或已损坏") return undefined;
   if (!isBoundedString(value.playbackFailureCopy, 260) || !value.playbackFailureCopy.includes("播放失败") || !value.playbackFailureCopy.includes("源文件没有被修改")) return undefined;
   if (!isBoundedString(value.recoveryFileName, 160) || !value.recoveryFileName.endsWith(".svga")) return undefined;
   if (!isSha256(value.sourceSha256BeforeInvalid) || value.sourceSha256AfterRecovery !== value.sourceSha256BeforeInvalid) return undefined;
@@ -1169,7 +1169,7 @@ function validateShortTermLoadFailureProof(value) {
   if (
     value.invalidDropAttempted !== true
     || value.loadFailedVisible !== true
-    || value.sourceFileUnmodifiedClaimVisible !== true
+    || value.ownerFailureCopyVisible !== true
     || value.noStaleMetadataAfterFailure !== true
     || value.invalidApiRejected !== true
     || value.recoveryLoaded !== true
@@ -1194,7 +1194,7 @@ function validateShortTermLoadFailureProof(value) {
     invalidDropAttempted: true,
     loadFailedVisible: true,
     errorCopy: value.errorCopy,
-    sourceFileUnmodifiedClaimVisible: true,
+    ownerFailureCopyVisible: true,
     noStaleMetadataAfterFailure: true,
     invalidApiRejected: true,
     recoveryFileName: value.recoveryFileName,
