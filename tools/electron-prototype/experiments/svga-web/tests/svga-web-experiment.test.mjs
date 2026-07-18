@@ -3969,8 +3969,8 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "daily-ui" }), true);
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "daily-ui", result }), true);
 
-    const [imageGroup, capabilityGroup, diagnosticGroup] = nodes.assetList.children;
-    assert.equal(nodes.assetList.children.length, 3);
+    const [imageGroup, capabilityGroup] = nodes.assetList.children;
+    assert.equal(nodes.assetList.children.length, 2);
     assert.equal(nodes.assetFilterTabs.dataset.presentation, "summary");
     const summaryText = (child) => child.children.map((part) => part.textContent).join("");
     assert.deepEqual(
@@ -3987,11 +3987,9 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
         ["assetSummaryLabel", "assetSummaryCount"]
       );
     }
-    assert.equal(imageGroup.dataset.empty, "false");
-    assert.equal(capabilityGroup.dataset.empty, "false");
-    assert.equal(diagnosticGroup.dataset.status, "warning");
-    assert.equal(diagnosticGroup.dataset.empty, "true");
-    for (const group of [imageGroup, capabilityGroup, diagnosticGroup]) {
+    assert.equal(imageGroup.dataset.empty, undefined);
+    assert.equal(capabilityGroup.dataset.empty, undefined);
+    for (const group of [imageGroup, capabilityGroup]) {
       assert.deepEqual(
         group.children[0].children.map((child) => child.className),
         ["assetGroupTitle", "assetGroupCount"]
@@ -4000,9 +3998,7 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     }
     assert.equal(imageGroup.children[0].children[0].textContent, "图片资源");
     assert.equal(imageGroup.children[0].children[1].textContent, "(3)");
-    assert.equal(diagnosticGroup.children[0].children[0].textContent, "格式诊断");
-    assert.equal(diagnosticGroup.children[0].children[1].textContent, "(0)");
-    assert.equal(diagnosticGroup.children[1].children.length, 0);
+    assert.doesNotMatch(nodes.assetList.textContent, /格式诊断|\(0\)/u);
 
     const [availableRow, replaceableRow, missingRow] = imageGroup.children[1].children;
     const [unsupportedRow, blockedRow] = capabilityGroup.children[1].children;

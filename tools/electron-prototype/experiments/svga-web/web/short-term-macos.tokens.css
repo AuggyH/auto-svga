@@ -393,7 +393,6 @@
   --asv-component-asset-group-header-gap: var(--asv-space-2);
   --asv-component-asset-group-header-padding-block: var(--asv-space-1);
   --asv-component-asset-group-header-padding-inline: 0px;
-  --asv-component-asset-group-empty-opacity: 0.82;
   --asv-component-asset-group-title-size: var(--asv-type-size-caption);
   --asv-component-asset-group-title-line-height: 16px;
   --asv-component-asset-group-title-weight: var(--asv-type-weight-medium);
@@ -946,7 +945,6 @@
   --asv-asset-group-header-gap: var(--asv-component-asset-group-header-gap);
   --asv-asset-group-header-padding-block: var(--asv-component-asset-group-header-padding-block);
   --asv-asset-group-header-padding-inline: var(--asv-component-asset-group-header-padding-inline);
-  --asv-asset-group-empty-opacity: var(--asv-component-asset-group-empty-opacity);
   --asv-asset-group-title-size: var(--asv-component-asset-group-title-size);
   --asv-asset-group-title-line-height: var(--asv-component-asset-group-title-line-height);
   --asv-asset-group-title-weight: var(--asv-component-asset-group-title-weight);

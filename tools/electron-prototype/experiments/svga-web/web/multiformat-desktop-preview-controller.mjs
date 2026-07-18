@@ -661,7 +661,7 @@ export function createMultiFormatDesktopPreviewController({
     if (inventory?.groups?.length) {
       const groups = inventory.groups.filter((group) => {
         const items = Array.isArray(group.items) ? group.items : [];
-        return items.length > 0 || group.status === "warning" || group.status === "blocked";
+        return items.length > 0;
       });
       if (nodes.assetListHeading) {
         nodes.assetListHeading.textContent = `资产列表 (${inventory.summary.totalItems})`;
@@ -744,7 +744,6 @@ export function createMultiFormatDesktopPreviewController({
     section.dataset.role = "AssetInventoryGroup";
     section.dataset.group = group.id;
     section.dataset.status = group.status;
-    section.dataset.empty = items.length === 0 ? "true" : "false";
     section.setAttribute("role", "group");
     const groupLabel = rowLabel(group.label, `${group.count} 项`);
     section.title = groupLabel;

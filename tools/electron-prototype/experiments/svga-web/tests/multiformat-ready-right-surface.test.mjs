@@ -467,8 +467,9 @@ test("ready workspace right surface keeps tokenized density and containment cont
   assert.match(components, /\.assetRow \.badge\s*\{[^}]*text-overflow:\s*ellipsis/su);
   assert.match(modules, /\.assetFilterTabs\[data-presentation="summary"\]\s*\{[^}]*flex-wrap:\s*wrap/su);
   assert.match(modules, /\.assetSummaryItem\[data-summary-id="all"\]\s*\{[^}]*background:\s*var\(--asv-asset-filter-tab-selected-bg\)/su);
-  assert.match(modules, /\.assetGroup\[data-empty="true"\] \.assetGroupHeader\s*\{[^}]*opacity:\s*var\(--asv-asset-group-empty-opacity\)/su);
   assert.match(modules, /\.assetGroupTitle,[\s\S]*?\.assetGroupCount\s*\{[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap/su);
+  assert.match(modules, /\.assetGroupHeader\s*\{[^}]*justify-content:\s*flex-start/su);
+  assert.match(modules, /\.assetGroupTitle\s*\{[^}]*flex:\s*0 1 auto/su);
   assert.doesNotMatch(modules, /\.assetGroup\[data-status="(?:warning|blocked)"\] \.assetGroupHeader/su);
   assert.match(modules, /\.rightSurfaceBody\s*\{[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto/su);
   assert.match(modules, /\.recentClearButton:disabled\s*\{[^}]*visibility:\s*hidden/su);

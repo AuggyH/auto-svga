@@ -1073,13 +1073,9 @@ canvas {
   display: flex;
   gap: var(--asv-asset-group-header-gap);
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-width: 0;
   padding: var(--asv-asset-group-header-padding-block) var(--asv-asset-group-header-padding-inline);
-}
-
-.assetGroup[data-empty="true"] .assetGroupHeader {
-  opacity: var(--asv-asset-group-empty-opacity);
 }
 
 .assetGroupTitle,
@@ -1092,6 +1088,7 @@ canvas {
 }
 
 .assetGroupTitle {
+  flex: 0 1 auto;
   color: var(--asv-asset-group-title-color);
   font-size: var(--asv-asset-group-title-size);
   font-weight: var(--asv-asset-group-title-weight);
