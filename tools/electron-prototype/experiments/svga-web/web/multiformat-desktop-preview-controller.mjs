@@ -638,7 +638,10 @@ export function createMultiFormatDesktopPreviewController({
     const rightPanel = projectMultiFormatRightPanel(model);
     const inventory = rightPanel.assetInventory;
     if (inventory?.groups?.length) {
-      const groups = inventory.groups.filter((group) => group.items?.length > 0);
+      const groups = inventory.groups.filter((group) => {
+        const items = Array.isArray(group.items) ? group.items : [];
+        return items.length > 0 || group.status === "warning" || group.status === "blocked";
+      });
       if (nodes.assetListHeading) {
         nodes.assetListHeading.textContent = `资产列表 (${inventory.summary.totalItems})`;
       }
@@ -708,11 +711,13 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function createAssetGroup(group) {
+    const items = Array.isArray(group.items) ? group.items : [];
     const section = document.createElement("section");
     section.className = "assetGroup";
     section.dataset.role = "AssetInventoryGroup";
     section.dataset.group = group.id;
     section.dataset.status = group.status;
+    section.dataset.empty = items.length === 0 ? "true" : "false";
     section.setAttribute("role", "group");
     const statusCopy = groupStatusCopy(group);
     const groupLabel = rowLabel(group.label, statusCopy, `${group.count} 项`);
@@ -721,6 +726,8 @@ export function createMultiFormatDesktopPreviewController({
 
     const heading = document.createElement("header");
     heading.className = "assetGroupHeader";
+    heading.dataset.status = group.status;
+    heading.setAttribute("aria-label", groupLabel);
     heading.title = groupLabel;
     heading.innerHTML = `
       <span class="rowText"><strong>${escapeHtml(group.label)}</strong>${statusCopy ? `<span>${escapeHtml(statusCopy)}</span>` : ""}</span>
@@ -730,7 +737,7 @@ export function createMultiFormatDesktopPreviewController({
     const list = document.createElement("div");
     list.className = "assetGroupList";
     list.setAttribute("role", "list");
-    list.replaceChildren(...group.items.map(createInventoryItemRow));
+    list.replaceChildren(...items.map(createInventoryItemRow));
     section.replaceChildren(heading, list);
     return section;
   }
@@ -807,11 +814,18 @@ export function createMultiFormatDesktopPreviewController({
         message: entry.message
       }))
     ];
+    nodes.findingList.setAttribute("role", "list");
+    nodes.findingList.setAttribute("aria-label", "优化");
     nodes.findingList.replaceChildren(...issues.map((issue) => {
       const row = document.createElement("article");
       row.className = "findingRow";
+      row.dataset.component = "FindingRow";
       row.dataset.severity = issue.severity || "warning";
       row.dataset.disposition = issueDisposition(issue.severity);
+      row.setAttribute("role", "listitem");
+      const label = rowLabel(issue.message || "");
+      row.title = label;
+      row.setAttribute("aria-label", label);
       row.innerHTML = `<div><strong>${escapeHtml(issue.message || "")}</strong></div>`;
       return row;
     }));

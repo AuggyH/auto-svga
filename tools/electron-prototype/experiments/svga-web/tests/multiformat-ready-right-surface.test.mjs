@@ -455,6 +455,8 @@ test("ready workspace right surface keeps tokenized density and containment cont
   ].map((file) => readFile(path.join(experimentRoot, "web", file), "utf8")));
 
   assert.match(tokens, /--asv-component-asset-summary-column-gap:/u);
+  assert.match(tokens, /--asv-component-asset-group-header-warning-background:/u);
+  assert.match(tokens, /--asv-component-asset-group-header-blocked-background:/u);
   assert.match(tokens, /--asv-component-row-action-disabled-opacity:/u);
   assert.match(tokens, /:root\[data-appearance="dark"\]/u);
   assert.match(atoms, /\.rowText\s*\{[^}]*overflow:\s*hidden/su);
@@ -465,6 +467,9 @@ test("ready workspace right surface keeps tokenized density and containment cont
   assert.match(molecules, /\.replacementRowActions\s*\{[^}]*max-width:\s*100%/su);
   assert.match(components, /\.assetRow \.badge\s*\{[^}]*text-overflow:\s*ellipsis/su);
   assert.match(modules, /\.assetFilterTabs\[data-presentation="summary"\]\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/su);
+  assert.match(modules, /\.assetGroup\[data-status="warning"\] \.assetGroupHeader\s*\{[^}]*background:\s*var\(--asv-asset-group-header-warning-bg\)/su);
+  assert.match(modules, /\.assetGroup\[data-status="blocked"\] \.assetGroupHeader\s*\{[^}]*background:\s*var\(--asv-asset-group-header-blocked-bg\)/su);
+  assert.match(modules, /\.assetGroup\[data-empty="true"\] \.assetGroupHeader\s*\{[^}]*opacity:\s*var\(--asv-asset-group-empty-opacity\)/su);
   assert.match(modules, /\.assetGroupHeader \.rowText\s*\{[^}]*overflow:\s*hidden/su);
   assert.match(modules, /\.rightSurfaceBody\s*\{[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto/su);
   assert.match(modules, /\.recentClearButton:disabled\s*\{[^}]*visibility:\s*hidden/su);

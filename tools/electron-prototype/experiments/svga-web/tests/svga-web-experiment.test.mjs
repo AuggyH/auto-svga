@@ -3707,6 +3707,14 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
                 pathRedacted: true
               }
             ]
+          },
+          {
+            id: "format_diagnostics",
+            label: "格式诊断",
+            count: 0,
+            replaceableCount: 0,
+            status: "warning",
+            items: []
           }
         ],
         summary: {
@@ -3734,7 +3742,15 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "daily-ui" }), true);
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "daily-ui", result }), true);
 
-    const [imageGroup, capabilityGroup] = nodes.assetList.children;
+    const [imageGroup, capabilityGroup, diagnosticGroup] = nodes.assetList.children;
+    assert.equal(nodes.assetList.children.length, 3);
+    assert.equal(imageGroup.dataset.empty, "false");
+    assert.equal(capabilityGroup.dataset.empty, "false");
+    assert.equal(diagnosticGroup.dataset.status, "warning");
+    assert.equal(diagnosticGroup.dataset.empty, "true");
+    assert.match(diagnosticGroup.children[0].innerHTML, /存在不支持项/u);
+    assert.equal(diagnosticGroup.children[1].children.length, 0);
+
     const [availableRow, replaceableRow, missingRow] = imageGroup.children[1].children;
     const [unsupportedRow, blockedRow] = capabilityGroup.children[1].children;
     assert.equal(availableRow.dataset.status, "available");
@@ -3749,6 +3765,9 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.match(blockedRow.innerHTML, /class="badge fail"[^>]*>阻断</u);
 
     const [issueRow] = nodes.findingList.children;
+    assert.equal(nodes.findingList.attributes.role, "list");
+    assert.equal(issueRow.attributes.role, "listitem");
+    assert.equal(issueRow.dataset.component, "FindingRow");
     assert.equal(issueRow.dataset.disposition, "reviewOnly");
     assert.match(issueRow.innerHTML, /<div><strong>存在不支持能力<\/strong><\/div>/u);
   } finally {

@@ -1037,7 +1037,20 @@ canvas {
   align-items: center;
   justify-content: space-between;
   min-width: 0;
-  padding: var(--asv-asset-group-header-padding-block) 0;
+  padding: var(--asv-asset-group-header-padding-block) var(--asv-asset-group-header-padding-inline);
+  border-radius: var(--asv-asset-group-header-radius);
+}
+
+.assetGroup[data-status="warning"] .assetGroupHeader {
+  background: var(--asv-asset-group-header-warning-bg);
+}
+
+.assetGroup[data-status="blocked"] .assetGroupHeader {
+  background: var(--asv-asset-group-header-blocked-bg);
+}
+
+.assetGroup[data-empty="true"] .assetGroupHeader {
+  opacity: var(--asv-asset-group-empty-opacity);
 }
 
 .assetGroupHeader .rowText {

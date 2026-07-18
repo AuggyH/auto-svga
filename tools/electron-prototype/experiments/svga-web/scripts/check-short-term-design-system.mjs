@@ -561,7 +561,8 @@ async function main() {
     /--asv-component-asset-group-gap:\s*var\(--asv-space-1\)/.test(tokens)
       && /--asv-asset-group-gap:\s*var\(--asv-component-asset-group-gap\)/.test(tokens)
       && /\.assetGroup\s*\{[\s\S]*gap:\s*var\(--asv-asset-group-gap\)/.test(modules)
-      && /\.assetGroupHeader\s*\{[\s\S]*padding:\s*var\(--asv-asset-group-header-padding-block\) 0/.test(modules));
+      && /--asv-asset-group-header-padding-inline:\s*var\(--asv-component-asset-group-header-padding-inline\)/.test(tokens)
+      && /\.assetGroupHeader\s*\{[\s\S]*padding:\s*var\(--asv-asset-group-header-padding-block\) var\(--asv-asset-group-header-padding-inline\)/.test(modules));
 
   const rightSurfaceContractChecks = [
     /--asv-component-right-panel-width:\s*360px/.test(tokens),
