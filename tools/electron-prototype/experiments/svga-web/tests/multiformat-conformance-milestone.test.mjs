@@ -22,10 +22,11 @@ import {
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const {
-  DARWIN_MULTI_FORMAT_PICKER_JXA,
+  DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,
   parseDarwinPickerOutput,
+  resolveDarwinMultiFormatPickerHelperPath,
   runDarwinMultiFormatPicker,
   validateMultiFormatPickerSelection
 } = require("../multiformat-native-picker.cjs");
@@ -150,20 +151,42 @@ test("host chooser cancellation cannot enter loading or resize the Launch window
   assert.match(openBody, /resolveMultiFormatChooserOutcome/u);
 });
 
-test("macOS multi-format picker uses bounded Standard Additions and validates selection in the host", async () => {
+test("macOS multi-format picker uses the packaged AppKit helper and validates selection in the host", async () => {
   const mainSource = source("main.cjs");
   const pickerSource = source("multiformat-native-picker.cjs");
+  const helperSource = source("native/macos/AutoSvgaOpenPanel.swift");
   const openStart = mainSource.indexOf("async function openMultiFormatFile()");
   const openEnd = mainSource.indexOf("async function openDroppedMultiFormatFile", openStart);
   const openBody = mainSource.slice(openStart, openEnd);
 
   assert.match(openBody, /chooseMultiFormatLocalFile/u);
   assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
-  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /Application\.currentApplication\(\)/u);
-  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /includeStandardAdditions = true/u);
-  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /chooseFile\(\{[\s\S]*ofType:\s*\["public\.data"\]/u);
-  assert.doesNotMatch(DARWIN_MULTI_FORMAT_PICKER_JXA, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
-  assert.doesNotMatch(DARWIN_MULTI_FORMAT_PICKER_JXA, /System Events|function run\(argv\)/u);
+  assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME, "asv-open-panel");
+  assert.match(helperSource, /import AppKit/u);
+  assert.match(helperSource, /NSOpenPanel\(\)/u);
+  assert.match(helperSource, /allowedContentTypes\s*=\s*\[\]/u);
+  assert.match(helperSource, /allowedFileTypes\s*=\s*nil/u);
+  assert.match(helperSource, /allowsOtherFileTypes\s*=\s*true/u);
+  assert.match(helperSource, /canChooseFiles\s*=\s*true/u);
+  assert.match(helperSource, /canChooseDirectories\s*=\s*false/u);
+  assert.match(helperSource, /runModal\(\)/u);
+  assert.doesNotMatch(helperSource, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
+  assert.doesNotMatch(pickerSource, /osascript|chooseFile|System Events/u);
+
+  assert.equal(
+    resolveDarwinMultiFormatPickerHelperPath({
+      moduleDirectory: "/repo/tools/electron-prototype/experiments/svga-web",
+      resourcesPath: "/Electron/Resources"
+    }),
+    "/repo/tools/electron-prototype/experiments/svga-web/.runtime/native/asv-open-panel"
+  );
+  assert.equal(
+    resolveDarwinMultiFormatPickerHelperPath({
+      moduleDirectory: "/Applications/Auto SVGA.app/Contents/Resources/app.asar",
+      resourcesPath: "/Applications/Auto SVGA.app/Contents/Resources"
+    }),
+    "/Applications/Auto SVGA.app/Contents/Resources/native/asv-open-panel"
+  );
 
   const options = createMultiFormatOpenDialogOptions("darwin");
   assert.deepEqual(options.filters[0].extensions, ["svga", "json", "mp4"]);
@@ -189,10 +212,9 @@ test("macOS multi-format picker uses bounded Standard Additions and validates se
   assert.deepEqual(await runDarwinMultiFormatPicker(async (command, args, options) => {
     calls.push({ command, args, options });
     return { stdout: JSON.stringify({ status: "selected", filePath: "/private/tmp/example.svga" }) };
-  }), { status: "selected", filePath: "/private/tmp/example.svga" });
-  assert.equal(calls[0].command, "/usr/bin/osascript");
-  assert.deepEqual(calls[0].args.slice(0, 3), ["-l", "JavaScript", "-e"]);
-  assert.equal(calls[0].args.length, 4);
+  }, "/private/runtime/native/asv-open-panel"), { status: "selected", filePath: "/private/tmp/example.svga" });
+  assert.equal(calls[0].command, "/private/runtime/native/asv-open-panel");
+  assert.deepEqual(calls[0].args, []);
   assert.doesNotMatch(calls[0].args.join("\n"), /\/private\/tmp\/example\.svga/u);
   assert.deepEqual(parseDarwinPickerOutput('{"status":"cancelled"}\n'), { status: "cancelled" });
   assert.equal(parseDarwinPickerOutput("not-json").code, "file_picker_failed");

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
-import { copyFile, link, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, copyFile, link, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
@@ -24,6 +24,8 @@ import {
   distributionChannel,
   finalAcceptanceOwner,
   macosPackagerArgs,
+  nativePickerHelperName,
+  nativePickerHelperSourceRelativePath,
   ownerVisibleLabel,
   packagedRuntimeDependencies,
   productName,
@@ -1382,6 +1384,10 @@ async function createPackagedProofFixture({
   packageVersionOverrides = {},
   omitWindowPlacementSourceFiles = [],
   windowPlacementSourceTransforms = {},
+  omitNativePickerHelper = false,
+  nativePickerHelperMode = 0o755,
+  nativePickerHelperBytes = Buffer.from("fixture-native-picker-helper\n"),
+  nativePickerHelperManifestOverrides = {},
   plistTransform = (plist) => plist
 }) {
   const appBundle = path.join(root, "Auto SVGA.app");
@@ -1411,6 +1417,21 @@ async function createPackagedProofFixture({
     await mkdir(path.dirname(entryPath), { recursive: true });
     if (relativeEntry === ".runtime/build-info.json") {
       await writeFile(entryPath, `${JSON.stringify({ schemaVersion: 1, buildCommit, source: "test-package-proof" }, null, 2)}\n`);
+    } else if (relativeEntry === ".runtime/manifest.json") {
+      const sourceSha256 = createHash("sha256")
+        .update(await readFile(path.join(experimentRoot, nativePickerHelperSourceRelativePath)))
+        .digest("hex");
+      await writeFile(entryPath, `${JSON.stringify({
+        runtime: "test-package-proof",
+        nativePickerHelper: {
+          source: nativePickerHelperSourceRelativePath,
+          sourceSha256,
+          runtimePath: `native/${nativePickerHelperName}`,
+          executableSha256: createHash("sha256").update(nativePickerHelperBytes).digest("hex"),
+          sizeBytes: nativePickerHelperBytes.byteLength,
+          ...nativePickerHelperManifestOverrides
+        }
+      }, null, 2)}\n`);
     } else if (relativeEntry.endsWith("/package.json")) {
       const packageName = relativeEntry.split("/node_modules/")[1].replace(/\/package\.json$/, "");
       const expected = packagedRuntimeDependencies.find((dependency) => dependency.packageName === packageName)?.expectedVersion;
@@ -1435,6 +1456,12 @@ async function createPackagedProofFixture({
   const asar = requireFromPrototype("@electron/asar");
   const packagedAsarPath = path.join(resources, "app.asar");
   await asar.createPackage(asarSource, packagedAsarPath);
+  if (!omitNativePickerHelper) {
+    const helperPath = path.join(resources, "native", nativePickerHelperName);
+    await mkdir(path.dirname(helperPath), { recursive: true });
+    await writeFile(helperPath, nativePickerHelperBytes);
+    await chmod(helperPath, nativePickerHelperMode);
+  }
   return {
     appBundle,
     packagedAsarPath,
@@ -1489,6 +1516,7 @@ test("macOS internal package avoids unsupported Finder .svga document associatio
   assert.ok(packagerArgs.includes(`--build-version=${bundleVersion}`));
   assert.ok(packagerArgs.includes("--icon=packaging/macos/app-icon"));
   assert.ok(packagerArgs.some((arg) => arg === "--extend-info=packaging/macos/Info.plist"));
+  assert.ok(packagerArgs.includes("--extra-resource=.runtime/native"));
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-jit/);
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-unsigned-executable-memory/);
   assert.match(entitlements, /com\.apple\.security\.cs\.disable-library-validation/);
@@ -1729,6 +1757,8 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
     });
     const closure = assertPackagedRuntimeClosure(valid.packagedAsarPath, expectedBuildCommit);
     assert.equal(closure.validated, true);
+    assert.equal(closure.nativePickerHelper.validated, true);
+    assert.equal(closure.nativePickerHelper.executable, true);
     assert.deepEqual(
       closure.dependencies
         .filter((dependency) => dependency.expectedVersion)
@@ -1801,6 +1831,40 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
       () => assertPackagedRuntimeClosure(staleVersion.packagedAsarPath, expectedBuildCommit),
       /video-animation-player version 1\.0\.4 does not match 1\.0\.5/
     );
+
+    const missingHelper = await createPackagedProofFixture({
+      root: path.join(root, "missing-native-picker"),
+      buildCommit: expectedBuildCommit,
+      omitNativePickerHelper: true
+    });
+    assert.throws(
+      () => assertPackagedRuntimeClosure(missingHelper.packagedAsarPath, expectedBuildCommit),
+      /native picker helper is missing or unreadable/
+    );
+
+    const nonExecutableHelper = await createPackagedProofFixture({
+      root: path.join(root, "non-executable-native-picker"),
+      buildCommit: expectedBuildCommit,
+      nativePickerHelperMode: 0o644
+    });
+    assert.throws(
+      () => assertPackagedRuntimeClosure(nonExecutableHelper.packagedAsarPath, expectedBuildCommit),
+      /native picker helper is not one executable regular file/
+    );
+
+    const tamperedHelper = await createPackagedProofFixture({
+      root: path.join(root, "tampered-native-picker"),
+      buildCommit: expectedBuildCommit,
+      nativePickerHelperBytes: Buffer.from("tampered-native-picker-helper\n"),
+      nativePickerHelperManifestOverrides: {
+        executableSha256: "0".repeat(64),
+        sizeBytes: 1
+      }
+    });
+    assert.throws(
+      () => assertPackagedRuntimeClosure(tamperedHelper.packagedAsarPath, expectedBuildCommit),
+      /native picker helper hash does not match runtime manifest/
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -1826,14 +1890,16 @@ test("macOS Info.plist security audit rejects arbitrary network, unused permissi
   assert.ok(audit.finderDocumentAssociations.includes("svga-filename-extension"));
 });
 
-test("macOS native picker proof binds the Standard Additions process and rejects disabled selection before autoplay", async () => {
+test("macOS native picker proof binds the packaged AppKit helper and rejects disabled selection before autoplay", async () => {
   const source = await readFile(
     path.join(experimentRoot, "scripts/run-macos-native-multiformat-picker-proof.mjs"),
     "utf8"
   );
   assert.match(source, /__autoSvgaShortTermActions\.openFromHostDialog/);
   assert.match(source, /waitForNewPickerPid/);
-  assert.match(source, /exactProcessPids\("osascript"\)/);
+  assert.match(source, /exactProcessPids\(nativePickerHelperName\)/);
+  assert.match(source, /packagedNativePickerHelperPath/);
+  assert.match(source, /outside the executable regular-file contract/);
   assert.match(source, /events\.keystroke\(filePath\)/);
   assert.match(source, /selectionMethod: "go-to-exact-file"/);
   assert.doesNotMatch(source, /entireContents|bounded-keyboard-basename|exact-ax-row/);

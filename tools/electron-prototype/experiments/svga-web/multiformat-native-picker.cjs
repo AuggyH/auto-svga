@@ -7,23 +7,7 @@ const { promisify } = require("node:util");
 
 const SUPPORTED_MULTI_FORMAT_EXTENSIONS = new Set([".svga", ".json", ".mp4"]);
 const execFileAsync = promisify(execFile);
-const DARWIN_MULTI_FORMAT_PICKER_JXA = String.raw`
-function run() {
-  const app = Application.currentApplication();
-  app.includeStandardAdditions = true;
-  try {
-    const selected = String(app.chooseFile({
-      withPrompt: "打开文件",
-      ofType: ["public.data"]
-    }));
-    return JSON.stringify({ status: "selected", filePath: selected });
-  } catch (error) {
-    if (Number(error.errorNumber) === -128) {
-      return JSON.stringify({ status: "cancelled" });
-    }
-    return JSON.stringify({ status: "failed" });
-  }
-}`;
+const DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME = "asv-open-panel";
 
 function createMultiFormatOpenDialogOptions() {
   return {
@@ -78,11 +62,25 @@ function parseDarwinPickerOutput(stdout) {
   return failedPickerResult();
 }
 
-async function runDarwinMultiFormatPicker(execute = execFileAsync) {
+function resolveDarwinMultiFormatPickerHelperPath({
+  moduleDirectory = __dirname,
+  resourcesPath = process.resourcesPath
+} = {}) {
+  const packaged = moduleDirectory.endsWith(`${path.sep}app.asar`)
+    || moduleDirectory.includes(`${path.sep}app.asar${path.sep}`);
+  return packaged
+    ? path.join(resourcesPath, "native", DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME)
+    : path.join(moduleDirectory, ".runtime", "native", DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME);
+}
+
+async function runDarwinMultiFormatPicker(
+  execute = execFileAsync,
+  helperPath = resolveDarwinMultiFormatPickerHelperPath()
+) {
   try {
     const { stdout } = await execute(
-      "/usr/bin/osascript",
-      ["-l", "JavaScript", "-e", DARWIN_MULTI_FORMAT_PICKER_JXA],
+      helperPath,
+      [],
       { encoding: "utf8", maxBuffer: 32768 }
     );
     return parseDarwinPickerOutput(stdout);
@@ -113,10 +111,11 @@ async function chooseMultiFormatLocalFile({
 }
 
 module.exports = {
-  DARWIN_MULTI_FORMAT_PICKER_JXA,
+  DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME,
   chooseMultiFormatLocalFile,
   createMultiFormatOpenDialogOptions,
   parseDarwinPickerOutput,
+  resolveDarwinMultiFormatPickerHelperPath,
   runDarwinMultiFormatPicker,
   validateMultiFormatPickerSelection
 };

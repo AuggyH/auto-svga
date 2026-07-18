@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -36,6 +36,10 @@ const plistPath = path.join(experimentRoot, "packaging/macos/Info.plist");
 const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements.plist");
 const appIconSourcePath = path.join(experimentRoot, "packaging/macos/app-icon-source.png");
 const appIconPath = path.join(experimentRoot, "packaging/macos/app-icon.icns");
+export const nativePickerHelperName = "asv-open-panel";
+export const nativePickerHelperSourceRelativePath = "native/macos/AutoSvgaOpenPanel.swift";
+export const nativePickerHelperPackagedRelativePath = `native/${nativePickerHelperName}`;
+const nativePickerHelperSourcePath = path.join(experimentRoot, nativePickerHelperSourceRelativePath);
 export const windowPlacementPackagedSourceFiles = [
   "main.cjs",
   "acceptance-startup-placement-proof.cjs",
@@ -128,6 +132,7 @@ export const packagedRuntimeDependencies = [
 ];
 export const requiredPackagedRuntimeEntries = [
   "/.runtime/build-info.json",
+  "/.runtime/manifest.json",
   ...packagedRuntimeDependencies.flatMap((dependency) => (
     dependency.requiredEntries.map((entry) => `/.runtime/node_modules/${dependency.packageName}/${entry}`)
   ))
@@ -147,6 +152,7 @@ export function macosPackagerArgs(outputRoot = ".artifacts/internal-trial") {
     "--overwrite",
     "--prune=true",
     "--asar",
+    "--extra-resource=.runtime/native",
     `--icon=${path.relative(experimentRoot, appIconPath).replace(/\.icns$/, "")}`,
     `--extend-info=${path.relative(experimentRoot, plistPath)}`,
     "--ignore=^/(tests|scripts|\\.artifacts)($|/)"
@@ -443,6 +449,10 @@ export function assertPackagedRuntimeClosure(packagedAsarPath, expectedBuildComm
   return closure;
 }
 
+export function packagedNativePickerHelperPath(packagedAsarPath) {
+  return path.join(path.dirname(packagedAsarPath), nativePickerHelperPackagedRelativePath);
+}
+
 function skippedPackagedRuntimeClosure(packagedAsarPath, skippedReason) {
   return {
     asarPath: path.relative(repoRoot, packagedAsarPath),
@@ -456,6 +466,17 @@ function skippedPackagedRuntimeClosure(packagedAsarPath, skippedReason) {
     },
     requiredEntries: requiredPackagedRuntimeEntries,
     missingEntries: [],
+    nativePickerHelper: {
+      validated: false,
+      source: nativePickerHelperSourceRelativePath,
+      sourceSha256: null,
+      runtimePath: `native/${nativePickerHelperName}`,
+      packagedPath: path.relative(repoRoot, packagedNativePickerHelperPath(packagedAsarPath)),
+      executableSha256: null,
+      executable: false,
+      sizeBytes: null,
+      skippedReason
+    },
     dependencies: packagedRuntimeDependencies.map((dependency) => ({
       packageName: dependency.packageName,
       expectedVersion: dependency.expectedVersion ?? null,
@@ -487,6 +508,7 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
     for (const entry of missingEntries) findings.push(`missing ${entry}`);
 
     const buildInfo = readAsarJson(asar, packagedAsarPath, ".runtime/build-info.json");
+    const runtimeManifest = readAsarJson(asar, packagedAsarPath, ".runtime/manifest.json");
     const buildCommit = typeof buildInfo.buildCommit === "string" ? buildInfo.buildCommit : null;
     const source = typeof buildInfo.source === "string" ? buildInfo.source : null;
     if (!buildCommit) findings.push("packaged runtime build-info is missing buildCommit");
@@ -518,6 +540,57 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
         error
       };
     });
+    const helperManifest = runtimeManifest?.nativePickerHelper;
+    const helperPath = packagedNativePickerHelperPath(packagedAsarPath);
+    const expectedSourceSha256 = createHash("sha256").update(readFileSync(nativePickerHelperSourcePath)).digest("hex");
+    let nativePickerHelper = {
+      ...base.nativePickerHelper,
+      sourceSha256: typeof helperManifest?.sourceSha256 === "string" ? helperManifest.sourceSha256 : null,
+      executableSha256: null,
+      executable: false,
+      sizeBytes: null,
+      skippedReason: undefined
+    };
+    if (helperManifest?.source !== nativePickerHelperSourceRelativePath) {
+      findings.push("native picker helper source binding is missing or stale");
+    }
+    if (helperManifest?.sourceSha256 !== expectedSourceSha256) {
+      findings.push("native picker helper source hash does not match source");
+    }
+    if (helperManifest?.runtimePath !== `native/${nativePickerHelperName}`) {
+      findings.push("native picker helper runtime path is missing or stale");
+    }
+    try {
+      const link = lstatSync(helperPath);
+      const helperStats = statSync(helperPath);
+      const executableSha256 = createHash("sha256").update(readFileSync(helperPath)).digest("hex");
+      const executable = link.isFile()
+        && !link.isSymbolicLink()
+        && helperStats.isFile()
+        && helperStats.size > 0
+        && (helperStats.mode & 0o111) !== 0;
+      if (!executable) findings.push("packaged native picker helper is not one executable regular file");
+      if (helperManifest?.executableSha256 !== executableSha256) {
+        findings.push("packaged native picker helper hash does not match runtime manifest");
+      }
+      if (helperManifest?.sizeBytes !== helperStats.size) {
+        findings.push("packaged native picker helper size does not match runtime manifest");
+      }
+      nativePickerHelper = {
+        ...nativePickerHelper,
+        validated: executable
+          && helperManifest?.source === nativePickerHelperSourceRelativePath
+          && helperManifest?.sourceSha256 === expectedSourceSha256
+          && helperManifest?.runtimePath === `native/${nativePickerHelperName}`
+          && helperManifest?.executableSha256 === executableSha256
+          && helperManifest?.sizeBytes === helperStats.size,
+        executableSha256,
+        executable,
+        sizeBytes: helperStats.size
+      };
+    } catch {
+      findings.push("packaged native picker helper is missing or unreadable");
+    }
 
     return {
       ...base,
@@ -529,6 +602,7 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
         error: Boolean(buildCommit) ? null : "packaged runtime build-info is missing buildCommit"
       },
       missingEntries,
+      nativePickerHelper,
       dependencies,
       findings
     };

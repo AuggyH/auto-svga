@@ -5,6 +5,11 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  nativePickerHelperName,
+  packagedNativePickerHelperPath
+} from "./macos-package-proof.mjs";
+
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const requireFromPrototype = createRequire(path.join(experimentRoot, "../..", "package.json"));
@@ -74,7 +79,19 @@ function validateAppBundleAt(appBundle, sourceHead) {
   if (buildInfo.buildCommit !== sourceHead || buildInfo.productMilestoneId !== "0.2-multiformat-preview") {
     throw new Error("Packaged App build identity does not match the exact source head and product milestone.");
   }
-  return { appBundle, executable, infoPlistPath, asarPath, buildInfo };
+  const pickerHelperPath = packagedNativePickerHelperPath(asarPath);
+  const pickerHelperLink = lstatSync(pickerHelperPath);
+  const pickerHelperStats = statSync(pickerHelperPath);
+  if (
+    !pickerHelperLink.isFile()
+    || pickerHelperLink.isSymbolicLink()
+    || !pickerHelperStats.isFile()
+    || pickerHelperStats.size <= 0
+    || (pickerHelperStats.mode & 0o111) === 0
+  ) {
+    throw new Error("Packaged App native picker helper is outside the executable regular-file contract.");
+  }
+  return { appBundle, executable, infoPlistPath, asarPath, buildInfo, pickerHelperPath };
 }
 
 function assertNoAutoSvgaProcess() {
@@ -350,10 +367,10 @@ function exactProcessPids(name) {
 
 async function waitForNewPickerPid(beforePids) {
   const before = new Set(beforePids);
-  return waitFor(() => exactProcessPids("osascript").find((pid) => !before.has(pid)), {
+  return waitFor(() => exactProcessPids(nativePickerHelperName).find((pid) => !before.has(pid)), {
     timeoutMs: 8000,
     intervalMs: 50,
-    label: "Standard Additions picker process"
+    label: "packaged AppKit picker helper process"
   });
 }
 
@@ -395,7 +412,7 @@ function rendererReadyForFormat(snapshot, row) {
 }
 
 async function proveRow(client, row) {
-  const beforePickerPids = exactProcessPids("osascript");
+  const beforePickerPids = exactProcessPids(nativePickerHelperName);
   await client.evaluate("void window.__autoSvgaShortTermActions.openFromHostDialog()");
   const pickerPid = await waitForNewPickerPid(beforePickerPids);
   const picker = runNativePanelSelection(pickerPid, row.filePath);
@@ -448,6 +465,9 @@ async function main() {
   const rows = expectedRows.map(validateRegularInput);
   const app = validateAppBundleAt(requiredAbsolutePath("AUTO_SVGA_NATIVE_PICKER_APP"), sourceHead);
   assertNoAutoSvgaProcess();
+  if (exactProcessPids(nativePickerHelperName).length > 0) {
+    throw new Error("Another native picker helper owns the runtime slot.");
+  }
   mkdirSync(artifacts.userDataPath, { mode: 0o700 });
   const childEnv = { ...process.env };
   delete childEnv.AUTO_SVGA_PRODUCT_ARTIFACTS;
@@ -479,7 +499,7 @@ async function main() {
     for (const row of rows) results.push(await proveRow(client, row));
 
     const beforeCancel = await client.evaluate(rendererSnapshotExpression);
-    const beforeCancelPickerPids = exactProcessPids("osascript");
+    const beforeCancelPickerPids = exactProcessPids(nativePickerHelperName);
     await client.evaluate("void window.__autoSvgaShortTermActions.openFromHostDialog()");
     const cancelPickerPid = await waitForNewPickerPid(beforeCancelPickerPids);
     const cancel = runNativePanelCancel(cancelPickerPid);
@@ -521,6 +541,13 @@ async function main() {
     }, null, 2));
   } finally {
     await closeProduct(client, child);
+    for (const pid of exactProcessPids(nativePickerHelperName)) {
+      try { process.kill(pid, "SIGTERM"); } catch {}
+    }
+    await waitFor(() => exactProcessPids(nativePickerHelperName).length === 0, {
+      timeoutMs: 5000,
+      label: "native picker helper cleanup"
+    });
     rmSync(artifacts.userDataPath, { recursive: true, force: true });
     assertNoAutoSvgaProcess();
     if (Number.isInteger(devToolsPort) && devToolsPort > 0) assertNoTcpListener(devToolsPort);
