@@ -786,17 +786,28 @@ async function main() {
     && /\.findingRow\[data-disposition="reviewOnly"\]/.test(components)
     && /\.findingRow\[data-disposition="unsupported"\]/.test(components)
     && /class="optimizationDetailActions"[\s\S]*data-action="run-optimization">一键优化<\/button>[\s\S]*data-action="close-optimization">放弃优化<\/button>/.test(page)
-    && /\.optimizationDetailActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)/.test(modules));
+    && /--asv-component-optimization-detail-header-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-optimization-detail-list-gap:\s*var\(--asv-space-2\)/.test(tokens)
+    && /--asv-component-optimization-detail-list-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-optimization-detail-actions-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /#panelOptimization > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/s.test(modules)
+    && /#findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/s.test(modules)
+    && /\.optimizationDetailActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)[\s\S]*padding: var\(--asv-optimization-detail-actions-padding-block\) 0/.test(modules));
   record("optimization-running-uses-figma-progress-contract", /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/.test(page)
     && /export function renderOptimizationRunningState/.test(optimizationRenderer)
-    && /--asv-component-optimization-progress-width:\s*312px/.test(tokens)
+    && /--asv-component-optimization-progress-width:\s*var\(--asv-component-right-surface-content-width\)/.test(tokens)
+    && /--asv-component-optimization-progress-detail-size:\s*var\(--asv-type-size-micro\)/.test(tokens)
     && /--asv-component-optimization-progress-track-height:\s*4px/.test(tokens)
     && /\.optimizationProgressBarFill\s*\{[\s\S]*animation: optimization-progress-indeterminate/.test(modules)
     && /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/.test(modules));
   record("optimization-result-metrics-use-figma-component-contract", /data-component="OptimizationResultCard" data-role="OptimizationMetricCell"/.test(baseCss + modules + components + renderModel)
     && /--asv-optimization-metric-min-height:\s*var\(--asv-component-optimization-metric-min-height\)/.test(tokens)
+    && /--asv-component-optimization-metric-improved-value-size:\s*var\(--asv-type-size-body\)/.test(tokens)
+    && /--asv-component-optimization-metric-arrow-size:\s*var\(--asv-type-size-micro\)/.test(tokens)
     && /gap:\s*var\(--asv-optimization-metric-gap\)/.test(modules)
-    && /padding:\s*var\(--asv-optimization-metric-padding-block\) var\(--asv-optimization-metric-padding-inline\)/.test(modules));
+    && /padding:\s*var\(--asv-optimization-metric-padding-block\) var\(--asv-optimization-metric-padding-inline\)/.test(modules)
+    && /\.optimizationMetricCell\[data-improved="true"\] \.optimizationMetricValue em\s*\{[^}]*font-size: var\(--asv-optimization-metric-improved-value-size\)/s.test(modules)
+    && /\.optimizationMetricValue i\s*\{[^}]*font-size: var\(--asv-optimization-metric-arrow-size\)/s.test(modules));
   record("optimization-actions-use-figma-r5-button-rhythm", /<div class="compareActions optimizationActions">/.test(compareModel)
     && /--asv-component-optimization-action-height:\s*30px/.test(tokens)
     && /--asv-component-optimization-action-radius:\s*var\(--asv-radius-sm\)/.test(tokens)

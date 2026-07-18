@@ -1197,7 +1197,7 @@ canvas {
   display: grid;
   gap: var(--asv-space-1);
   min-width: 0;
-  padding-bottom: var(--asv-file-header-padding-block);
+  padding: var(--asv-optimization-detail-header-padding-block) 0;
   border-bottom: var(--asv-right-panel-header-divider);
 }
 
@@ -1215,7 +1215,8 @@ canvas {
 
 .rightPanel[data-panel-state="optimization"] #findingList {
   order: 2;
-  padding-bottom: var(--asv-right-panel-section-gap);
+  gap: var(--asv-optimization-detail-list-gap);
+  padding: var(--asv-optimization-detail-list-padding-block) 0;
   border-bottom: var(--asv-right-panel-section-divider);
 }
 
@@ -1283,6 +1284,7 @@ canvas {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--asv-optimization-action-gap);
   min-width: 0;
+  padding: var(--asv-optimization-detail-actions-padding-block) 0;
 }
 
 .rightPanel[data-panel-state="optimization"] .optimizationDetailActions .toolbarButton {
@@ -1623,7 +1625,7 @@ canvas {
   opacity: var(--asv-optimization-metric-unit-opacity);
 }
 
-.optimizationMetricCell[data-improved="true"] .optimizationMetricValue {
+.optimizationMetricCell[data-improved="true"] .optimizationMetricValue em {
   font-size: var(--asv-optimization-metric-improved-value-size);
 }
 
@@ -1635,6 +1637,7 @@ canvas {
 .optimizationMetricValue i {
   flex: 0 0 auto;
   color: var(--asv-subtle);
+  font-size: var(--asv-optimization-metric-arrow-size);
 }
 
 .optimizationMetricValue em {

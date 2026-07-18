@@ -489,6 +489,8 @@ test("short-term optimization running state uses the Figma progress hierarchy wi
   assert.match(page, /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/u);
   assert.doesNotMatch(page, /优化执行中…\s*65%|\(2\/3\)/u);
   assert.match(tokens, /--asv-component-optimization-progress-track-height:\s*4px/u);
+  assert.match(tokens, /--asv-component-optimization-progress-width:\s*var\(--asv-component-right-surface-content-width\)/u);
+  assert.match(tokens, /--asv-component-optimization-progress-detail-size:\s*var\(--asv-type-size-micro\)/u);
   assert.match(tokens, /--asv-component-optimization-progress-label-size:\s*var\(--asv-type-size-footnote\)/u);
   assert.match(modules, /\.optimizationProgressBarFill\s*\{[\s\S]*animation:\s*optimization-progress-indeterminate/u);
   assert.match(modules, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/u);
@@ -666,12 +668,21 @@ test("short-term preview right surface exposes page-state trace semantics", asyn
 
 test("short-term optimization detail exposes the frozen action group and an explicit exit", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
   const { bindShortTermInteractionEvents } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-event-bindings.mjs")).href);
   const optimizationSection = page.match(/<section class="rightSurfaceBody" id="panelOptimization"[\s\S]*?<\/section>/)?.[0] ?? "";
 
   assert.match(optimizationSection, /class="optimizationDetailActions"/);
   assert.match(optimizationSection, /data-action="run-optimization">一键优化<\/button>/);
   assert.match(optimizationSection, /data-action="close-optimization">放弃优化<\/button>/);
+  assert.match(tokens, /--asv-component-optimization-detail-header-padding-block:\s*var\(--asv-space-3\)/u);
+  assert.match(tokens, /--asv-component-optimization-detail-list-gap:\s*var\(--asv-space-2\)/u);
+  assert.match(tokens, /--asv-component-optimization-detail-list-padding-block:\s*var\(--asv-space-3\)/u);
+  assert.match(tokens, /--asv-component-optimization-detail-actions-padding-block:\s*var\(--asv-space-3\)/u);
+  assert.match(modules, /#panelOptimization > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/su);
+  assert.match(modules, /#findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/su);
+  assert.match(modules, /\.optimizationDetailActions\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-actions-padding-block\) 0/su);
 
   const listeners = new Map();
   const listenerTarget = () => ({
@@ -1901,6 +1912,8 @@ test("short-term optimization result UI fails closed for no-benefit output", asy
     experimentRoot,
     "web/short-term-macos-compare-model.mjs"
   )).href);
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
 
   assert.equal(optimizationModel.optimizationResultTone({ status: "optimized" }), "success");
   assert.equal(optimizationModel.optimizationResultTone({ status: "tradeoff" }), "warning");
@@ -1927,6 +1940,11 @@ test("short-term optimization result UI fails closed for no-benefit output", asy
   assert.match(disabledHtml, /data-status="danger"/);
   assert.match(disabledHtml, /data-action="save-as" disabled>另存为 SVGA/);
   assert.match(disabledHtml, /data-action="save-overwrite" disabled>覆盖保存/);
+  assert.match(tokens, /--asv-component-optimization-metric-improved-value-size:\s*var\(--asv-type-size-body\)/u);
+  assert.match(tokens, /--asv-component-optimization-metric-arrow-size:\s*var\(--asv-type-size-micro\)/u);
+  assert.doesNotMatch(modules, /\.optimizationMetricCell\[data-improved="true"\] \.optimizationMetricValue\s*\{[^}]*font-size/su);
+  assert.match(modules, /\.optimizationMetricCell\[data-improved="true"\] \.optimizationMetricValue em\s*\{[^}]*font-size:\s*var\(--asv-optimization-metric-improved-value-size\)/su);
+  assert.match(modules, /\.optimizationMetricValue i\s*\{[^}]*font-size:\s*var\(--asv-optimization-metric-arrow-size\)/su);
 });
 
 test("short-term future compatibility guardrails keep current behavior bounded", async () => {
