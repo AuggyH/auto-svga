@@ -13,7 +13,7 @@ button {
   background: var(--asv-control-bg);
   color: var(--asv-text);
   cursor: default;
-  font-weight: 540;
+  font-weight: var(--asv-type-weight-medium);
   box-shadow: var(--asv-shadow-control);
   transition:
     background-color var(--asv-motion-duration-fast) ease,
@@ -46,7 +46,7 @@ button.primary,
   border-color: transparent;
   background: var(--asv-action);
   color: var(--asv-on-action);
-  font-weight: 620;
+  font-weight: var(--asv-type-weight-semibold);
   box-shadow: var(--asv-shadow-control-primary);
 }
 

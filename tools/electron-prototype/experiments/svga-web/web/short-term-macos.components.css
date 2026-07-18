@@ -110,7 +110,7 @@
   font-family: var(--asv-font);
   color: var(--asv-fact-cell-value-color);
   font-size: var(--asv-fact-cell-value-size);
-  font-weight: 650;
+  font-weight: var(--asv-type-weight-semibold);
   line-height: var(--asv-fact-cell-value-line-height);
 }
 
@@ -130,7 +130,7 @@
   grid-row: 1;
   color: var(--asv-fact-cell-label-color);
   font-size: var(--asv-fact-cell-label-size);
-  font-weight: 400;
+  font-weight: var(--asv-type-weight-regular);
   letter-spacing: var(--asv-fact-cell-label-letter-spacing);
   line-height: var(--asv-fact-cell-label-line-height);
 }
@@ -164,7 +164,7 @@
   cursor: pointer;
   font: inherit;
   font-size: var(--asv-metric-entry-font-size);
-  font-weight: 500;
+  font-weight: var(--asv-type-weight-medium);
   letter-spacing: var(--asv-metric-entry-letter-spacing);
   line-height: var(--asv-metric-entry-height);
   transition:
@@ -184,7 +184,7 @@
 .factCell small b,
 .metricOptimizationEntry b {
   color: currentColor;
-  font-weight: 650;
+  font-weight: var(--asv-type-weight-semibold);
 }
 
 .factCell[data-status="warning"] small b {
@@ -309,7 +309,7 @@
   min-width: 0;
   color: var(--asv-text);
   font-size: var(--asv-asset-row-title-size);
-  font-weight: 560;
+  font-weight: var(--asv-type-weight-medium);
   line-height: var(--asv-asset-row-title-line-height);
 }
 
@@ -536,7 +536,7 @@
 .textElementRow .rowText strong {
   color: var(--asv-text);
   font-size: var(--asv-asset-row-title-size);
-  font-weight: 560;
+  font-weight: var(--asv-type-weight-medium);
   line-height: var(--asv-asset-row-title-line-height);
 }
 
@@ -545,7 +545,7 @@
   content: "*";
   margin-inline-start: var(--asv-space-1);
   color: var(--asv-action);
-  font-weight: 650;
+  font-weight: var(--asv-type-weight-semibold);
 }
 
 .replaceableRow .rowText span,
@@ -675,7 +675,7 @@
   margin: 0;
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
-  font-weight: 650;
+  font-weight: var(--asv-type-weight-semibold);
 }
 
 .settingsChoiceGroup {
@@ -703,7 +703,7 @@
   background: var(--asv-settings-choice-bg);
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
-  font-weight: 650;
+  font-weight: var(--asv-type-weight-semibold);
   text-align: center;
 }
 

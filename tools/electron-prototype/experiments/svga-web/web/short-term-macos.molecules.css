@@ -2,7 +2,7 @@
 
 .toolbarButton {
   padding: 0 var(--asv-space-3);
-  font-weight: 560;
+  font-weight: var(--asv-type-weight-medium);
   white-space: nowrap;
 }
 

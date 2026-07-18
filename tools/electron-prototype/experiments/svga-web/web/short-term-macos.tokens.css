@@ -13,6 +13,11 @@
   --asv-type-size-dialog-title: 16px;
   --asv-type-size-state-title: 18px;
   --asv-type-size-launch-title: 22px;
+  --asv-type-weight-regular: 400;
+  --asv-type-weight-medium: 500;
+  --asv-type-weight-semibold: 600;
+  --asv-type-weight-bold: 700;
+  --asv-type-auxiliary-weight: var(--asv-type-weight-regular);
   --asv-base-neutral-0: #ffffff;
   --asv-base-neutral-50: #f8f8f8;
   --asv-base-neutral-100: #f0f0f0;
@@ -197,7 +202,7 @@
   --asv-component-save-banner-padding-inline: var(--asv-space-4);
   --asv-component-save-banner-border: 0 solid transparent;
   --asv-component-save-banner-shadow: none;
-  --asv-component-save-banner-title-weight: 620;
+  --asv-component-save-banner-title-weight: var(--asv-type-weight-semibold);
   --asv-component-save-banner-message-color: var(--asv-color-text-secondary);
   --asv-component-file-identity-font-size: 12px;
   --asv-component-spinner-size: var(--asv-base-space-24);
@@ -237,7 +242,7 @@
   --asv-component-mode-button-padding-block: var(--asv-space-2);
   --asv-component-mode-button-font-size: var(--asv-type-size-footnote);
   --asv-component-mode-button-line-height: 18px;
-  --asv-component-mode-button-font-weight: 400;
+  --asv-component-mode-button-font-weight: var(--asv-type-weight-regular);
   --asv-component-mode-button-shadow: none;
   --asv-component-mode-button-hover-background: color-mix(in srgb, var(--asv-color-status-info-soft) 48%, transparent);
   --asv-component-mode-selected-color: var(--asv-color-text-primary);
@@ -271,7 +276,7 @@
   --asv-component-side-surface-separator-color: var(--asv-color-border-right-panel-separator);
   --asv-component-right-section-title-size: var(--asv-type-size-footnote);
   --asv-component-right-section-title-line-height: 18px;
-  --asv-component-right-section-title-weight: 540;
+  --asv-component-right-section-title-weight: var(--asv-type-weight-medium);
   --asv-component-right-section-title-color: var(--asv-color-text-secondary);
   --asv-component-file-header-width: calc(100% - (var(--asv-right-panel-padding) * 2));
   --asv-component-file-header-padding-block: var(--asv-space-3);
@@ -315,7 +320,7 @@
   --asv-component-fact-cell-value-color: var(--asv-color-text-primary);
   --asv-component-fact-cell-unit-gap: var(--asv-base-space-4);
   --asv-component-fact-cell-unit-size: var(--asv-type-size-footnote);
-  --asv-component-fact-cell-unit-weight: 450;
+  --asv-component-fact-cell-unit-weight: var(--asv-type-weight-regular);
   --asv-component-fact-cell-unit-color: var(--asv-color-text-tertiary);
   --asv-component-fact-status-strip-width: 2px;
   --asv-component-metric-entry-height: 18px;
@@ -393,7 +398,7 @@
   --asv-component-asset-group-empty-opacity: 0.82;
   --asv-component-asset-group-title-size: var(--asv-type-size-caption);
   --asv-component-asset-group-title-line-height: 16px;
-  --asv-component-asset-group-title-weight: 600;
+  --asv-component-asset-group-title-weight: var(--asv-type-weight-semibold);
   --asv-component-asset-group-title-color: var(--asv-color-text-secondary);
   --asv-component-asset-group-detail-size: var(--asv-type-size-micro);
   --asv-component-asset-group-detail-line-height: 14px;
@@ -417,7 +422,7 @@
   --asv-component-replace-image-action-hover-background: var(--asv-color-action-hover);
   --asv-component-replace-image-action-color: var(--asv-color-text-link);
   --asv-component-replace-image-action-font-size: var(--asv-type-size-caption);
-  --asv-component-replace-image-action-font-weight: 500;
+  --asv-component-replace-image-action-font-weight: var(--asv-type-weight-medium);
   --asv-component-empty-state-width: 312px;
   --asv-component-empty-state-gap: var(--asv-space-2);
   --asv-component-empty-state-padding-block: var(--asv-space-1);
@@ -453,7 +458,7 @@
   --asv-component-layer-row-divider: 0 solid transparent;
   --asv-component-layer-row-thumb-size: 48px;
   --asv-component-layer-row-title-size: var(--asv-type-size-body);
-  --asv-component-layer-row-title-weight: 560;
+  --asv-component-layer-row-title-weight: var(--asv-type-weight-medium);
   --asv-component-layer-row-title-color: var(--asv-color-text-primary);
   --asv-component-layer-row-thumb-border: var(--asv-color-border-subtle);
   --asv-component-layer-list-gap: var(--asv-space-1);
@@ -464,7 +469,7 @@
   --asv-component-layer-panel-header-gap-after: var(--asv-space-1);
   --asv-component-layer-panel-header-title-size: var(--asv-type-size-state-title);
   --asv-component-layer-panel-header-title-line-height: 26px;
-  --asv-component-layer-panel-header-title-weight: 650;
+  --asv-component-layer-panel-header-title-weight: var(--asv-type-weight-semibold);
   --asv-component-finding-row-min-height: 62px;
   --asv-component-finding-row-gap: var(--asv-space-2);
   --asv-component-finding-row-padding-block: var(--asv-space-3);
@@ -479,7 +484,7 @@
   --asv-component-finding-row-strip-inset-inline: var(--asv-space-2);
   --asv-component-finding-row-title-size: var(--asv-type-size-footnote);
   --asv-component-finding-row-title-line-height: 18px;
-  --asv-component-finding-row-title-weight: 560;
+  --asv-component-finding-row-title-weight: var(--asv-type-weight-medium);
   --asv-component-finding-row-title-color: var(--asv-color-text-primary);
   --asv-component-finding-row-summary-size: var(--asv-type-size-caption);
   --asv-component-finding-row-summary-line-height: 16px;
@@ -494,7 +499,7 @@
   --asv-component-row-action-disabled-opacity: 0.42;
   --asv-component-row-index-width: 24px;
   --asv-component-row-index-font-size: var(--asv-type-size-micro);
-  --asv-component-row-index-font-weight: 520;
+  --asv-component-row-index-font-weight: var(--asv-type-weight-medium);
   --asv-component-row-menu-size: 26px;
   --asv-component-row-menu-icon-size: 14px;
   --asv-component-row-icon-stroke-width: 2;
@@ -581,7 +586,7 @@
   --asv-component-optimization-result-muted-row-background: color-mix(in srgb, var(--asv-color-surface-row) 24%, transparent);
   --asv-component-optimization-result-title-size: var(--asv-type-size-footnote);
   --asv-component-optimization-result-title-line-height: 18px;
-  --asv-component-optimization-result-title-weight: 620;
+  --asv-component-optimization-result-title-weight: var(--asv-type-weight-semibold);
   --asv-component-optimization-result-summary-size: var(--asv-type-size-footnote);
   --asv-component-optimization-result-summary-line-height: 17px;
   --asv-component-optimization-result-summary-color: var(--asv-color-text-secondary);

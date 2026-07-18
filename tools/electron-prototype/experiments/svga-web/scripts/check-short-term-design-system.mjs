@@ -584,7 +584,7 @@ async function main() {
     /--asv-component-file-header-padding-block:\s*var\(--asv-space-3\)/.test(tokens),
     /--asv-component-right-section-title-size:\s*var\(--asv-type-size-footnote\)/.test(tokens),
     /--asv-component-right-section-title-line-height:\s*18px/.test(tokens),
-    /--asv-component-right-section-title-weight:\s*540/.test(tokens),
+    /--asv-component-right-section-title-weight:\s*var\(--asv-type-weight-medium\)/.test(tokens),
     /--asv-component-fact-grid-width:\s*328px/.test(tokens),
     /--asv-component-fact-grid-padding-block:\s*var\(--asv-space-3\)/.test(tokens),
     /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"/.test(page),
