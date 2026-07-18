@@ -184,7 +184,8 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(helperSource, /kill\(parentPID,\s*0\)/u);
   assert.match(helperSource, /FileManager\.default\.fileExists\(atPath:\s*channelRootPath\)/u);
   assert.match(helperSource, /Date\(\)\s*>=\s*deadline/u);
-  assert.match(helperSource, /Timer\.scheduledTimer/u);
+  assert.match(helperSource, /Timer\(timeInterval:/u);
+  assert.match(helperSource, /RunLoop\.main\.add\([\s\S]*forMode:\s*\.common\)/u);
   assert.match(helperSource, /runModal\(\)/u);
   assert.match(helperSource, /final class PickerResultWriter/u);
   assert.match(helperSource, /private var didWrite = false/u);

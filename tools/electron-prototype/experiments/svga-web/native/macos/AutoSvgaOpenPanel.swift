@@ -122,10 +122,12 @@ private final class PickerLifecycleGuard {
     }
 
     func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        let lifecycleTimer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             self?.verifyOwnerAndChannel()
         }
-        timer?.tolerance = 0.02
+        lifecycleTimer.tolerance = 0.02
+        RunLoop.main.add(lifecycleTimer, forMode: .common)
+        timer = lifecycleTimer
     }
 
     func stop() {
