@@ -27,8 +27,10 @@ import {
 } from "./local-stable-recovery.mjs";
 import {
   installApp,
+  launchServicesDumpMaxBufferBytes,
   parseLaunchServicesDump,
   parseArgs,
+  readLaunchServicesDump,
   recoverPromotionCommand,
   recoverPromotionTransaction,
   runCli
@@ -391,6 +393,59 @@ test("LaunchServices dump parser extracts same-bundle-id paths and missing-node 
       nodeMissing: true
     }
   ]);
+});
+
+test("LaunchServices dump reader accepts dumps larger than Node default maxBuffer with a bounded cap", () => {
+  const bundleIdentifier = "local.auto-svga.internal-prototype";
+  const nodeDefaultMaxBufferBytes = 1024 * 1024;
+  const largePrefix = "x".repeat(nodeDefaultMaxBufferBytes + 1);
+  const dump = [
+    largePrefix,
+    "",
+    "identifier: local.auto-svga.internal-prototype",
+    "path: /Users/huangtengxin/Applications/Auto SVGA.app"
+  ].join("\n");
+  const maxBufferBytes = Buffer.byteLength(dump, "utf8") + 1024;
+  const observed = readLaunchServicesDump({
+    lsregister: process.execPath,
+    maxBufferBytes,
+    runCommand: (_command, _args, options) => {
+      assert.equal(options.maxBuffer, maxBufferBytes);
+      assert.ok(options.maxBuffer > nodeDefaultMaxBufferBytes);
+      return dump;
+    }
+  });
+
+  assert.equal(observed, dump);
+  assert.deepEqual(parseLaunchServicesDump(observed, bundleIdentifier).map((record) => record.path), [
+    "/Users/huangtengxin/Applications/Auto SVGA.app"
+  ]);
+  assert.ok(launchServicesDumpMaxBufferBytes > nodeDefaultMaxBufferBytes);
+});
+
+test("LaunchServices dump reader fails closed on over-cap output and command failures", () => {
+  assert.throws(() => readLaunchServicesDump({
+    lsregister: process.execPath,
+    maxBufferBytes: 8,
+    runCommand: () => "x".repeat(9)
+  }), /LaunchServices dump exceeded bounded 8 byte cap/);
+
+  assert.throws(() => readLaunchServicesDump({
+    lsregister: process.execPath,
+    maxBufferBytes: 8,
+    runCommand: () => {
+      const error = new Error("spawnSync ENOBUFS");
+      error.code = "ENOBUFS";
+      throw error;
+    }
+  }), /LaunchServices dump exceeded bounded 8 byte cap/);
+
+  assert.throws(() => readLaunchServicesDump({
+    lsregister: process.execPath,
+    runCommand: () => {
+      throw new Error("lsregister exited 42");
+    }
+  }), /LaunchServices dump command failed: lsregister exited 42/);
 });
 
 test("inspect is behaviorally read-only for installed, previous, and candidate apps", () => {

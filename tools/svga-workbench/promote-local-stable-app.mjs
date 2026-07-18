@@ -40,6 +40,8 @@ const promotionExchangeManifestRoot = path.join(localStableRoot, "promotion-mani
 const promotionExchangeJournalPath = path.join(localStableRoot, "promotion-journal.json");
 const rollbackManifestRoot = path.join(localStableRoot, "rollback-manifests");
 const rollbackJournalRoot = path.join(localStableRoot, "rollback-journals");
+const launchServicesRegisterTool = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+export const launchServicesDumpMaxBufferBytes = 64 * 1024 * 1024;
 
 function usage() {
   return [
@@ -242,6 +244,7 @@ function run(command, args, options = {}) {
     cwd: options.cwd ?? repoRoot,
     env: options.env ?? process.env,
     encoding: options.encoding ?? "utf8",
+    maxBuffer: options.maxBuffer,
     stdio: options.stdio ?? "pipe"
   });
 }
@@ -508,15 +511,41 @@ export function parseLaunchServicesDump(dump, bundleIdentifier) {
   return records;
 }
 
-function defaultReadLaunchServicesRecords(bundleIdentifier) {
-  const lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+function assertLaunchServicesDumpWithinCap(dump, maxBufferBytes) {
+  const byteLength = Buffer.byteLength(String(dump), "utf8");
+  if (byteLength > maxBufferBytes) {
+    throw new Error(`LaunchServices dump exceeded bounded ${maxBufferBytes} byte cap (${byteLength} bytes)`);
+  }
+}
+
+export function readLaunchServicesDump({
+  lsregister = launchServicesRegisterTool,
+  runCommand = run,
+  maxBufferBytes = launchServicesDumpMaxBufferBytes
+} = {}) {
   if (!existsSync(lsregister)) throw new Error(`LaunchServices registration tool is missing: ${lsregister}`);
-  const dump = run(lsregister, ["-dump"], { stdio: "pipe" });
-  return parseLaunchServicesDump(dump, bundleIdentifier);
+  try {
+    const dump = runCommand(lsregister, ["-dump"], {
+      stdio: "pipe",
+      maxBuffer: maxBufferBytes
+    });
+    assertLaunchServicesDumpWithinCap(dump, maxBufferBytes);
+    return dump;
+  } catch (error) {
+    if (error?.code === "ENOBUFS") {
+      throw new Error(`LaunchServices dump exceeded bounded ${maxBufferBytes} byte cap`);
+    }
+    if (/LaunchServices dump exceeded bounded/.test(error?.message ?? "")) throw error;
+    throw new Error(`LaunchServices dump command failed: ${error?.message ?? error}`);
+  }
+}
+
+function defaultReadLaunchServicesRecords(bundleIdentifier) {
+  return parseLaunchServicesDump(readLaunchServicesDump(), bundleIdentifier);
 }
 
 function defaultUnregisterLaunchServicesRecord(recordPath) {
-  const lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+  const lsregister = launchServicesRegisterTool;
   if (!existsSync(lsregister)) throw new Error(`LaunchServices registration tool is missing: ${lsregister}`);
   run(lsregister, ["-u", recordPath], { stdio: "ignore" });
   return true;
