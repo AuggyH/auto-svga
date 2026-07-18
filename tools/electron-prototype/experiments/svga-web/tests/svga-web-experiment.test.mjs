@@ -8280,6 +8280,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextRenderers, /node\.hidden = !visible/);
   assert.match(shortTermTextRenderers, /node\.textContent = ""/);
   assert.match(shortTermTextModel, /export const RUNTIME_TEXT_DEFAULT_VALUE = "SVGA VIP"/);
+  assert.match(shortTermSmokeRunner, /const runtimeTextPreviewValue = "SVGA VIP Preview"/);
+  assert.match(shortTermSmokeRunner, /state\.textPreview === runtimeTextPreviewValue/);
   assert.match(shortTermTextModel, /export function runtimeTextInputValue/);
   assert.match(shortTermTextModel, /export function hasRuntimeTextPreview/);
   assert.match(shortTermTextModel, /export function runtimeTextPlaceholder/);

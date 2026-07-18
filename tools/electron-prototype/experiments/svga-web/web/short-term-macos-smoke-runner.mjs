@@ -311,13 +311,17 @@ async function runShortTermSmoke({
   runtimeTextInput?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
   await waitForSmokeFrame();
   const runtimeTextPlaybackAfterSpace = state.primaryPlayback?.playing === true;
-  runtimeTextInput.value = "SVGA VIP";
-  runtimeTextInput.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "SVGA VIP" }));
-  await waitForSmokeCondition(() => !nodes.runtimeTextOverlay.hidden && nodes.runtimeTextOverlay.textContent.includes("SVGA VIP"), 2_000);
+  const runtimeTextPreviewValue = "SVGA VIP Preview";
+  runtimeTextInput.value = runtimeTextPreviewValue;
+  runtimeTextInput.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: runtimeTextPreviewValue }));
+  await waitForSmokeCondition(() => (
+    !nodes.runtimeTextOverlay.hidden
+    && nodes.runtimeTextOverlay.textContent.includes(runtimeTextPreviewValue)
+  ), 2_000);
   await waitForSmokeFrame();
   const runtimeTextSourceSha256AfterApply = await sha256Hex(state.sourceBytes);
   const runtimeTextOverlayCopy = nodes.runtimeTextOverlay.textContent.trim();
-  const runtimeTextApplied = state.textPreview === "SVGA VIP";
+  const runtimeTextApplied = state.textPreview === runtimeTextPreviewValue;
   const runtimeTextResetButton = runtimeTextInput.closest(".textElementRow")?.querySelector("[data-action='runtime-text-reset']");
   const runtimeTextResetButtonEnabled = runtimeTextResetButton?.disabled === false;
   await captureSmokeArtifact("short-term-runtime-text-applied");
