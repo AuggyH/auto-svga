@@ -169,6 +169,7 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   assert.match(helperSource, /allowsOtherFileTypes\s*=\s*true/u);
   assert.match(helperSource, /canChooseFiles\s*=\s*true/u);
   assert.match(helperSource, /canChooseDirectories\s*=\s*false/u);
+  assert.match(helperSource, /finishLaunching\(\)[\s\S]*activate\(ignoringOtherApps:\s*true\)/u);
   assert.match(helperSource, /runModal\(\)/u);
   assert.doesNotMatch(helperSource, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
   assert.doesNotMatch(pickerSource, /osascript|chooseFile|System Events/u);

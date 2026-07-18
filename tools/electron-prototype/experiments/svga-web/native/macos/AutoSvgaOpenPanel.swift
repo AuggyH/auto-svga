@@ -23,6 +23,7 @@ guard CommandLine.arguments.count == 1 else {
 
 let application = NSApplication.shared
 application.setActivationPolicy(.accessory)
+application.finishLaunching()
 application.activate(ignoringOtherApps: true)
 
 let panel = NSOpenPanel()
