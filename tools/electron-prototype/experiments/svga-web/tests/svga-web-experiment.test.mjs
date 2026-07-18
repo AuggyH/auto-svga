@@ -2969,7 +2969,9 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     const pickerResult = await chooseMultiFormatLocalFile({
       platform: "darwin",
       async showOpenDialog(options) {
-        assert.equal(Object.hasOwn(options, "filters"), false);
+        assert.deepEqual(options.filters, [
+          { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] }
+        ]);
         assert.deepEqual(options.properties, ["openFile"]);
         return { canceled: false, filePaths: [filePath] };
       }
