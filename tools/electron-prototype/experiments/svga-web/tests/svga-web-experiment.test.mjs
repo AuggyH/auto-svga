@@ -3549,6 +3549,10 @@ test("0.2 composed open cancellation preserves active authority while accepted f
       const activeSourceId = state.sourceId;
       const activeImageKey = state.selectedImageKey;
       const activeTextKey = state.selectedTextKey;
+      nodes.playbackProgress.setAttribute("aria-valuenow", "64");
+      nodes.playbackProgress.style["--asv-playback-progress"] = "64%";
+      nodes.playbackProgress.children[0].style.width = "64%";
+      nodes.playbackTime.textContent = "0:32 / 0:50";
       await controller.handlers.openFromHostDialog();
       assert.equal(state.model, activeModel, `${format} cancel must preserve model`);
       assert.equal(state.sourceId, activeSourceId, `${format} cancel must preserve source`);
@@ -3567,6 +3571,10 @@ test("0.2 composed open cancellation preserves active authority while accepted f
       assert.equal(state.view, "failed", `${format} failure must enter failed view`);
       assert.equal(nodes.errorMessage.textContent, "无法打开文件选择器，源文件没有被修改。");
       assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|expression/i);
+      assert.equal(nodes.playbackProgress.attributes["aria-valuenow"], "0", `${format} failure must reset progress a11y`);
+      assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "0%", `${format} failure must reset progress token`);
+      assert.equal(nodes.playbackProgress.children[0].style.width, "0%", `${format} failure must reset progress bar`);
+      assert.equal(nodes.playbackTime.textContent, "0:00 / 0:00", `${format} failure must reset playback time`);
       assert.equal(state.model, undefined, `${format} failure must clear model`);
       assert.equal(state.sourceBytes, undefined, `${format} failure must clear source bytes`);
       assert.equal(state.previewBytes, undefined, `${format} failure must clear preview bytes`);

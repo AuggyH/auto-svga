@@ -1417,6 +1417,12 @@ export function createMultiFormatDesktopPreviewController({
     if (bar) bar.style.width = value;
   }
 
+  function resetPlaybackProgress() {
+    if (nodes.playbackTime) nodes.playbackTime.textContent = "0:00 / 0:00";
+    nodes.playbackProgress?.setAttribute("aria-valuenow", "0");
+    applyPlaybackProgress(0);
+  }
+
   function drawVapRuntimeFrame(active) {
     const player = active?.player;
     if (!player || typeof player.drawFrame !== "function") {
@@ -1805,7 +1811,7 @@ export function createMultiFormatDesktopPreviewController({
       nodes.assetFilterTabs.setAttribute("role", "tablist");
       nodes.assetFilterTabs.setAttribute("aria-label", "资产类型");
     }
-    nodes.playbackTime.textContent = "0:00 / 0:00";
+    resetPlaybackProgress();
   }
 
   function openSettings() {
@@ -1868,6 +1874,7 @@ export function createMultiFormatDesktopPreviewController({
     activeFormat = "";
     invalidateRuntimeTextMutations();
     clearRuntimePreview();
+    resetPlaybackProgress();
     clearRuntimeReplacementValues();
     if (options.disposeHost !== false) {
       Promise.resolve(bridge?.controlMultiFormatPreview?.({ action: "dispose" })).catch(() => {});
