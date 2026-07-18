@@ -30,7 +30,7 @@ import {
   replaceRuntimeTextRows
 } from "./short-term-macos-replaceable-renderers.mjs";
 import { replaceableElementSummaryCopy } from "./short-term-macos-replaceable-model.mjs";
-import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { escapeHtml, formatDisplayDetailCopy } from "./short-term-macos-render-model.mjs";
 import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import {
   multiFormatDragDecisionForEvent,
@@ -697,7 +697,7 @@ export function createMultiFormatDesktopPreviewController({
       row.dataset.component = "AssetRow";
       row.setAttribute("role", "listitem");
       row.dataset.kind = asset.kind || "unknown";
-      const detail = [asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean).join(" · ");
+      const detail = formatDisplayDetailCopy([asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean).join(" · "));
       const label = rowLabel(asset.name || asset.id, detail, asset.replaceable ? "可替换" : "");
       if (label) {
         row.title = label;
@@ -775,7 +775,7 @@ export function createMultiFormatDesktopPreviewController({
     row.dataset.replaceable = item.replaceable ? "true" : "false";
     row.setAttribute("role", "listitem");
     if (item.runtimeTargetId) row.dataset.runtimeTargetId = item.runtimeTargetId;
-    const detail = item.detail?.length ? item.detail.join(" · ") : "";
+    const detail = item.detail?.length ? formatDisplayDetailCopy(item.detail.join(" · ")) : "";
     const label = rowLabel(item.label || item.id, detail, assetStatusCopy(item.status));
     row.title = label;
     row.setAttribute("aria-label", label);
@@ -2113,7 +2113,7 @@ async function fileToDataUri(file) {
 
 function playbackMeta(model) {
   const format = playbackFormatCopy(model.detectedFormat);
-  const dimensions = model.canvas?.dimensions || "unknown";
+  const dimensions = formatDisplayDetailCopy(model.canvas?.dimensions || "unknown");
   const duration = formatTime(model.canvas?.playback?.durationMs || 0);
   return `${format} · ${dimensions} · ${duration} · ${statusCopy(model.status)}`;
 }

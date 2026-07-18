@@ -1,5 +1,6 @@
 import {
   escapeHtml,
+  formatDisplayDetailCopy,
   renderOverviewFactCellHtml
 } from "./short-term-macos-render-model.mjs";
 import {
@@ -48,7 +49,7 @@ export function createAssetRow(asset, model) {
   row.dataset.attention = asset.findingCodes.length > 0 ? "true" : "false";
   const detail = asset.kind === "audio" && model.overview.audioGroup.status === "empty"
     ? model.overview.audioGroup.copy
-    : `${asset.dimensions} · ${asset.fileSize}`;
+    : formatDisplayDetailCopy(`${asset.dimensions} · ${asset.fileSize}`);
   const badgeCopy = asset.findingCodes.length > 0
     ? "需关注"
     : "";

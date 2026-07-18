@@ -49,7 +49,15 @@ export function renderMetricValueHtml(value) {
   const copy = String(value ?? "");
   const match = copy.match(/^(\d+(?:\.\d+)?(?:\s*[×x]\s*\d+(?:\.\d+)?)?)\s+(MiB|KiB|B|fps|px|ms|s)$/i);
   if (!match) return escapeHtml(copy);
-  return `${escapeHtml(match[1])} <span class="factValueUnit">${escapeHtml(match[2])}</span>`;
+  return `${escapeHtml(formatDisplayDimensionCopy(match[1]))} <span class="factValueUnit">${escapeHtml(match[2])}</span>`;
+}
+
+export function formatDisplayDimensionCopy(value) {
+  return String(value ?? "").replace(/\b(\d{1,6}(?:\.\d+)?)\s*[x×]\s*(\d{1,6}(?:\.\d+)?)\b/gu, "$1×$2");
+}
+
+export function formatDisplayDetailCopy(value) {
+  return formatDisplayDimensionCopy(value);
 }
 
 export function renderOptimizationMetricCellHtml(metric) {

@@ -1,4 +1,4 @@
-import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { escapeHtml, formatDisplayDetailCopy } from "./short-term-macos-render-model.mjs";
 import { createReplaceableEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
 import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
@@ -20,7 +20,7 @@ const runtimeTextResetIconHtml = `
 
 export function createReplaceableImageRow(item, index, options) {
   const label = item.displayName || item.imageKey;
-  const detail = item.detail || [item.dimensions, item.fileSize].filter(Boolean).join(" · ");
+  const detail = formatDisplayDetailCopy(item.detail || [item.dimensions, item.fileSize].filter(Boolean).join(" · "));
   const replacementActive = options.replacementActive === true || item.replacementActive === true;
   const row = document.createElement("article");
   row.className = "replaceableRow";

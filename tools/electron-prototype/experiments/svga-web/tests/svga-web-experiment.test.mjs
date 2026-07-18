@@ -120,9 +120,10 @@ async function exposePreloadGlobals(productMilestoneId, hostBoundaryMode = "form
 }
 
 test("short-term metric values split units only for simple numeric facts", async () => {
-  const { renderMetricValueHtml, renderOptimizationMetricCellHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
+  const { formatDisplayDetailCopy, renderMetricValueHtml, renderOptimizationMetricCellHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
   assert.equal(renderMetricValueHtml("104.5 KiB"), "104.5 <span class=\"factValueUnit\">KiB</span>");
-  assert.equal(renderMetricValueHtml("300 x 300 px"), "300 x 300 <span class=\"factValueUnit\">px</span>");
+  assert.equal(renderMetricValueHtml("300 x 300 px"), "300×300 <span class=\"factValueUnit\">px</span>");
+  assert.equal(formatDisplayDetailCopy("VAP 融合图片 · 120 x 80 · 1.5 KiB"), "VAP 融合图片 · 120×80 · 1.5 KiB");
   assert.equal(renderMetricValueHtml("低风险 / 估算 125.6 KiB"), "低风险 / 估算 125.6 KiB");
   assert.match(renderOptimizationMetricCellHtml({
     label: "文件体积",
@@ -492,7 +493,7 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
       assets: [{
         kind: "image",
         name: "img_000",
-        dimensions: "300×300",
+        dimensions: "300 x 300",
         fileSize: "41.8 KB",
         findingCodes: [],
         thumbnail: { type: "image", resourceIds: [] }
@@ -504,6 +505,11 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
     assert.equal(assetFilterTabCopy({ label: "音频", count: 3 }), "音频 (3)");
     assert.equal(assetFilterEmptyCopy("sequence"), "当前文件暂无序列帧资产");
     assert.equal(assetFilterEmptyCopy("audio"), "当前文件暂无音频资产");
+
+    renderAssetList(nodes, view, model, "all");
+    assert.equal(nodes.assetList.children.length, 1);
+    assert.match(nodes.assetList.children[0].innerHTML, /300×300 · 41\.8 KB/u);
+    assert.doesNotMatch(nodes.assetList.children[0].innerHTML, /300 x 300/u);
 
     renderAssetList(nodes, view, model, "sequence");
     assert.deepEqual(
@@ -3943,7 +3949,11 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(availableRow.dataset.status, "available");
     assert.equal(availableRow.dataset.attention, "false");
     assert.doesNotMatch(availableRow.innerHTML, />可用</u);
+    assert.match(availableRow.innerHTML, /120×80/u);
+    assert.doesNotMatch(availableRow.innerHTML, /120 x 80/u);
     assert.match(replaceableRow.innerHTML, /class="badge safe"[^>]*>可替换</u);
+    assert.match(replaceableRow.attributes["aria-label"], /120×80/u);
+    assert.doesNotMatch(replaceableRow.attributes["aria-label"], /120 x 80/u);
     assert.equal(missingRow.dataset.attention, "true");
     assert.match(missingRow.innerHTML, /class="badge fail"[^>]*>缺失</u);
     assert.equal(unsupportedRow.dataset.attention, "true");
@@ -4218,7 +4228,7 @@ test("0.2 playback meta uses closed renderer-owned status and format semantics",
 
     assert.equal(nodes.playbackMeta.dataset.status, "playing");
     assert.equal(nodes.playbackMeta.dataset.format, "vap");
-    assert.match(nodes.playbackMeta.textContent, /VAP · 120 x 80 · 0:01 · 播放中/u);
+    assert.match(nodes.playbackMeta.textContent, /VAP · 120×80 · 0:01 · 播放中/u);
     assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "25%");
     assert.equal(nodes.playbackProgress.children[0].style.width, "25%");
 
@@ -4230,7 +4240,7 @@ test("0.2 playback meta uses closed renderer-owned status and format semantics",
 
     assert.equal(nodes.playbackMeta.dataset.status, "unknown");
     assert.equal(nodes.playbackMeta.dataset.format, "unknown");
-    assert.match(nodes.playbackMeta.textContent, /0\.2 · 120 x 80 · 0:01 · 未知/u);
+    assert.match(nodes.playbackMeta.textContent, /0\.2 · 120×80 · 0:01 · 未知/u);
     assert.doesNotMatch(nodes.playbackMeta.textContent, /hostInternalPhase123|internalRuntimeFormat/u);
   } finally {
     globalThis.document = originalDocument;
