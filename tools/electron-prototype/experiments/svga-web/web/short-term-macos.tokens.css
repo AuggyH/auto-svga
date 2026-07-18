@@ -738,7 +738,7 @@
   --asv-component-settings-title-weight: var(--asv-type-weight-semibold);
   --asv-component-settings-title-color: var(--asv-color-text-primary);
   --asv-component-settings-action-height: 44px;
-  --asv-component-settings-action-radius: var(--asv-base-radius-control-8);
+  --asv-component-settings-action-radius: var(--asv-base-radius-12);
   --asv-component-settings-action-font-size: var(--asv-type-size-dialog-title);
   --asv-component-settings-action-font-weight: var(--asv-type-weight-medium);
   --asv-component-settings-appearance-block-height: 116px;
@@ -753,7 +753,8 @@
   --asv-component-settings-choice-group-padding: var(--asv-base-space-0);
   --asv-component-settings-choice-icon-size: 20px;
   --asv-component-settings-choice-icon-stroke-width: 1.8;
-  --asv-component-settings-choice-radius: var(--asv-radius-sm);
+  --asv-component-settings-choice-radius: var(--asv-base-radius-8);
+  --asv-component-settings-choice-selected-radius: var(--asv-base-radius-12);
   --asv-component-settings-choice-border-width: 1px;
   --asv-component-settings-choice-label-size: var(--asv-type-size-caption);
   --asv-component-settings-choice-label-line-height: 16px;
@@ -762,7 +763,8 @@
   --asv-component-settings-choice-group-bg: transparent;
   --asv-component-settings-choice-bg: transparent;
   --asv-component-settings-choice-hover-bg: color-mix(in srgb, var(--asv-color-status-info-soft) 42%, transparent);
-  --asv-component-settings-choice-selected-bg: var(--asv-color-status-info-soft);
+  --asv-component-settings-choice-selected-bg: var(--asv-color-status-info-bg);
+  --asv-component-settings-choice-selected-color: var(--asv-color-text-primary);
   --asv-component-settings-choice-border: transparent;
   --asv-component-settings-choice-selected-border: var(--asv-color-border-focus);
   --asv-component-settings-choice-selected-shadow: none;
@@ -1427,6 +1429,8 @@
   --asv-settings-choice-group-bg: var(--asv-component-settings-choice-group-bg);
   --asv-settings-choice-hover-bg: var(--asv-component-settings-choice-hover-bg);
   --asv-settings-choice-selected-bg: var(--asv-component-settings-choice-selected-bg);
+  --asv-settings-choice-selected-radius: var(--asv-component-settings-choice-selected-radius);
+  --asv-settings-choice-selected-color: var(--asv-component-settings-choice-selected-color);
   --asv-settings-choice-selected-shadow: var(--asv-component-settings-choice-selected-shadow);
 }
 

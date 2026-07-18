@@ -566,14 +566,19 @@ test("settings sheet follows the frozen appearance hierarchy", async () => {
   assert.match(tokens, /--asv-component-settings-title-icon-size:\s*20px/u);
   assert.match(tokens, /--asv-component-settings-title-size:\s*var\(--asv-type-size-metric\)/u);
   assert.match(tokens, /--asv-component-settings-choice-height:\s*88px/u);
+  assert.match(tokens, /--asv-component-settings-choice-radius:\s*var\(--asv-base-radius-8\)/u);
+  assert.match(tokens, /--asv-component-settings-choice-selected-radius:\s*var\(--asv-base-radius-12\)/u);
   assert.match(tokens, /--asv-component-settings-choice-selected-border:\s*var\(--asv-color-border-focus\)/u);
-  assert.match(tokens, /--asv-component-settings-choice-selected-bg:\s*var\(--asv-color-status-info-soft\)/u);
+  assert.match(tokens, /--asv-component-settings-choice-selected-bg:\s*var\(--asv-color-status-info-bg\)/u);
+  assert.match(tokens, /--asv-component-settings-choice-selected-color:\s*var\(--asv-color-text-primary\)/u);
+  assert.match(tokens, /--asv-component-settings-action-radius:\s*var\(--asv-base-radius-12\)/u);
 
   assert.match(components, /\.settingsDialog\s*\{[^}]*min-height:\s*var\(--asv-settings-sheet-min-height\)/su);
   assert.match(components, /\.settingsHeaderIcon\s*\{[^}]*width:\s*var\(--asv-settings-title-icon-size\)[^}]*color:\s*var\(--asv-action\)/su);
   assert.match(components, /\.settingsHeader h2\s*\{[^}]*font-size:\s*var\(--asv-settings-title-size\)[^}]*font-weight:\s*var\(--asv-settings-title-weight\)/su);
   assert.match(components, /\.settingsGroup\s*\{[^}]*padding-block:\s*var\(--asv-settings-appearance-block-padding-block\)/su);
   assert.match(components, /\.settingsChoice\s*\{[^}]*min-height:\s*var\(--asv-settings-choice-height\)[^}]*font-weight:\s*var\(--asv-settings-choice-label-weight\)/su);
+  assert.match(components, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*border-radius:\s*var\(--asv-settings-choice-selected-radius\)[^}]*color:\s*var\(--asv-settings-choice-selected-color\)/su);
 });
 
 test("launch recent module remains present for unavailable, empty, and non-empty states", () => {

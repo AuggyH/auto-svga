@@ -8025,6 +8025,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-settings-appearance-block-padding-block/);
   assert.match(shortTermTokens, /--asv-component-settings-choice-height/);
   assert.match(shortTermTokens, /--asv-component-settings-choice-gap/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-radius: var\(--asv-base-radius-8\)/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-selected-radius: var\(--asv-base-radius-12\)/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-selected-bg: var\(--asv-color-status-info-bg\)/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-selected-color: var\(--asv-color-text-primary\)/);
+  assert.match(shortTermTokens, /--asv-component-settings-action-radius: var\(--asv-base-radius-12\)/);
   assert.match(shortTermTokens, /--asv-dialog-backdrop-bg: var\(--asv-component-dialog-backdrop-background\)/);
   assert.match(shortTermTokens, /--asv-settings-sheet-border: var\(--asv-component-settings-sheet-border\)/);
   assert.match(shortTermTokens, /--asv-settings-sheet-radius: var\(--asv-component-settings-sheet-radius\)/);
@@ -8038,7 +8043,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-settings-choice-group-bg: var\(--asv-component-settings-choice-group-bg\)/);
   assert.match(shortTermTokens, /--asv-settings-choice-hover-bg: var\(--asv-component-settings-choice-hover-bg\)/);
   assert.match(shortTermTokens, /--asv-settings-choice-selected-bg: var\(--asv-component-settings-choice-selected-bg\)/);
+  assert.match(shortTermTokens, /--asv-settings-choice-selected-radius: var\(--asv-component-settings-choice-selected-radius\)/);
+  assert.match(shortTermTokens, /--asv-settings-choice-selected-color: var\(--asv-component-settings-choice-selected-color\)/);
   assert.match(shortTermTokens, /--asv-settings-choice-selected-shadow: var\(--asv-component-settings-choice-selected-shadow\)/);
+  assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*border-radius: var\(--asv-settings-choice-selected-radius\)[^}]*color: var\(--asv-settings-choice-selected-color\)/s);
   assert.match(shortTermTokens, /:root\[data-appearance="light"\]/);
   assert.match(shortTermTokens, /:root\[data-appearance="dark"\]/);
   assert.match(shortTermTokens, /:root:not\(\[data-appearance="light"\]\)/);

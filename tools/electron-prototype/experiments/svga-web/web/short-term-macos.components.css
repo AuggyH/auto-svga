@@ -887,8 +887,9 @@
 
 .settingsChoice:has(input:checked) {
   border-color: var(--asv-settings-choice-selected-border);
+  border-radius: var(--asv-settings-choice-selected-radius);
   background: var(--asv-settings-choice-selected-bg);
-  color: var(--asv-action);
+  color: var(--asv-settings-choice-selected-color);
   box-shadow: var(--asv-settings-choice-selected-shadow);
 }
 
