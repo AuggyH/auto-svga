@@ -674,13 +674,24 @@ export function createMultiFormatDesktopPreviewController({
       row.setAttribute("role", "listitem");
       row.dataset.kind = asset.kind || "unknown";
       const detail = [asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean).join(" · ");
+      const label = rowLabel(asset.name || asset.id, detail, asset.replaceable ? "可替换" : "");
+      if (label) {
+        row.title = label;
+        row.setAttribute("aria-label", label);
+      }
       row.innerHTML = `
         <span class="thumb">${escapeHtml((asset.ownerKind || "资源").slice(0, 1))}</span>
         <span class="rowText"><strong>${escapeHtml(asset.name || asset.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
-        ${asset.replaceable ? `<span class="badge">可替换</span>` : ""}
+        ${asset.replaceable ? `<span class="badge safe">可替换</span>` : ""}
       `;
       return row;
     }));
+  }
+
+  function rowLabel(...parts) {
+    return parts
+      .filter((part) => typeof part === "string" && part.trim())
+      .join("，");
   }
 
   function createInventorySummaryItem(item) {
@@ -690,6 +701,9 @@ export function createMultiFormatDesktopPreviewController({
     summary.dataset.count = String(item.count);
     summary.setAttribute("role", "listitem");
     summary.textContent = `${item.label} ${item.count}`;
+    const label = rowLabel(item.label, String(item.count));
+    summary.title = label;
+    summary.setAttribute("aria-label", label);
     return summary;
   }
 
@@ -700,11 +714,14 @@ export function createMultiFormatDesktopPreviewController({
     section.dataset.group = group.id;
     section.dataset.status = group.status;
     section.setAttribute("role", "group");
-    section.setAttribute("aria-label", group.label);
+    const statusCopy = groupStatusCopy(group);
+    const groupLabel = rowLabel(group.label, statusCopy, `${group.count} 项`);
+    section.title = groupLabel;
+    section.setAttribute("aria-label", groupLabel);
 
     const heading = document.createElement("header");
     heading.className = "assetGroupHeader";
-    const statusCopy = groupStatusCopy(group);
+    heading.title = groupLabel;
     heading.innerHTML = `
       <span class="rowText"><strong>${escapeHtml(group.label)}</strong>${statusCopy ? `<span>${escapeHtml(statusCopy)}</span>` : ""}</span>
       <span class="badge">${escapeHtml(String(group.count))}</span>
@@ -731,6 +748,9 @@ export function createMultiFormatDesktopPreviewController({
     row.setAttribute("role", "listitem");
     if (item.runtimeTargetId) row.dataset.runtimeTargetId = item.runtimeTargetId;
     const detail = item.detail?.length ? item.detail.join(" · ") : "";
+    const label = rowLabel(item.label || item.id, detail, assetStatusCopy(item.status));
+    row.title = label;
+    row.setAttribute("aria-label", label);
     row.innerHTML = `
       <span class="thumb">${escapeHtml((item.kind || "?").slice(0, 1).toUpperCase())}</span>
       <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>

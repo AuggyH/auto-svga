@@ -160,11 +160,6 @@
   animation: launchCheckerIdleDrift var(--asv-launch-checker-idle-duration) var(--asv-launch-checker-idle-easing) infinite;
 }
 
-.launchCanvas:has(.recentBlock:not([hidden])) {
-  align-content: start;
-  padding-top: calc(var(--asv-toolbar-height) + var(--asv-launch-content-offset-block-start));
-}
-
 .launchCanvas.isDragOver {
   animation-play-state: paused;
   border-color: var(--asv-action);
@@ -268,6 +263,10 @@
 .recentClearButton:hover:not(:disabled) {
   color: var(--asv-muted);
   background: var(--asv-launch-recent-clear-hover-bg);
+}
+
+.recentClearButton:disabled {
+  visibility: hidden;
 }
 
 .recentClearButton svg {

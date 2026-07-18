@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -9,9 +10,17 @@ import {
   createTextElementRow
 } from "../web/short-term-macos-replaceable-renderers.mjs";
 import {
+  renderLaunchRecentFiles,
+  renderRecentFilesUnavailable
+} from "../web/short-term-macos-launch-renderers.mjs";
+import {
   multiFormatActiveReplacementEntryForPublicTarget,
   multiFormatActiveReplacementForPublicTarget
 } from "../web/multiformat-desktop-preview-controller.mjs";
+import {
+  multiFormatInventorySummaryItems,
+  projectMultiFormatRightPanel
+} from "../web/multiformat-product-conformance.mjs";
 import {
   applyShortTermRuntimeTextPreview,
   resetShortTermRuntimeTextPreview
@@ -19,6 +28,154 @@ import {
 import { collectRightSurfaceScrollContainmentProof } from "../web/short-term-macos-smoke-proof-model.mjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+function stableStringify(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function createOwnerSnapshotEnvelope(snapshot, sourceId = "uiux-ready-source") {
+  const snapshotJson = stableStringify(snapshot);
+  return {
+    schemaVersion: 1,
+    sourceId,
+    snapshotJson,
+    snapshotByteLength: Buffer.byteLength(snapshotJson, "utf8"),
+    snapshotSha256: createHash("sha256").update(snapshotJson).digest("hex"),
+    pathRedacted: true
+  };
+}
+
+function readyRightPanelSnapshot(format, options = {}) {
+  const groups = format === "vap"
+    ? [
+        {
+          id: "vap_fusion_images",
+          label: "VAP 融合图片",
+          count: 1,
+          replaceableCount: 1,
+          status: "available",
+          items: [{
+            id: "vap-avatar",
+            label: "avatar",
+            groupId: "vap_fusion_images",
+            kind: "image",
+            source: "fusion",
+            status: "replaceable",
+            replaceable: true,
+            runtimeTargetId: "srcTagAvatar",
+            detail: ["120 x 80"],
+            pathRedacted: true
+          }]
+        },
+        {
+          id: "vap_fusion_texts",
+          label: "VAP 融合文字",
+          count: 1,
+          replaceableCount: 1,
+          status: "available",
+          items: [{
+            id: "vap-title",
+            label: "title",
+            groupId: "vap_fusion_texts",
+            kind: "text",
+            source: "fusion",
+            status: "replaceable",
+            replaceable: true,
+            runtimeTargetId: "title",
+            detail: ["包含初始文字"],
+            pathRedacted: true
+          }]
+        }
+      ]
+    : [
+        {
+          id: "image_resources",
+          label: "图片",
+          count: 1,
+          replaceableCount: 1,
+          status: "available",
+          items: [{
+            id: `${format}-avatar`,
+            label: "avatar",
+            groupId: "image_resources",
+            kind: "image",
+            source: "asset",
+            status: "replaceable",
+            replaceable: true,
+            runtimeTargetId: "avatar",
+            detail: ["120 x 80"],
+            pathRedacted: true
+          }]
+        },
+        {
+          id: "text_candidates",
+          label: "文本",
+          count: 1,
+          replaceableCount: 1,
+          status: "available",
+          items: [{
+            id: `${format}-title`,
+            label: "标题",
+            groupId: "text_candidates",
+            kind: "text",
+            source: "text",
+            status: "replaceable",
+            replaceable: true,
+            runtimeTargetId: format === "lottie" ? "text:1" : "title",
+            detail: ["包含初始文字"],
+            pathRedacted: true
+          }]
+        }
+      ];
+  return {
+    schemaVersion: 1,
+    pathRedacted: true,
+    facts: [
+      { id: "format", label: "格式", value: format.toUpperCase(), status: "pass" },
+      { id: "dimensions", label: "画布", value: "120 x 80", status: "pass" },
+      { id: "duration", label: "时长", value: "1s", status: "pass" },
+      { id: "assets", label: "资源", value: "2", status: "pass" },
+      { id: "replaceable", label: "可替换", value: "2", status: "pass" }
+    ],
+    assets: [],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      format,
+      groups,
+      summary: {
+        totalItems: 2,
+        replaceableItems: 2,
+        imageCount: 1,
+        textCount: 1,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
+    },
+    unsupportedFeatures: [],
+    issues: [],
+    imageTargets: [{
+      imageKey: "avatar",
+      resourceId: "avatar",
+      displayName: "avatar",
+      detail: format === "vap" ? "VAP 融合图片 · 120 x 80" : "120 x 80"
+    }],
+    textTargets: [{
+      textKey: format === "lottie" ? "text:1" : "title",
+      displayName: format === "lottie" ? "Greeting" : "标题",
+      initialText: options.initialText ?? "欢迎回来",
+      placeholder: "输入文字以预览",
+      resetDisabled: false
+    }]
+  };
+}
 
 class FakeClassList {
   toggle() {}
@@ -28,11 +185,19 @@ class FakeElement {
   constructor() {
     this.classList = new FakeClassList();
     this.dataset = {};
+    this.children = [];
+    this.disabled = false;
+    this.hidden = false;
     this.innerHTML = "";
+    this.textContent = "";
   }
 
   setAttribute(name, value) {
     this[name] = String(value);
+  }
+
+  replaceChildren(...children) {
+    this.children = children;
   }
 }
 
@@ -145,6 +310,63 @@ test("multi-format replacement state resolves SVGA, Lottie, and VAP runtime bind
   assert.equal(multiFormatActiveReplacementForPublicTarget(vapModel, "image", "avatar-resource", publicBindings), true);
 });
 
+test("SVGA, Lottie, and VAP ready right surfaces share the owner snapshot hierarchy", () => {
+  for (const format of ["svga", "lottie", "vap"]) {
+    const snapshot = readyRightPanelSnapshot(format);
+    const panel = projectMultiFormatRightPanel({
+      ownerRightPanelSnapshotEnvelope: createOwnerSnapshotEnvelope(snapshot, `${format}-source`)
+    });
+
+    assert.deepEqual(panel.facts.map((fact) => fact.id), ["format", "dimensions", "duration", "assets", "replaceable"]);
+    assert.equal(panel.assetInventory.format, format);
+    assert.equal(panel.assetInventory.summary.totalItems, 2);
+    assert.equal(panel.assetInventory.summary.replaceableItems, 2);
+    assert.deepEqual(
+      multiFormatInventorySummaryItems(panel.assetInventory.summary).map((item) => `${item.id}:${item.count}`),
+      ["images:1", "texts:1"]
+    );
+    assert.equal(panel.assetInventory.groups.length, 2);
+    assert.equal(panel.assetInventory.groups.every((group) => group.replaceableCount === 1), true);
+    assert.equal(panel.assetInventory.groups.every((group) => group.items.length === 1), true);
+    assert.equal(panel.imageTargets.length, 1);
+    assert.equal(panel.imageTargets[0].imageKey, "avatar");
+    assert.equal(panel.textTargets.length, 1);
+    assert.equal(panel.textTargets[0].placeholder, "输入文字以预览");
+    assert.equal(panel.issues.length, 0);
+    assert.equal(panel.unsupportedFeatures.length, 0);
+  }
+});
+
+test("ready right surface rejects stale raw rightPanel data without a trusted snapshot", () => {
+  const panel = projectMultiFormatRightPanel({
+    detectedFormat: "lottie",
+    rightPanel: {
+      facts: [{ id: "format", label: "格式", value: "LOTTIE", status: "pass" }],
+      assetInventory: {
+        groups: [{
+          id: "image_resources",
+          label: "/Users/private/raw path",
+          count: 1,
+          replaceableCount: 1,
+          status: "available",
+          items: []
+        }]
+      },
+      imageTargets: [{
+        imageKey: "avatar",
+        resourceId: "avatar",
+        displayName: "raw-avatar",
+        detail: "120 x 80"
+      }]
+    }
+  });
+  assert.deepEqual(panel.facts, []);
+  assert.equal(panel.assetInventory.summary.totalItems, 0);
+  assert.equal(panel.imageTargets.length, 0);
+  assert.equal(panel.textTargets.length, 0);
+  assert.equal(panel.issues[0].message, "当前文件存在无法显示的检查问题。");
+});
+
 test("live SVGA text preview keeps Reset and replacement state aligned with the source value", () => {
   const resetButton = { disabled: true };
   const row = {
@@ -245,8 +467,54 @@ test("ready workspace right surface keeps tokenized density and containment cont
   assert.match(modules, /\.assetFilterTabs\[data-presentation="summary"\]\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/su);
   assert.match(modules, /\.assetGroupHeader \.rowText\s*\{[^}]*overflow:\s*hidden/su);
   assert.match(modules, /\.rightSurfaceBody\s*\{[^}]*overflow-x:\s*hidden[^}]*overflow-y:\s*auto/su);
+  assert.match(modules, /\.recentClearButton:disabled\s*\{[^}]*visibility:\s*hidden/su);
+  assert.doesNotMatch(modules, /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/u);
   assert.match(pageStates, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(pageStates, /@media \(max-width: 1080px\)/u);
+});
+
+test("launch recent module remains present for unavailable, empty, and non-empty states", () => {
+  const createNodes = () => {
+    const recentBlock = new FakeElement();
+    const listNode = new FakeElement();
+    listNode.closest = (selector) => selector === ".recentBlock" ? recentBlock : null;
+    return {
+      recentBlock,
+      listNode,
+      noteNode: new FakeElement(),
+      clearButton: new FakeElement()
+    };
+  };
+
+  withFakeDocument(() => {
+    const empty = createNodes();
+    renderLaunchRecentFiles(empty, []);
+    assert.equal(empty.recentBlock.hidden, false);
+    assert.equal(empty.recentBlock.dataset.state, "empty");
+    assert.equal(empty.clearButton.disabled, true);
+    assert.equal(empty.listNode.children.length, 0);
+    assert.equal(empty.noteNode.hidden, true);
+
+    const ready = createNodes();
+    renderLaunchRecentFiles(ready, [{
+      id: "recent-1",
+      displayName: "头像框.svga",
+      parentName: "素材",
+      available: true
+    }]);
+    assert.equal(ready.recentBlock.hidden, false);
+    assert.equal(ready.recentBlock.dataset.state, "ready");
+    assert.equal(ready.clearButton.disabled, false);
+    assert.equal(ready.listNode.children.length, 1);
+
+    const unavailable = createNodes();
+    renderRecentFilesUnavailable(unavailable);
+    assert.equal(unavailable.recentBlock.hidden, false);
+    assert.equal(unavailable.recentBlock.dataset.state, "unavailable");
+    assert.equal(unavailable.clearButton.disabled, true);
+    assert.equal(unavailable.listNode.children.length, 0);
+    assert.equal(unavailable.noteNode.hidden, true);
+  });
 });
 
 test("ready workspace right surface containment is vertical-only at narrow width", () => {

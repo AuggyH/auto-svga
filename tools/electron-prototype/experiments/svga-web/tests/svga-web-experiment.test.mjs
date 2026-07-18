@@ -6484,7 +6484,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.recentClearButton\s*\{/);
   assert.match(shortTermModules, /\.recentClearButton\s*\{[^}]*box-shadow: var\(--asv-launch-recent-control-shadow\)/s);
   assert.match(shortTermModules, /\.recentClearButton:hover:not\(:disabled\)\s*\{[^}]*background: var\(--asv-launch-recent-clear-hover-bg\)/s);
-  assert.match(page, /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*hidden/);
+  assert.match(page, /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*data-state="empty"/);
+  assert.match(page, /class="recentClearButton"[^>]*data-action="clear-recent"[^>]*disabled/);
   assert.match(shortTermModules, /\.recentBlock ol\s*\{[^}]*border-top: var\(--asv-launch-recent-list-border\)/s);
   assert.match(shortTermModules, /\.recentBlock li\s*\{[^}]*border-bottom: var\(--asv-launch-recent-row-border\)/s);
   assert.match(shortTermModules, /\.recentBlock li\[data-state="invalid"\]\s*\{[^}]*opacity: var\(--asv-launch-recent-invalid-opacity\)/s);
@@ -6612,8 +6613,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-columns: 1fr/s);
   assert.match(shortTermTokens, /--asv-component-drag-overlay-grid-rows: 1fr 3fr/);
   assert.match(shortTermTokens, /--asv-drag-overlay-grid-rows: var\(--asv-component-drag-overlay-grid-rows\)/);
-  assert.match(shortTermModules, /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/);
-  assert.match(shortTermModules, /padding-top: calc\(var\(--asv-toolbar-height\) \+ var\(--asv-launch-content-offset-block-start\)\)/);
+  assert.doesNotMatch(shortTermModules, /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)/);
+  assert.doesNotMatch(shortTermModules, /padding-top: calc\(var\(--asv-toolbar-height\) \+ var\(--asv-launch-content-offset-block-start\)\)/);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-rows: var\(--asv-drag-overlay-grid-rows\)/s);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*backdrop-filter: var\(--asv-drag-overlay-backdrop-filter\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone\s*\{[^}]*opacity: var\(--asv-drag-zone-opacity\)/s);
@@ -6944,8 +6945,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermLaunchRenderers, /export function renderLaunchRecentFiles/);
   assert.match(shortTermLaunchRenderers, /export function renderRecentFilesUnavailable/);
   assert.match(shortTermLaunchRenderers, /listNode\.closest\("\.recentBlock"\)/);
-  assert.match(shortTermLaunchRenderers, /recentBlock\.hidden = true/);
-  assert.match(shortTermLaunchRenderers, /recentBlock\.hidden = records\.length === 0/);
+  assert.match(shortTermLaunchRenderers, /recentBlock\.hidden = false/);
+  assert.match(shortTermLaunchRenderers, /recentBlock\.dataset\.state = "unavailable"/);
+  assert.match(shortTermLaunchRenderers, /recentBlock\.dataset\.state = records\.length === 0 \? "empty" : "ready"/);
   assert.match(shortTermLaunchRenderers, /clearButton\.disabled = records\.length === 0/);
   assert.match(shortTermLaunchRenderers, /data-action="open-recent"/);
   assert.match(shortTermLaunchRenderers, /data-recent-id/);
