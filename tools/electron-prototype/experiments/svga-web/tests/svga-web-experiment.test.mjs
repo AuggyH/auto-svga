@@ -3769,7 +3769,7 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(nodes.assetFilterTabs.dataset.presentation, "summary");
     assert.deepEqual(
       nodes.assetFilterTabs.children.map((child) => child.textContent),
-      ["全部 5", "图片 3", "问题 3"]
+      ["全部 (5)", "图片 (3)", "问题 (3)"]
     );
     assert.deepEqual(
       nodes.assetFilterTabs.children.map((child) => child.dataset.summaryId),

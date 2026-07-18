@@ -722,7 +722,7 @@ export function createMultiFormatDesktopPreviewController({
     summary.dataset.summaryId = item.id;
     summary.dataset.count = String(item.count);
     summary.setAttribute("role", "listitem");
-    summary.textContent = `${item.label} ${item.count}`;
+    summary.textContent = `${item.label} (${item.count})`;
     const label = rowLabel(item.label, String(item.count));
     summary.title = label;
     summary.setAttribute("aria-label", label);
