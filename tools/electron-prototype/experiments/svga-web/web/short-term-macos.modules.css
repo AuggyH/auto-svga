@@ -1125,6 +1125,11 @@ canvas {
   gap: var(--asv-space-1);
 }
 
+.replaceableList[data-empty="true"],
+.textElementList[data-empty="true"] {
+  display: none;
+}
+
 .sectionHead {
   display: flex;
   justify-content: space-between;

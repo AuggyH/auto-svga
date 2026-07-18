@@ -592,7 +592,7 @@ async function main() {
     /class="rightSurfaceHeader"/.test(page),
     /id="assetListHeading">资产列表<\/h2>/.test(page),
     /id="assetFilterTabs"[^>]*data-component="AssetFilterTabs"/.test(page),
-    /<section class="replaceableSection"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*<\/section>/.test(page),
+    /<section class="replaceableSection"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*<\/section>/.test(page),
     !/textPreviewBlock|textPreviewHeading|textPreviewSummary/.test(page),
     /dataset\.action = "asset-filter"/.test(overviewRenderer),
     /cell\.dataset\.component = "FactCell"/.test(overviewRenderer),

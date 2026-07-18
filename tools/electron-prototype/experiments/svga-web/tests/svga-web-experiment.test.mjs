@@ -3963,6 +3963,7 @@ test("0.2 replaceable summary includes text-only Lottie and VAP targets", async 
       assert.equal(nodes.replaceableSummary.textContent, "(1)");
       assert.doesNotMatch(nodes.replaceableSummary.textContent, /没有可替换图片|未发现可替换元素/u);
       assert.equal(nodes.replaceableList.children.length, 0);
+      assert.equal(nodes.replaceableList.dataset.empty, "true");
       assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "false");
       assert.equal(nodes.textElementList.dataset.empty, "false");
       const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
@@ -4017,6 +4018,7 @@ test("0.2 replaceable empty state uses frozen Figma copy and section state", asy
     assert.equal(nodes.replaceableList.children[0].className, "emptyText");
     assert.equal(nodes.replaceableList.children[0].dataset.component, "InlineStatus");
     assert.equal(nodes.replaceableList.children[0].textContent, "未发现可替换元素");
+    assert.equal(nodes.replaceableList.dataset.empty, "false");
     assert.equal(nodes.textElementList.children.length, 0);
     assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
     assert.equal(nodes.textElementList.dataset.empty, "true");
@@ -6426,7 +6428,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="resourceContextMenu"/);
   assert.match(page, /放弃未保存输出/);
   assert.match(page, /id="textElementList"/);
-  assert.match(page, /<section class="replaceableSection"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*<\/section>/);
+  assert.match(page, /<section class="replaceableSection"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*<\/section>/);
   assert.doesNotMatch(page, /textPreviewBlock|textPreviewHeading|textPreviewSummary|>运行时文本 <span/);
   assert.doesNotMatch(page, /class="textPreviewActions"|data-action="edit-text" disabled|data-action="reset-text" disabled/);
   assert.match(page, /data-component="WindowChrome"/);
@@ -6870,6 +6872,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*border-bottom: var\(--asv-right-panel-header-divider\)/s);
   assert.match(shortTermModules, /\.sectionHead\s*\{[^}]*padding-bottom: var\(--asv-right-section-head-padding-block-end\)/s);
   assert.match(shortTermModules, /\.assetList,[\s\S]*\.textElementList\s*\{[^}]*margin-top: var\(--asv-right-section-list-margin-block-start\)/s);
+  assert.match(shortTermModules, /\.replaceableList\[data-empty="true"\],[\s\S]*\.textElementList\[data-empty="true"\]\s*\{[^}]*display:\s*none/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*display: grid/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*gap: var\(--asv-asset-section-head-gap\)/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead h2\s*\{[^}]*white-space: nowrap/s);
@@ -7414,7 +7417,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableList\.replaceChildren/);
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableSummary\.textContent = view\.summaryCopy/);
   assert.match(shortTermReplaceableRenderers, /closest\("\.replaceableSection"\)\?\.setAttribute\("data-empty", view\.hasImages \? "false" : "true"\)/);
+  assert.match(shortTermReplaceableRenderers, /nodes\.replaceableList\.dataset\.empty = view\.hasImages \? "false" : "true"/);
   assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.dataset\.empty = view\.hasTextElements \? "false" : "true"/);
+  assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.closest\("\.replaceableSection"\)\?\.setAttribute\("data-empty", "false"\)/);
   assert.match(shortTermModules, /\.replaceableSection\[data-empty="true"\]/);
   assert.doesNotMatch(shortTermModules, /textPreviewBlock/);
   assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
@@ -9173,7 +9178,7 @@ function createMultiFormatControllerTestNodes() {
   replaceableSection.className = "replaceableSection";
   const replaceableList = new FakeDomElement("div");
   const textElementList = new FakeDomElement("div");
-  replaceableSection.replaceChildren(replaceableList, textElementList);
+  replaceableSection.replaceChildren(textElementList, replaceableList);
   return {
     app: new FakeDomElement("main"),
     loadingMessage: new FakeDomElement("p"),

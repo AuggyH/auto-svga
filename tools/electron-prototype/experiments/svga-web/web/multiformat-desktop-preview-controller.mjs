@@ -885,6 +885,7 @@ export function createMultiFormatDesktopPreviewController({
     const totalCount = imageCount + textCount;
     nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount);
     nodes.replaceableList.closest?.(".replaceableSection")?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
+    nodes.replaceableList.dataset.empty = totalCount > 0 && targets.length === 0 ? "true" : "false";
     if (totalCount === 0) {
       nodes.replaceableList.replaceChildren(createInlineStatusText("未发现可替换元素"));
       return;
