@@ -161,7 +161,8 @@ test("macOS multi-format picker uses bounded Standard Additions and validates se
   assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
   assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /Application\.currentApplication\(\)/u);
   assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /includeStandardAdditions = true/u);
-  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /chooseFile/u);
+  assert.match(DARWIN_MULTI_FORMAT_PICKER_JXA, /chooseFile\(\{[\s\S]*ofType:\s*\["public\.data"\]/u);
+  assert.doesNotMatch(DARWIN_MULTI_FORMAT_PICKER_JXA, /com\.auto-svga\.svga|UTExportedTypeDeclarations|CFBundleDocumentTypes/u);
   assert.doesNotMatch(DARWIN_MULTI_FORMAT_PICKER_JXA, /System Events|function run\(argv\)/u);
 
   const options = createMultiFormatOpenDialogOptions("darwin");

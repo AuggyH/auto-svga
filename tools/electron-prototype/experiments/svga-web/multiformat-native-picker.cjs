@@ -12,7 +12,10 @@ function run() {
   const app = Application.currentApplication();
   app.includeStandardAdditions = true;
   try {
-    const selected = String(app.chooseFile({ withPrompt: "打开文件" }));
+    const selected = String(app.chooseFile({
+      withPrompt: "打开文件",
+      ofType: ["public.data"]
+    }));
     return JSON.stringify({ status: "selected", filePath: selected });
   } catch (error) {
     if (Number(error.errorNumber) === -128) {
