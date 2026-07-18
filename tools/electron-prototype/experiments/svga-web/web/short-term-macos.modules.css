@@ -104,13 +104,16 @@
 .saveBanner {
   position: relative;
   z-index: 6;
+  box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
   gap: var(--asv-save-banner-gap);
   align-items: center;
   justify-content: center;
   width: 100%;
+  min-width: 0;
   min-height: var(--asv-save-banner-min-height);
+  overflow: hidden;
   padding: var(--asv-save-banner-padding-block) var(--asv-save-banner-padding-inline);
   border: var(--asv-save-banner-border);
   border-radius: var(--asv-save-banner-radius);
@@ -168,6 +171,8 @@
 }
 
 .saveBanner strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: currentColor;
   font-weight: var(--asv-save-banner-title-weight);
 }

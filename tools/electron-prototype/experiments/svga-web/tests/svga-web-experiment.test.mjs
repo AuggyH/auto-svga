@@ -548,7 +548,7 @@ test("short-term save feedback follows the frozen right-surface placement contra
   assert.match(tokens, /--asv-component-save-banner-danger-background: var\(--asv-color-status-danger-bg\)/);
   assert.match(tokens, /--asv-component-save-banner-danger-color: var\(--asv-color-status-danger\)/);
   assert.match(modules, /\.saveFeedbackOutlet\s*\{[^}]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/s);
-  assert.match(modules, /\.saveBanner\s*\{[^}]*justify-content: center/s);
+  assert.match(modules, /\.saveBanner\s*\{[^}]*box-sizing: border-box[^}]*justify-content: center[^}]*min-width: 0[^}]*overflow: hidden/s);
   assert.match(modules, /\.saveBanner\s*\{[^}]*border-radius: var\(--asv-save-banner-radius\)/s);
   assert.match(modules, /\.saveBanner\s*\{[^}]*font-size: var\(--asv-save-banner-font-size\)[^}]*line-height: var\(--asv-save-banner-line-height\)/s);
   assert.match(modules, /\.saveBanner::before\s*\{[^}]*width: var\(--asv-save-banner-icon-size\)/s);
@@ -556,7 +556,7 @@ test("short-term save feedback follows the frozen right-surface placement contra
   assert.match(modules, /\.saveBanner\[data-status="success"\]\s*\{[^}]*background: var\(--asv-save-banner-success-bg\)[^}]*color: var\(--asv-save-banner-success-color\)/s);
   assert.match(modules, /\.saveBanner\[data-status="danger"\]\s*\{[^}]*background: var\(--asv-save-banner-danger-bg\)/s);
   assert.match(modules, /\.saveBanner\[data-status="success"\]::before,[\s\S]*\.saveBanner\[data-status="danger"\]::before\s*\{[^}]*border-color: var\(--asv-save-banner-icon-track-color\)[^}]*border-top-color: currentColor[^}]*border-right-color: currentColor[^}]*border-bottom-color: currentColor/s);
-  assert.match(modules, /\.saveBanner strong\s*\{[^}]*color: currentColor/s);
+  assert.match(modules, /\.saveBanner strong\s*\{[^}]*min-width: 0[^}]*overflow-wrap: anywhere[^}]*color: currentColor/s);
   assert.match(pageStates, /\.macApp > \.saveBanner\s*\{[^}]*grid-row: 1/s);
 
   const overviewOutlet = { name: "overview", append(node) { node.parentElement = this; } };

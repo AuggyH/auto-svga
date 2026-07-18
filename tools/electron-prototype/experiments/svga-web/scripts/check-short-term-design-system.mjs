@@ -695,9 +695,9 @@ async function main() {
       && /--asv-component-save-banner-success-background:\s*transparent/.test(tokens)
       && /--asv-component-save-banner-danger-background:\s*var\(--asv-color-status-danger-bg\)/.test(tokens)
       && /\.saveFeedbackOutlet\s*\{[\s\S]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/.test(modules)
-      && /\.saveBanner\s*\{[\s\S]*justify-content: center[\s\S]*border-radius: var\(--asv-save-banner-radius\)[\s\S]*font-size: var\(--asv-save-banner-font-size\)[\s\S]*line-height: var\(--asv-save-banner-line-height\)/.test(modules)
+      && /\.saveBanner\s*\{[\s\S]*box-sizing: border-box[\s\S]*justify-content: center[\s\S]*min-width: 0[\s\S]*overflow: hidden[\s\S]*border-radius: var\(--asv-save-banner-radius\)[\s\S]*font-size: var\(--asv-save-banner-font-size\)[\s\S]*line-height: var\(--asv-save-banner-line-height\)/.test(modules)
       && /\.saveBanner\[data-status="loading"\]::before\s*\{[\s\S]*animation: spin var\(--asv-save-banner-icon-duration\)/.test(modules)
-      && /\.saveBanner strong\s*\{[\s\S]*color: currentColor/.test(modules)
+      && /\.saveBanner strong\s*\{[\s\S]*min-width: 0[\s\S]*overflow-wrap: anywhere[\s\S]*color: currentColor/.test(modules)
       && /\.macApp > \.saveBanner\s*\{[\s\S]*grid-row: 1/.test(pageStatesCss));
   record("figma-save-feedback-copy-stays-renderer-owned-and-path-free",
     /export function sourceUnmodifiedMessage\(\)\s*\{[\s\S]*return "源文件没有被修改。"/.test(feedbackModel)
