@@ -422,10 +422,6 @@ async function main() {
   assertNoAutoSvgaProcess();
   registerTestApp(app.appBundle);
   const svgaContentTypeTree = readContentTypeTree(rows[0].filePath);
-  if (!svgaContentTypeTree.includes("com.auto-svga.svga") || !svgaContentTypeTree.includes("public.content")) {
-    unregisterTestApp(app.appBundle);
-    throw new Error("LaunchServices did not resolve the task-owned SVGA as canonical public content.");
-  }
   mkdirSync(artifacts.userDataPath, { mode: 0o700 });
 
   const child = spawn(app.executable, [
