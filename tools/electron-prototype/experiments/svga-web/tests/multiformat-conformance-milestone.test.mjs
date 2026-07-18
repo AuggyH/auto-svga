@@ -145,7 +145,7 @@ test("host chooser cancellation cannot enter loading or resize the Launch window
   assert.match(openBody, /resolveMultiFormatChooserOutcome/u);
 });
 
-test("macOS multi-format picker exposes files and validates the selected extension in the host", () => {
+test("macOS multi-format picker leaves native admission unfiltered and validates the selected extension in the host", () => {
   const mainSource = source("main.cjs");
   const pickerSource = source("multiformat-native-picker.cjs");
   const openStart = mainSource.indexOf("async function openMultiFormatFile()");
@@ -153,11 +153,13 @@ test("macOS multi-format picker exposes files and validates the selected extensi
   const openBody = mainSource.slice(openStart, openEnd);
 
   assert.match(openBody, /chooseMultiFormatLocalFile/u);
-  assert.match(pickerSource, /platform === "darwin"[\s\S]*extensions:\s*\["\*"\]/u);
+  assert.doesNotMatch(pickerSource, /extensions:\s*\["\*"\]/u);
   assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
 
   const options = createMultiFormatOpenDialogOptions("darwin");
-  assert.deepEqual(options.filters, [{ name: "SVGA / Lottie JSON / VAP MP4", extensions: ["*"] }]);
+  assert.equal(Object.hasOwn(options, "filters"), false);
+  assert.deepEqual(options.properties, ["openFile"]);
+  assert.deepEqual(createMultiFormatOpenDialogOptions("win32").filters[0].extensions, ["svga", "json", "mp4"]);
   for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.JSON", "/private/tmp/example.mp4"]) {
     assert.deepEqual(validateMultiFormatPickerSelection(filePath), { status: "selected", filePath });
   }
@@ -232,7 +234,8 @@ test("host picker returns cancel, selected formats, and redacted invalid input w
     }
   }), { status: "cancelled" });
   assert.equal(observedOptions.length, 3);
-  assert.ok(observedOptions.every(({ filters }) => filters[0].extensions[0] === "*"));
+  assert.ok(observedOptions.every((options) => !Object.hasOwn(options, "filters")));
+  assert.ok(observedOptions.every(({ properties }) => properties.length === 1 && properties[0] === "openFile"));
 });
 
 test("unsupported picker selection stays typed and mutation-free through the renderer contract", async () => {

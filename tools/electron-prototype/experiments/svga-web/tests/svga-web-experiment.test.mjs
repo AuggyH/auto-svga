@@ -55,6 +55,7 @@ const {
   MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
   createMultiFormatDesktopPreviewSession
 } = require("../multiformat-desktop-session.cjs");
+const { chooseMultiFormatLocalFile } = require("../multiformat-native-picker.cjs");
 
 function extractFunctionSource(source, signature) {
   const start = source.indexOf(signature);
@@ -2905,6 +2906,18 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
   const vapSidecarPath = path.join(sessionRoot, "synthetic-vap-sidecar.mp4");
   const vapSidecarConfigPath = path.join(sessionRoot, "synthetic-vap-sidecar.json");
   const vapFusionPath = path.join(sessionRoot, "synthetic-vap-fusion.mp4");
+  const openFromPicker = async (filePath, label) => {
+    const pickerResult = await chooseMultiFormatLocalFile({
+      platform: "darwin",
+      async showOpenDialog(options) {
+        assert.equal(Object.hasOwn(options, "filters"), false);
+        assert.deepEqual(options.properties, ["openFile"]);
+        return { canceled: false, filePaths: [filePath] };
+      }
+    });
+    assert.deepEqual(pickerResult, { status: "selected", filePath });
+    return withTerminalTestDeadline(session.openLocalFilePath(pickerResult.filePath, "fileButton"), label);
+  };
 
   try {
     await copyFile(path.join(experimentRoot, ".runtime/fixture/avatar-frame-smoke.svga"), svgaPath);
@@ -2948,7 +2961,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
       }]
     }));
 
-    const svga = await withTerminalTestDeadline(session.openLocalFilePath(svgaPath, "fileButton"), "svga");
+    const svga = await openFromPicker(svgaPath, "svga");
     assert.equal(svga.status, "opened");
     assert.equal(svga.pathRedacted, true);
     assert.equal(svga.model.detectedFormat, "svga");
@@ -2968,7 +2981,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.match(svgaRuntime.svgaBase64, /^[A-Za-z0-9+/=]+$/);
     assert.doesNotMatch(JSON.stringify(svgaRuntime), /\/Users|auto-svga-terminal-session/i);
 
-    const lottie = await withTerminalTestDeadline(session.openLocalFilePath(lottiePath, "fileButton"), "lottie");
+    const lottie = await openFromPicker(lottiePath, "lottie");
     assert.equal(lottie.status, "opened");
     assert.equal(lottie.pathRedacted, true);
     assert.equal(lottie.model.detectedFormat, "lottie");
@@ -3007,7 +3020,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.doesNotMatch(JSON.stringify(lottieReplacementRuntime), /\/Users|auto-svga-terminal-session/i);
     assert.equal(sourceStore.size, 2);
 
-    const vap = await withTerminalTestDeadline(session.openLocalFilePath(vapPath, "fileButton"), "vap");
+    const vap = await openFromPicker(vapPath, "vap");
     assert.equal(vap.status, "opened");
     assert.equal(vap.pathRedacted, true);
     assert.equal(vap.model.detectedFormat, "vap");
