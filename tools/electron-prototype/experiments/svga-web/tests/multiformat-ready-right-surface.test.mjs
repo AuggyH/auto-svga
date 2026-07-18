@@ -541,6 +541,41 @@ test("edit reserved surface follows the frozen placeholder hierarchy", async () 
   assert.match(modules, /\.editReservedPlaceholder p\s*\{[^}]*color:\s*var\(--asv-edit-reserved-message-color\)/su);
 });
 
+test("settings sheet follows the frozen appearance hierarchy", async () => {
+  const [page, tokens, components] = await Promise.all([
+    "index.html",
+    "short-term-macos.tokens.css",
+    "short-term-macos.components.css"
+  ].map((file) => readFile(path.join(experimentRoot, "web", file), "utf8")));
+
+  const settingsStart = page.indexOf('<dialog class="appDialog settingsDialog"');
+  const settingsEnd = page.indexOf("</dialog>", settingsStart);
+  assert.notEqual(settingsStart, -1);
+  assert.notEqual(settingsEnd, -1);
+  const settings = page.slice(settingsStart, settingsEnd);
+
+  assert.match(settings, /class="settingsHeaderIcon"[^>]*aria-hidden="true"/u);
+  assert.match(settings, /<span>设置<\/span>/u);
+  assert.match(settings, /<legend>外观<\/legend>/u);
+  assert.match(settings, /<button class="primary" value="close" data-action="close-settings">完成<\/button>/u);
+  assert.equal((settings.match(/class="settingsChoice"/gu) || []).length, 3);
+
+  assert.match(tokens, /--asv-component-settings-sheet-min-height:\s*300px/u);
+  assert.match(tokens, /--asv-component-settings-sheet-radius:\s*var\(--asv-base-radius-24\)/u);
+  assert.match(tokens, /--asv-component-settings-divider-width:\s*1px/u);
+  assert.match(tokens, /--asv-component-settings-title-icon-size:\s*20px/u);
+  assert.match(tokens, /--asv-component-settings-title-size:\s*var\(--asv-type-size-metric\)/u);
+  assert.match(tokens, /--asv-component-settings-choice-height:\s*88px/u);
+  assert.match(tokens, /--asv-component-settings-choice-selected-border:\s*var\(--asv-color-border-focus\)/u);
+  assert.match(tokens, /--asv-component-settings-choice-selected-bg:\s*var\(--asv-color-status-info-soft\)/u);
+
+  assert.match(components, /\.settingsDialog\s*\{[^}]*min-height:\s*var\(--asv-settings-sheet-min-height\)/su);
+  assert.match(components, /\.settingsHeaderIcon\s*\{[^}]*width:\s*var\(--asv-settings-title-icon-size\)[^}]*color:\s*var\(--asv-action\)/su);
+  assert.match(components, /\.settingsHeader h2\s*\{[^}]*font-size:\s*var\(--asv-settings-title-size\)[^}]*font-weight:\s*var\(--asv-settings-title-weight\)/su);
+  assert.match(components, /\.settingsGroup\s*\{[^}]*padding-block:\s*var\(--asv-settings-appearance-block-padding-block\)/su);
+  assert.match(components, /\.settingsChoice\s*\{[^}]*min-height:\s*var\(--asv-settings-choice-height\)[^}]*font-weight:\s*var\(--asv-settings-choice-label-weight\)/su);
+});
+
 test("launch recent module remains present for unavailable, empty, and non-empty states", () => {
   const createNodes = () => {
     const recentBlock = new FakeElement();

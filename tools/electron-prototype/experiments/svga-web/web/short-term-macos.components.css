@@ -686,6 +686,8 @@
 
 .settingsDialog {
   width: var(--asv-settings-sheet-width);
+  min-height: var(--asv-settings-sheet-min-height);
+  box-sizing: border-box;
   border: var(--asv-settings-sheet-border);
   border-radius: var(--asv-settings-sheet-radius);
   background: var(--asv-settings-sheet-bg);
@@ -710,7 +712,34 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--asv-settings-title-row-height);
-  gap: var(--asv-base-space-0);
+  gap: var(--asv-settings-title-gap);
+  color: var(--asv-settings-title-color);
+  font-size: var(--asv-settings-title-size);
+  font-weight: var(--asv-settings-title-weight);
+  line-height: var(--asv-settings-title-line-height);
+}
+
+.settingsHeaderIcon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: var(--asv-settings-title-icon-size);
+  height: var(--asv-settings-title-icon-size);
+  color: var(--asv-action);
+}
+
+.settingsHeaderIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.settingsHeaderIcon path,
+.settingsHeaderIcon circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: var(--asv-settings-choice-icon-stroke-width);
 }
 
 .settingsGroup {
@@ -728,9 +757,10 @@
 
 .settingsGroup legend {
   margin: 0;
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-footnote);
-  font-weight: var(--asv-type-weight-semibold);
+  color: var(--asv-settings-appearance-title-color);
+  font-size: var(--asv-settings-appearance-title-size);
+  font-weight: var(--asv-settings-appearance-title-weight);
+  line-height: var(--asv-settings-appearance-title-line-height);
 }
 
 .settingsChoiceGroup {
@@ -756,9 +786,10 @@
   border: var(--asv-settings-choice-border-width) solid var(--asv-settings-choice-border);
   border-radius: var(--asv-settings-choice-radius);
   background: var(--asv-settings-choice-bg);
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-footnote);
-  font-weight: var(--asv-type-weight-semibold);
+  color: var(--asv-settings-choice-label-color);
+  font-size: var(--asv-settings-choice-label-size);
+  font-weight: var(--asv-settings-choice-label-weight);
+  line-height: var(--asv-settings-choice-label-line-height);
   text-align: center;
 }
 
@@ -813,6 +844,9 @@
   justify-content: center;
   width: 100%;
   min-height: var(--asv-settings-action-height);
+  border-radius: var(--asv-settings-action-radius);
+  font-size: var(--asv-settings-action-font-size);
+  font-weight: var(--asv-settings-action-font-weight);
 }
 
 .contextMenu {

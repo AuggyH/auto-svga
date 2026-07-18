@@ -7248,10 +7248,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="settingsDialog"(?=[^>]*data-component="SettingsSheet")(?=[^>]*data-module="SettingsDialogModule")(?=[^>]*data-status="info")[^>]*>/);
   assert.match(page, /class="settingsGroup" aria-label="外观" data-component="ThemeSegmentedControl"/);
   assert.match(page, /class="dialogHeader settingsHeader"/);
-  assert.doesNotMatch(page, /class="settingsHeaderIcon"/);
+  assert.match(page, /class="settingsHeaderIcon" aria-hidden="true"/);
   assert.match(page, /name="appearance" value="system" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>跟随系统<\/span>/);
   assert.match(page, /name="appearance" value="light" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>浅色<\/span>/);
   assert.match(page, /name="appearance" value="dark" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>深色<\/span>/);
+  assert.match(page, /<button class="primary" value="close" data-action="close-settings">完成<\/button>/);
   assert.doesNotMatch(page, /预览背景|主预览适配|活动记录/);
   assert.match(page, /class="dialogActions"/);
   assert.match(page, /id="resourceContextMenu"/);
@@ -7483,7 +7484,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-layout-page-edit-center-width: 560px/);
   assert.match(shortTermTokens, /--asv-page-launch-frame-width: var\(--asv-layout-page-launch-frame-width\)/);
   assert.match(shortTermTokens, /--asv-page-workbench-frame-width: var\(--asv-layout-page-workbench-frame-width\)/);
-  assert.match(shortTermTokens, /--asv-component-settings-divider-width: 0px/);
+  assert.match(shortTermTokens, /--asv-component-settings-sheet-min-height: 300px/);
+  assert.match(shortTermTokens, /--asv-component-settings-sheet-radius: var\(--asv-base-radius-24\)/);
+  assert.match(shortTermTokens, /--asv-component-settings-divider-width: 1px/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-height: 88px/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-selected-border: var\(--asv-color-border-focus\)/);
   assert.match(shortTermTokens, /--asv-component-layer-row-min-height/);
   assert.match(shortTermTokens, /--asv-component-layer-row-divider: 0 solid transparent/);
   assert.match(shortTermTokens, /--asv-layer-list-gap: var\(--asv-component-layer-list-gap\)/);
@@ -7632,7 +7637,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsDialog/);
   assert.match(shortTermComponents, /\.settingsGroup/);
   assert.match(shortTermComponents, /\.settingsHeader/);
-  assert.doesNotMatch(shortTermComponents, /\.settingsHeaderIcon/);
+  assert.match(shortTermComponents, /\.settingsHeaderIcon\s*\{[^}]*width: var\(--asv-settings-title-icon-size\)[^}]*color: var\(--asv-action\)/s);
   assert.match(shortTermComponents, /\.appDialog::backdrop\s*\{[^}]*background: var\(--asv-dialog-backdrop-bg\)/s);
   assert.match(shortTermComponents, /\.settingsDialog\s*\{[^}]*border: var\(--asv-settings-sheet-border\)/s);
   assert.match(shortTermComponents, /\.settingsDialog\s*\{[^}]*border-radius: var\(--asv-settings-sheet-radius\)/s);
@@ -7642,6 +7647,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsDialog \.dialogBody\s*\{[^}]*padding: var\(--asv-settings-sheet-padding\) 0/s);
   assert.match(shortTermComponents, /\.settingsHeader\s*\{[^}]*padding: 0 var\(--asv-settings-sheet-padding\)/s);
   assert.match(shortTermComponents, /\.settingsHeader h2\s*\{[^}]*min-height: var\(--asv-settings-title-row-height\)/s);
+  assert.match(shortTermComponents, /\.settingsHeader h2\s*\{[^}]*font-size: var\(--asv-settings-title-size\)[^}]*font-weight: var\(--asv-settings-title-weight\)/s);
   assert.match(shortTermComponents, /\.settingsChoiceGroup/);
   assert.match(shortTermComponents, /\.settingsGroup\s*\{[^}]*gap: var\(--asv-settings-appearance-block-gap\)/s);
   assert.match(shortTermComponents, /\.settingsGroup\s*\{[^}]*min-height: var\(--asv-settings-appearance-block-height\)/s);
@@ -7649,6 +7655,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*padding: var\(--asv-settings-choice-group-padding\)/s);
   assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*background: var\(--asv-settings-choice-group-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice/);
+  assert.match(shortTermComponents, /\.settingsChoice\s*\{[^}]*min-height: var\(--asv-settings-choice-height\)[^}]*font-weight: var\(--asv-settings-choice-label-weight\)/s);
   assert.match(shortTermComponents, /\.settingsChoiceIcon/);
   assert.match(shortTermComponents, /\.settingsChoice:hover\s*\{[^}]*background: var\(--asv-settings-choice-hover-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)/);
