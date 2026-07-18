@@ -3,10 +3,13 @@ import {
   renderOverviewFactCellHtml
 } from "./short-term-macos-render-model.mjs";
 import {
+  assetFilterEmptyCopy,
   assetFilterFocusTarget,
+  assetFilterTabCopy,
   filteredAssetsForTab,
   normalizedAssetFilter
 } from "./short-term-macos-overview-model.mjs";
+import { createInlineStatusText } from "./short-term-macos-inline-status-renderers.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
 export function createOverviewFactCell(fact) {
@@ -89,7 +92,7 @@ export function renderAssetFilterTabs(nodes, view, activeFilter) {
     button.setAttribute("aria-selected", selected ? "true" : "false");
     button.tabIndex = selected ? 0 : -1;
     button.classList.toggle("isSelected", selected);
-    button.textContent = `${tab.label} (${tab.count})`;
+    button.textContent = assetFilterTabCopy(tab);
     return button;
   }));
   const focusTarget = assetFilterFocusTarget(activeFilter, previousFocusedFilter);
@@ -104,5 +107,10 @@ export function renderAssetList(nodes, view, model, activeFilter = "all") {
   const visibleAssets = filteredAssetsForTab(view.assets, nextFilter);
   if (nodes.assetListHeading) nodes.assetListHeading.textContent = `资产列表 (${view.assets.length})`;
   renderAssetFilterTabs(nodes, view, nextFilter);
+  const emptyCopy = visibleAssets.length === 0 ? assetFilterEmptyCopy(nextFilter) : "";
+  if (emptyCopy) {
+    nodes.assetList.replaceChildren(createInlineStatusText(emptyCopy));
+    return;
+  }
   nodes.assetList.replaceChildren(...visibleAssets.map((asset) => createAssetRow(asset, model)));
 }

@@ -458,6 +458,56 @@ test("short-term asset filters support roving keyboard model and interaction han
   assert.equal(stopped, true);
 });
 
+test("short-term asset empty filters follow frozen no-sequence and no-audio states", async () => {
+  const { overviewTabView, assetFilterTabCopy, assetFilterEmptyCopy } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs")).href);
+  const { renderAssetList } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-renderers.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const model = {
+      overview: {
+        facts: [],
+        audioGroup: {
+          status: "empty",
+          copy: "当前文件暂无音频资产"
+        }
+      },
+      assets: [{
+        kind: "image",
+        name: "img_000",
+        dimensions: "300×300",
+        fileSize: "41.8 KB",
+        findingCodes: [],
+        thumbnail: { type: "image", resourceIds: [] }
+      }]
+    };
+    const view = overviewTabView(model);
+
+    assert.equal(assetFilterTabCopy({ label: "序列帧", count: 0 }), "序列帧");
+    assert.equal(assetFilterTabCopy({ label: "音频", count: 3 }), "音频 (3)");
+    assert.equal(assetFilterEmptyCopy("sequence"), "当前文件暂无序列帧资产");
+    assert.equal(assetFilterEmptyCopy("audio"), "当前文件暂无音频资产");
+
+    renderAssetList(nodes, view, model, "sequence");
+    assert.deepEqual(
+      nodes.assetFilterTabs.children.map((child) => child.textContent),
+      ["全部 (1)", "图片 (1)", "序列帧", "音频"]
+    );
+    assert.equal(nodes.assetList.children.length, 1);
+    assert.equal(nodes.assetList.children[0].className, "emptyText");
+    assert.equal(nodes.assetList.children[0].dataset.component, "InlineStatus");
+    assert.equal(nodes.assetList.children[0].textContent, "当前文件暂无序列帧资产");
+
+    renderAssetList(nodes, view, model, "audio");
+    assert.equal(nodes.assetList.children.length, 1);
+    assert.equal(nodes.assetList.children[0].textContent, "当前文件暂无音频资产");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 async function createPackagedProofFixture({
   root,
   buildCommit,
@@ -9481,6 +9531,11 @@ class FakeDomElement {
 
   matches(selector) {
     return fakeMatchesSelector(this, selector);
+  }
+
+  contains(candidate) {
+    if (candidate === this) return true;
+    return this.children.some((child) => child?.contains?.(candidate));
   }
 
   closest(selector) {

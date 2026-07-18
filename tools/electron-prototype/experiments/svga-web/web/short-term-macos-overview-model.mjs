@@ -20,6 +20,16 @@ export function assetFilterTabsView(assets = []) {
   }));
 }
 
+export function assetFilterTabCopy(tab) {
+  return tab?.count > 0 ? `${tab.label} (${tab.count})` : tab?.label || "";
+}
+
+export function assetFilterEmptyCopy(filter) {
+  if (filter === "sequence") return "当前文件暂无序列帧资产";
+  if (filter === "audio") return "当前文件暂无音频资产";
+  return "";
+}
+
 export function normalizedAssetFilter(filter, assets = []) {
   const tabs = assetFilterTabsView(assets);
   return tabs.some((tab) => tab.id === filter) ? filter : "all";
