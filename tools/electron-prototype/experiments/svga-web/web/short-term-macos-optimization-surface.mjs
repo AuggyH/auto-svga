@@ -101,7 +101,7 @@ export async function runShortTermOptimizationWorkflow({
     });
     const optimizedBytes = result.optimizedSvgaBase64 ? fromBase64(result.optimizedSvgaBase64) : undefined;
     if (!optimizedBytes?.byteLength || result.optimization?.status !== "optimized") {
-      showSaveBanner(result.optimization?.resultTitle || "没有可安全执行的优化项。", result.optimization?.resultSummary || "保存保持关闭。");
+      showSaveBanner(result.optimization?.resultTitle || "没有可安全执行的优化项。", result.optimization?.resultSummary || "源文件没有被修改。");
       renderShortTermOptimizationResult({ nodes, model: result.optimization });
       return;
     }

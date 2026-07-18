@@ -137,7 +137,7 @@ export async function confirmShortTermInlineRename({
     cancelShortTermInlineRename({ nodes, state });
     return;
   }
-  showSaveBanner("正在重命名 imageKey。", "完成引用闭合检查后启用保存。");
+  showSaveBanner("正在重命名 imageKey…", "");
   try {
     const renamed = await renameShortTermImageKey({
       bytes: state.sourceBytes,
@@ -148,7 +148,7 @@ export async function confirmShortTermInlineRename({
     });
     const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
     if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
-      showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", renamed.rename?.diagnostic?.message || "保存保持关闭。");
+      showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", "源文件没有被修改。");
       return;
     }
     state.previewBytes = renamedBytes;
@@ -200,7 +200,7 @@ export async function applyShortTermReplacementFile({
 }) {
   if (!file || !state.sourceBytes || !state.selectedImageKey) return;
   if (!(await confirmDiscardUnsavedOutput("替换图片会放弃当前未保存的 SVGA 输出。"))) return;
-  showSaveBanner("正在替换图片资源。", "完成重开验证后启用保存。");
+  showSaveBanner("正在替换图片…", "");
   try {
     const payload = {
       name: state.displayName,
@@ -214,7 +214,7 @@ export async function applyShortTermReplacementFile({
     });
     const replacedBytes = replaced.replacedSvgaBase64 ? fromBase64(replaced.replacedSvgaBase64) : undefined;
     if (!replacedBytes?.byteLength || replaced.replacement?.status !== "replaced") {
-      showSaveBanner(replaced.replacement?.resultTitle || "替换未完成。", replaced.replacement?.diagnostic?.message || "保存保持关闭。");
+      showSaveBanner(replaced.replacement?.resultTitle || "替换未完成。", "源文件没有被修改。");
       return;
     }
     state.previewBytes = replacedBytes;

@@ -8114,7 +8114,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationSurface, /showOperationFailure\("优化未完成。", error\)/);
   assert.match(shortTermReplaceableSurface, /showOperationFailure\("重命名未完成。", error\)/);
   assert.match(shortTermReplaceableSurface, /showOperationFailure\("替换未完成。", error\)/);
+  assert.match(shortTermReplaceableSurface, /showSaveBanner\("正在重命名 imageKey…", ""\)/);
+  assert.match(shortTermReplaceableSurface, /showSaveBanner\("正在替换图片…", ""\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
+  assert.doesNotMatch(shortTermReplaceableSurface, /完成引用闭合检查|完成重开验证|保存保持关闭/);
+  assert.doesNotMatch(shortTermOptimizationSurface, /保存保持关闭/);
+  assert.doesNotMatch(shortTermSaveSurface, /保存保持关闭/);
   assert.match(shortTermController, /currentStateSummary/);
   assert.match(shortTermFeedbackModel, /错误：\$\{input\.errorText\.trim\(\)\}/);
   assert.match(shortTermFeedbackModel, /提示：\$\{input\.saveBannerText\.trim\(\)\}/);

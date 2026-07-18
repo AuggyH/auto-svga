@@ -80,7 +80,7 @@ export async function saveShortTermActiveOutput({
 }) {
   if (!state.activeOutput?.bytes?.byteLength || !bridge?.saveShortTermSvgaOutput) return undefined;
   if (state.activeOutput.kind === "optimization" && !canSaveOptimizationResult(state.activeOutput.details)) {
-    showSaveBanner(state.activeOutput.title || "优化结果不可保存。", state.activeOutput.summary || "保存保持关闭。");
+    showSaveBanner(state.activeOutput.title || "优化结果不可保存。", state.activeOutput.summary || "当前结果不可保存。");
     return undefined;
   }
   if (state.saveStatus === "validating") return undefined;
