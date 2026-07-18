@@ -746,8 +746,7 @@ export function createMultiFormatDesktopPreviewController({
     section.dataset.status = group.status;
     section.dataset.empty = items.length === 0 ? "true" : "false";
     section.setAttribute("role", "group");
-    const statusCopy = groupStatusCopy(group);
-    const groupLabel = rowLabel(group.label, statusCopy, `${group.count} 项`);
+    const groupLabel = rowLabel(group.label, `${group.count} 项`);
     section.title = groupLabel;
     section.setAttribute("aria-label", groupLabel);
 
@@ -756,10 +755,13 @@ export function createMultiFormatDesktopPreviewController({
     heading.dataset.status = group.status;
     heading.setAttribute("aria-label", groupLabel);
     heading.title = groupLabel;
-    heading.innerHTML = `
-      <span class="rowText"><strong>${escapeHtml(group.label)}</strong>${statusCopy ? `<span>${escapeHtml(statusCopy)}</span>` : ""}</span>
-      <span class="badge">${escapeHtml(String(group.count))}</span>
-    `;
+    const title = document.createElement("strong");
+    title.className = "assetGroupTitle";
+    title.textContent = group.label;
+    const count = document.createElement("span");
+    count.className = "assetGroupCount";
+    count.textContent = `(${group.count})`;
+    heading.replaceChildren(title, count);
 
     const list = document.createElement("div");
     list.className = "assetGroupList";
@@ -791,13 +793,6 @@ export function createMultiFormatDesktopPreviewController({
       ${inventoryItemBadgeHtml(item)}
     `;
     return row;
-  }
-
-  function groupStatusCopy(group) {
-    if (group.status === "blocked") return "存在缺失或阻断";
-    if (group.status === "warning") return "存在不支持项";
-    if (group.replaceableCount > 0) return `${group.replaceableCount} 可替换`;
-    return "";
   }
 
   function assetStatusCopy(status) {

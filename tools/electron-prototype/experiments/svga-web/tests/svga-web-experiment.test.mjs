@@ -3991,7 +3991,17 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(capabilityGroup.dataset.empty, "false");
     assert.equal(diagnosticGroup.dataset.status, "warning");
     assert.equal(diagnosticGroup.dataset.empty, "true");
-    assert.match(diagnosticGroup.children[0].innerHTML, /存在不支持项/u);
+    for (const group of [imageGroup, capabilityGroup, diagnosticGroup]) {
+      assert.deepEqual(
+        group.children[0].children.map((child) => child.className),
+        ["assetGroupTitle", "assetGroupCount"]
+      );
+      assert.doesNotMatch(group.children[0].innerHTML, /存在缺失或阻断|存在不支持项|可替换/u);
+    }
+    assert.equal(imageGroup.children[0].children[0].textContent, "图片资源");
+    assert.equal(imageGroup.children[0].children[1].textContent, "(3)");
+    assert.equal(diagnosticGroup.children[0].children[0].textContent, "格式诊断");
+    assert.equal(diagnosticGroup.children[0].children[1].textContent, "(0)");
     assert.equal(diagnosticGroup.children[1].children.length, 0);
 
     const [availableRow, replaceableRow, missingRow] = imageGroup.children[1].children;
