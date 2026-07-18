@@ -3872,11 +3872,58 @@ test("0.2 replaceable summary includes text-only Lottie and VAP targets", async 
       assert.equal(nodes.replaceableSummary.textContent, "1 个可替换文本");
       assert.doesNotMatch(nodes.replaceableSummary.textContent, /没有可替换图片/u);
       assert.equal(nodes.replaceableList.children.length, 0);
+      assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "false");
       const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${fixture.textKey}"]`);
       assert.ok(input);
       assert.equal(input.value, fixture.initialText);
       assert.equal(input.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     }
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.2 replaceable empty state uses frozen Figma copy and section state", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge: {
+        updateShortTermMenuState() {
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        }
+      },
+      nodes,
+      state,
+      svgaController: { handlers: { deactivateForMultiFormat() {}, renderCommandState() {} } }
+    });
+    const result = createRuntimeMountOpenResult("lottie", {
+      sourceId: "lottie-no-replaceable-source",
+      imageTargets: [],
+      textTargets: []
+    });
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "lottie-no-replaceable" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "lottie-no-replaceable", result }), true);
+
+    assert.equal(nodes.replaceableSummary.textContent, "未发现可替换元素");
+    assert.equal(nodes.replaceableList.children.length, 0);
+    assert.equal(nodes.textElementList.children.length, 0);
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
   } finally {
     globalThis.document = originalDocument;
   }
@@ -9026,6 +9073,11 @@ function createMultiFormatControllerTestNodes() {
   const playbackProgress = new FakeDomElement("div");
   const playbackProgressBar = new FakeDomElement("span");
   playbackProgress.replaceChildren(playbackProgressBar);
+  const replaceableSection = new FakeDomElement("section");
+  replaceableSection.className = "replaceableSection";
+  const replaceableList = new FakeDomElement("div");
+  const textElementList = new FakeDomElement("div");
+  replaceableSection.replaceChildren(replaceableList, textElementList);
   return {
     app: new FakeDomElement("main"),
     loadingMessage: new FakeDomElement("p"),
@@ -9037,8 +9089,8 @@ function createMultiFormatControllerTestNodes() {
     assetFilterTabs: new FakeDomElement("div"),
     assetList: new FakeDomElement("div"),
     findingList: new FakeDomElement("div"),
-    replaceableList: new FakeDomElement("div"),
-    textElementList: new FakeDomElement("div"),
+    replaceableList,
+    textElementList,
     replaceableSummary: new FakeDomElement("p"),
     playbackProgress,
     playbackTime: new FakeDomElement("span"),
@@ -9172,6 +9224,10 @@ class FakeDomElement {
 
   setAttribute(name, value) {
     this.attributes[name] = String(value);
+    if (name.startsWith("data-")) {
+      const datasetKey = name.slice(5).replace(/-([a-z])/gu, (_match, letter) => letter.toUpperCase());
+      this.dataset[datasetKey] = String(value);
+    }
   }
 
   setAttributeNS(_namespace, name, value) {
@@ -9315,6 +9371,9 @@ function fakeMatchesSelector(node, selector) {
   if (selector === ".textElementRow[data-text-key]") {
     return String(node.className || "").split(/\s+/u).includes("textElementRow")
       && typeof node.dataset.textKey === "string";
+  }
+  if (selector === ".replaceableSection") {
+    return String(node.className || "").split(/\s+/u).includes("replaceableSection");
   }
   return false;
 }

@@ -882,6 +882,7 @@ export function createMultiFormatDesktopPreviewController({
       )
     }));
     nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(imageCount, textCount);
+    nodes.replaceableList.closest?.(".replaceableSection")?.setAttribute("data-empty", imageCount + textCount > 0 ? "false" : "true");
     nodes.replaceableList.replaceChildren(...targets.map((target, index) => createReplaceableImageRow(target, index, {
       model,
       selected: state.selectedImageKey === target.imageKey,
@@ -895,7 +896,7 @@ export function createMultiFormatDesktopPreviewController({
     if (imageCount > 0 && textCount > 0) return `${imageCount} 个图片 · ${textCount} 个文本`;
     if (imageCount > 0) return `${imageCount} 个可替换图片`;
     if (textCount > 0) return `${textCount} 个可替换文本`;
-    return "当前文件没有可替换图片或文本。";
+    return "未发现可替换元素";
   }
 
   function renderTextTargets() {
