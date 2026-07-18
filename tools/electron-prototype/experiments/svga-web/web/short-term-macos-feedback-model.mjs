@@ -27,10 +27,11 @@ export function saveBannerA11yState(status) {
 export function saveBannerView(title, message, tone = bannerTone(title)) {
   const status = normalizeSaveBannerStatus(tone);
   const a11y = saveBannerA11yState(status);
+  const messageHtml = message ? `<span> ${escapeHtml(message)}</span>` : "";
   return {
     status,
     ...a11y,
-    html: `<strong>${escapeHtml(title)}</strong><span> ${escapeHtml(message || "")}</span>`
+    html: `<strong>${escapeHtml(title)}</strong>${messageHtml}`
   };
 }
 

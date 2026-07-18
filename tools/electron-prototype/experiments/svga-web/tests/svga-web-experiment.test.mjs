@@ -193,9 +193,9 @@ test("short-term save banner states expose direct accessible page-state semantic
   } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs")).href);
   const { showSaveFeedbackBanner, clearSaveFeedbackBanner } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs")).href);
 
-  assert.equal(bannerTone("正在验证保存输出。"), "loading");
-  assert.equal(bannerTone("已保存并通过验证。"), "success");
-  assert.equal(bannerTone("保存失败。"), "danger");
+  assert.equal(bannerTone("正在保存并验证输出…"), "loading");
+  assert.equal(bannerTone("已保存"), "success");
+  assert.equal(bannerTone("保存失败，请重试"), "danger");
   assert.equal(bannerTone("已取消保存。"), "warning");
   assert.deepEqual(saveBannerA11yState("loading"), {
     role: "status",
@@ -208,11 +208,12 @@ test("short-term save banner states expose direct accessible page-state semantic
     ariaBusy: "false"
   });
 
-  const loadingView = saveBannerView("正在验证保存输出。", "写入后会读取文件并校验哈希。");
+  const loadingView = saveBannerView("正在保存并验证输出…", "");
   assert.equal(loadingView.status, "loading");
   assert.equal(loadingView.role, "status");
   assert.equal(loadingView.ariaBusy, "true");
-  assert.match(loadingView.html, /正在验证保存输出。/);
+  assert.match(loadingView.html, /正在保存并验证输出…/);
+  assert.doesNotMatch(loadingView.html, /<span>/);
 
   const attributes = new Map();
   const node = {
@@ -228,7 +229,7 @@ test("short-term save banner states expose direct accessible page-state semantic
     }
   };
 
-  const failedView = showSaveFeedbackBanner(node, "保存失败。", "源文件没有被修改。");
+  const failedView = showSaveFeedbackBanner(node, "保存失败，请重试", "源文件没有被修改。");
   assert.equal(failedView.status, "danger");
   assert.equal(node.hidden, false);
   assert.equal(node.dataset.status, "danger");
@@ -246,8 +247,13 @@ test("short-term save banner states expose direct accessible page-state semantic
 
   assert.equal(sourceUnmodifiedMessage("磁盘写入失败。"), "磁盘写入失败。 源文件没有被修改。");
   const saveSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-save-surface.mjs"), "utf8");
+  const commandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
   assert.match(saveSurface, /import \{ sourceUnmodifiedMessage \} from "\.\/short-term-macos-feedback-model\.mjs";/);
-  assert.match(saveSurface, /showSaveBanner\("保存失败。", sourceUnmodifiedMessage/);
+  assert.match(saveSurface, /showSaveBanner\("正在保存并验证输出…", ""\)/);
+  assert.match(saveSurface, /showSaveBanner\("已保存", ""\)/);
+  assert.match(saveSurface, /showSaveBanner\("保存失败，请重试", sourceUnmodifiedMessage/);
+  assert.match(commandState, /正在保存并验证输出/);
+  assert.doesNotMatch(commandState, /正在验证保存输出/);
 });
 
 test("short-term loading and load-failed states expose recovery actions", async () => {
