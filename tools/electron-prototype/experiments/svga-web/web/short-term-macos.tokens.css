@@ -634,6 +634,12 @@
   --asv-component-compare-exit-button-color: var(--asv-color-text-secondary);
   --asv-component-compare-mode-header-min-height: 54px;
   --asv-component-compare-mode-header-divider: var(--asv-component-right-panel-section-divider);
+  --asv-component-compare-panel-padding-block-start: var(--asv-component-right-panel-padding);
+  --asv-component-compare-title-size: var(--asv-type-size-state-title);
+  --asv-component-compare-title-line-height: 26px;
+  --asv-component-compare-file-name-color: var(--asv-color-text-secondary);
+  --asv-component-compare-file-name-weight: var(--asv-type-weight-medium);
+  --asv-component-compare-file-name-line-height: 15px;
   --asv-component-optimization-metric-min-height: var(--asv-component-compare-metric-row-min-height);
   --asv-component-optimization-metric-gap: var(--asv-space-1);
   --asv-component-optimization-metric-grid-row-gap: var(--asv-space-4);
@@ -1284,6 +1290,12 @@
   --asv-compare-exit-button-color: var(--asv-component-compare-exit-button-color);
   --asv-compare-mode-header-min-height: var(--asv-component-compare-mode-header-min-height);
   --asv-compare-mode-header-divider: var(--asv-component-compare-mode-header-divider);
+  --asv-compare-panel-padding-block-start: var(--asv-component-compare-panel-padding-block-start);
+  --asv-compare-title-size: var(--asv-component-compare-title-size);
+  --asv-compare-title-line-height: var(--asv-component-compare-title-line-height);
+  --asv-compare-file-name-color: var(--asv-component-compare-file-name-color);
+  --asv-compare-file-name-weight: var(--asv-component-compare-file-name-weight);
+  --asv-compare-file-name-line-height: var(--asv-component-compare-file-name-line-height);
   --asv-optimization-metric-grid-row-gap: var(--asv-component-optimization-metric-grid-row-gap);
   --asv-optimization-metric-grid-column-gap: var(--asv-component-optimization-metric-grid-column-gap);
   --asv-optimization-metric-min-height: var(--asv-component-optimization-metric-min-height);

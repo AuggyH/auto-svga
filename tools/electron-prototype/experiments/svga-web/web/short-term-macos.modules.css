@@ -1465,7 +1465,7 @@ canvas {
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: var(--asv-right-panel-safe-padding-block-start) var(--asv-right-panel-padding) var(--asv-right-panel-padding);
+  padding: var(--asv-compare-panel-padding-block-start) var(--asv-right-panel-padding) var(--asv-right-panel-padding);
   background: var(--asv-side-surface-bg);
   box-shadow: inset var(--asv-side-surface-separator-width) 0 0 var(--asv-side-surface-separator);
 }
@@ -1509,8 +1509,9 @@ canvas {
 .compareSummary h2 {
   margin: 0;
   color: var(--asv-text);
-  font-size: var(--asv-type-size-dialog-title);
+  font-size: var(--asv-compare-title-size);
   font-weight: var(--asv-type-weight-semibold);
+  line-height: var(--asv-compare-title-line-height);
 }
 
 .compareSummary p {
@@ -1537,8 +1538,10 @@ canvas {
 
 .comparePairHeader strong {
   overflow: hidden;
-  color: var(--asv-text);
+  color: var(--asv-compare-file-name-color);
   font-size: var(--asv-type-size-footnote);
+  font-weight: var(--asv-compare-file-name-weight);
+  line-height: var(--asv-compare-file-name-line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

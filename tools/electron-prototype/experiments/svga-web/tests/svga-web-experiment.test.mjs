@@ -8449,7 +8449,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.layerList\s*\{[^}]*gap: var\(--asv-layer-list-gap\)/s);
   assert.doesNotMatch(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
   assert.match(shortTermModules, /\.compareInfo\s*\{[^}]*gap: var\(--asv-right-panel-section-gap\)/s);
-  assert.match(shortTermModules, /\.compareInfo\s*\{[^}]*padding: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)/s);
+  assert.match(shortTermTokens, /--asv-component-compare-panel-padding-block-start: var\(--asv-component-right-panel-padding\)/);
+  assert.match(shortTermTokens, /--asv-component-compare-title-size: var\(--asv-type-size-state-title\)/);
+  assert.match(shortTermTokens, /--asv-component-compare-title-line-height: 26px/);
+  assert.match(shortTermTokens, /--asv-component-compare-file-name-color: var\(--asv-color-text-secondary\)/);
+  assert.match(shortTermTokens, /--asv-component-compare-file-name-weight: var\(--asv-type-weight-medium\)/);
+  assert.match(shortTermTokens, /--asv-component-compare-file-name-line-height: 15px/);
+  assert.match(shortTermModules, /\.compareInfo\s*\{[^}]*padding: var\(--asv-compare-panel-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)/s);
+  assert.match(shortTermModules, /\.compareSummary h2\s*\{[^}]*font-size: var\(--asv-compare-title-size\)[^}]*line-height: var\(--asv-compare-title-line-height\)/s);
+  assert.match(shortTermModules, /\.comparePairHeader strong\s*\{[^}]*color: var\(--asv-compare-file-name-color\)[^}]*font-weight: var\(--asv-compare-file-name-weight\)[^}]*line-height: var\(--asv-compare-file-name-line-height\)/s);
   assert.match(shortTermTokens, /--asv-component-compare-mode-header-min-height: 54px/);
   assert.match(shortTermTokens, /--asv-compare-mode-header-divider: var\(--asv-component-compare-mode-header-divider\)/);
   assert.match(shortTermModules, /\.compareModeHeader\s*\{[^}]*min-height: var\(--asv-compare-mode-header-min-height\)/s);
