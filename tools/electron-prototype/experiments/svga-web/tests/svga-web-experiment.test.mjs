@@ -7699,7 +7699,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*padding: var\(--asv-file-header-padding-block\) 0/s);
   assert.match(shortTermTokens, /--asv-component-workbench-top-safe-area: var\(--asv-component-toolbar-height\)/);
   assert.match(shortTermTokens, /--asv-component-workbench-floating-control-top: var\(--asv-space-4\)/);
-  assert.match(shortTermTokens, /--asv-component-right-panel-safe-padding-block-start: var\(--asv-component-right-panel-padding\)/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-safe-padding-block-start: var\(--asv-component-workbench-top-safe-area\)/);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*margin: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) 0/s);
   assert.match(shortTermModules, /\.rightPanel\s*\{[^}]*background: var\(--asv-side-surface-bg\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-side-surface-bg\)/s);

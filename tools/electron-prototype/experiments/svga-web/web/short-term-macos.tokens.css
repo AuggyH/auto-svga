@@ -291,7 +291,7 @@
   --asv-component-thumbnail-text-icon-color: var(--asv-color-text-tertiary);
   --asv-component-right-panel-width: 360px;
   --asv-component-right-panel-padding: var(--asv-space-4);
-  --asv-component-right-panel-safe-padding-block-start: var(--asv-component-right-panel-padding);
+  --asv-component-right-panel-safe-padding-block-start: var(--asv-component-workbench-top-safe-area);
   --asv-component-right-surface-content-width: calc(var(--asv-component-right-panel-width) - (var(--asv-component-right-panel-padding) * 2));
   --asv-component-right-panel-section-gap: var(--asv-space-1);
   --asv-component-right-panel-section-margin-block-start: var(--asv-space-1);

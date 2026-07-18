@@ -616,7 +616,7 @@ async function main() {
     /--asv-component-right-panel-padding:\s*var\(--asv-space-4\)/.test(tokens),
     /--asv-component-workbench-top-safe-area:\s*var\(--asv-component-toolbar-height\)/.test(tokens),
     /--asv-component-workbench-floating-control-top:\s*var\(--asv-space-4\)/.test(tokens),
-    /--asv-component-right-panel-safe-padding-block-start:\s*var\(--asv-component-right-panel-padding\)/.test(tokens),
+    /--asv-component-right-panel-safe-padding-block-start:\s*var\(--asv-component-workbench-top-safe-area\)/.test(tokens),
     /--asv-component-right-surface-content-width:\s*calc\(var\(--asv-component-right-panel-width\) - \(var\(--asv-component-right-panel-padding\) \* 2\)\)/.test(tokens),
     /--asv-component-right-panel-section-gap:\s*var\(--asv-space-1\)/.test(tokens),
     /--asv-component-right-panel-section-margin-block-start:\s*var\(--asv-space-1\)/.test(tokens),
