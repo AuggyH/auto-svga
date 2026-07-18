@@ -648,7 +648,7 @@ async function main() {
     /\.rightPanel\s*\{[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
     /\.rightSurfaceBody\s*\{[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
     /\.rightSurfaceBody > \.factGrid,[\s\S]*\.compareInfo > \.resultGroup\s*\{[\s\S]*max-width: var\(--asv-right-surface-content-width\)/.test(modules),
-    /\.compareInfo\s*\{[\s\S]*gap: var\(--asv-right-panel-section-gap\)[\s\S]*padding: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
+    /\.compareInfo\s*\{[\s\S]*gap: var\(--asv-right-panel-section-gap\)[\s\S]*min-width: 0[\s\S]*overflow-x: hidden[\s\S]*overflow-y: auto[\s\S]*padding: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
     /\.canvasModeSwitch\s*\{[\s\S]*top: var\(--asv-workbench-floating-control-top\)/.test(modules),
     /\.sectionHead\s*\{[\s\S]*padding-bottom: var\(--asv-right-section-head-padding-block-end\)/.test(modules),
     /\.sectionHead h2\s*\{[\s\S]*font-size: var\(--asv-right-section-title-size\)[\s\S]*line-height: var\(--asv-right-section-title-line-height\)/.test(modules),
@@ -967,7 +967,11 @@ async function main() {
     && /--asv-workbench-min-width:\s*var\(--asv-layout-workbench-min-width\)/.test(tokens)
     && /body\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(baseCss)
     && /\.macApp\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(pageStatesCss)
-    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="unsupported"\]\s*\{[\s\S]*min-width:\s*var\(--asv-workbench-min-width\)[\s\S]*min-height:\s*var\(--asv-workbench-min-height\)/.test(pageStatesCss)
+    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="unsupported"\]\s*\{[\s\S]*min-width:\s*min\(var\(--asv-workbench-min-width\), 100vw\)[\s\S]*min-height:\s*min\(var\(--asv-workbench-min-height\), 100vh\)/.test(pageStatesCss)
+    && /\.compareView\s*\{[\s\S]*min-width:\s*0/.test(pageStatesCss)
+    && /\.compareCanvasSurface\s*\{[\s\S]*min-width:\s*0/.test(modules)
+    && /\.compareStage\s*\{[\s\S]*min-width:\s*0/.test(modules)
+    && /\.compareCanvasWrap\s*\{[\s\S]*min-width:\s*0/.test(modules)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
   record("figma-page-frame-layout-contract-covered", /--asv-layout-page-launch-frame-width:\s*640px/.test(tokens)

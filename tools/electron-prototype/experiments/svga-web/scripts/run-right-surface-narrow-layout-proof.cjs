@@ -104,13 +104,82 @@ async function run() {
       }
     };
     panel.scrollTop = initialScrollTop;
-    result.passed = result.panel.scrollWidth <= result.panel.clientWidth + 1
+    const previewPassed = result.panel.scrollWidth <= result.panel.clientWidth + 1
       && result.panel.scrollHeight > result.panel.clientHeight
       && result.panel.maxScrollTop > 0
       && Math.abs(result.panel.reachedScrollTop - result.panel.maxScrollTop) <= 1
       && result.panel.bottomGap <= 1
       && result.panel.overflowX === "hidden"
       && (result.panel.overflowY === "auto" || result.panel.overflowY === "scroll");
+
+    preview.hidden = true;
+    appNode.dataset.appState = "compare";
+    const compare = document.querySelector('[data-view="compare"]');
+    compare.hidden = false;
+    const compareInfo = document.querySelector("#compareInfoB");
+    const compareRows = (slot) => Array.from({ length: 24 }, (_, index) => '<div class="compareMetricCell" data-fact-id="' + slot + '-' + index + '"><span>指标 ' + (index + 1) + '</span><strong>' + (index + 1) + ' MiB</strong></div>').join("");
+    compareInfo.innerHTML = '<section class="compareSummary compareModeHeader" data-compare-state="loaded">'
+      + '<h2>对比模式</h2><div class="compareActions">'
+      + '<button class="toolbarButton compareExitButton" type="button" data-action="back-preview">退出对比</button>'
+      + '</div></section>'
+      + '<section class="comparePairHeader" aria-label="对比文件" data-compare-state="loaded">'
+      + '<div data-slot="A" data-state="loaded"><strong>较长的 A 文件名.svga</strong></div>'
+      + '<div data-slot="B" data-state="loaded"><strong>较长的 B 文件名.svga</strong></div>'
+      + '</section><section class="compareMetricGrid" aria-label="对比信息" data-compare-state="loaded">'
+      + '<div class="compareMetricColumn" data-slot="A">' + compareRows("a") + '</div>'
+      + '<div class="compareMetricColumn" data-slot="B">' + compareRows("b") + '</div>'
+      + '</section>';
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const compareStage = document.querySelector("#compareStage");
+    const compareExitButton = compareInfo.querySelector("[data-action='back-preview']");
+    const compareRect = compare.getBoundingClientRect();
+    const compareStageRect = compareStage.getBoundingClientRect();
+    const compareInfoRect = compareInfo.getBoundingClientRect();
+    const compareExitRect = compareExitButton.getBoundingClientRect();
+    const compareStyle = getComputedStyle(compareInfo);
+    const compareMaxScrollTop = Math.max(0, compareInfo.scrollHeight - compareInfo.clientHeight);
+    compareInfo.scrollTop = compareMaxScrollTop;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    result.compare = {
+      documentScrollWidth: document.documentElement.scrollWidth,
+      view: { left: compareRect.left, right: compareRect.right, width: compareRect.width },
+      stage: { left: compareStageRect.left, right: compareStageRect.right, width: compareStageRect.width },
+      panel: {
+        left: compareInfoRect.left,
+        right: compareInfoRect.right,
+        width: compareInfoRect.width,
+        clientWidth: compareInfo.clientWidth,
+        scrollWidth: compareInfo.scrollWidth,
+        clientHeight: compareInfo.clientHeight,
+        scrollHeight: compareInfo.scrollHeight,
+        maxScrollTop: compareMaxScrollTop,
+        reachedScrollTop: compareInfo.scrollTop,
+        overflowX: compareStyle.overflowX,
+        overflowY: compareStyle.overflowY
+      },
+      exitButton: {
+        left: compareExitRect.left,
+        right: compareExitRect.right,
+        top: compareExitRect.top,
+        bottom: compareExitRect.bottom
+      }
+    };
+    const comparePassed = result.compare.documentScrollWidth <= innerWidth + 1
+      && result.compare.view.left >= 0
+      && result.compare.view.right <= innerWidth + 1
+      && result.compare.stage.left >= 0
+      && result.compare.stage.right <= result.compare.panel.left + 1
+      && result.compare.panel.left >= 0
+      && result.compare.panel.right <= innerWidth + 1
+      && result.compare.panel.scrollWidth <= result.compare.panel.clientWidth + 1
+      && result.compare.panel.scrollHeight > result.compare.panel.clientHeight
+      && result.compare.panel.maxScrollTop > 0
+      && Math.abs(result.compare.panel.reachedScrollTop - result.compare.panel.maxScrollTop) <= 1
+      && result.compare.panel.overflowX === "hidden"
+      && (result.compare.panel.overflowY === "auto" || result.compare.panel.overflowY === "scroll")
+      && result.compare.exitButton.left >= result.compare.panel.left
+      && result.compare.exitButton.right <= innerWidth + 1;
+    result.passed = previewPassed && comparePassed;
     return result;
   })()`);
   console.log(`AUTO_SVGA_RIGHT_SURFACE_NARROW_PROOF ${JSON.stringify(proof)}`);

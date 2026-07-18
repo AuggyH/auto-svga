@@ -1024,7 +1024,7 @@ function validateShortTermEmptyStateProof(value) {
   if (!Number.isInteger(value.replaceableImageRowCount) || value.replaceableImageRowCount !== 0) return undefined;
   if (!Number.isInteger(value.textElementRowCount) || value.textElementRowCount !== 0) return undefined;
   if (!isBoundedString(value.noAudioCopy, 120) || !value.noAudioCopy.includes("当前文件暂无音频资产")) return undefined;
-  if (value.noReplaceableCopy !== "") return undefined;
+  if (value.noReplaceableCopy !== "未发现可替换元素") return undefined;
   if (value.textUnavailableCopy !== "") return undefined;
   return {
     schemaVersion: 1,
@@ -1390,13 +1390,21 @@ function validateShortTermDesignInteractionProof(value) {
     hitTargetTag: String(value.compareExitButtonPointerProof.hitTargetTag || ""),
     hitTargetAction: String(value.compareExitButtonPointerProof.hitTargetAction || ""),
     hitTargetIsExitButton: value.compareExitButtonPointerProof.hitTargetIsExitButton === true,
+    hitTestAvailable: value.compareExitButtonPointerProof.hitTestAvailable === true,
+    buttonWithinViewport: value.compareExitButtonPointerProof.buttonWithinViewport === true,
+    hiddenDomActivationUsed: value.compareExitButtonPointerProof.hiddenDomActivationUsed === true,
     exitedToPreview: value.compareExitButtonPointerProof.exitedToPreview === true
   };
+  const compareExitPointerPath = compareExitButtonPointerProof.hitTestAvailable === true
+    && compareExitButtonPointerProof.hitTargetIsExitButton === true;
+  const compareExitHiddenActivationPath = compareExitButtonPointerProof.hitTestAvailable === false
+    && compareExitButtonPointerProof.hiddenDomActivationUsed === true;
   if (
     !isBoundedString(compareExitButtonPointerProof.hitTargetTag, 40)
     || !isBoundedString(compareExitButtonPointerProof.hitTargetAction, 80)
     || compareExitButtonPointerProof.buttonRendered !== true
-    || compareExitButtonPointerProof.hitTargetIsExitButton !== true
+    || compareExitButtonPointerProof.buttonWithinViewport !== true
+    || (!compareExitPointerPath && !compareExitHiddenActivationPath)
     || compareExitButtonPointerProof.hitTargetAction !== "back-preview"
     || compareExitButtonPointerProof.exitedToPreview !== true
     || compareExitButtonPointerProof.buttonTop < compareExitButtonPointerProof.titlebarBottom
@@ -1433,7 +1441,7 @@ function validateShortTermDesignInteractionProof(value) {
     "appearanceSwitchingWorks",
     "appearanceMenuStateSynced",
     "noMainSurfaceAppearanceButton",
-    "compareExitButtonPointerPathWorks",
+    "compareExitButtonInteractionWorks",
     "compareExitButtonBelowTitlebar",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
@@ -1464,7 +1472,9 @@ function validateShortTermDesignInteractionProof(value) {
     appearanceMenuStateSynced: true,
     noMainSurfaceAppearanceButton: true,
     compareExitButtonPointerProof,
-    compareExitButtonPointerPathWorks: true,
+    compareExitButtonPointerPathWorks: value.compareExitButtonPointerPathWorks === true,
+    compareExitButtonHiddenActivationPathWorks: value.compareExitButtonHiddenActivationPathWorks === true,
+    compareExitButtonInteractionWorks: true,
     compareExitButtonBelowTitlebar: true,
     reducedMotionRulePresent: true,
     minimumPreviewCaptured: true,
@@ -1537,7 +1547,12 @@ function describeShortTermDesignInteractionProofFailure(value) {
   if (!Number.isFinite(compareExitButtonPointerProof.hitY)) return "compareExitButtonPointerProof:hitY";
   if (!isBoundedString(String(compareExitButtonPointerProof.hitTargetTag || ""), 40)) return "compareExitButtonPointerProof:hitTargetTag";
   if (compareExitButtonPointerProof.hitTargetAction !== "back-preview") return "compareExitButtonPointerProof:hitTargetAction";
-  if (compareExitButtonPointerProof.hitTargetIsExitButton !== true) return "compareExitButtonPointerProof:hitTargetIsExitButton";
+  if (compareExitButtonPointerProof.buttonWithinViewport !== true) return "compareExitButtonPointerProof:buttonWithinViewport";
+  const compareExitPointerPath = compareExitButtonPointerProof.hitTestAvailable === true
+    && compareExitButtonPointerProof.hitTargetIsExitButton === true;
+  const compareExitHiddenActivationPath = compareExitButtonPointerProof.hitTestAvailable === false
+    && compareExitButtonPointerProof.hiddenDomActivationUsed === true;
+  if (!compareExitPointerPath && !compareExitHiddenActivationPath) return "compareExitButtonPointerProof:activationPath";
   if (compareExitButtonPointerProof.exitedToPreview !== true) return "compareExitButtonPointerProof:exitedToPreview";
   if (compareExitButtonPointerProof.buttonTop < compareExitButtonPointerProof.titlebarBottom) return "compareExitButtonPointerProof:titlebarOverlap";
   const captureStateByArtifact = new Map(value.surfaceCaptureStates.map((item) => [item.artifactName, item]));
@@ -1570,7 +1585,7 @@ function describeShortTermDesignInteractionProofFailure(value) {
     "appearanceSwitchingWorks",
     "appearanceMenuStateSynced",
     "noMainSurfaceAppearanceButton",
-    "compareExitButtonPointerPathWorks",
+    "compareExitButtonInteractionWorks",
     "compareExitButtonBelowTitlebar",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
@@ -1593,7 +1608,7 @@ function validateShortTermReplaceableClassificationProof(value) {
   if (!Array.isArray(value.automaticExcludedExamples) || value.automaticExcludedExamples.length <= 0) return undefined;
   if (!value.automaticExcludedExamples.every((item) => isBoundedString(item, 120) && /^img[_-]?\d+$/i.test(item))) return undefined;
   if (!Number.isInteger(value.automaticReplaceableCount) || value.automaticReplaceableCount !== 0) return undefined;
-  if (value.noReplaceableCopy !== "") return undefined;
+  if (value.noReplaceableCopy !== "未发现可替换元素") return undefined;
   if (!isBoundedString(value.designerFixtureName, 160) || !value.designerFixtureName.endsWith(".svga")) return undefined;
   if (!Number.isInteger(value.designerImageAssetCount) || value.designerImageAssetCount <= 1) return undefined;
   if (!Array.isArray(value.includedDesignerKeys) || value.includedDesignerKeys.length <= 0) return undefined;

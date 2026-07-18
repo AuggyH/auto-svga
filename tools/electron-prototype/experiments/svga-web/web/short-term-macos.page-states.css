@@ -44,8 +44,8 @@
 .macApp[data-app-state="loading"],
 .macApp[data-app-state="failed"],
 .macApp[data-app-state="unsupported"] {
-  min-width: var(--asv-workbench-min-width);
-  min-height: var(--asv-workbench-min-height);
+  min-width: min(var(--asv-workbench-min-width), 100vw);
+  min-height: min(var(--asv-workbench-min-height), 100vh);
 }
 
 .view[hidden] {
@@ -99,6 +99,7 @@
   grid-template-rows: minmax(0, 1fr);
   gap: var(--asv-preview-gap);
   height: 100%;
+  min-width: 0;
   min-height: 0;
   padding: var(--asv-preview-gap);
   background: var(--asv-workbench);

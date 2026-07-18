@@ -491,7 +491,29 @@ async function runShortTermSmoke({
       && compareExitHitElement
       && compareExitButton.contains(compareExitHitElement)
   );
-  compareExitHitElement?.dispatchEvent(new MouseEvent("click", {
+  const compareExitButtonWithinViewport = Boolean(
+    compareExitButtonRect
+      && compareExitButtonRect.left >= 0
+      && compareExitButtonRect.top >= 0
+      && compareExitButtonRect.right <= window.innerWidth
+      && compareExitButtonRect.bottom <= window.innerHeight
+  );
+  const compareExitHitTestAvailable = Boolean(compareExitHitElement);
+  if (
+    !compareExitButtonWithinViewport
+    || compareExitButtonRect?.top < compareTitlebarRect?.bottom
+    || (compareExitHitTestAvailable && !compareExitButtonPointerHit)
+  ) {
+    throw new Error([
+      "Compare exit pointer target mismatch",
+      `button=${Math.round(compareExitButtonRect?.left ?? -1)},${Math.round(compareExitButtonRect?.top ?? -1)},${Math.round(compareExitButtonRect?.width ?? 0)},${Math.round(compareExitButtonRect?.height ?? 0)}`,
+      `viewport=${window.innerWidth},${window.innerHeight}`,
+      `titlebarBottom=${Math.round(compareTitlebarRect?.bottom ?? 0)}`,
+      `hit=${compareExitHitElement?.tagName?.toLowerCase() || "none"}:${compareExitHitElement?.closest?.("[data-action]")?.dataset.action || "none"}`
+    ].join("; "));
+  }
+  const compareExitActivationTarget = compareExitHitElement ?? compareExitButton;
+  compareExitActivationTarget?.dispatchEvent(new MouseEvent("click", {
     bubbles: true,
     cancelable: true,
     clientX: compareExitHitX,
@@ -504,9 +526,12 @@ async function runShortTermSmoke({
     titlebarBottom: Math.round(compareTitlebarRect?.bottom ?? 0),
     hitX: Math.round(compareExitHitX),
     hitY: Math.round(compareExitHitY),
-    hitTargetTag: compareExitHitElement?.tagName?.toLowerCase() || "",
-    hitTargetAction: compareExitHitElement?.closest?.("[data-action]")?.dataset.action || "",
+    hitTargetTag: compareExitHitElement?.tagName?.toLowerCase() || "unavailable",
+    hitTargetAction: compareExitActivationTarget?.closest?.("[data-action]")?.dataset.action || "",
     hitTargetIsExitButton: compareExitButtonPointerHit,
+    hitTestAvailable: compareExitHitTestAvailable,
+    buttonWithinViewport: compareExitButtonWithinViewport,
+    hiddenDomActivationUsed: !compareExitHitTestAvailable,
     exitedToPreview: state.view === "preview"
   };
   setMode("edit");
