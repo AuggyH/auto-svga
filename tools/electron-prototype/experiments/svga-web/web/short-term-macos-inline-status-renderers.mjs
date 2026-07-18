@@ -27,6 +27,8 @@ export function createAssetEmptyStatus(copy, kind) {
   const empty = createInlineStatusText(copy);
   empty.dataset.variant = "asset";
   empty.dataset.kind = kind;
+  empty.setAttribute("role", "status");
+  empty.setAttribute("aria-live", "polite");
   const icon = document.createElement("span");
   icon.className = "emptyStateIcon";
   icon.dataset.kind = kind;

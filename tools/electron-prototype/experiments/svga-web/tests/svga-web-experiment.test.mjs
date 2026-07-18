@@ -1090,6 +1090,8 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
     assert.equal(nodes.assetList.children[0].dataset.component, "InlineStatus");
     assert.equal(nodes.assetList.children[0].dataset.variant, "asset");
     assert.equal(nodes.assetList.children[0].dataset.kind, "sequence");
+    assert.equal(nodes.assetList.children[0].attributes.role, "status");
+    assert.equal(nodes.assetList.children[0].attributes["aria-live"], "polite");
     assert.equal(nodes.assetList.dataset.pageState, "no-sequence");
     assert.deepEqual(
       nodes.assetList.children[0].children.map((child) => child.className),
@@ -5103,6 +5105,8 @@ test("0.1 replaceable empty state keeps imageKey module and Figma single-line co
     assert.equal(empty.dataset.component, "InlineStatus");
     assert.equal(empty.dataset.variant, "asset");
     assert.equal(empty.dataset.kind, "replaceable");
+    assert.equal(empty.attributes.role, "status");
+    assert.equal(empty.attributes["aria-live"], "polite");
     assert.equal(empty.textContent, "未发现可替换元素");
     assert.deepEqual(
       empty.children.map((child) => child.className),
@@ -7724,8 +7728,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-replaceable-row-gap: var\(--asv-space-2\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
-  assert.match(shortTermTokens, /--asv-component-empty-state-width: 312px/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-width: var\(--asv-component-right-surface-content-width\)/);
   assert.match(shortTermTokens, /--asv-component-empty-state-gap: var\(--asv-space-3\)/);
+  assert.match(shortTermTokens, /--asv-component-empty-state-padding-block: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-empty-state-icon-size: 30px/);
   assert.match(shortTermTokens, /--asv-component-empty-state-replaceable-icon-size: 28px/);
   assert.match(shortTermTokens, /--asv-empty-state-icon-size: var\(--asv-component-empty-state-icon-size\)/);

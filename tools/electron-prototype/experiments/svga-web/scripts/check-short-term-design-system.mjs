@@ -916,6 +916,8 @@ async function main() {
     && /--asv-component-asset-filter-height:\s*34px/.test(tokens)
     && /--asv-component-asset-section-head-gap:\s*var\(--asv-space-2\)/.test(tokens)
     && /--asv-component-asset-filter-tab-font-size:\s*var\(--asv-type-size-micro\)/.test(tokens)
+    && /--asv-component-empty-state-width:\s*var\(--asv-component-right-surface-content-width\)/.test(tokens)
+    && /--asv-component-empty-state-padding-block:\s*var\(--asv-space-1\)/.test(tokens)
     && /--asv-component-toast-height:\s*44px/.test(tokens)
     && /--asv-component-toast-width:\s*280px/.test(tokens)
     && /--asv-component-toast-failure-width:\s*320px/.test(tokens)

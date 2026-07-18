@@ -447,9 +447,9 @@
   --asv-component-replace-image-action-color: var(--asv-color-text-link);
   --asv-component-replace-image-action-font-size: var(--asv-type-size-caption);
   --asv-component-replace-image-action-font-weight: var(--asv-type-weight-medium);
-  --asv-component-empty-state-width: 312px;
+  --asv-component-empty-state-width: var(--asv-component-right-surface-content-width);
   --asv-component-empty-state-gap: var(--asv-space-3);
-  --asv-component-empty-state-padding-block: var(--asv-space-3);
+  --asv-component-empty-state-padding-block: var(--asv-space-1);
   --asv-component-empty-state-radius: var(--asv-radius-sm);
   --asv-component-empty-state-icon-size: 30px;
   --asv-component-empty-state-replaceable-icon-size: 28px;
