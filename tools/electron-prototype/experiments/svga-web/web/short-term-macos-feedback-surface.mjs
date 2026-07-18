@@ -27,15 +27,14 @@ export function showShortTermFailure({ nodes, setView }) {
   setView("failed");
 }
 
-export function showShortTermOperationFailure({ nodes, state, setMode, renderCommandState }, title, error) {
-  const message = error instanceof Error ? error.message : String(error);
+export function showShortTermOperationFailure({ nodes, state, setMode, renderCommandState }, title) {
   if (state.sourceBytes && !["preview", "compare", "edit"].includes(state.view)) {
     setMode("preview");
   }
   showShortTermSaveBanner({
     nodes,
     title,
-    message: sourceUnmodifiedMessage(message)
+    message: sourceUnmodifiedMessage()
   });
   state.saveStatus = state.activeOutput ? "dirty" : "idle";
   renderCommandState();
