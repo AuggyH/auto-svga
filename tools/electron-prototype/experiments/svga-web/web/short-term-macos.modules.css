@@ -743,6 +743,20 @@ canvas {
   line-height: var(--asv-badge-min-height);
 }
 
+.playbackMeta[data-status="playing"],
+.playbackMeta[data-status="previewReady"] {
+  color: var(--asv-success);
+}
+
+.playbackMeta[data-status="playbackBlocked"] {
+  color: var(--asv-warning);
+}
+
+.playbackMeta[data-status="failed"],
+.playbackMeta[data-status="playbackFailed"] {
+  color: var(--asv-danger);
+}
+
 .rightPanel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);

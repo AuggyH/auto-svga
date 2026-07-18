@@ -3775,6 +3775,59 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
   }
 });
 
+test("0.2 playback meta uses closed renderer-owned status and format semantics", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+
+  try {
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge: {
+        updateShortTermMenuState() {
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        }
+      },
+      nodes,
+      state,
+      svgaController: { handlers: { deactivateForMultiFormat() {}, renderCommandState() {} } }
+    });
+
+    const playingResult = createRuntimeMountOpenResult("vap", { sourceId: "source:playback-meta" });
+    playingResult.model.status = "playing";
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "playback-meta-playing" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "playback-meta-playing", result: playingResult }), true);
+
+    assert.equal(nodes.playbackMeta.dataset.status, "playing");
+    assert.equal(nodes.playbackMeta.dataset.format, "vap");
+    assert.match(nodes.playbackMeta.textContent, /VAP · 120 x 80 · 0:01 · 播放中/u);
+
+    const unknownResult = createRuntimeMountOpenResult("lottie", { sourceId: "source:playback-unknown" });
+    unknownResult.model.status = "hostInternalPhase123";
+    unknownResult.model.detectedFormat = "internalRuntimeFormat";
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "playback-meta-unknown" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "playback-meta-unknown", result: unknownResult }), true);
+
+    assert.equal(nodes.playbackMeta.dataset.status, "unknown");
+    assert.equal(nodes.playbackMeta.dataset.format, "unknown");
+    assert.match(nodes.playbackMeta.textContent, /0\.2 · 120 x 80 · 0:01 · 未知/u);
+    assert.doesNotMatch(nodes.playbackMeta.textContent, /hostInternalPhase123|internalRuntimeFormat/u);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host file-open", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;

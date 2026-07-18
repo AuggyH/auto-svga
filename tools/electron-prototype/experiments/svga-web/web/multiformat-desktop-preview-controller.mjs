@@ -1683,6 +1683,8 @@ export function createMultiFormatDesktopPreviewController({
     if (bar) bar.style.width = `${progress}%`;
     nodes.playbackTime.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
     nodes.playbackMeta.textContent = playbackMeta(model);
+    nodes.playbackMeta.dataset.status = playbackStatusId(model.status);
+    nodes.playbackMeta.dataset.format = playbackFormatId(model.detectedFormat);
   }
 
   function renderCommandState() {
@@ -2042,7 +2044,7 @@ async function fileToDataUri(file) {
 }
 
 function playbackMeta(model) {
-  const format = model.detectedFormat ? model.detectedFormat.toUpperCase() : "0.2";
+  const format = playbackFormatCopy(model.detectedFormat);
   const dimensions = model.canvas?.dimensions || "unknown";
   const duration = formatTime(model.canvas?.playback?.durationMs || 0);
   return `${format} · ${dimensions} · ${duration} · ${statusCopy(model.status)}`;
@@ -2088,18 +2090,41 @@ function trustedOwnerFailureCode(failure) {
   }
 }
 
+const playbackStatusCopyById = Object.freeze({
+  launch: "待打开",
+  loading: "加载中",
+  previewReady: "已就绪",
+  playing: "播放中",
+  paused: "已暂停",
+  playbackBlocked: "播放受限",
+  playbackFailed: "播放失败",
+  failed: "加载失败",
+  disposed: "已关闭"
+});
+
+const playbackFormatCopyById = Object.freeze({
+  svga: "SVGA",
+  lottie: "LOTTIE",
+  vap: "VAP"
+});
+
+function playbackStatusId(status) {
+  return typeof status === "string" && Object.hasOwn(playbackStatusCopyById, status)
+    ? status
+    : "unknown";
+}
+
+function playbackFormatId(format) {
+  const id = typeof format === "string" ? format.toLowerCase() : "";
+  return Object.hasOwn(playbackFormatCopyById, id) ? id : "unknown";
+}
+
+function playbackFormatCopy(format) {
+  return playbackFormatCopyById[playbackFormatId(format)] ?? "0.2";
+}
+
 function statusCopy(status) {
-  return {
-    launch: "待打开",
-    loading: "加载中",
-    previewReady: "已就绪",
-    playing: "播放中",
-    paused: "已暂停",
-    playbackBlocked: "播放受限",
-    playbackFailed: "播放失败",
-    failed: "加载失败",
-    disposed: "已关闭"
-  }[status] ?? status ?? "未知";
+  return playbackStatusCopyById[playbackStatusId(status)] ?? "未知";
 }
 
 function formatTime(timeMs) {
