@@ -3766,6 +3766,15 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
 
     const [imageGroup, capabilityGroup, diagnosticGroup] = nodes.assetList.children;
     assert.equal(nodes.assetList.children.length, 3);
+    assert.equal(nodes.assetFilterTabs.dataset.presentation, "summary");
+    assert.deepEqual(
+      nodes.assetFilterTabs.children.map((child) => child.textContent),
+      ["全部 5", "图片 3", "问题 3"]
+    );
+    assert.deepEqual(
+      nodes.assetFilterTabs.children.map((child) => child.dataset.summaryId),
+      ["all", "images", "issues"]
+    );
     assert.equal(imageGroup.dataset.empty, "false");
     assert.equal(capabilityGroup.dataset.empty, "false");
     assert.equal(diagnosticGroup.dataset.status, "warning");
@@ -3871,6 +3880,42 @@ test("0.2 replaceable summary includes text-only Lottie and VAP targets", async 
   } finally {
     globalThis.document = originalDocument;
   }
+});
+
+test("0.2 inventory summary follows Figma asset type rhythm", async () => {
+  const { multiFormatInventorySummaryItems } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-product-conformance.mjs")).href);
+  assert.deepEqual(
+    multiFormatInventorySummaryItems({
+      totalItems: 12,
+      imageCount: 7,
+      textCount: 2,
+      sequenceFrameCount: 1,
+      audioVideoCount: 1,
+      unsupportedOrMissingCount: 1
+    }),
+    [
+      { id: "all", label: "全部", count: 12 },
+      { id: "images", label: "图片", count: 7 },
+      { id: "texts", label: "文本", count: 2 },
+      { id: "sequences", label: "序列帧", count: 1 },
+      { id: "media", label: "音视频", count: 1 },
+      { id: "issues", label: "问题", count: 1 }
+    ]
+  );
+  assert.deepEqual(
+    multiFormatInventorySummaryItems({
+      totalItems: 4,
+      imageCount: 4,
+      textCount: 0,
+      sequenceFrameCount: 0,
+      audioVideoCount: 0,
+      unsupportedOrMissingCount: 0
+    }),
+    [
+      { id: "all", label: "全部", count: 4 },
+      { id: "images", label: "图片", count: 4 }
+    ]
+  );
 });
 
 test("0.2 playback meta uses closed renderer-owned status and format semantics", async () => {

@@ -50,10 +50,11 @@ const formatInventoryGroups = Object.freeze({
 const internalPhasePattern = /(?:hidden_0\.2_spike|source-side preview contract|preview candidate)/iu;
 
 const inventorySummaryDefinitions = Object.freeze([
+  { id: "all", label: "全部", key: "totalItems" },
   { id: "images", label: "图片", key: "imageCount" },
   { id: "texts", label: "文本", key: "textCount" },
-  { id: "sequences", label: "序列", key: "sequenceFrameCount" },
-  { id: "media", label: "媒体", key: "audioVideoCount" },
+  { id: "sequences", label: "序列帧", key: "sequenceFrameCount" },
+  { id: "media", label: "音视频", key: "audioVideoCount" },
   { id: "issues", label: "问题", key: "unsupportedOrMissingCount" }
 ]);
 

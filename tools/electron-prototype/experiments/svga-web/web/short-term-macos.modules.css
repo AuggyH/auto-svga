@@ -992,21 +992,30 @@ canvas {
 }
 
 .assetFilterTabs[data-presentation="summary"] {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--asv-asset-summary-row-gap) var(--asv-asset-summary-column-gap);
-  width: 100%;
+  flex-wrap: wrap;
+  gap: var(--asv-asset-filter-gap);
+  width: min(var(--asv-asset-filter-width), 100%);
 }
 
 .assetSummaryItem {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--asv-asset-filter-tab-height);
   min-width: 0;
+  padding: 0 var(--asv-asset-filter-tab-padding-inline);
   overflow: hidden;
-  color: var(--asv-asset-summary-color);
+  border-radius: var(--asv-asset-filter-tab-radius);
+  color: var(--asv-asset-filter-tab-color);
   font-size: var(--asv-asset-summary-font-size);
   font-weight: var(--asv-asset-summary-font-weight);
   line-height: var(--asv-asset-summary-line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.assetSummaryItem:first-child {
+  background: var(--asv-asset-filter-tab-selected-bg);
+  color: var(--asv-asset-filter-tab-selected-color);
 }
 
 .replaceableSection[data-empty="true"] {
