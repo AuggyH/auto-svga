@@ -145,7 +145,7 @@ test("host chooser cancellation cannot enter loading or resize the Launch window
   assert.match(openBody, /resolveMultiFormatChooserOutcome/u);
 });
 
-test("macOS multi-format picker admits the exact extension allowlist and validates the selected extension in the host", () => {
+test("macOS multi-format picker clears native type admission and validates the selected extension in the host", () => {
   const mainSource = source("main.cjs");
   const pickerSource = source("multiformat-native-picker.cjs");
   const openStart = mainSource.indexOf("async function openMultiFormatFile()");
@@ -153,12 +153,11 @@ test("macOS multi-format picker admits the exact extension allowlist and validat
   const openBody = mainSource.slice(openStart, openEnd);
 
   assert.match(openBody, /chooseMultiFormatLocalFile/u);
-  assert.doesNotMatch(pickerSource, /extensions:\s*\["\*"\]/u);
   assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
 
   const options = createMultiFormatOpenDialogOptions("darwin");
   assert.deepEqual(options.filters, [
-    { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] }
+    { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["*"] }
   ]);
   assert.deepEqual(options.properties, ["openFile"]);
   assert.deepEqual(createMultiFormatOpenDialogOptions("win32").filters[0].extensions, ["svga", "json", "mp4"]);
@@ -238,7 +237,7 @@ test("host picker returns cancel, selected formats, and redacted invalid input w
   assert.equal(observedOptions.length, 3);
   assert.ok(observedOptions.every((options) => (
     options.filters.length === 1
-    && options.filters[0].extensions.join(",") === "svga,json,mp4"
+    && options.filters[0].extensions.join(",") === "*"
   )));
   assert.ok(observedOptions.every(({ properties }) => properties.length === 1 && properties[0] === "openFile"));
 });

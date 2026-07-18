@@ -1621,6 +1621,8 @@ test("macOS native picker proof uses the real owner action and rejects disabled 
   assert.match(source, /snapshot\.progress !== playingFirst\.progress/);
   assert.match(source, /statePreserved/);
   assert.match(source, /inputPathsRedacted: true/);
+  assert.match(source, /await main\(\)/);
+  assert.doesNotMatch(source, /main\(\)\.catch/u);
   assert.doesNotMatch(source, /filePaths:\s*\[/u);
 });
 
@@ -2970,7 +2972,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
       platform: "darwin",
       async showOpenDialog(options) {
         assert.deepEqual(options.filters, [
-          { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] }
+          { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["*"] }
         ]);
         assert.deepEqual(options.properties, ["openFile"]);
         return { canceled: false, filePaths: [filePath] };

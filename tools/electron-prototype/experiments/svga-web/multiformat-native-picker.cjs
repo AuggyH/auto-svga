@@ -7,18 +7,16 @@ const SUPPORTED_MULTI_FORMAT_EXTENSIONS = new Set([".svga", ".json", ".mp4"]);
 function createMultiFormatOpenDialogOptions(platform = process.platform) {
   const options = {
     title: "打开文件",
-    filters: [
-      { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] }
-    ],
+    filters: platform === "darwin"
+      ? [{ name: "SVGA / Lottie JSON / VAP MP4", extensions: ["*"] }]
+      : [
+          { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] },
+          { name: "SVGA", extensions: ["svga"] },
+          { name: "Lottie JSON", extensions: ["json"] },
+          { name: "VAP MP4", extensions: ["mp4"] }
+        ],
     properties: ["openFile"]
   };
-  if (platform !== "darwin") {
-    options.filters.push(
-      { name: "SVGA", extensions: ["svga"] },
-      { name: "Lottie JSON", extensions: ["json"] },
-      { name: "VAP MP4", extensions: ["mp4"] }
-    );
-  }
   return options;
 }
 

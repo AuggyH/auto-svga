@@ -246,10 +246,13 @@ async function connectProductPage(browserWebSocketUrl, child, readChildOutput) {
 }
 
 function runNativePanelSelection(pid, filePath) {
+  const directoryPath = path.dirname(filePath);
+  const basename = path.basename(filePath);
   const script = String.raw`
 function run(argv) {
   const ownerPid = Number(argv[0]);
-  const filePath = String(argv[1]);
+  const directoryPath = String(argv[1]);
+  const basename = String(argv[2]);
   const events = Application("System Events");
   const owner = events.applicationProcesses.byName("Auto SVGA");
   if (!owner.exists() || Number(owner.unixId()) !== ownerPid) throw new Error("owner_process_missing");
@@ -287,9 +290,11 @@ function run(argv) {
   if (!sheet) throw new Error("native_open_panel_missing");
   events.keystroke("g", { using: ["command down", "shift down"] });
   delay(0.4);
-  events.keystroke(filePath);
+  events.keystroke(directoryPath);
   events.keyCode(36);
   delay(0.9);
+  events.keystroke(basename);
+  delay(0.7);
   sheet = ownerSheet();
   let button = sheet ? defaultButton(sheet) : null;
   for (let attempt = 0; attempt < 40 && !button; attempt += 1) {
@@ -301,9 +306,18 @@ function run(argv) {
   const enabled = Boolean(button.enabled());
   const name = String(button.name() || "");
   if (enabled) button.click();
-  return JSON.stringify({ openButtonFound: true, openButtonEnabled: enabled, submitted: enabled, buttonName: name });
+  return JSON.stringify({
+    openButtonFound: true,
+    openButtonEnabled: enabled,
+    submitted: enabled,
+    buttonName: name,
+    requestedBasename: basename,
+    selectionMethod: "bounded-keyboard-basename"
+  });
 }`;
-  const output = execFileSync("/usr/bin/osascript", ["-l", "JavaScript", "-e", script, "--", String(pid), filePath], {
+  const output = execFileSync("/usr/bin/osascript", [
+    "-l", "JavaScript", "-e", script, "--", String(pid), directoryPath, basename
+  ], {
     encoding: "utf8",
     timeout: 20000,
     stdio: ["ignore", "pipe", "pipe"]
@@ -520,7 +534,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
-});
+}
