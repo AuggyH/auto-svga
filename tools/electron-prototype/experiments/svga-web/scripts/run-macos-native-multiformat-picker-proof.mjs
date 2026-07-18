@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,8 +63,7 @@ function prepareArtifactRoot() {
   return { root, proofPath, userDataPath: path.join(root, "user-data") };
 }
 
-function validateAppBundle(sourceHead) {
-  const appBundle = requiredAbsolutePath("AUTO_SVGA_NATIVE_PICKER_APP");
+function validateAppBundleAt(appBundle, sourceHead) {
   const link = lstatSync(appBundle);
   if (!link.isDirectory() || link.isSymbolicLink()) throw new Error("Native picker App must be one regular bundle directory.");
   const executable = path.join(appBundle, "Contents/MacOS/Auto SVGA");
@@ -83,6 +83,17 @@ function validateAppBundle(sourceHead) {
     throw new Error("Packaged App build identity does not match the exact source head and product milestone.");
   }
   return { appBundle, executable, infoPlistPath, asarPath, buildInfo };
+}
+
+function stageTestApp(sourceApp, sourceHead) {
+  const appBundle = path.join(
+    os.homedir(),
+    "Applications",
+    `Auto SVGA Native Picker Selftest ${sourceHead.slice(0, 12)}.app`
+  );
+  if (existsSync(appBundle)) throw new Error("Native picker task App path already exists.");
+  execFileSync("/usr/bin/ditto", ["--norsrc", sourceApp.appBundle, appBundle], { stdio: "ignore" });
+  return validateAppBundleAt(appBundle, sourceHead);
 }
 
 function assertNoAutoSvgaProcess() {
@@ -418,7 +429,8 @@ async function main() {
   const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim();
   const artifacts = prepareArtifactRoot();
   const rows = expectedRows.map(validateRegularInput);
-  const app = validateAppBundle(sourceHead);
+  const sourceApp = validateAppBundleAt(requiredAbsolutePath("AUTO_SVGA_NATIVE_PICKER_APP"), sourceHead);
+  const app = stageTestApp(sourceApp, sourceHead);
   assertNoAutoSvgaProcess();
   registerTestApp(app.appBundle);
   const svgaContentTypeTree = readContentTypeTree(rows[0].filePath);
@@ -501,6 +513,7 @@ async function main() {
   } finally {
     await closeProduct(client, child);
     unregisterTestApp(app.appBundle);
+    rmSync(app.appBundle, { recursive: true, force: false });
     rmSync(artifacts.userDataPath, { recursive: true, force: true });
     assertNoAutoSvgaProcess();
     if (Number.isInteger(devToolsPort) && devToolsPort > 0) assertNoTcpListener(devToolsPort);
