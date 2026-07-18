@@ -58,6 +58,66 @@
   margin-block-start: var(--asv-state-surface-action-margin-block-start);
 }
 
+.stateLoadingCard {
+  gap: var(--asv-state-loading-gap);
+}
+
+.stateLoadingCard > .spinner {
+  width: var(--asv-state-loading-indicator-size);
+  height: var(--asv-state-loading-indicator-size);
+}
+
+.stateLoadingCard > h1,
+.stateLoadingCard > p {
+  color: var(--asv-state-loading-label-color);
+  font-size: var(--asv-state-loading-label-size);
+  font-weight: var(--asv-state-loading-label-weight);
+  line-height: var(--asv-state-loading-label-line-height);
+}
+
+.stateFailureCard {
+  gap: var(--asv-state-failure-gap);
+}
+
+.stateFailureIcon {
+  display: grid;
+  place-items: center;
+  width: var(--asv-state-failure-icon-size);
+  height: var(--asv-state-failure-icon-size);
+  border-radius: var(--asv-radius-pill);
+  background: var(--asv-state-failure-icon-bg);
+  color: var(--asv-state-failure-icon-color);
+}
+
+.stateFailureIcon svg {
+  width: var(--asv-state-failure-icon-glyph-size);
+  height: var(--asv-state-failure-icon-glyph-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.stateFailureCard > h1 {
+  font-size: var(--asv-state-failure-title-size);
+  font-weight: var(--asv-state-failure-title-weight);
+  line-height: var(--asv-state-failure-title-line-height);
+}
+
+.stateFailureCard > p {
+  color: var(--asv-state-failure-message-color);
+  font-size: var(--asv-state-failure-message-size);
+  font-weight: var(--asv-state-failure-message-weight);
+  line-height: var(--asv-state-failure-message-line-height);
+}
+
+.stateLoadingCard > .stateRecoveryButton,
+.stateFailureCard > .stateRecoveryButton {
+  min-width: var(--asv-state-recovery-action-width);
+  min-height: var(--asv-state-recovery-action-height);
+}
+
 .playbackErrorRecovery {
   position: absolute;
   z-index: 3;

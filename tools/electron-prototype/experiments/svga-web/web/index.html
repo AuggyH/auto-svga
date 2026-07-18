@@ -64,7 +64,7 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <div class="canvasWrap stateCanvasWrap" data-component="FileDropTarget" data-role="LoadingCanvasRecovery">
-            <div class="stateCard" data-component="FileDropTarget">
+            <div class="stateCard stateLoadingCard" data-component="FileDropTarget">
               <span class="spinner" aria-hidden="true"></span>
               <h1>正在加载…</h1>
               <p id="loadingMessage"></p>
@@ -128,7 +128,13 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <div class="canvasWrap stateCanvasWrap" data-component="ErrorRecoveryPanel" data-role="FailureCanvasRecovery">
-            <div class="stateCard error" data-component="ErrorRecoveryPanel">
+            <div class="stateCard error stateFailureCard" data-component="ErrorRecoveryPanel">
+              <span class="stateFailureIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m8 8 8 8"></path>
+                  <path d="m16 8-8 8"></path>
+                </svg>
+              </span>
               <h1>文件加载失败</h1>
               <p id="errorMessage">文件格式不受支持或已损坏</p>
               <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">

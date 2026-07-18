@@ -557,6 +557,8 @@ test("short-term save feedback follows the frozen right-surface placement contra
 
 test("short-term loading and load-failed states expose recovery actions", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const components = await readFile(path.join(experimentRoot, "web/short-term-macos.components.css"), "utf8");
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
@@ -565,6 +567,7 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(loadingSection, /data-module="PreviewCanvasModule"/);
   assert.match(loadingSection, /data-module="StateRecoveryModule"/);
   assert.match(loadingSection, /data-role="LoadingCanvasRecovery"/);
+  assert.match(loadingSection, /class="stateCard stateLoadingCard"/);
   assert.match(loadingSection, /<h1>正在加载…<\/h1>/);
   assert.match(loadingSection, /<p id="loadingMessage"><\/p>/);
   assert.doesNotMatch(loadingSection, /读取文件并准备预览。|解析文件并准备预览。|正在打开最近文件。/);
@@ -576,11 +579,25 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(failedSection, /data-module="PreviewCanvasModule"/);
   assert.match(failedSection, /data-module="StateRecoveryModule"/);
   assert.match(failedSection, /data-role="FailureCanvasRecovery"/);
+  assert.match(failedSection, /class="stateCard error stateFailureCard"/);
+  assert.match(failedSection, /class="stateFailureIcon" aria-hidden="true">[\s\S]*?<svg[^>]*>[\s\S]*?<\/svg>[\s\S]*?<\/span>/);
   assert.match(failedSection, /文件加载失败/);
   assert.match(failedSection, /文件格式不受支持或已损坏/);
   assert.match(failedSection, /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/);
   assert.match(failedSection, /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/);
   assert.doesNotMatch(failedSection, staleStateContentPattern);
+
+  assert.match(tokens, /--asv-component-state-loading-indicator-size:\s*28px;/);
+  assert.match(tokens, /--asv-component-state-loading-label-size:\s*var\(--asv-type-size-footnote\);/);
+  assert.match(tokens, /--asv-component-state-failure-icon-size:\s*var\(--asv-base-space-48\);/);
+  assert.match(tokens, /--asv-component-state-failure-icon-background:\s*var\(--asv-color-status-danger\);/);
+  assert.match(tokens, /--asv-component-state-failure-title-size:\s*var\(--asv-type-size-metric\);/);
+  assert.match(tokens, /--asv-component-state-recovery-action-width:\s*var\(--asv-component-file-header-action-width\);/);
+  assert.match(components, /\.stateLoadingCard\s*\{[^}]*gap:\s*var\(--asv-state-loading-gap\);/s);
+  assert.match(components, /\.stateLoadingCard\s*>\s*\.spinner\s*\{[^}]*width:\s*var\(--asv-state-loading-indicator-size\);[^}]*height:\s*var\(--asv-state-loading-indicator-size\);/s);
+  assert.match(components, /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s);
+  assert.match(components, /\.stateFailureCard\s*>\s*h1\s*\{[^}]*font-size:\s*var\(--asv-state-failure-title-size\);[^}]*font-weight:\s*var\(--asv-state-failure-title-weight\);/s);
+  assert.match(components, /\.stateLoadingCard\s*>\s*\.stateRecoveryButton,[\s\S]*?\.stateFailureCard\s*>\s*\.stateRecoveryButton\s*\{[^}]*min-width:\s*var\(--asv-state-recovery-action-width\);[^}]*min-height:\s*var\(--asv-state-recovery-action-height\);/s);
 });
 
 test("short-term preview right surface exposes page-state trace semantics", async () => {

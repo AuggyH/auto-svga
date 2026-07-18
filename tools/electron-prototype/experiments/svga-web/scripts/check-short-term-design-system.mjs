@@ -580,6 +580,19 @@ async function main() {
   const modules = await readFile(path.join(webRoot, "short-term-macos.modules.css"), "utf8");
   const pageStatesCss = await readFile(path.join(webRoot, "short-term-macos.page-states.css"), "utf8");
 
+  record("loading-and-failed-states-match-frozen-visual-contract",
+    /class="stateCard stateLoadingCard"/.test(loadingSection)
+    && /class="stateCard error stateFailureCard"/.test(failedSection)
+    && /class="stateFailureIcon" aria-hidden="true">[\s\S]*?<svg[^>]*>[\s\S]*?<\/svg>/.test(failedSection)
+    && /--asv-component-state-loading-indicator-size:\s*28px/.test(tokens)
+    && /--asv-component-state-loading-label-size:\s*var\(--asv-type-size-footnote\)/.test(tokens)
+    && /--asv-component-state-failure-icon-size:\s*var\(--asv-base-space-48\)/.test(tokens)
+    && /--asv-component-state-failure-icon-background:\s*var\(--asv-color-status-danger\)/.test(tokens)
+    && /--asv-component-state-failure-title-size:\s*var\(--asv-type-size-metric\)/.test(tokens)
+    && /\.stateLoadingCard\s*>\s*\.spinner\s*\{[^}]*width:\s*var\(--asv-state-loading-indicator-size\);[^}]*height:\s*var\(--asv-state-loading-indicator-size\);/s.test(components)
+    && /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s.test(components)
+    && /\.stateFailureCard\s*>\s*h1\s*\{[^}]*font-size:\s*var\(--asv-state-failure-title-size\);[^}]*font-weight:\s*var\(--asv-state-failure-title-weight\);/s.test(components));
+
   record("playback-error-preserves-preview-workspace-contract",
     /id="playbackErrorRecovery"(?=[^>]*data-component="ErrorRecoveryPanel")(?=[^>]*data-page-state="Playback error")(?=[^>]*role="alert")[^>]*hidden/.test(page)
     && /class="playbackErrorIcon playbackErrorWarningIcon"[^>]*>!<\/span>/.test(page)
