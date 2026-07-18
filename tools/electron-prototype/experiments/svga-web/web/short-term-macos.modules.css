@@ -89,44 +89,76 @@
   user-select: text;
 }
 
+.saveFeedbackOutlet {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--asv-right-surface-content-width);
+  padding: var(--asv-save-feedback-outlet-padding-block) 0;
+}
+
+.saveFeedbackOutlet:empty,
+.saveFeedbackOutlet:has(> .saveBanner[hidden]) {
+  display: none;
+}
+
 .saveBanner {
   position: relative;
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
   gap: var(--asv-save-banner-gap);
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   min-height: var(--asv-save-banner-min-height);
   padding: var(--asv-save-banner-padding-block) var(--asv-save-banner-padding-inline);
-  border-bottom: var(--asv-save-banner-border);
+  border: var(--asv-save-banner-border);
+  border-radius: var(--asv-save-banner-radius);
   background: var(--asv-save-banner-bg);
   box-shadow: var(--asv-save-banner-shadow);
 }
 
 .saveBanner::before {
-  display: none;
   content: "";
-  position: absolute;
-  inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-3);
-  width: var(--asv-status-strip-width);
-  border-radius: var(--asv-status-strip-radius);
-  background: var(--asv-action);
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: var(--asv-save-banner-icon-size);
+  height: var(--asv-save-banner-icon-size);
+  border: var(--asv-save-banner-icon-border-width) solid currentColor;
+  border-radius: 50%;
+}
+
+.saveBanner[data-status="success"] {
+  background: var(--asv-save-banner-success-bg);
+  color: var(--asv-success);
 }
 
 .saveBanner[data-status="success"]::before {
-  background: var(--asv-success);
+  border-color: var(--asv-success);
+}
+
+.saveBanner[data-status="warning"] {
+  background: var(--asv-save-banner-warning-bg);
+  color: var(--asv-warning);
 }
 
 .saveBanner[data-status="warning"]::before {
-  background: var(--asv-warning);
+  border-color: var(--asv-warning);
+}
+
+.saveBanner[data-status="danger"] {
+  background: var(--asv-save-banner-danger-bg);
+  color: var(--asv-danger);
 }
 
 .saveBanner[data-status="danger"]::before {
-  background: var(--asv-danger);
+  border-color: var(--asv-danger);
 }
 
 .saveBanner[data-status="loading"]::before {
-  background: var(--asv-action);
+  border-color: var(--asv-action);
+  border-top-color: transparent;
+  animation: spin var(--asv-save-banner-icon-duration) linear infinite;
 }
 
 .saveBanner strong {
@@ -860,6 +892,7 @@ canvas {
 
 .rightSurfaceBody > .factGrid,
 .rightSurfaceBody > .replaceableSection,
+.rightSurfaceBody > .saveFeedbackOutlet,
 .rightSurfaceBody > .assetSection,
 .compareInfo > .compareSummary,
 .compareInfo > .comparePairHeader,
@@ -1180,8 +1213,12 @@ canvas {
   border-bottom: var(--asv-right-panel-section-divider);
 }
 
-.rightPanel[data-panel-state="optimization"] .optimizationDetailActions {
+.rightPanel[data-panel-state="optimization"] .saveFeedbackOutlet {
   order: 3;
+}
+
+.rightPanel[data-panel-state="optimization"] .optimizationDetailActions {
+  order: 4;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--asv-optimization-action-gap);

@@ -5,6 +5,19 @@ export function applyViewState(app, view) {
     node.hidden = !active;
     node.classList.toggle("isActive", active);
   });
+  const panelState = document.querySelector(".rightPanel")?.dataset.panelState ?? "overview";
+  applySaveFeedbackPlacement(app, view, panelState);
+}
+
+export function applySaveFeedbackPlacement(app, view, panelState = "overview") {
+  const banner = document.querySelector("#saveBanner");
+  if (!banner || !app) return;
+  const target = view === "compare"
+    ? app
+    : document.querySelector(panelState === "optimization"
+      ? '[data-save-feedback-outlet="optimization"]'
+      : '[data-save-feedback-outlet="overview"]');
+  if (target && banner.parentElement !== target) target.append(banner);
 }
 
 export function applyModeButtons(mode, options = {}) {
@@ -41,6 +54,8 @@ export function applyTabState(tab, options = {}) {
   const target = document.querySelector(targetSelector);
   if (options.focus === true) target?.focus?.();
   if (options.scroll === true) target?.scrollIntoView?.({ block: "nearest" });
+  const app = document.querySelector(".macApp");
+  if (app) applySaveFeedbackPlacement(app, app.dataset.appState, surfaceState);
 }
 
 export function setActionEnabled(action, enabled, reason) {

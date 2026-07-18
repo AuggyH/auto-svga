@@ -625,6 +625,18 @@ async function main() {
     && /--asv-scrollable-surface-scrollbar-size:\s*var\(--asv-component-scrollable-surface-scrollbar-size\)/.test(tokens)
     && /\.rightSurfaceBody,\s*\.compareInfo,\s*\.layerPanel,\s*\.reservedPanel\s*\{[\s\S]*scrollbar-width: none/.test(modules)
     && /\.rightSurfaceBody::-webkit-scrollbar,[\s\S]*\.reservedPanel::-webkit-scrollbar\s*\{[\s\S]*width: var\(--asv-scrollable-surface-scrollbar-size\)[\s\S]*height: var\(--asv-scrollable-surface-scrollbar-size\)/.test(modules));
+  record("figma-save-feedback-banner-stays-in-contextual-right-surface-flow",
+    /class="saveFeedbackOutlet" data-save-feedback-outlet="overview">[\s\S]*id="saveBanner"/.test(page)
+      && /class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"/.test(page)
+      && !/<header class="titlebar"[\s\S]*?<\/header>\s*<section class="saveBanner"/.test(page)
+      && /--asv-component-save-banner-min-height:\s*36px/.test(tokens)
+      && /--asv-component-save-banner-gap:\s*var\(--asv-base-space-10\)/.test(tokens)
+      && /--asv-component-save-banner-radius:\s*var\(--asv-radius-sm\)/.test(tokens)
+      && /--asv-component-save-banner-icon-size:\s*var\(--asv-base-space-20\)/.test(tokens)
+      && /\.saveFeedbackOutlet\s*\{[\s\S]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/.test(modules)
+      && /\.saveBanner\s*\{[\s\S]*justify-content: center[\s\S]*border-radius: var\(--asv-save-banner-radius\)/.test(modules)
+      && /\.saveBanner\[data-status="loading"\]::before\s*\{[\s\S]*animation: spin var\(--asv-save-banner-icon-duration\)/.test(modules)
+      && /\.macApp > \.saveBanner\s*\{[\s\S]*grid-row: 1/.test(pageStatesCss));
   record("figma-r4-launch-module-contract-covered", /data-view="launch"[^>]*data-module="LaunchModule"/.test(page)
     && /class="launchCanvas"[^>]*data-component="LaunchDropCanvas"/.test(page)
     && /class="launchPrompt"[^>]*data-component="FileDropTarget"[^>]*data-role="LaunchEmptyCanvas"/.test(page)

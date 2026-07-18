@@ -335,6 +335,52 @@ test("short-term save banner states expose direct accessible page-state semantic
   assert.doesNotMatch(commandState, /正在验证保存输出/);
 });
 
+test("short-term save feedback follows the frozen right-surface placement contract", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const pageStates = await readFile(path.join(experimentRoot, "web/short-term-macos.page-states.css"), "utf8");
+  const { applySaveFeedbackPlacement } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);
+
+  assert.match(page, /class="saveFeedbackOutlet" data-save-feedback-outlet="overview"[\s\S]*id="saveBanner"/);
+  assert.match(page, /class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"/);
+  assert.doesNotMatch(page, /<header class="titlebar"[\s\S]*?<\/header>\s*<section class="saveBanner"/);
+  assert.match(tokens, /--asv-component-save-banner-min-height: 36px/);
+  assert.match(tokens, /--asv-component-save-banner-gap: var\(--asv-base-space-10\)/);
+  assert.match(tokens, /--asv-component-save-banner-radius: var\(--asv-radius-sm\)/);
+  assert.match(modules, /\.saveFeedbackOutlet\s*\{[^}]*padding: var\(--asv-save-feedback-outlet-padding-block\) 0/s);
+  assert.match(modules, /\.saveBanner\s*\{[^}]*justify-content: center/s);
+  assert.match(modules, /\.saveBanner\s*\{[^}]*border-radius: var\(--asv-save-banner-radius\)/s);
+  assert.match(modules, /\.saveBanner::before\s*\{[^}]*width: var\(--asv-save-banner-icon-size\)/s);
+  assert.match(modules, /\.saveBanner\[data-status="danger"\]\s*\{[^}]*background: var\(--asv-save-banner-danger-bg\)/s);
+  assert.match(pageStates, /\.macApp > \.saveBanner\s*\{[^}]*grid-row: 1/s);
+
+  const overviewOutlet = { name: "overview", append(node) { node.parentElement = this; } };
+  const optimizationOutlet = { name: "optimization", append(node) { node.parentElement = this; } };
+  const app = { name: "app", append(node) { node.parentElement = this; } };
+  const banner = { parentElement: undefined };
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    querySelector(selector) {
+      return {
+        "#saveBanner": banner,
+        '[data-save-feedback-outlet="overview"]': overviewOutlet,
+        '[data-save-feedback-outlet="optimization"]': optimizationOutlet
+      }[selector] ?? null;
+    }
+  };
+  try {
+    applySaveFeedbackPlacement(app, "preview", "overview");
+    assert.equal(banner.parentElement, overviewOutlet);
+    applySaveFeedbackPlacement(app, "preview", "optimization");
+    assert.equal(banner.parentElement, optimizationOutlet);
+    applySaveFeedbackPlacement(app, "compare", "overview");
+    assert.equal(banner.parentElement, app);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("short-term loading and load-failed states expose recovery actions", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
@@ -7337,8 +7383,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-save-banner-min-height/);
   assert.match(shortTermTokens, /--asv-save-banner-min-height: var\(--asv-component-save-banner-min-height\)/);
   assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*min-height: var\(--asv-save-banner-min-height\)/s);
-  assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*border-bottom: var\(--asv-save-banner-border\)/s);
-  assert.match(shortTermModules, /\.saveBanner::before\s*\{[^}]*display: none/s);
+  assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*border: var\(--asv-save-banner-border\)/s);
+  assert.match(shortTermModules, /\.saveBanner::before\s*\{[^}]*width: var\(--asv-save-banner-icon-size\)/s);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
   assert.doesNotMatch(shortTermModules, /\.canvasWrap\[data-canvas-label\]::before/);
@@ -7405,7 +7451,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPageStates, /\.macApp\s*\{[^}]*min-width: var\(--asv-launch-min-width\)[^}]*min-height: var\(--asv-launch-min-height\)/s);
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="failed"\]\s*\{[^}]*min-width: var\(--asv-workbench-min-width\)[^}]*min-height: var\(--asv-workbench-min-height\)/s);
   assert.match(shortTermPageStates, /\.launchView\s*\{[^}]*place-items: stretch/s);
-  assert.match(shortTermPageStates, /\.saveBanner\s*\{[^}]*grid-row: 1/s);
+  assert.match(shortTermPageStates, /\.macApp > \.saveBanner\s*\{[^}]*grid-row: 1/s);
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="failed"\] \.view\s*\{[^}]*grid-row: 2/s);
   assert.match(shortTermPageStates, /\.previewView,\s*\.workbenchStateView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.compareView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);

@@ -19,8 +19,6 @@
         <div class="windowControlSpace" aria-hidden="true"></div>
       </header>
 
-      <section class="saveBanner" id="saveBanner" aria-live="polite" data-component="SaveFeedbackBanner" hidden></section>
-
       <section class="view launchView isActive" data-view="launch" aria-label="启动" data-page-state="Launch" data-module="LaunchModule">
         <div class="launchCanvas" id="dropZone" data-component="LaunchDropCanvas">
           <div class="launchPrompt" data-component="FileDropTarget" data-role="LaunchEmptyCanvas">
@@ -256,6 +254,9 @@
                 <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
               </menu>
             </section>
+            <div class="saveFeedbackOutlet" data-save-feedback-outlet="overview">
+              <section class="saveBanner" id="saveBanner" aria-live="polite" data-component="SaveFeedbackBanner" hidden></section>
+            </div>
             <section class="assetSection" data-component="AssetRow">
               <div class="sectionHead assetSectionHead">
                 <h2 id="assetListHeading">资产列表</h2>
@@ -277,6 +278,7 @@
               </div>
             </div>
             <div class="findingList" id="findingList"></div>
+            <div class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"></div>
           </section>
         </aside>
       </section>
