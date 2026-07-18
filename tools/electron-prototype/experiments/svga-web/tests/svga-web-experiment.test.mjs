@@ -3733,6 +3733,14 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
         severity: "warning",
         message: "存在不支持能力",
         pathRedacted: true
+      }],
+      unsupportedFeatures: [{
+        code: "unsupported_feature",
+        severity: "warning",
+        feature: "表达式",
+        path: "",
+        message: "不应直接显示的自由文案",
+        pathRedacted: true
       }]
     }, "source:daily-ui");
     const result = createRuntimeMountOpenResult("lottie", { sourceId: "source:daily-ui" });
@@ -3764,12 +3772,14 @@ test("0.2 right surface keeps normal assets quiet and highlights actionable inve
     assert.equal(blockedRow.dataset.attention, "true");
     assert.match(blockedRow.innerHTML, /class="badge fail"[^>]*>阻断</u);
 
-    const [issueRow] = nodes.findingList.children;
+    const [issueRow, unsupportedFeatureRow] = nodes.findingList.children;
     assert.equal(nodes.findingList.attributes.role, "list");
     assert.equal(issueRow.attributes.role, "listitem");
     assert.equal(issueRow.dataset.component, "FindingRow");
     assert.equal(issueRow.dataset.disposition, "reviewOnly");
-    assert.match(issueRow.innerHTML, /<div><strong>存在不支持能力<\/strong><\/div>/u);
+    assert.match(issueRow.innerHTML, /<div><strong>当前文件包含暂不支持的内容。<\/strong><\/div>/u);
+    assert.match(unsupportedFeatureRow.innerHTML, /<div><strong>暂不支持：表达式<\/strong><\/div>/u);
+    assert.doesNotMatch(nodes.findingList.textContent, /存在不支持能力|不应直接显示/u);
   } finally {
     globalThis.document = originalDocument;
   }

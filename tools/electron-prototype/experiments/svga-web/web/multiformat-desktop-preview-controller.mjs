@@ -54,6 +54,25 @@ const reviewedOwnerFailureCopyByCode = Object.freeze({
   playback_failure: "文件预览播放出现问题。",
   runtime_preview_failed: "无法挂载本地预览，源文件没有被修改。"
 });
+const rendererIssueCopyByCode = Object.freeze({
+  missing_resource: "预览所需资源缺失。",
+  unsupported_feature: "当前文件包含暂不支持的内容。",
+  invalid_file: "文件内容不完整或格式异常，无法预览。",
+  playback_failure: "文件预览播放出现问题。",
+  owner_issue: "当前文件存在无法显示的检查问题。"
+});
+const rendererUnsupportedFeatureCopyByFeature = Object.freeze({
+  "表达式": "暂不支持：表达式",
+  "蒙版": "暂不支持：蒙版",
+  "特效": "暂不支持：特效",
+  "时间重映射": "暂不支持：时间重映射",
+  "3D 图层": "暂不支持：3D 图层",
+  "摄像机图层": "暂不支持：摄像机图层",
+  "纯色图层": "暂不支持：纯色图层",
+  "内嵌图片资源": "暂不支持：内嵌图片资源",
+  "非 H.264 视频编码": "暂不支持：非 H.264 视频编码",
+  "未识别的融合元素类型": "暂不支持：未识别的融合元素类型"
+});
 const factLabels = new Map([
   ["Format", "格式"],
   ["Canvas", "画布"],
@@ -810,25 +829,38 @@ export function createMultiFormatDesktopPreviewController({
       ...(rightPanel.issues ?? []),
       ...(rightPanel.unsupportedFeatures ?? []).map((entry) => ({
         code: "unsupported_feature",
-        severity: "warning",
-        message: entry.message
+        severity: entry.severity,
+        feature: entry.feature
       }))
     ];
     nodes.findingList.setAttribute("role", "list");
     nodes.findingList.setAttribute("aria-label", "优化");
     nodes.findingList.replaceChildren(...issues.map((issue) => {
+      const copy = issueDisplayCopy(issue);
+      const severity = issueSeverity(issue.severity);
       const row = document.createElement("article");
       row.className = "findingRow";
       row.dataset.component = "FindingRow";
-      row.dataset.severity = issue.severity || "warning";
-      row.dataset.disposition = issueDisposition(issue.severity);
+      row.dataset.severity = severity;
+      row.dataset.disposition = issueDisposition(severity);
       row.setAttribute("role", "listitem");
-      const label = rowLabel(issue.message || "");
+      const label = rowLabel(copy);
       row.title = label;
       row.setAttribute("aria-label", label);
-      row.innerHTML = `<div><strong>${escapeHtml(issue.message || "")}</strong></div>`;
+      row.innerHTML = `<div><strong>${escapeHtml(copy)}</strong></div>`;
       return row;
     }));
+  }
+
+  function issueDisplayCopy(issue) {
+    if (issue?.code === "unsupported_feature" && typeof issue.feature === "string") {
+      return rendererUnsupportedFeatureCopyByFeature[issue.feature] ?? rendererIssueCopyByCode.unsupported_feature;
+    }
+    return rendererIssueCopyByCode[issue?.code] ?? rendererIssueCopyByCode.owner_issue;
+  }
+
+  function issueSeverity(severity) {
+    return severity === "error" || severity === "info" ? severity : "warning";
   }
 
   function issueDisposition(severity) {
