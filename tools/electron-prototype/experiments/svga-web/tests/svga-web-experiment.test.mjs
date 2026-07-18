@@ -671,18 +671,27 @@ test("short-term optimization detail exposes the frozen action group and an expl
   const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
   const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
   const { bindShortTermInteractionEvents } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-event-bindings.mjs")).href);
-  const optimizationSection = page.match(/<section class="rightSurfaceBody" id="panelOptimization"[\s\S]*?<\/section>/)?.[0] ?? "";
+  const optimizationSectionStart = page.indexOf('id="panelOptimization"');
+  const optimizationSectionEnd = page.indexOf("</aside>", optimizationSectionStart);
+  const optimizationSection = optimizationSectionStart >= 0 && optimizationSectionEnd > optimizationSectionStart
+    ? page.slice(optimizationSectionStart, optimizationSectionEnd)
+    : "";
 
   assert.match(optimizationSection, /class="optimizationDetailActions"/);
   assert.match(optimizationSection, /data-action="run-optimization">一键优化<\/button>/);
   assert.match(optimizationSection, /data-action="close-optimization">放弃优化<\/button>/);
+  assert.ok(
+    optimizationSection.indexOf('id="findingList"') < optimizationSection.indexOf('class="optimizationDetailActions"'),
+    "the frozen optimization module keeps candidate rows before the action group"
+  );
   assert.match(tokens, /--asv-component-optimization-detail-header-padding-block:\s*var\(--asv-space-3\)/u);
   assert.match(tokens, /--asv-component-optimization-detail-list-gap:\s*var\(--asv-space-2\)/u);
   assert.match(tokens, /--asv-component-optimization-detail-list-padding-block:\s*var\(--asv-space-3\)/u);
   assert.match(tokens, /--asv-component-optimization-detail-actions-padding-block:\s*var\(--asv-space-3\)/u);
-  assert.match(modules, /#panelOptimization > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/su);
-  assert.match(modules, /#findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/su);
-  assert.match(modules, /\.optimizationDetailActions\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-actions-padding-block\) 0/su);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) > \.sectionHead\s*\{[^}]*display:\s*contents/su);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/su);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) #findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/su);
+  assert.match(modules, /#panelOptimization:not\(\[hidden\]\) \.optimizationDetailActions\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-actions-padding-block\) 0/su);
 
   const listeners = new Map();
   const listenerTarget = () => ({

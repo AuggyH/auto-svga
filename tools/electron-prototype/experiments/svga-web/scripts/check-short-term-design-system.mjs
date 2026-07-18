@@ -347,6 +347,11 @@ function arraysEqual(a = [], b = []) {
 
 async function main() {
   const page = await readFile(path.join(webRoot, "index.html"), "utf8");
+  const optimizationPanelStart = page.indexOf('id="panelOptimization"');
+  const optimizationPanelEnd = page.indexOf("</aside>", optimizationPanelStart);
+  const optimizationPanel = optimizationPanelStart >= 0 && optimizationPanelEnd > optimizationPanelStart
+    ? page.slice(optimizationPanelStart, optimizationPanelEnd)
+    : "";
   const appEntry = await readFile(path.join(webRoot, "short-term-macos-app.mjs"), "utf8");
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
   const overviewRenderer = await readFile(path.join(webRoot, "short-term-macos-overview-renderers.mjs"), "utf8");
@@ -786,13 +791,16 @@ async function main() {
     && /\.findingRow\[data-disposition="reviewOnly"\]/.test(components)
     && /\.findingRow\[data-disposition="unsupported"\]/.test(components)
     && /class="optimizationDetailActions"[\s\S]*data-action="run-optimization">一键优化<\/button>[\s\S]*data-action="close-optimization">放弃优化<\/button>/.test(page)
+    && optimizationPanel.indexOf('id="findingList"') >= 0
+    && optimizationPanel.indexOf('id="findingList"') < optimizationPanel.indexOf('class="optimizationDetailActions"')
     && /--asv-component-optimization-detail-header-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
     && /--asv-component-optimization-detail-list-gap:\s*var\(--asv-space-2\)/.test(tokens)
     && /--asv-component-optimization-detail-list-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
     && /--asv-component-optimization-detail-actions-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
-    && /#panelOptimization > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/s.test(modules)
-    && /#findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/s.test(modules)
-    && /\.optimizationDetailActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)[\s\S]*padding: var\(--asv-optimization-detail-actions-padding-block\) 0/.test(modules));
+    && /#panelOptimization:not\(\[hidden\]\) > \.sectionHead\s*\{[^}]*display:\s*contents/s.test(modules)
+    && /#panelOptimization:not\(\[hidden\]\) > \.sectionHead > div\s*\{[^}]*padding:\s*var\(--asv-optimization-detail-header-padding-block\) 0/s.test(modules)
+    && /#panelOptimization:not\(\[hidden\]\) #findingList\s*\{[^}]*gap:\s*var\(--asv-optimization-detail-list-gap\)[^}]*padding:\s*var\(--asv-optimization-detail-list-padding-block\) 0/s.test(modules)
+    && /#panelOptimization:not\(\[hidden\]\) \.optimizationDetailActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)[\s\S]*padding: var\(--asv-optimization-detail-actions-padding-block\) 0/.test(modules));
   record("optimization-running-uses-figma-progress-contract", /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/.test(page)
     && /export function renderOptimizationRunningState/.test(optimizationRenderer)
     && /--asv-component-optimization-progress-width:\s*var\(--asv-component-right-surface-content-width\)/.test(tokens)

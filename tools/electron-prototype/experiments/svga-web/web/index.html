@@ -336,10 +336,6 @@
                 <h2>优化</h2>
                 <p id="optimizationSummary"></p>
               </div>
-              <div class="optimizationDetailActions">
-                <button class="toolbarButton primary" type="button" data-action="run-optimization">一键优化</button>
-                <button class="toolbarButton" type="button" data-action="close-optimization">放弃优化</button>
-              </div>
             </div>
             <div class="findingList" id="findingList"></div>
             <section class="optimizationProgress" id="optimizationProgress" data-component="OptimizationRunningState" data-module="OptimizationRunningState" aria-live="polite" hidden>
@@ -350,6 +346,10 @@
               <p class="optimizationProgressDetail">正在生成优化文件，请勿关闭…</p>
             </section>
             <div class="saveFeedbackOutlet" data-save-feedback-outlet="optimization"></div>
+            <div class="optimizationDetailActions">
+              <button class="toolbarButton primary" type="button" data-action="run-optimization">一键优化</button>
+              <button class="toolbarButton" type="button" data-action="close-optimization">放弃优化</button>
+            </div>
           </section>
         </aside>
       </section>
