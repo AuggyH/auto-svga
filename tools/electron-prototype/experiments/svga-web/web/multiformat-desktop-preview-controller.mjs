@@ -11,7 +11,7 @@ import {
   showShortTermCanvasToast,
   showShortTermDragDecisionOverlay
 } from "./short-term-macos-drag-decision-surface.mjs";
-import { createInlineStatusText } from "./short-term-macos-inline-status-renderers.mjs";
+import { createReplaceableEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
 import {
   applyShortTermAppearance,
   closeShortTermSettings,
@@ -887,7 +887,7 @@ export function createMultiFormatDesktopPreviewController({
     nodes.replaceableList.closest?.(".replaceableSection")?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
     nodes.replaceableList.dataset.empty = totalCount > 0 && targets.length === 0 ? "true" : "false";
     if (totalCount === 0) {
-      nodes.replaceableList.replaceChildren(createInlineStatusText("未发现可替换元素"));
+      nodes.replaceableList.replaceChildren(createReplaceableEmptyStatus());
       return;
     }
     nodes.replaceableList.replaceChildren(...targets.map((target, index) => createReplaceableImageRow(target, index, {

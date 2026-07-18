@@ -9,6 +9,7 @@ import {
 } from "./short-term-macos-api-client.mjs";
 import {
   applyRuntimeTextSelection,
+  renderReplaceableEmptyState,
   renderReplaceableImages,
   renderRuntimeTextElements
 } from "./short-term-macos-replaceable-renderers.mjs";
@@ -38,6 +39,7 @@ export function renderShortTermRuntimeTextElements({ nodes, state, model }) {
   const view = runtimeTextListView(model, state.textPreviewValues);
   state.selectedTextKey = nextSelectedTextKey(state.selectedTextKey, view.texts);
   renderRuntimeTextElements(nodes, view, state.selectedTextKey);
+  renderReplaceableEmptyState(nodes);
   setActionEnabled("edit-text", view.hasTextElements, "当前文件没有可预览文本元素");
   setActionEnabled("reset-text", view.hasTextPreview, "当前没有已应用的文本预览");
 }

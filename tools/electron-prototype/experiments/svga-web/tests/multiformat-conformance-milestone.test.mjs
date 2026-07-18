@@ -112,13 +112,17 @@ test("0.2 owner copy uses Open File without candidate or proof language", () => 
 
 test("multi-format owner copy hides host and runtime implementation language", () => {
   const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const inlineStatusSource = source("web/short-term-macos-inline-status-renderers.mjs");
 
   assert.doesNotMatch(controllerSource, /Replacement preview/u);
   assert.doesNotMatch(controllerSource, /0\.2 预览(?:主机|请求|运行时)/u);
   assert.match(controllerSource, /无法更新替换预览，源文件没有被修改。/u);
   assert.match(controllerSource, /文件加载超时，请重新打开文件。源文件没有被修改。/u);
   assert.match(controllerSource, /资产列表/u);
-  assert.match(controllerSource, /未发现可替换元素/u);
+  assert.match(controllerSource, /createReplaceableEmptyStatus/u);
+  assert.doesNotMatch(controllerSource, /仅包含自动命名资源/u);
+  assert.match(inlineStatusSource, /未发现可替换元素/u);
+  assert.match(inlineStatusSource, /仅包含自动命名资源（如 img_000），/u);
   assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount\)/u);
   assert.match(controllerSource, /renderFailureMessage\(nodes, ownerFailureCopy\(error\)\)/u);
   assert.doesNotMatch(controllerSource, /renderFailureMessage\(nodes, error instanceof Error \? error\.message/u);

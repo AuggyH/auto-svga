@@ -207,6 +207,7 @@ button.danger {
 .emptyText {
   display: grid;
   place-items: center;
+  gap: var(--asv-space-1);
   width: min(var(--asv-empty-state-width), 100%);
   margin: 0;
   padding: var(--asv-empty-state-padding-block) 0;
@@ -216,6 +217,26 @@ button.danger {
   font-size: var(--asv-empty-state-text-size);
   line-height: var(--asv-empty-state-text-line-height);
   text-align: center;
+}
+
+.emptyText[data-variant="explanatory"] {
+  justify-items: center;
+}
+
+.emptyTextTitle,
+.emptyTextDetail {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.emptyTextTitle {
+  color: var(--asv-empty-state-text-color);
+  font-weight: var(--asv-right-section-title-weight);
+}
+
+.emptyTextDetail {
+  color: var(--asv-subtle);
+  font-size: var(--asv-type-size-caption);
 }
 
 @keyframes spin {

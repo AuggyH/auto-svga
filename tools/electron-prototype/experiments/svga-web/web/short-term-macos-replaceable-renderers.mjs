@@ -1,4 +1,5 @@
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { createReplaceableEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
 import { runtimeTextReplacementView } from "./short-term-macos-text-model.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
@@ -75,6 +76,15 @@ export function renderReplaceableImages(nodes, view, model) {
     selected: row.selected,
     renaming: row.renaming
   })));
+}
+
+export function renderReplaceableEmptyState(nodes) {
+  const noImages = nodes.replaceableList.dataset.empty === "true";
+  const noTexts = nodes.textElementList.dataset.empty === "true";
+  if (!noImages || !noTexts) return;
+  nodes.replaceableList.closest(".replaceableSection")?.setAttribute("data-empty", "true");
+  nodes.replaceableList.dataset.empty = "false";
+  nodes.replaceableList.replaceChildren(createReplaceableEmptyStatus());
 }
 
 export function createTextElementRow(item, index, options) {

@@ -4017,11 +4017,65 @@ test("0.2 replaceable empty state uses frozen Figma copy and section state", asy
     assert.equal(nodes.replaceableList.children.length, 1);
     assert.equal(nodes.replaceableList.children[0].className, "emptyText");
     assert.equal(nodes.replaceableList.children[0].dataset.component, "InlineStatus");
-    assert.equal(nodes.replaceableList.children[0].textContent, "未发现可替换元素");
+    assert.equal(nodes.replaceableList.children[0].dataset.variant, "explanatory");
+    assert.deepEqual(
+      nodes.replaceableList.children[0].children.map((child) => child.textContent),
+      [
+        "未发现可替换元素",
+        "仅包含自动命名资源（如 img_000），",
+        "不满足可替换元素命名规则"
+      ]
+    );
     assert.equal(nodes.replaceableList.dataset.empty, "false");
     assert.equal(nodes.textElementList.children.length, 0);
     assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
     assert.equal(nodes.textElementList.dataset.empty, "true");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.1 replaceable empty state keeps imageKey module and Figma explanatory copy", async () => {
+  const {
+    renderShortTermReplaceableImages,
+    renderShortTermRuntimeTextElements
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    const nodes = createMultiFormatControllerTestNodes();
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const state = {
+      selectedImageKey: "",
+      selectedTextKey: "",
+      renameImageKey: "",
+      textPreviewValues: {}
+    };
+    const model = {
+      images: [],
+      texts: []
+    };
+
+    renderShortTermReplaceableImages({ nodes, state, model });
+    renderShortTermRuntimeTextElements({ nodes, state, model });
+
+    assert.equal(nodes.replaceableSummary.textContent, "(0)");
+    assert.equal(nodes.replaceableList.dataset.empty, "false");
+    assert.equal(nodes.textElementList.dataset.empty, "true");
+    assert.equal(nodes.replaceableList.closest(".replaceableSection").dataset.empty, "true");
+    assert.equal(nodes.replaceableList.children.length, 1);
+    const empty = nodes.replaceableList.children[0];
+    assert.equal(empty.className, "emptyText");
+    assert.equal(empty.dataset.component, "InlineStatus");
+    assert.equal(empty.dataset.variant, "explanatory");
+    assert.deepEqual(
+      empty.children.map((child) => child.textContent),
+      [
+        "未发现可替换元素",
+        "仅包含自动命名资源（如 img_000），",
+        "不满足可替换元素命名规则"
+      ]
+    );
   } finally {
     globalThis.document = originalDocument;
   }
@@ -7246,9 +7300,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEditReservedRenderers, /export function createReplaceableImageRow|export function renderReplaceableImages|export function createTextElementRow|export function renderRuntimeTextElements|ReplaceableImageRow|ReplaceableTextRow/);
   assert.match(shortTermReplaceableRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermReplaceableRenderers, /export function renderReplaceableImages/);
+  assert.match(shortTermReplaceableRenderers, /export function renderReplaceableEmptyState/);
   assert.match(shortTermReplaceableRenderers, /export function createTextElementRow/);
   assert.match(shortTermReplaceableRenderers, /export function renderRuntimeTextElements/);
-  assert.doesNotMatch(shortTermReplaceableRenderers, /from "\.\/short-term-macos-inline-status-renderers\.mjs"/);
+  assert.match(shortTermReplaceableRenderers, /createReplaceableEmptyStatus/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /createInlineStatusText\(/);
   assert.match(shortTermReplaceableRenderers, /from "\.\/short-term-macos-thumbnail-renderers\.mjs"/);
   assert.match(shortTermEditReservedRenderers, /export function createEditLayerRow/);
   assert.match(shortTermEditReservedRenderers, /export function renderEditReservedLayers/);
