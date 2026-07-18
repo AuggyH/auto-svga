@@ -3812,6 +3812,8 @@ test("0.2 playback meta uses closed renderer-owned status and format semantics",
     assert.equal(nodes.playbackMeta.dataset.status, "playing");
     assert.equal(nodes.playbackMeta.dataset.format, "vap");
     assert.match(nodes.playbackMeta.textContent, /VAP · 120 x 80 · 0:01 · 播放中/u);
+    assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "25%");
+    assert.equal(nodes.playbackProgress.children[0].style.width, "25%");
 
     const unknownResult = createRuntimeMountOpenResult("lottie", { sourceId: "source:playback-unknown" });
     unknownResult.model.status = "hostInternalPhase123";

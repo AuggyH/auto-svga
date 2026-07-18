@@ -1370,8 +1370,19 @@ export function createMultiFormatDesktopPreviewController({
       }
     }
     nodes.playbackProgress?.setAttribute("aria-valuenow", String(Math.round(progress)));
+    applyPlaybackProgress(progress);
+  }
+
+  function applyPlaybackProgress(progress) {
+    const value = `${Math.round(progress)}%`;
+    const style = nodes.playbackProgress?.style;
+    if (style && typeof style.setProperty === "function") {
+      style.setProperty("--asv-playback-progress", value);
+    } else if (style) {
+      style["--asv-playback-progress"] = value;
+    }
     const bar = nodes.playbackProgress?.querySelector("span");
-    if (bar) bar.style.width = `${Math.round(progress)}%`;
+    if (bar) bar.style.width = value;
   }
 
   function drawVapRuntimeFrame(active) {
@@ -1679,8 +1690,7 @@ export function createMultiFormatDesktopPreviewController({
     const current = Math.min(duration, playback.currentTimeMs || 0);
     const progress = duration > 0 ? Math.round((current / duration) * 100) : 0;
     nodes.playbackProgress?.setAttribute("aria-valuenow", String(progress));
-    const bar = nodes.playbackProgress?.querySelector("span");
-    if (bar) bar.style.width = `${progress}%`;
+    applyPlaybackProgress(progress);
     nodes.playbackTime.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
     nodes.playbackMeta.textContent = playbackMeta(model);
     nodes.playbackMeta.dataset.status = playbackStatusId(model.status);
