@@ -105,8 +105,8 @@ const ownerUnsupportedFeatureLabels = Object.freeze({
 
 const ownerFactLabelsById = Object.freeze({
   format: "格式",
-  dimensions: "画布",
-  duration: "时长",
+  dimensions: "画布尺寸",
+  duration: "动画时长",
   layers: "图层",
   assets: "资源",
   replaceable: "可替换",

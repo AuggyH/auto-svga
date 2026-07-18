@@ -579,7 +579,7 @@ test("right-panel rendering projects only format-applicable groups and hides int
   const vapProjection = projectMultiFormatRightPanel(ownerEnvelope({
     facts: [
       { id: "audio", label: "音频", value: "存在", status: "pass" },
-      { id: "dimensions", label: "画布", value: "未知", status: "unknown" }
+      { id: "dimensions", label: "画布尺寸", value: "未知", status: "unknown" }
     ],
     assetInventory: {
       schemaVersion: 1,

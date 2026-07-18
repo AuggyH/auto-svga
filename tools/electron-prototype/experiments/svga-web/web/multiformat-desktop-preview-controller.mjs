@@ -77,8 +77,8 @@ const rendererUnsupportedFeatureCopyByFeature = Object.freeze({
 });
 const factLabels = new Map([
   ["Format", "格式"],
-  ["Canvas", "画布"],
-  ["Duration", "时长"],
+  ["Canvas", "画布尺寸"],
+  ["Duration", "动画时长"],
   ["Layers", "图层"],
   ["Assets", "资源"],
   ["Replaceable", "可替换"],

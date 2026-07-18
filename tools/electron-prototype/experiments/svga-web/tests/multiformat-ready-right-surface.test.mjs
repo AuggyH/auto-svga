@@ -137,8 +137,8 @@ function readyRightPanelSnapshot(format, options = {}) {
     pathRedacted: true,
     facts: [
       { id: "format", label: "格式", value: format.toUpperCase(), status: "pass" },
-      { id: "dimensions", label: "画布", value: "120 x 80", status: "pass" },
-      { id: "duration", label: "时长", value: "1s", status: "pass" },
+      { id: "dimensions", label: "画布尺寸", value: "120 x 80", status: "pass" },
+      { id: "duration", label: "动画时长", value: "1s", status: "pass" },
       { id: "assets", label: "资源", value: "2", status: "pass" },
       { id: "replaceable", label: "可替换", value: "2", status: "pass" }
     ],
