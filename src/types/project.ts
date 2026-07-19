@@ -44,6 +44,8 @@ export interface ProjectLayer {
   blendMode: "normal" | "screen" | "add";
   fallbackBlendMode: "normal";
   fallbackOpacityMultiplier: number;
+  sourceTiming?: LayerSourceTiming;
+  activeFrameRange?: FrameRange;
   mask?: LayerMask;
   anchor: Anchor;
   transform: LayerTransform;
@@ -62,6 +64,33 @@ export interface ProjectLayer {
       };
     };
   };
+}
+
+export interface FrameRange {
+  start: number;
+  end: number;
+}
+
+export interface LayerSourceTiming {
+  unit: "seconds";
+  frameBoundary: "in_inclusive_out_exclusive";
+  frameBoundaryContract: FrameBoundaryContract;
+  inPoint: number;
+  outPoint: number;
+  startTime: number;
+  stretch: 100;
+  timeRemapEnabled: false;
+}
+
+export interface FrameBoundaryContract {
+  version: "frame_boundary_v1";
+  arithmetic: "ieee754_binary64";
+  framePosition: "seconds_times_fps";
+  predicate: "abs(frame_position-round(frame_position))<=epsilon";
+  epsilon: 1e-9;
+  epsilonUnit: "frames";
+  snap: "nearest_integer_within_epsilon";
+  interval: "in_inclusive_out_exclusive";
 }
 
 export interface LayerMask {
