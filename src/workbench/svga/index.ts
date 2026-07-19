@@ -1,4 +1,6 @@
 export { SvgaFormatAdapter } from "./format-adapter.js";
+export { createSvgaAebBakeAdapterInput } from "./aeb-bake-adapter.js";
+export type { SvgaAebBakeAdapterInput } from "./aeb-bake-adapter.js";
 export {
   createSvgaBatchPngMappingReport,
   createSvgaBatchReplacementInputs
