@@ -7027,6 +7027,23 @@ test("multi-format runtime self-test uses the owner replacement path for each fo
   assert.match(proofSource, /snapshot\.summaryText\?\.includes\("未保存输出："\)/u);
 });
 
+test("multi-format runtime self-test proves target Reset sibling isolation and source immutability", () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-multiformat-runtime-selftest.cjs"),
+    "utf8"
+  );
+  const matrixStart = proofSource.indexOf("async function applyReplacementResetMatrix");
+  const matrixEnd = proofSource.indexOf("async function proveReopenIsolation", matrixStart);
+  assert.notEqual(matrixStart, -1, "runtime self-test must exercise image and text in one replacement cycle");
+  assert.notEqual(matrixEnd, -1, "runtime replacement matrix must have a bounded source range");
+  const matrixSource = proofSource.slice(matrixStart, matrixEnd);
+  assert.match(matrixSource, /applyOwnerVisibleImageReplacement\(input\)[\s\S]*setRuntimeText\(input\.textTarget/u);
+  assert.match(matrixSource, /resetText\(input\.textTarget\)[\s\S]*imageSiblingPreserved/u);
+  assert.match(matrixSource, /resetImage\(input\.imageTarget\)[\s\S]*replacementStateClean/u);
+  assert.match(proofSource, /assertFixtureSourcesUnchanged\(\)/u);
+  assert.match(proofSource, /waitForBalancedLifecycle\(\)/u);
+});
+
 test("VAP pixel proof requires target-scoped sibling isolation and source restoration", () => {
   const proofSource = readFileSync(
     path.join(experimentRoot, "scripts/run-vap-fusion-replacement-pixel-proof.cjs"),

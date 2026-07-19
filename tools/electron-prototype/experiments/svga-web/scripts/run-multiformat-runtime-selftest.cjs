@@ -177,6 +177,7 @@ async function main() {
     path: generatedArtifacts.svgaA.path,
     imageTarget: "profile_frame",
     textTarget: "nickname_text",
+    sourceTextValue: "",
     replacementValue: "SVGA runtime text"
   });
   const lottie = await exerciseFormatFlow({
@@ -185,6 +186,7 @@ async function main() {
     path: generatedArtifacts.lottieA.path,
     imageTarget: "avatar",
     textTarget: "text:2",
+    sourceTextValue: "Task title A",
     replacementValue: "Lottie runtime text"
   });
   const vap = await exerciseFormatFlow({
@@ -193,11 +195,13 @@ async function main() {
     path: generatedArtifacts.vapA.path,
     imageTarget: "vap_fusion_avatar",
     textTarget: "vap_fusion_title",
+    sourceTextValue: "VAP 融合文字",
     replacementValue: "VAP runtime text"
   });
   const reopenIsolation = await proveReopenIsolation();
   const failures = await proveTypedFailureRows();
   const narrowReachability = await proveNarrowWindowReachability();
+  const sourceImmutability = assertFixtureSourcesUnchanged();
 
   if (externalRequests.length > 0) {
     throw new Error(`Unexpected external requests: ${JSON.stringify(externalRequests)}`);
@@ -209,6 +213,9 @@ async function main() {
   if (severeConsole.length > 0) {
     throw new Error(`Unexpected renderer console errors: ${JSON.stringify(severeConsole.slice(-8))}`);
   }
+
+  await previewSession.control({ action: "dispose" });
+  const lifecycle = await waitForBalancedLifecycle();
 
   const proof = {
     status: "passed",
@@ -222,7 +229,8 @@ async function main() {
       reopenIsolation,
       failures,
       narrowReachability,
-      lifecycle: previewSession.lifecycle,
+      sourceImmutability,
+      lifecycle,
       externalRequests,
       consoleMessages: consoleMessages.slice(-20),
       ipcEvents
@@ -267,8 +275,7 @@ async function exerciseFormatFlow(input) {
     snapshot.modelFormat === input.format && snapshot.modelStatus === "playing" && rendererReady(input.format, snapshot)
   );
 
-  const imageReplacement = await applyImageAndReset(input);
-  const textReplacement = await applyTextAndReset(input);
+  const replacementResetMatrix = await applyReplacementResetMatrix(input);
   const afterReset = await pageSnapshot();
   return {
     open,
@@ -276,57 +283,62 @@ async function exerciseFormatFlow(input) {
     playingLater: compactSnapshot(playingLater),
     pause: compactSnapshot(paused),
     pauseStable: compactSnapshot(pausedLater),
-    imageReplacement,
-    textReplacement,
+    replacementResetMatrix,
     afterReset: compactSnapshot(afterReset)
   };
 }
 
-async function applyImageAndReset(input) {
-  const before = await captureFormatPixels(input.format);
+async function applyReplacementResetMatrix(input) {
+  const beforeSnapshot = await pageSnapshot();
+  const beforePixels = await captureFormatPixels(input.format);
+  assertPixels(input.alias, "source before replacement", beforePixels);
+
   await applyOwnerVisibleImageReplacement(input);
-  const replaced = await waitForPage(`${input.alias} image replacement`, (snapshot) =>
+  const imageApplied = await waitForPage(`${input.alias} image replacement`, (snapshot) =>
     snapshot.modelFormat === input.format
       && rendererReady(input.format, snapshot)
       && imageReplacementDirty(input.format, snapshot, input.imageTarget)
   );
-  const replacedPixels = await captureFormatPixels(input.format);
-  if (input.format === "vap" && before.sha256 === replacedPixels.sha256) {
-    throw new Error(`${input.alias} image replacement did not change runtime pixels.`);
-  }
-  await resetImage(input.imageTarget);
-  const reset = await waitForPage(`${input.alias} image reset`, (snapshot) =>
+
+  const textApply = await setRuntimeText(input.textTarget, input.replacementValue);
+  const bothApplied = await waitForPage(`${input.alias} combined replacements`, (snapshot) =>
     snapshot.modelFormat === input.format
       && rendererReady(input.format, snapshot)
-      && !imageReplacementDirty(input.format, snapshot, input.imageTarget)
+      && bothTargetsActive(input, snapshot)
+  );
+  const combinedPixels = await captureFormatPixels(input.format);
+  assertPixels(input.alias, "combined replacement", combinedPixels);
+  assertReplacementPixelsChanged(input.alias, beforePixels, combinedPixels);
+
+  await resetText(input.textTarget);
+  const textReset = await waitForPage(`${input.alias} targeted text reset`, (snapshot) =>
+    snapshot.modelFormat === input.format
+      && rendererReady(input.format, snapshot)
+      && imageSiblingPreserved(input, snapshot)
+  );
+  const textResetPixels = await captureFormatPixels(input.format);
+  assertPixels(input.alias, "text reset with image sibling", textResetPixels);
+
+  await resetImage(input.imageTarget);
+  const finalReset = await waitForPage(`${input.alias} final image reset`, (snapshot) =>
+    snapshot.modelFormat === input.format
+      && rendererReady(input.format, snapshot)
+      && replacementStateClean(input, snapshot)
   );
   const resetPixels = await captureFormatPixels(input.format);
-  return {
-    before,
-    replaced: compactSnapshot(replaced),
-    replacedPixels,
-    reset: compactSnapshot(reset),
-    resetPixels
-  };
-}
+  assertPixels(input.alias, "final source restoration", resetPixels);
 
-async function applyTextAndReset(input) {
-  const before = await pageSnapshot();
-  const apply = await setRuntimeText(input.textTarget, input.replacementValue);
-  const changed = await waitForPage(`${input.alias} text replacement`, (snapshot) =>
-    snapshot.modelFormat === input.format
-      && textValueVisible(input.format, input.textTarget, input.replacementValue, snapshot)
-  );
-  await resetText(input.textTarget);
-  const reset = await waitForPage(`${input.alias} text reset`, (snapshot) =>
-    snapshot.modelFormat === input.format
-      && !textValueVisible(input.format, input.textTarget, input.replacementValue, snapshot)
-  );
   return {
-    before: compactSnapshot(before),
-    apply,
-    changed: compactSnapshot(changed),
-    reset: compactSnapshot(reset)
+    before: compactSnapshot(beforeSnapshot),
+    beforePixels,
+    imageApplied: compactSnapshot(imageApplied),
+    textApply,
+    bothApplied: compactSnapshot(bothApplied),
+    combinedPixels,
+    textReset: compactSnapshot(textReset),
+    textResetPixels,
+    finalReset: compactSnapshot(finalReset),
+    resetPixels
   };
 }
 
@@ -1042,6 +1054,41 @@ function textValueVisible(format, textKey, value, snapshot) {
   ) === true;
 }
 
+function bothTargetsActive(input, snapshot) {
+  if (!imageReplacementDirty(input.format, snapshot, input.imageTarget)) return false;
+  if (!textValueVisible(input.format, input.textTarget, input.replacementValue, snapshot)) return false;
+  if (input.format === "svga") return true;
+  const active = snapshot.hostModel?.model?.replacement?.active ?? [];
+  return active.filter((entry) => entry.kind === "image").length === 1
+    && active.filter((entry) => entry.kind === "text").length === 1;
+}
+
+function imageSiblingPreserved(input, snapshot) {
+  if (!imageReplacementDirty(input.format, snapshot, input.imageTarget)) return false;
+  if (textValueVisible(input.format, input.textTarget, input.replacementValue, snapshot)) return false;
+  if (!textValueVisible(input.format, input.textTarget, input.sourceTextValue, snapshot)) return false;
+  if (input.format === "svga") return true;
+  const active = snapshot.hostModel?.model?.replacement?.active ?? [];
+  return active.length === 1 && active[0]?.kind === "image";
+}
+
+function replacementStateClean(input, snapshot) {
+  if (imageReplacementDirty(input.format, snapshot, input.imageTarget)) return false;
+  if (!textValueVisible(input.format, input.textTarget, input.sourceTextValue, snapshot)) return false;
+  if (input.format === "svga") return snapshot.replacementDirty === false;
+  const replacement = snapshot.hostModel?.model?.replacement;
+  return replacement?.dirty === false
+    && replacement?.resetEnabled === false
+    && Array.isArray(replacement?.active)
+    && replacement.active.length === 0;
+}
+
+function assertReplacementPixelsChanged(label, before, after) {
+  if (before.sha256 === after.sha256 && before.markupSha256 === after.markupSha256) {
+    throw new Error(`${label} combined image/text replacement did not change rendered pixels.`);
+  }
+}
+
 function assertNoReplacementPrepareAfter(label, startIndex) {
   const leaked = ipcEvents.slice(startIndex).filter((event) =>
     event.phase === "prepare_runtime_preview" && Number(event.replacementCount) > 0
@@ -1315,6 +1362,42 @@ function redactedArtifactEvidence() {
     byteLength: value.byteLength,
     pathRedacted: true
   }]));
+}
+
+function assertFixtureSourcesUnchanged() {
+  return Object.fromEntries(Object.entries(generatedArtifacts).map(([key, expected]) => {
+    const bytes = readFileSync(expected.path);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    if (bytes.byteLength !== expected.byteLength || sha256 !== expected.sha256) {
+      throw new Error(`${expected.alias} changed during the runtime replacement matrix.`);
+    }
+    return [key, {
+      alias: expected.alias,
+      sha256,
+      byteLength: bytes.byteLength,
+      unchanged: true,
+      pathRedacted: true
+    }];
+  }));
+}
+
+async function waitForBalancedLifecycle() {
+  const deadline = Date.now() + 5_000;
+  let lifecycle;
+  while (Date.now() < deadline) {
+    lifecycle = { ...previewSession.lifecycle };
+    if (
+      lifecycle.lottieLoads > 0
+      && lifecycle.vapLoads > 0
+      && lifecycle.lottieLoads === lifecycle.lottieDestroys
+      && lifecycle.vapLoads === lifecycle.vapDestroys
+      && lifecycle.objectUrlsCreated === lifecycle.objectUrlsRevoked
+    ) {
+      return lifecycle;
+    }
+    await delay(20);
+  }
+  throw new Error(`Runtime lifecycle did not balance after disposal: ${JSON.stringify(lifecycle)}`);
 }
 
 function dataUriForFile(filePath) {
