@@ -105,15 +105,46 @@ export async function openShortTermCompareBFromHost({
     return;
   }
   if (state.view !== "compare") await enterGeneralCompare();
-  const opened = await bridge.openSvgaFile();
-  if (!opened || opened.status === "cancelled") return;
-  const bytes = toUint8Array(opened.bytes);
-  await mountPlayback("compareB", nodes.compareCanvasB, bytes, {
-    start: state.compareAPlayback?.playing !== false,
-    loop: state.comparePlaybackLooping !== false
+  applyCompareSlotView(nodes, "B", {
+    title: "选择 B 文件",
+    meta: "等待选择 SVGA",
+    compareState: "selecting"
   });
+  const opened = await bridge.openSvgaFile();
+  if (!opened || opened.status === "cancelled") {
+    renderShortTermCompareSlot({ nodes, slot: "B", title: "文件未打开" });
+    return;
+  }
+  if (opened.status !== "opened" || !opened.bytes) {
+    applyCompareSlotView(nodes, "B", {
+      title: "无法打开 B 文件",
+      meta: opened.code === "unsupported_file_type" ? "仅支持 SVGA 文件" : "文件选择未完成",
+      compareState: "unsupported"
+    });
+    return;
+  }
+  const bytes = toUint8Array(opened.bytes);
+  applyCompareSlotView(nodes, "B", {
+    title: opened.basename || "B 文件",
+    meta: "正在加载 SVGA",
+    compareState: "waiting"
+  });
+  let model;
+  try {
+    await mountPlayback("compareB", nodes.compareCanvasB, bytes, {
+      start: state.compareAPlayback?.playing !== false,
+      loop: state.comparePlaybackLooping !== false
+    });
+    model = await inspectShortTerm(bytes, opened.basename || "compare.svga");
+  } catch {
+    applyCompareSlotView(nodes, "B", {
+      title: "无法打开 B 文件",
+      meta: "文件内容不完整或格式异常",
+      compareState: "unsupported"
+    });
+    return;
+  }
   markShortTermCompareSlotLoaded({ nodes, slot: "B" });
-  const model = await inspectShortTerm(bytes, opened.basename || "compare.svga");
   renderShortTermCompareSlot({ nodes, slot: "B", title: opened.basename || "B 文件", model });
   renderShortTermGeneralComparePanel({
     nodes,

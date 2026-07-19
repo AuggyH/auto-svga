@@ -899,9 +899,9 @@ function assertExpectedOwnerFacts(input, snapshot) {
     const canvasFact = model?.rightPanel?.facts?.find((fact) => fact.id === "dimensions");
     const ownerIssues = model?.rightPanel?.issues ?? [];
     const riskIssues = ownerIssues.filter((issue) =>
-      issue?.code === "owner_issue"
+      issue?.code === "canvas_size_risk"
       && issue?.severity === "warning"
-      && issue?.message === "当前文件存在无法显示的检查问题。"
+      && issue?.message === "画布尺寸超过兼容性阈值，仍可播放；请留意设备性能。"
       && issue?.pathRedacted === true
     );
     if (canvasFact?.status !== "warning"

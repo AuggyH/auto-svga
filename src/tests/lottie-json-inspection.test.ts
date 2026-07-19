@@ -97,14 +97,17 @@ test("reports unsupported Lottie features without rejecting metadata inspection"
     "unsupported_feature",
     "unsupported_feature",
     "unsupported_feature",
-    "unsupported_feature",
     "unsupported_feature"
   ]);
   assert.deepEqual(
     result.issues.map(({ details }) => details?.feature),
-    ["3d_layer", "mask", "effect", "time_remap", "expression"]
+    ["3d_layer", "effect", "time_remap", "expression"]
   );
-  assert.equal((lottieMetadata(result).unsupportedFeatures as unknown[]).length, 5);
+  assert.deepEqual(
+    result.issues.map(({ details }) => details?.playbackDisposition),
+    ["blocked", "advisory", "blocked", "blocked"]
+  );
+  assert.equal((lottieMetadata(result).unsupportedFeatures as unknown[]).length, 4);
 });
 
 test("reports unsupported features nested inside precomp assets", async () => {
@@ -129,15 +132,15 @@ test("reports unsupported features nested inside precomp assets", async () => {
   assert.ok(result.value);
   assert.deepEqual(
     result.issues.map(({ details }) => details?.feature),
-    ["mask", "effect"]
+    ["effect"]
   );
   assert.deepEqual(
     result.issues.map(({ details }) => details?.path),
-    ["assets.0.layers.0.masksProperties", "assets.0.layers.0.ef"]
+    ["assets.0.layers.0.ef"]
   );
   assert.deepEqual(
     (lottieMetadata(result).unsupportedFeatures as Array<{ path: string }>).map(({ path }) => path),
-    ["assets.0.layers.0.masksProperties", "assets.0.layers.0.ef"]
+    ["assets.0.layers.0.ef"]
   );
 });
 

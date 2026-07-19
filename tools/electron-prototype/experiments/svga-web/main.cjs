@@ -250,7 +250,8 @@ const {
 } = require("./sequence-repair-proof-contract.cjs");
 const {
   MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
-  createMultiFormatDesktopPreviewSession
+  createMultiFormatDesktopPreviewSession,
+  isAcceptedMultiFormatOpenModel
 } = require("./multiformat-desktop-session.cjs");
 const {
   createMultiFormatOpenRuntimeTrace,
@@ -5502,6 +5503,9 @@ function openReferenceMediaFileBytes(filePath) {
 
 async function openSvgaFile() {
   if (normalProofMode) return openSvgaFileBytes(canonicalFixtureRuntimePath);
+  if (isMultiFormatDesktopProduct && process.platform === "darwin") {
+    return openFormalMultiFormatCompareSvgaFile();
+  }
   const result = await dialog.showOpenDialog({
     title: "打开 SVGA",
     filters: [{ name: "SVGA", extensions: ["svga"] }],
@@ -5511,6 +5515,23 @@ async function openSvgaFile() {
     return { status: "cancelled" };
   }
   return openSvgaFileBytes(result.filePaths[0]);
+}
+
+async function openFormalMultiFormatCompareSvgaFile() {
+  const selection = await chooseMultiFormatLocalFile({
+    showOpenDialog: showOpenDialogForActiveMainWindow,
+    platform: process.platform
+  });
+  if (selection.status !== "selected") return selection;
+  if (path.extname(selection.filePath).toLowerCase() !== ".svga") {
+    return {
+      status: "failed",
+      code: "unsupported_file_type",
+      message: "对比文件仅支持 SVGA。",
+      pathRedacted: true
+    };
+  }
+  return openSvgaFileBytes(selection.filePath);
 }
 
 async function openReferenceMediaFile() {
@@ -5543,7 +5564,7 @@ function getMultiFormatDesktopSession() {
 
 async function openMultiFormatFilePath(filePath, source = "fileButton") {
   const result = await getMultiFormatDesktopSession().openLocalFilePath(filePath, source);
-  if (result?.sourceId && result?.model?.status !== "failed") rememberShortTermRecentFile(filePath);
+  if (result?.sourceId && isAcceptedMultiFormatOpenModel(result?.model)) rememberShortTermRecentFile(filePath);
   return result;
 }
 

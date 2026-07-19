@@ -17,6 +17,7 @@ import { applyModeButtons } from "../web/short-term-macos-dom-state.mjs";
 import { showShortTermDragDecisionOverlay } from "../web/short-term-macos-drag-decision-surface.mjs";
 import {
   createMultiFormatDesktopPreviewController,
+  normalizeMultiFormatOpenOutcome,
   resolveMultiFormatChooserOutcome
 } from "../web/multiformat-desktop-preview-controller.mjs";
 
@@ -154,6 +155,61 @@ test("host chooser cancellation cannot enter loading or resize the Launch window
   assert.ok(loadingIndex < 0 || loadingIndex > invokeIndex);
   assert.doesNotMatch(openBody, /resolveMultiFormatOpenOutcome/u);
   assert.match(openBody, /resolveMultiFormatChooserOutcome/u);
+});
+
+test("accepted-open status gates Recent and unifies terminal model failures", async () => {
+  const mainSource = source("main.cjs");
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const openPathSource = extractFunctionSource(mainSource, "async function openMultiFormatFilePath");
+
+  assert.match(openPathSource, /isAcceptedMultiFormatOpenModel\(result\?\.model\)/u);
+  assert.doesNotMatch(openPathSource, /model\?\.status\s*!==\s*["']failed["']/u);
+  assert.match(controllerSource, /isAcceptedMultiFormatOpenModel\(result\.model\)/u);
+
+  const blocked = normalizeMultiFormatOpenOutcome({
+    status: "opened",
+    sourceId: "must-not-survive",
+    model: {
+      status: "playbackBlocked",
+      rightPanel: {
+        issues: [{ code: "missing_resource", pathRedacted: true }]
+      }
+    }
+  });
+  assert.deepEqual(blocked, {
+    kind: "failure",
+    code: "missing_resource",
+    message: "预览所需资源缺失，源文件没有被修改。",
+    pathRedacted: true
+  });
+
+  const invalid = normalizeMultiFormatOpenOutcome({
+    status: "opened",
+    sourceId: "must-not-survive",
+    model: {
+      status: "playbackBlocked",
+      rightPanel: {
+        issues: [{ code: "invalid_file", pathRedacted: true }]
+      }
+    }
+  });
+  assert.deepEqual(invalid, {
+    kind: "failure",
+    code: "invalid_file",
+    message: "文件内容不完整或格式异常，无法预览。",
+    pathRedacted: true
+  });
+});
+
+test("formal 0.2 Compare B uses the verified native picker path instead of the legacy Electron dialog", () => {
+  const mainSource = source("main.cjs");
+  const openSvgaSource = extractFunctionSource(mainSource, "async function openSvgaFile");
+  const formalCompareSource = extractFunctionSource(mainSource, "async function openFormalMultiFormatCompareSvgaFile");
+
+  assert.match(openSvgaSource, /isMultiFormatDesktopProduct[\s\S]*openFormalMultiFormatCompareSvgaFile/u);
+  assert.match(formalCompareSource, /chooseMultiFormatLocalFile/u);
+  assert.match(formalCompareSource, /unsupported_file_type/u);
+  assert.doesNotMatch(formalCompareSource, /dialog\.showOpenDialog/u);
 });
 
 test("macOS multi-format picker uses the packaged AppKit helper and validates selection in the host", async () => {
@@ -1139,9 +1195,9 @@ test("real-rendering VAP Canvas risk oracle requires one canonical owner warning
   const assertExpectedOwnerFacts = vm.runInContext(`(${functionSource})`, context);
   const input = { label: "OWNER-VAP-A", requireCanvasRisk: true };
   const ownerWarning = {
-    code: "owner_issue",
+    code: "canvas_size_risk",
     severity: "warning",
-    message: "当前文件存在无法显示的检查问题。",
+    message: "画布尺寸超过兼容性阈值，仍可播放；请留意设备性能。",
     pathRedacted: true
   };
   const snapshot = {

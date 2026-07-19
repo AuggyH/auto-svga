@@ -184,6 +184,43 @@ test("hidden Lottie vertical surfaces unsupported markers and blocks playback be
   assertNoLocalPaths(model);
 });
 
+test("hidden Lottie vertical renders masks and reports AE effects without blocking playback", async () => {
+  let rendererLoads = 0;
+  const localPath = "/Users/designer/Secret Campaign/masked-effect.json";
+  const session = createHiddenLottiePreviewVerticalSession({
+    host: memoryHost({
+      [localPath]: minimalLottie({
+        layers: [{
+          ind: 1,
+          ty: 4,
+          nm: "masked effect shape",
+          hasMask: true,
+          masksProperties: [{ mode: "a" }],
+          ef: [{ ty: 5, mn: "ADBE WRPMESH" }]
+        }]
+      })
+    }),
+    target: { container: {} },
+    rendererLoader: async () => {
+      rendererLoads += 1;
+      return fakeRenderer();
+    }
+  });
+
+  const model = await session.openLocalCandidate({
+    gate: HIDDEN_LOTTIE_PREVIEW_VERTICAL_GATE,
+    requestId: "open-1",
+    source: "menuOpen",
+    localPath
+  });
+
+  assert.equal(model.status, "ready");
+  assert.deepEqual(model.unsupportedFeatures.map(({ feature }) => feature), ["effect"]);
+  assert.equal(model.issues.some(({ code }) => code === "unsupported_feature"), true);
+  assert.equal(rendererLoads, 1);
+  assertNoLocalPaths(model);
+});
+
 test("hidden Lottie vertical maps renderer load failures to typed playback failure and can recover", async () => {
   let shouldFail = true;
   const localPath = "/Users/designer/Secret Campaign/inline.json";

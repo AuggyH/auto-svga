@@ -50,6 +50,7 @@ class MultiFormatDesktopPreviewSession {
     this.modulesPromise = undefined;
     this.sessionPromise = undefined;
     this.requestSequence = 0;
+    this.latestOpenRequestId = "";
     this.objectUrlSequence = 0;
     this.activeSourceId = "";
     this.activeSourceBinding = undefined;
@@ -73,6 +74,7 @@ class MultiFormatDesktopPreviewSession {
     const normalizedPath = normalizeLocalPath(filePath);
     validateSupportedPath(normalizedPath);
     const requestId = this.nextRequestId(source);
+    this.latestOpenRequestId = requestId;
     const displayName = path.basename(normalizedPath);
     let sourceBinding;
     let model;
@@ -85,7 +87,7 @@ class MultiFormatDesktopPreviewSession {
           return session.openLocalCandidate({
             gate: MULTIFORMAT_DESKTOP_GATE,
             requestId,
-            source,
+            source: ownerOpenSource(source),
             localPath: normalizedPath,
             displayName
           });
@@ -112,10 +114,20 @@ class MultiFormatDesktopPreviewSession {
         this.pendingOpenSourceBinding = undefined;
       }
     }
+    const currentOpen = this.latestOpenRequestId === requestId;
+    const acceptedOpen = currentOpen
+      && model?.requestId === requestId
+      && sourceBinding
+      && isAcceptedMultiFormatOpenModel(model);
+    if (!acceptedOpen) {
+      this.discardSourceBinding(sourceBinding);
+      if (currentOpen) this.revokeActiveSourceAuthority();
+    }
     return this.publicResult(
       model,
-      model?.requestId === requestId && sourceBinding ? sourceBinding.sourceId : "",
-      normalizedPath
+      acceptedOpen ? sourceBinding.sourceId : "",
+      acceptedOpen ? normalizedPath : "",
+      { inheritActiveSource: false }
     );
   }
 
@@ -251,6 +263,18 @@ class MultiFormatDesktopPreviewSession {
     this.sourceStore?.set(sourceId, filePath);
     this.sourceBindings.set(sourceId, binding);
     return binding;
+  }
+
+  discardSourceBinding(binding) {
+    if (!binding) return;
+    if (this.sourceBindings.get(binding.sourceId) === binding) this.sourceBindings.delete(binding.sourceId);
+    if (this.sourceStore?.get?.(binding.sourceId) === binding.filePath) this.sourceStore.delete?.(binding.sourceId);
+  }
+
+  revokeActiveSourceAuthority() {
+    this.svgaReplacementPreview = undefined;
+    this.activeSourceId = "";
+    this.activeSourceBinding = undefined;
   }
 
   async ensureSession() {
@@ -862,13 +886,13 @@ class MultiFormatDesktopPreviewSession {
     return `${prefix || "request"}:${this.requestSequence}`;
   }
 
-  publicResult(model, sourceId = "", sourcePath = "") {
+  publicResult(model, sourceId = "", sourcePath = "", options = {}) {
     if (sourceId) {
       this.svgaReplacementPreview = undefined;
       this.activeSourceId = sourceId;
       this.activeSourceBinding = this.sourceBindings.get(sourceId);
     }
-    const publicSourceId = sourceId || this.activeSourceId;
+    const publicSourceId = sourceId || (options.inheritActiveSource === false ? "" : this.activeSourceId);
     const ownerRightPanelSnapshotEnvelope = withOwnerSnapshotSourceId(
       model?.ownerRightPanelSnapshotEnvelope,
       publicSourceId
@@ -1951,8 +1975,26 @@ function formatFromPath(filePath) {
   return undefined;
 }
 
+function isAcceptedMultiFormatOpenModel(model) {
+  return model?.status === "previewReady"
+    || model?.status === "playing"
+    || model?.status === "paused";
+}
+
+function ownerOpenSource(source) {
+  return source === "dragDrop"
+    || source === "menuOpen"
+    || source === "fileOpenEvent"
+    || source === "fileButton"
+    ? source
+    : source === "recentFile"
+      ? "menuOpen"
+      : "fileButton";
+}
+
 module.exports = {
   MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
   MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS,
-  createMultiFormatDesktopPreviewSession
+  createMultiFormatDesktopPreviewSession,
+  isAcceptedMultiFormatOpenModel
 };

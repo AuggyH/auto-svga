@@ -929,9 +929,12 @@ test("owner-visible oversized VAP remains playable with a truthful Canvas warnin
   assert.equal(opened.detectedFormat, "vap");
   assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.value, "750 x 1624");
   assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.status, "warning");
-  assert.equal(opened.rightPanel.issues.filter(({ code, severity }) =>
-    String(code) === "owner_issue" && severity === "warning"
-  ).length, 1);
+  assert.deepEqual(opened.rightPanel.issues, [{
+    code: "canvas_size_risk",
+    severity: "warning",
+    message: "画布尺寸超过兼容性阈值，仍可播放；请留意设备性能。",
+    pathRedacted: true
+  }]);
   assert.equal(runtime.configs.length, 1);
   assert.equal((await session.play()).status, "playing");
   assert.equal((await session.pause()).status, "paused");

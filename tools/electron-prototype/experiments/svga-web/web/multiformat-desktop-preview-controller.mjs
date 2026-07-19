@@ -49,6 +49,7 @@ const reviewedOwnerFailureCopyByCode = Object.freeze({
   replacement_preview_failed: "无法更新替换预览，源文件没有被修改。",
   missing_resource: "预览所需资源缺失，源文件没有被修改。",
   unsupported_feature: "当前文件包含暂不支持的内容，无法完整预览。",
+  invalid_file: "文件内容不完整或格式异常，无法预览。",
   parse_precondition: "文件内容不完整或格式异常，无法预览。",
   asset_reference_precondition: "文件内容不完整或格式异常，无法预览。",
   playback_failure: "文件预览播放出现问题。",
@@ -59,6 +60,7 @@ const rendererIssueCopyByCode = Object.freeze({
   unsupported_feature: "当前文件包含暂不支持的内容。",
   invalid_file: "文件内容不完整或格式异常，无法预览。",
   playback_failure: "文件预览播放出现问题。",
+  canvas_size_risk: "画布尺寸超过兼容性阈值，仍可播放；请留意设备性能。",
   owner_issue: "当前文件存在无法显示的检查问题。"
 });
 const rendererUnsupportedFeatureCopyByFeature = Object.freeze({
@@ -2092,11 +2094,31 @@ export function normalizeMultiFormatOpenOutcome(result) {
   if (result?.status === "missing") {
     return ownerFailureOutcome("recent_file_missing");
   }
-  if (result?.model) return { kind: "model", result };
+  if (result?.model) {
+    if (isAcceptedMultiFormatOpenModel(result.model)) return { kind: "model", result };
+    return ownerFailureOutcome(openFailureCodeForModel(result.model), { pathRedacted: true });
+  }
   if (result?.status === "opened") {
     return ownerFailureOutcome("open_failed");
   }
   return ownerFailureOutcome("");
+}
+
+export function isAcceptedMultiFormatOpenModel(model) {
+  return model?.status === "previewReady"
+    || model?.status === "playing"
+    || model?.status === "paused";
+}
+
+function openFailureCodeForModel(model) {
+  const issues = Array.isArray(model?.rightPanel?.issues) ? model.rightPanel.issues : [];
+  for (const issue of issues) {
+    const code = trustedOwnerFailureCode(issue);
+    if (code) return code;
+  }
+  return model?.status === "failed" || model?.status === "playbackBlocked"
+    ? "open_failed"
+    : "playback_failure";
 }
 
 function applyProductCopy(documentRef = document) {

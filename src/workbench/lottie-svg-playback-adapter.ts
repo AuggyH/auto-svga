@@ -393,7 +393,9 @@ function playbackPreconditionIssues(
     ));
   }
 
-  const unsupported = inspected.issues.filter(({ code }) => code === "unsupported_feature");
+  const unsupported = inspected.issues.filter(({ code, details }) =>
+    code === "unsupported_feature" && details?.playbackDisposition !== "advisory"
+  );
   if (unsupported.length > 0) {
     return unsupported.map((entry) => issue(
       feedback,

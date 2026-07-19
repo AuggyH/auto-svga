@@ -105,6 +105,7 @@ interface NormalizedAssets {
 interface UnsupportedFeature {
   feature: string;
   path: string;
+  playbackDisposition: "advisory" | "blocked";
 }
 
 interface InternalResult<T> {
@@ -192,8 +193,14 @@ export class LottieJsonInspectionService {
       issue(
         feedback,
         "unsupported_feature",
-        `Lottie feature "${feature.feature}" is not supported by WP2A inspection.`,
-        { feature: feature.feature, path: feature.path }
+        feature.playbackDisposition === "advisory"
+          ? `Lottie feature "${feature.feature}" may render with reduced fidelity.`
+          : `Lottie feature "${feature.feature}" is not supported by WP2A inspection.`,
+        {
+          feature: feature.feature,
+          path: feature.path,
+          playbackDisposition: feature.playbackDisposition
+        }
       )
     );
     const fontResources = normalizeFonts(parsed.fonts);
@@ -514,17 +521,38 @@ function collectLayerUnsupportedFeatures(
 ): void {
   layers.forEach((layer, index) => {
     const path = `${pathPrefix}.${index}`;
-    if (layer.ddd === 1) features.push({ feature: "3d_layer", path: `${path}.ddd` });
-    if (layer.hasMask === true || Array.isArray(layer.masksProperties)) {
-      features.push({ feature: "mask", path: `${path}.masksProperties` });
-    }
+    if (layer.ddd === 1) features.push({
+      feature: "3d_layer",
+      path: `${path}.ddd`,
+      playbackDisposition: "blocked"
+    });
     if (Array.isArray(layer.ef) && layer.ef.length > 0) {
-      features.push({ feature: "effect", path: `${path}.ef` });
+      features.push({
+        feature: "effect",
+        path: `${path}.ef`,
+        playbackDisposition: "advisory"
+      });
     }
-    if (layer.tm !== undefined) features.push({ feature: "time_remap", path: `${path}.tm` });
-    if (layer.xp !== undefined) features.push({ feature: "expression", path: `${path}.xp` });
-    if (layer.ty === 1) features.push({ feature: "solid_layer", path: `${path}.ty` });
-    if (layer.ty === 13) features.push({ feature: "camera_layer", path: `${path}.ty` });
+    if (layer.tm !== undefined) features.push({
+      feature: "time_remap",
+      path: `${path}.tm`,
+      playbackDisposition: "blocked"
+    });
+    if (layer.xp !== undefined) features.push({
+      feature: "expression",
+      path: `${path}.xp`,
+      playbackDisposition: "blocked"
+    });
+    if (layer.ty === 1) features.push({
+      feature: "solid_layer",
+      path: `${path}.ty`,
+      playbackDisposition: "blocked"
+    });
+    if (layer.ty === 13) features.push({
+      feature: "camera_layer",
+      path: `${path}.ty`,
+      playbackDisposition: "blocked"
+    });
   });
 }
 

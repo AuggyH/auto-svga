@@ -722,7 +722,8 @@ function playbackBlockingIssues(
 ): HiddenLottiePreviewIssue[] {
   const issues: HiddenLottiePreviewIssue[] = [];
   for (const sourceIssue of sourceIssues) {
-    if (sourceIssue.code === "unsupported_feature") {
+    if (sourceIssue.code === "unsupported_feature"
+      && sourceIssue.details?.playbackDisposition !== "advisory") {
       issues.push(issue(
         "unsupported_feature",
         "Unsupported Lottie features block hidden playback instead of being silently played.",

@@ -24,8 +24,9 @@ test("WP2B Lottie playback requires the explicit gate before reading or loading 
       return fakeRenderer();
     }
   });
+  const session = adapter.createSession({ container: {} });
 
-  const result = await adapter.createSession({ container: {} }).load(memorySource(
+  const result = await session.load(memorySource(
     "inline-shape.json",
     minimalLottie(),
     { onRead: () => { reads += 1; } }
@@ -110,6 +111,39 @@ test("fails closed for unsupported Lottie features before renderer load", async 
   assert.equal(result.issues[0]?.details?.reason, "unsupported_feature_precondition");
   assert.match(JSON.stringify(result.issues), /expression/);
   assert.equal(rendererLoads, 0);
+});
+
+test("plays standard masks while keeping AE effects as reduced-fidelity advisories", async () => {
+  let rendererLoads = 0;
+  const adapter = new LottieSvgPlaybackAdapter({
+    gate: LOTTIE_SVG_PLAYBACK_WP2B_GATE,
+    rendererLoader: async () => {
+      rendererLoads += 1;
+      return fakeRenderer();
+    }
+  });
+  const session = adapter.createSession({ container: {} });
+
+  const result = await session.load(memorySource(
+    "masked-effect.json",
+    minimalLottie({
+      layers: [{
+        ind: 1,
+        ty: 4,
+        nm: "masked effect shape",
+        hasMask: true,
+        masksProperties: [{ mode: "a" }],
+        ef: [{ ty: 5, mn: "ADBE WRPMESH" }]
+      }]
+    })
+  ));
+
+  assert.ok(result.value);
+  assert.equal(session.getState().status, "ready");
+  assert.equal(rendererLoads, 1);
+  assert.deepEqual(result.issues.map(({ details }) => details?.playbackDisposition), ["advisory"]);
+  assert.match(JSON.stringify(result.issues), /effect/);
+  assert.doesNotMatch(JSON.stringify(result.issues), /\"feature\":\"mask\"/);
 });
 
 test("fails closed for external image and font resources in the animationData-only spike", async () => {

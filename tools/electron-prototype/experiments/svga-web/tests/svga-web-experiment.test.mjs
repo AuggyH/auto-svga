@@ -60,7 +60,8 @@ const {
 } = require("../sequence-repair-proof-contract.cjs");
 const {
   MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
-  createMultiFormatDesktopPreviewSession
+  createMultiFormatDesktopPreviewSession,
+  isAcceptedMultiFormatOpenModel
 } = require("../multiformat-desktop-session.cjs");
 const { chooseMultiFormatLocalFile } = require("../multiformat-native-picker.cjs");
 
@@ -560,15 +561,85 @@ test("short-term Compare B inherits the waiting A playback state", async () => {
     openFromHostDialog() {},
     enterGeneralCompare() {},
     async inspectShortTerm() { return { overview: { facts: [] } }; },
-    async mountPlayback(key, _canvas, _bytes, options) { mountCalls.push({ key, options }); },
+    async mountPlayback(key, _canvas, _bytes, options) {
+      mountCalls.push({ key, options, state: nodes.compareCanvasWrapB.dataset.compareState });
+    },
     async refreshRecentFiles() {}
   });
 
   assert.deepEqual(mountCalls, [{
     key: "compareB",
-    options: { start: false, loop: false }
+    options: { start: false, loop: false },
+    state: "waiting"
   }]);
   assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "loaded");
+});
+
+test("short-term Compare B exposes selecting, Cancel, unsupported, and loaded states", async () => {
+  const { openShortTermCompareBFromHost } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-surface.mjs")).href);
+  const nodes = {
+    compareCanvasB: {},
+    compareCanvasTitleB: { textContent: "" },
+    compareCanvasMetaB: { textContent: "" },
+    compareCanvasWrapB: { dataset: {} },
+    compareInfoB: { innerHTML: "" }
+  };
+  const state = {
+    sourceBytes: new Uint8Array([1]),
+    view: "compare",
+    comparePlaybackLooping: true,
+    compareAPlayback: { playing: true },
+    model: { overview: { facts: [] } },
+    displayName: "A.svga"
+  };
+  const observed = [];
+  const run = async (opened) => {
+    await openShortTermCompareBFromHost({
+      bridge: {
+        async openSvgaFile() {
+          observed.push(nodes.compareCanvasWrapB.dataset.compareState);
+          return opened;
+        }
+      },
+      nodes,
+      state,
+      openFromHostDialog() {},
+      enterGeneralCompare() {},
+      async inspectShortTerm() { return { overview: { facts: [] } }; },
+      async mountPlayback() {
+        observed.push(nodes.compareCanvasWrapB.dataset.compareState);
+      },
+      async refreshRecentFiles() {}
+    });
+  };
+
+  await run({ status: "cancelled" });
+  assert.deepEqual(observed, ["selecting"]);
+  assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "empty");
+  assert.equal(nodes.compareCanvasTitleB.textContent, "文件未打开");
+
+  await run({ status: "failed", code: "unsupported_file_type", pathRedacted: true });
+  assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "unsupported");
+  assert.equal(nodes.compareCanvasMetaB.textContent, "仅支持 SVGA 文件");
+
+  await run({ status: "opened", basename: "B.svga", bytes: new Uint8Array([2]) });
+  assert.deepEqual(observed.slice(-2), ["selecting", "waiting"]);
+  assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "loaded");
+  assert.equal(nodes.compareCanvasTitleB.textContent, "B.svga");
+
+  await openShortTermCompareBFromHost({
+    bridge: { async openSvgaFile() { return { status: "opened", basename: "corrupt.svga", bytes: new Uint8Array([9]) }; } },
+    nodes,
+    state,
+    openFromHostDialog() {},
+    enterGeneralCompare() {},
+    async inspectShortTerm() { return { overview: { facts: [] } }; },
+    async mountPlayback() { throw new Error("private parser detail"); },
+    async refreshRecentFiles() {}
+  });
+  assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "unsupported");
+  assert.equal(nodes.compareCanvasTitleB.textContent, "无法打开 B 文件");
+  assert.equal(nodes.compareCanvasMetaB.textContent, "文件内容不完整或格式异常");
 });
 
 test("short-term command state synchronizes duplicate Preview and Edit playback controls", async () => {
@@ -3447,6 +3518,185 @@ test("0.2 multi-format desktop session rejects unsupported drops before source r
   }
 });
 
+test("0.2 accepted-open authority excludes terminal failures and playback-blocked inputs", async () => {
+  assert.equal(isAcceptedMultiFormatOpenModel({ status: "previewReady" }), true);
+  assert.equal(isAcceptedMultiFormatOpenModel({ status: "playing" }), true);
+  assert.equal(isAcceptedMultiFormatOpenModel({ status: "paused" }), true);
+  assert.equal(isAcceptedMultiFormatOpenModel({ status: "failed" }), false);
+  assert.equal(isAcceptedMultiFormatOpenModel({ status: "playbackBlocked" }), false);
+
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-open-authority-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 1000
+  });
+  const validPath = path.join(sessionRoot, "valid.json");
+  const invalidPath = path.join(sessionRoot, "invalid.json");
+
+  try {
+    await writeFile(validPath, JSON.stringify({
+      v: "5.12.2",
+      w: 120,
+      h: 80,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      assets: [],
+      layers: []
+    }));
+    await writeFile(invalidPath, "{not-json");
+
+    const accepted = await session.openLocalFilePath(validPath, "fileButton");
+    assert.equal(accepted.model.status, "playing");
+    assert.match(accepted.sourceId, /^[a-f0-9]{24}$/u);
+
+    const rejected = await session.openLocalFilePath(invalidPath, "fileButton");
+    assert.equal(isAcceptedMultiFormatOpenModel(rejected.model), false);
+    assert.equal(rejected.sourceId, "");
+    assert.equal(rejected.svgaSource, undefined);
+    assert.equal(sourceStore.has(accepted.sourceId), true, "Recent may retain the prior accepted source path");
+
+    const staleRuntime = await session.prepareRuntimePreview({
+      sourceId: accepted.sourceId,
+      format: "lottie",
+      requestId: `${accepted.model.requestId}:stale-after-failure`,
+      replacements: accepted.model.replacement
+    });
+    assert.equal(staleRuntime.status, "failed");
+    assert.equal(staleRuntime.pathRedacted, true);
+    assert.equal(staleRuntime.issue.code, "missing_resource");
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 complex embedded-image Lottie opens above probe size with masks, advisory effects, and autoplay", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-complex-lottie-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 2000
+  });
+  const lottiePath = path.join(sessionRoot, "complex.json");
+  const embeddedPayload = "A".repeat(8192);
+  const assets = Array.from({ length: 41 }, (_, index) => ({
+    id: `image_${index + 1}`,
+    w: 64,
+    h: 64,
+    e: 1,
+    p: `data:image/png;base64,${embeddedPayload}`
+  }));
+  const layers = Array.from({ length: 16 }, (_, index) => ({
+    ind: index + 1,
+    ty: 2,
+    nm: `image layer ${index + 1}`,
+    refId: `image_${index + 1}`,
+    ...(index === 14 ? {
+      hasMask: true,
+      masksProperties: [{ mode: "a" }],
+      ef: [{ ty: 5, mn: "ADBE WRPMESH" }]
+    } : {})
+  }));
+
+  try {
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.7.0",
+      w: 750,
+      h: 1280,
+      fr: 30,
+      ip: 0,
+      op: 120,
+      assets,
+      layers
+    }));
+    assert.ok((await stat(lottiePath)).size > 262_144);
+
+    const opened = await session.openLocalFilePath(lottiePath, "fileButton");
+    assert.equal(opened.model.status, "playing");
+    assert.equal(opened.model.detectedFormat, "lottie");
+    assert.equal(opened.model.canvas.dimensions, "750 x 1280");
+    assert.equal(opened.model.rightPanel.assets.length, 41);
+    assert.deepEqual(opened.model.rightPanel.unsupportedFeatures.map(({ feature }) => feature), ["特效"]);
+    assert.deepEqual(opened.model.rightPanel.issues.map(({ code, severity }) => [code, severity]), [
+      ["unsupported_feature", "warning"]
+    ]);
+    assert.ok(opened.sourceId);
+    assert.equal(sourceStore.get(opened.sourceId), lottiePath);
+
+    const prepared = await session.prepareRuntimePreview({
+      sourceId: opened.sourceId,
+      format: "lottie",
+      requestId: `${opened.model.requestId}:runtime`,
+      replacements: opened.model.replacement
+    });
+    assert.equal(prepared.status, "prepared");
+    assert.equal(prepared.runtimeScripts.length, 1);
+    assert.equal(prepared.pathRedacted, true);
+    assert.equal(JSON.stringify(prepared).includes(sessionRoot), false);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 Recent reopens valid files through the canonical menu Open source", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-recent-open-"));
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "recent.json");
+  const vapPath = path.join(sessionRoot, "recent.mp4");
+  const invalidPath = path.join(sessionRoot, "terminal-failure.json");
+
+  try {
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.12.2",
+      w: 120,
+      h: 80,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      assets: [],
+      layers: []
+    }));
+    await writeFile(vapPath, createSyntheticVapMp4Bytes());
+    await writeFile(invalidPath, "{not-json");
+
+    const direct = await session.openLocalFilePath(lottiePath, "fileButton");
+    assert.equal(direct.model.status, "playing");
+    assert.equal(direct.model.openedFrom, "fileButton");
+
+    const recent = await session.openLocalFilePath(lottiePath, "recentFile");
+    assert.equal(recent.model.status, "playing");
+    assert.equal(recent.model.openedFrom, "menuOpen");
+    assert.notEqual(recent.sourceId, direct.sourceId);
+    assert.equal(recent.pathRedacted, true);
+
+    const vapDirect = await session.openLocalFilePath(vapPath, "fileButton");
+    assert.equal(vapDirect.model.status, "playing");
+    assert.equal(vapDirect.model.detectedFormat, "vap");
+
+    const terminalFailure = await session.openLocalFilePath(invalidPath, "fileButton");
+    assert.equal(isAcceptedMultiFormatOpenModel(terminalFailure.model), false);
+    assert.equal(terminalFailure.sourceId, "");
+
+    const vapRecent = await session.openLocalFilePath(vapPath, "recentFile");
+    assert.equal(vapRecent.model.status, "playing");
+    assert.equal(vapRecent.model.detectedFormat, "vap");
+    assert.equal(vapRecent.model.openedFrom, "menuOpen");
+    assert.notEqual(vapRecent.sourceId, vapDirect.sourceId);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
 test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP candidates to terminal states", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-terminal-session-"));
   const sourceStore = new Map();
@@ -3905,6 +4155,7 @@ test("0.2 host-owned Lottie intake rejects adjacent image aliases that escape th
     assert.equal(opened.model.rightPanel.issues.some((issue) =>
       issue.code === "missing_resource" && issue.pathRedacted === true
     ), true, JSON.stringify(opened.model.rightPanel.issues));
+    assert.equal(opened.sourceId, "");
 
     const runtime = await session.prepareRuntimePreview({
       sourceId: opened.sourceId,
@@ -3913,7 +4164,7 @@ test("0.2 host-owned Lottie intake rejects adjacent image aliases that escape th
       replacements: opened.model.replacement
     });
     assert.equal(runtime.status, "failed");
-    assert.equal(runtime.issue.code, "missing_resource");
+    assert.equal(runtime.issue.code, "parse_precondition");
     assert.doesNotMatch(JSON.stringify({ opened, runtime }), /auto-svga-lottie-(?:root-bound|external)-|owner-avatar|\/Users\//u);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
@@ -3979,6 +4230,7 @@ test("0.2 host-owned Lottie intake rejects hardlink, case, and Unicode adjacent 
       assert.equal(opened.model.rightPanel.issues.some((issue) =>
         issue.code === "missing_resource" && issue.pathRedacted === true
       ), true, `${variant.id}: ${JSON.stringify(opened.model.rightPanel.issues)}`);
+      assert.equal(opened.sourceId, "", variant.id);
       const runtime = await session.prepareRuntimePreview({
         sourceId: opened.sourceId,
         format: "lottie",
@@ -3986,7 +4238,7 @@ test("0.2 host-owned Lottie intake rejects hardlink, case, and Unicode adjacent 
         replacements: opened.model.replacement
       });
       assert.equal(runtime.status, "failed", variant.id);
-      assert.equal(runtime.issue.code, "missing_resource", variant.id);
+      assert.equal(runtime.issue.code, "parse_precondition", variant.id);
       assert.doesNotMatch(JSON.stringify({ opened, runtime }), /auto-svga-lottie-|owner-avatar|\/Users\//u);
     } finally {
       await rm(sessionRoot, { recursive: true, force: true });
@@ -4465,8 +4717,8 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP sta
     assert.equal(overLimitVap.model.status, "playing");
     assert.equal(overLimitVap.model.detectedFormat, "vap");
     assert.equal(overLimitVap.model.rightPanel.issues.some((issue) =>
-      issue.code === "owner_issue"
-      && issue.message === "当前文件存在无法显示的检查问题。"
+      issue.code === "canvas_size_risk"
+      && issue.message === "画布尺寸超过兼容性阈值，仍可播放；请留意设备性能。"
       && issue.severity === "warning"
       && issue.pathRedacted === true
     ), true);
@@ -4831,8 +5083,14 @@ test("0.2 strict-CSP Lottie runtime blocks unsafe or malformed expression shapes
       await writeFile(filePath, JSON.stringify(sourceDocument));
       const opened = await session.openLocalFilePath(filePath, "fileOpenEvent");
       assert.equal(opened.status, "opened");
+      assert.equal(isAcceptedMultiFormatOpenModel(opened.model), false);
+      assert.equal(opened.sourceId, "");
+
+      const binding = session.rememberSource(filePath, `strict-expression:${input.id}`);
+      session.activeSourceId = binding.sourceId;
+      session.activeSourceBinding = binding;
       const runtime = await session.prepareRuntimePreview({
-        sourceId: opened.sourceId,
+        sourceId: binding.sourceId,
         format: "lottie",
         requestId: opened.model.requestId,
         replacements: opened.model.replacement
@@ -5719,10 +5977,14 @@ test("0.2 playback meta uses closed renderer-owned status and format semantics",
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "playback-meta-unknown" }), true);
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "playback-meta-unknown", result: unknownResult }), true);
 
-    assert.equal(nodes.playbackMeta.dataset.status, "unknown");
-    assert.equal(nodes.playbackMeta.dataset.format, "unknown");
-    assert.match(nodes.playbackMeta.textContent, /0\.2 · 120×80 · 0:01 · 未知/u);
-    assert.doesNotMatch(nodes.playbackMeta.textContent, /hostInternalPhase123|internalRuntimeFormat/u);
+    assert.equal(state.view, "failed");
+    assert.equal(state.sourceId, "");
+    assert.notEqual(nodes.playbackMeta.dataset.status, "hostInternalPhase123");
+    assert.notEqual(nodes.playbackMeta.dataset.format, "internalRuntimeFormat");
+    assert.doesNotMatch(
+      `${nodes.playbackMeta.textContent} ${nodes.errorMessage.textContent}`,
+      /hostInternalPhase123|internalRuntimeFormat/u
+    );
   } finally {
     globalThis.document = originalDocument;
   }

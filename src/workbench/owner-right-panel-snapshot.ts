@@ -169,6 +169,10 @@ const ownerIssueCopyByCode = Object.freeze({
   asset_reference_precondition: Object.freeze({ code: "invalid_file", message: "文件内容不完整或格式异常，无法预览。" }),
   playback_failure: Object.freeze({ code: "playback_failure", message: "文件预览播放出现问题。" })
 });
+const vapCanvasRiskIssue = Object.freeze({
+  code: "canvas_size_risk",
+  message: "画布尺寸超过兼容性阈值，仍可播放；请留意设备性能。"
+});
 
 const unsupportedFeatureLabels = Object.freeze({
   expression: "表达式",
@@ -527,13 +531,26 @@ function ownerInventory(input: {
 }
 
 function ownerIssue(issue: WorkbenchIssue): OwnerRightPanelSnapshotIssue {
-  const known = hasKey(ownerIssueCopyByCode, issue.code) ? ownerIssueCopyByCode[issue.code] : genericIssue;
+  const known = issue.code === "capability" && ownerIssueReason(issue) === "vap_dimensions_over_1504"
+    ? vapCanvasRiskIssue
+    : hasKey(ownerIssueCopyByCode, issue.code)
+      ? ownerIssueCopyByCode[issue.code]
+      : genericIssue;
   return {
     code: known.code,
     severity: severity(issue.severity),
     message: known.message,
     pathRedacted: true
   };
+}
+
+function ownerIssueReason(issue: WorkbenchIssue): string {
+  const direct = issue.details?.reason;
+  if (typeof direct === "string") return direct;
+  const nested = issue.details?.details;
+  if (!nested || typeof nested !== "object" || Array.isArray(nested)) return "";
+  const reason = (nested as Record<string, unknown>).reason;
+  return typeof reason === "string" ? reason : "";
 }
 
 function ownerUnsupportedFeature(entry: HiddenMultiFormatPreviewUnsupportedMarker): OwnerRightPanelSnapshotUnsupportedFeature {
