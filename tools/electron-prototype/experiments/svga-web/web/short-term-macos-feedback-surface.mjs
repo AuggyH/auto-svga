@@ -8,7 +8,11 @@ import {
   hideSaveFeedbackBanner,
   showSaveFeedbackBanner
 } from "./short-term-macos-save-renderers.mjs";
-import { renderFailureMessage } from "./short-term-macos-state-renderers.mjs";
+import {
+  captureViewTransitionFocus,
+  moveViewTransitionFocus,
+  renderFailureMessage
+} from "./short-term-macos-state-renderers.mjs";
 
 export function showShortTermSaveBanner({ nodes, title, message, tone }) {
   showSaveFeedbackBanner(nodes.saveBanner, title, message, tone);
@@ -23,8 +27,10 @@ export function clearShortTermSaveBanner(nodes) {
 }
 
 export function showShortTermFailure({ nodes, setView }) {
+  const focusContext = captureViewTransitionFocus(nodes);
   renderFailureMessage(nodes, SHORT_TERM_LOAD_FAILURE_COPY);
   setView("failed");
+  moveViewTransitionFocus(focusContext, nodes.failureRecoveryButton);
 }
 
 export function showShortTermOperationFailure({ nodes, state, setMode, renderCommandState }, title) {

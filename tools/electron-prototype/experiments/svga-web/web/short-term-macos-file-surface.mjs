@@ -5,7 +5,9 @@ import {
   hideShortTermSaveBanner
 } from "./short-term-macos-feedback-surface.mjs";
 import {
+  captureViewTransitionFocus,
   hidePlaybackFailureRecovery,
+  moveViewTransitionFocus,
   renderFailureMessage,
   renderFileHeader,
   renderLoadingMessage
@@ -14,8 +16,10 @@ import { clearRuntimeTextOverlay } from "./short-term-macos-text-renderers.mjs";
 import { toUint8Array } from "./short-term-macos-byte-model.mjs";
 
 export function renderShortTermRecentOpenLoading({ nodes, setView }) {
+  const focusContext = captureViewTransitionFocus(nodes);
   setView("loading");
   renderLoadingMessage(nodes, "");
+  moveViewTransitionFocus(focusContext, nodes.loadingFocusTarget);
 }
 
 export async function openShortTermSourceFromHostDialog({
@@ -56,7 +60,16 @@ export async function openShortTermRecentSource({
   if (!(await confirmDiscardUnsavedOutput("打开最近文件会放弃当前未保存的 SVGA 输出。"))) return;
   renderShortTermRecentOpenLoading({ nodes, setView });
   const opened = await bridge.openRecentSvgaFile(recentFileId);
-  if (!opened || opened.status === "cancelled") return setView(state.sourceBytes ? "preview" : "launch");
+  if (!opened || opened.status === "cancelled") {
+    const focusContext = captureViewTransitionFocus(nodes);
+    const returnView = state.sourceBytes ? "preview" : "launch";
+    setView(returnView);
+    moveViewTransitionFocus(
+      focusContext,
+      returnView === "preview" ? nodes.previewStagePanel : nodes.launchOpenButton
+    );
+    return;
+  }
   if (opened.status === "missing") {
     await refreshRecentFiles();
     showFailure(new Error(opened.message || "这个最近文件已缺失或不可访问。"));
@@ -116,7 +129,9 @@ export async function loadShortTermOpenedSource({
     state.selectedImageKey = model.replaceableElements.images[0]?.imageKey || "";
     state.selectedTextKey = model.replaceableElements.texts[0]?.textKey || "";
     renderPreviewModel();
+    const focusContext = captureViewTransitionFocus(nodes);
     setView("preview");
+    moveViewTransitionFocus(focusContext, nodes.previewStagePanel);
   } catch (error) {
     clearShortTermCurrentFile({ state, stopAllPlayback });
     showFailure(error);
@@ -175,8 +190,10 @@ export function prepareShortTermSourceLoad({
   state.textPreviewValues = {};
   state.cleanSaveAsVisible = false;
   clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+  const focusContext = captureViewTransitionFocus(nodes);
   setView("loading");
   renderLoadingMessage(nodes, "");
+  moveViewTransitionFocus(focusContext, nodes.loadingFocusTarget);
 }
 
 export function clearShortTermCurrentFile({ state, stopAllPlayback }) {

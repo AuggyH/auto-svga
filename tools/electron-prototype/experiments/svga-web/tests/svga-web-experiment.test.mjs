@@ -984,7 +984,7 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(loadingSection, /data-module="PreviewCanvasModule"/);
   assert.match(loadingSection, /data-module="StateRecoveryModule"/);
   assert.match(loadingSection, /data-role="LoadingCanvasRecovery"/);
-  assert.match(loadingSection, /class="stateCard stateLoadingCard"/);
+  assert.match(loadingSection, /class="stateCard stateLoadingCard" id="loadingFocusTarget"[^>]*tabindex="-1"/);
   assert.match(loadingSection, /<h1>正在加载…<\/h1>/);
   assert.match(loadingSection, /<p id="loadingMessage"><\/p>/);
   assert.doesNotMatch(loadingSection, /读取文件并准备预览。|解析文件并准备预览。|正在打开最近文件。/);
@@ -1018,12 +1018,171 @@ test("short-term loading and load-failed states expose recovery actions", async 
   assert.match(components, /\.stateFailureIcon\s*\{[^}]*width:\s*var\(--asv-state-failure-icon-size\);[^}]*background:\s*var\(--asv-state-failure-icon-bg\);/s);
   assert.match(components, /\.stateFailureCard\s*>\s*h1\s*\{[^}]*font-size:\s*var\(--asv-state-failure-title-size\);[^}]*font-weight:\s*var\(--asv-state-failure-title-weight\);/s);
   assert.match(components, /\.stateLoadingCard\s*>\s*\.stateRecoveryButton,[\s\S]*?\.stateFailureCard\s*>\s*\.stateRecoveryButton\s*\{[^}]*min-width:\s*var\(--asv-state-recovery-action-width\);[^}]*min-height:\s*var\(--asv-state-recovery-action-height\);/s);
+  assert.match(page, /id="previewStagePanel"[^>]*tabindex="-1"/);
 
   const errorMessage = { textContent: "" };
   let view = "preview";
   showShortTermFailure({ nodes: { errorMessage }, setView: (nextView) => { view = nextView; } }, new Error("Inspection failed /private/source.svga"));
   assert.equal(view, "failed");
   assert.equal(errorMessage.textContent, "文件格式不受支持或已损坏");
+});
+
+test("short-term loading, failure, and playback recovery keep keyboard focus reachable", async () => {
+  const { loadShortTermOpenedSource, openShortTermRecentSource } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-file-surface.mjs")).href);
+  const { showShortTermFailure } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-surface.mjs")).href);
+  const { hidePlaybackFailureRecovery, showPlaybackFailureRecovery } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs")).href);
+
+  const createFocusFixture = () => {
+    const document = { activeElement: undefined, body: {} };
+    const app = new FakeDomElement("main");
+    const launchView = new FakeDomElement("section");
+    const previewView = new FakeDomElement("section");
+    const loadingView = new FakeDomElement("section");
+    const failedView = new FakeDomElement("section");
+    launchView.dataset.view = "launch";
+    previewView.dataset.view = "preview";
+    loadingView.dataset.view = "loading";
+    failedView.dataset.view = "failed";
+    const launchButton = new FakeDomElement("button");
+    const loadingFocusTarget = new FakeDomElement("div");
+    const failureRecoveryButton = new FakeDomElement("button");
+    const previewStagePanel = new FakeDomElement("section");
+    const playbackErrorRecovery = new FakeDomElement("section");
+    const playbackRecoveryButton = new FakeDomElement("button");
+    playbackErrorRecovery.hidden = true;
+    launchView.replaceChildren(launchButton);
+    loadingView.replaceChildren(loadingFocusTarget);
+    failedView.replaceChildren(failureRecoveryButton);
+    playbackErrorRecovery.replaceChildren(playbackRecoveryButton);
+    previewStagePanel.replaceChildren(playbackErrorRecovery);
+    previewView.replaceChildren(previewStagePanel);
+    app.replaceChildren(launchView, loadingView, failedView, previewView);
+    for (const node of [
+      app,
+      launchView,
+      previewView,
+      loadingView,
+      failedView,
+      launchButton,
+      loadingFocusTarget,
+      failureRecoveryButton,
+      previewStagePanel,
+      playbackErrorRecovery,
+      playbackRecoveryButton
+    ]) node.ownerDocument = document;
+    const nodes = {
+      app,
+      launchOpenButton: launchButton,
+      errorMessage: new FakeDomElement("p"),
+      loadingMessage: new FakeDomElement("p"),
+      loadingFocusTarget,
+      failureRecoveryButton,
+      previewStagePanel,
+      playbackErrorRecovery,
+      playbackErrorMessage: new FakeDomElement("p"),
+      playbackRecoveryButton,
+      runtimeTextOverlay: new FakeDomElement("div")
+    };
+    const setView = (view) => {
+      for (const candidate of [launchView, loadingView, failedView, previewView]) {
+        candidate.hidden = candidate.dataset.view !== view;
+      }
+    };
+    return { document, nodes, launchButton, setView };
+  };
+
+  const success = createFocusFixture();
+  success.launchButton.focus();
+  await loadShortTermOpenedSource({
+    nodes: success.nodes,
+    state: {},
+    bytes: Uint8Array.from([1, 2, 3]),
+    displayName: "ready.svga",
+    sourceId: "source:ready",
+    clearTransientOutput() {},
+    setView: success.setView,
+    async inspectShortTerm() {
+      assert.equal(success.document.activeElement, success.nodes.loadingFocusTarget);
+      return { replaceableElements: { images: [], texts: [] } };
+    },
+    renderPreviewModel() {},
+    async mountPrimaryPlayback() {},
+    stopAllPlayback() {},
+    showFailure(error) {
+      throw error;
+    },
+    showPlaybackFailure(error) {
+      throw error;
+    }
+  });
+  assert.equal(success.document.activeElement, success.nodes.previewStagePanel);
+
+  const failed = createFocusFixture();
+  failed.launchButton.focus();
+  await loadShortTermOpenedSource({
+    nodes: failed.nodes,
+    state: {},
+    bytes: Uint8Array.from([4, 5, 6]),
+    displayName: "broken.svga",
+    sourceId: "source:broken",
+    clearTransientOutput() {},
+    setView: failed.setView,
+    async inspectShortTerm() {
+      throw new Error("broken");
+    },
+    renderPreviewModel() {},
+    async mountPrimaryPlayback() {},
+    stopAllPlayback() {},
+    showFailure(error) {
+      showShortTermFailure({ nodes: failed.nodes, setView: failed.setView }, error);
+    },
+    showPlaybackFailure(error) {
+      throw error;
+    }
+  });
+  assert.equal(failed.document.activeElement, failed.nodes.failureRecoveryButton);
+
+  const cancelledLaunch = createFocusFixture();
+  cancelledLaunch.launchButton.focus();
+  await openShortTermRecentSource({
+    bridge: { async openRecentSvgaFile() { return { status: "cancelled" }; } },
+    nodes: cancelledLaunch.nodes,
+    state: {},
+    recentFileId: "recent:launch",
+    async confirmDiscardUnsavedOutput() { return true; },
+    setView: cancelledLaunch.setView,
+    async loadOpenedSource() {},
+    async refreshRecentFiles() {},
+    showFailure(error) { throw error; }
+  });
+  assert.equal(cancelledLaunch.document.activeElement, cancelledLaunch.launchButton);
+
+  const cancelledPreview = createFocusFixture();
+  cancelledPreview.launchButton.focus();
+  await openShortTermRecentSource({
+    bridge: { async openRecentSvgaFile() { return { status: "cancelled" }; } },
+    nodes: cancelledPreview.nodes,
+    state: { sourceBytes: Uint8Array.from([1]) },
+    recentFileId: "recent:preview",
+    async confirmDiscardUnsavedOutput() { return true; },
+    setView: cancelledPreview.setView,
+    async loadOpenedSource() {},
+    async refreshRecentFiles() {},
+    showFailure(error) { throw error; }
+  });
+  assert.equal(cancelledPreview.document.activeElement, cancelledPreview.nodes.previewStagePanel);
+
+  success.nodes.previewStagePanel.focus();
+  showPlaybackFailureRecovery(success.nodes);
+  assert.equal(success.document.activeElement, success.nodes.playbackRecoveryButton);
+  hidePlaybackFailureRecovery(success.nodes);
+  assert.equal(success.document.activeElement, success.nodes.previewStagePanel);
+
+  const unrelatedFocus = new FakeDomElement("button");
+  unrelatedFocus.ownerDocument = success.document;
+  unrelatedFocus.focus();
+  showPlaybackFailureRecovery(success.nodes);
+  assert.equal(success.document.activeElement, unrelatedFocus);
 });
 
 test("short-term preview right surface exposes page-state trace semantics", async () => {
@@ -12068,6 +12227,7 @@ function fakeSelectorDataTextKey(selector) {
 
 function fakeMatchesSelector(node, selector) {
   if (!node || !selector) return false;
+  if (selector === "[data-view]") return typeof node.dataset.view === "string";
   if (selector === "[data-text-input]") return Object.hasOwn(node.dataset, "textInput");
   if (selector.startsWith("[data-text-input][data-text-key=")) {
     return Object.hasOwn(node.dataset, "textInput")

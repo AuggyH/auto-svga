@@ -64,7 +64,7 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <div class="canvasWrap stateCanvasWrap" data-component="FileDropTarget" data-role="LoadingCanvasRecovery">
-            <div class="stateCard stateLoadingCard" data-component="FileDropTarget">
+            <div class="stateCard stateLoadingCard" id="loadingFocusTarget" data-component="FileDropTarget" tabindex="-1">
               <span class="spinner" aria-hidden="true"></span>
               <h1>正在加载…</h1>
               <p id="loadingMessage"></p>
@@ -237,7 +237,7 @@
       </section>
 
       <section class="view previewView" data-view="preview" data-page-state="Preview ready" hidden>
-        <section class="previewStagePanel" id="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage">
+        <section class="previewStagePanel" id="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage" tabindex="-1">
           <div class="canvasModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch">
             <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览模式</button>
             <button type="button" data-action="mode-edit" aria-pressed="false">编辑模式</button>

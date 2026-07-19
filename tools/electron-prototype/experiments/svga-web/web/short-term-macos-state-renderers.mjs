@@ -2,6 +2,26 @@ export function renderLoadingMessage(nodes, copy) {
   nodes.loadingMessage.textContent = copy;
 }
 
+export function captureViewTransitionFocus(nodes, container = nodes.app) {
+  const documentRef = nodes.app?.ownerDocument ?? container?.ownerDocument ?? globalThis.document;
+  const activeElement = documentRef?.activeElement;
+  return {
+    shouldMove: Boolean(
+      activeElement
+      && activeElement !== documentRef?.body
+      && container?.contains?.(activeElement)
+      && activeElement.closest?.("[data-view]")
+    )
+  };
+}
+
+export function moveViewTransitionFocus(context, target) {
+  if (!context?.shouldMove || !target?.focus) return false;
+  target.focus({ preventScroll: true });
+  target.scrollIntoView?.({ block: "nearest" });
+  return true;
+}
+
 export function renderFileHeader(nodes, displayName, playbackMeta, options = {}) {
   const dirty = options.dirty === true;
   nodes.fileIdentity.textContent = dirty ? `${displayName} *` : displayName;
@@ -26,10 +46,14 @@ export function renderFailureMessage(nodes, copy) {
 }
 
 export function showPlaybackFailureRecovery(nodes) {
+  const focusContext = captureViewTransitionFocus(nodes, nodes.previewStagePanel);
   nodes.playbackErrorMessage.textContent = "动画解析失败，无法正常播放";
   nodes.playbackErrorRecovery.hidden = false;
+  moveViewTransitionFocus(focusContext, nodes.playbackRecoveryButton);
 }
 
 export function hidePlaybackFailureRecovery(nodes) {
+  const focusContext = captureViewTransitionFocus(nodes, nodes.playbackErrorRecovery);
   nodes.playbackErrorRecovery.hidden = true;
+  moveViewTransitionFocus(focusContext, nodes.previewStagePanel);
 }
