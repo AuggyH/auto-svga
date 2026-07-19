@@ -809,11 +809,20 @@ async function main() {
     && /--asv-component-compare-empty-prompt-width:\s*var\(--asv-component-launch-content-width\)/.test(tokens)
     && /\.compareEmptyPrompt\s*\{[\s\S]*gap: var\(--asv-compare-empty-prompt-gap\)[\s\S]*width: min\(var\(--asv-compare-empty-prompt-width\), 100%\)/.test(modules)
     && /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareEmptyPrompt\s*\{[\s\S]*display: none/.test(modules));
-  record("compare-right-panel-missing-slots-use-open-action-contract", /function renderComparePairSlotHtml\(slot, model, displayName\)/.test(compareModel)
+  record("compare-right-panel-slots-use-open-or-replace-action-contract", /function renderComparePairSlotHtml\(slot, model, displayName\)/.test(compareModel)
     && /const openAction = slot === "A" \? "open-compare-a" : "open-compare-b"/.test(compareModel)
-    && /class="toolbarButton primary comparePairOpenButton"/.test(compareModel)
+    && /const actionCopy = model \? "替换" : "打开"/.test(compareModel)
+    && /aria-label="\$\{actionCopy\}对比文件 \$\{slot\}"/.test(compareModel)
     && /data-state="\$\{state\}"/.test(compareModel)
     && /\.comparePairOpenButton\s*\{[\s\S]*width: var\(--asv-compare-open-button-width\)[\s\S]*min-height: var\(--asv-compare-open-button-height\)/.test(modules));
+  record("compare-drag-overlay-keeps-hybrid-25-75-contract", /id="compareDragOverlay"[^>]*data-variant="compare"/.test(page)
+    && /data-drag-zone="compare-a"[^>]*aria-label="打开或替换对比文件 A"/.test(page)
+    && /data-drag-zone="compare-b"[^>]*aria-label="打开或替换对比文件 B"/.test(page)
+    && /data-drag-zone="open"[^>]*aria-label="打开文件"/.test(page)
+    && /--asv-component-drag-overlay-grid-rows:\s*1fr 3fr/.test(tokens)
+    && /--asv-component-drag-overlay-compare-columns:\s*1fr 1fr/.test(tokens)
+    && /\.dragDecisionOverlay\[data-variant="compare"\]\s*\{[\s\S]*grid-template-columns: var\(--asv-drag-overlay-compare-columns\)/.test(modules)
+    && /\[data-variant="compare"\] \[data-drag-zone="open"\]\s*\{[\s\S]*grid-column: 1 \/ -1[\s\S]*grid-row: 2/.test(modules));
   record("compare-waiting-b-keeps-loaded-a-facts", /function comparePanelState/.test(compareModel)
     && /if \(aModel\) return "waiting-b"/.test(compareModel)
     && /data-state="empty" aria-hidden="true"/.test(compareModel)

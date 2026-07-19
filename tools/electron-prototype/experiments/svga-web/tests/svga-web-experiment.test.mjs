@@ -1259,13 +1259,130 @@ test("short-term general compare exposes missing-slot open actions in the right 
   assert.match(emptyHtml, /data-slot="B" data-state="empty"[\s\S]*data-action="open-compare-b"/);
 
   assert.match(waitingHtml, /data-slot="A" data-state="loaded"[\s\S]*<strong>a\.svga<\/strong>/);
-  assert.doesNotMatch(waitingHtml, /data-action="open-compare-a"/);
+  assert.match(waitingHtml, /data-slot="A" data-state="loaded"[\s\S]*data-action="open-compare-a"[\s\S]*aria-label="替换对比文件 A"[\s\S]*>替换文件<\/button>/);
   assert.match(waitingHtml, /data-slot="B" data-state="empty"[\s\S]*data-action="open-compare-b"/);
 
   assert.match(loadedHtml, /data-slot="A" data-state="loaded"[\s\S]*<strong>a\.svga<\/strong>/);
   assert.match(loadedHtml, /data-slot="B" data-state="loaded"[\s\S]*<strong>b\.svga<\/strong>/);
-  assert.doesNotMatch(loadedHtml, /comparePairOpenButton/);
-  assert.doesNotMatch(loadedHtml, /data-action="open-compare-[ab]"/);
+  assert.equal((loadedHtml.match(/comparePairOpenButton/g) ?? []).length, 2);
+  assert.match(loadedHtml, /data-action="open-compare-a"[\s\S]*aria-label="替换对比文件 A"/);
+  assert.match(loadedHtml, /data-action="open-compare-b"[\s\S]*aria-label="替换对比文件 B"/);
+});
+
+test("Compare A/B dropped-file loaders preserve the peer slot and support B-first state", async () => {
+  const {
+    loadShortTermCompareAFromDroppedFile,
+    loadShortTermCompareBFromDroppedFile,
+    openShortTermCompareAFromHost,
+    openShortTermCompareBFromHost
+  } = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-compare-surface.mjs"
+  )).href);
+  const makeNode = () => ({ textContent: "", dataset: {} });
+  const nodes = {
+    compareCanvasA: {},
+    compareCanvasB: {},
+    compareCanvasTitleA: makeNode(),
+    compareCanvasTitleB: makeNode(),
+    compareCanvasMetaA: makeNode(),
+    compareCanvasMetaB: makeNode(),
+    compareCanvasWrapA: makeNode(),
+    compareCanvasWrapB: makeNode(),
+    compareInfoB: { innerHTML: "" }
+  };
+  const state = {
+    view: "compare",
+    sourceBytes: undefined,
+    model: undefined,
+    displayName: "",
+    compareBSource: undefined,
+    comparePlaybackLooping: true,
+    compareAPlayback: undefined
+  };
+  const bModel = { overview: { facts: [] } };
+  const mountCalls = [];
+  await loadShortTermCompareBFromDroppedFile({
+    file: {
+      name: "b.svga",
+      arrayBuffer: async () => Uint8Array.from([4, 5, 6]).buffer
+    },
+    nodes,
+    state,
+    enterGeneralCompare: async () => {},
+    inspectShortTerm: async () => bModel,
+    mountPlayback: async (...args) => mountCalls.push(args)
+  });
+  assert.deepEqual(Array.from(state.compareBSource.bytes), [4, 5, 6]);
+  assert.equal(state.compareBSource.displayName, "b.svga");
+  assert.equal(state.compareBSource.model, bModel);
+  assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "loaded");
+  assert.match(nodes.compareInfoB.innerHTML, /data-compare-state="waiting-a"/);
+  assert.match(nodes.compareInfoB.innerHTML, /data-slot="B" data-state="loaded"[\s\S]*b\.svga/);
+  assert.equal(mountCalls[0][0], "compareB");
+
+  const peerBeforeA = state.compareBSource;
+  let loadOptions;
+  await loadShortTermCompareAFromDroppedFile({
+    file: {
+      name: "a.svga",
+      arrayBuffer: async () => Uint8Array.from([1, 2, 3]).buffer
+    },
+    state,
+    async loadOpenedSource(input, options) {
+      loadOptions = options;
+      state.sourceBytes = new Uint8Array(input.bytes);
+      state.displayName = input.displayName;
+    },
+    enterGeneralCompare: async () => {
+      state.view = "compare";
+    }
+  });
+  assert.equal(loadOptions.preserveComparePeer, true);
+  assert.equal(state.displayName, "a.svga");
+  assert.equal(state.compareBSource, peerBeforeA);
+  assert.deepEqual(Array.from(state.compareBSource.bytes), [4, 5, 6]);
+
+  const beforeCancelledHostOpen = {
+    view: state.view,
+    displayName: state.displayName,
+    sourceBytes: Array.from(state.sourceBytes),
+    compareBSource: state.compareBSource
+  };
+  let cancelledLoadCalls = 0;
+  assert.equal(await openShortTermCompareAFromHost({
+    bridge: { openSvgaFile: async () => ({ status: "cancelled" }) },
+    state,
+    loadOpenedSource: async () => { cancelledLoadCalls += 1; },
+    enterGeneralCompare: async () => { cancelledLoadCalls += 1; },
+    refreshRecentFiles: async () => { cancelledLoadCalls += 1; }
+  }), false);
+  assert.equal(cancelledLoadCalls, 0);
+  assert.deepEqual({
+    view: state.view,
+    displayName: state.displayName,
+    sourceBytes: Array.from(state.sourceBytes),
+    compareBSource: state.compareBSource
+  }, beforeCancelledHostOpen);
+
+  let cancelledBCalls = 0;
+  assert.equal(await openShortTermCompareBFromHost({
+    bridge: { openSvgaFile: async () => ({ status: "cancelled" }) },
+    nodes,
+    state: { ...state, view: "preview" },
+    enterGeneralCompare: async () => { cancelledBCalls += 1; },
+    inspectShortTerm: async () => { cancelledBCalls += 1; },
+    mountPlayback: async () => { cancelledBCalls += 1; },
+    refreshRecentFiles: async () => { cancelledBCalls += 1; }
+  }), false);
+  assert.equal(cancelledBCalls, 0);
+
+  const controllerSource = await readFile(path.join(experimentRoot, "web/short-term-macos-controller.mjs"), "utf8");
+  const setModeSource = extractFunctionSource(controllerSource, "function setMode(mode)");
+  assert.match(controllerSource, /confirmDiscardUnsavedOutput\(`\$\{actionCopy\}对比文件 \$\{slot\}/u);
+  assert.match(controllerSource, /action === "replace-compare-a" \? "A" : "B"/u);
+  assert.match(controllerSource, /action === "reject-compare"[\s\S]*当前格式不支持对比/u);
+  assert.match(setModeSource, /if \(leavingCompare\) \{[\s\S]*stopPlayback\("compareA"\);[\s\S]*stopPlayback\("compareB"\);[\s\S]*state\.compareBSource = undefined;[\s\S]*\}[\s\S]*if \(!state\.sourceBytes\)/u);
 });
 
 test("short-term general compare keeps A facts visible while waiting for B", async () => {
@@ -2389,6 +2506,111 @@ test("short-term drag decision hit testing keeps Compare opt-in at the top", asy
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "open");
 });
 
+test("Compare drag decision preserves 25/75 and splits only the top strip into A/B", async () => {
+  const dragDecisionModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-drag-decision-model.mjs"
+  )).href);
+  const dragDecisionSurface = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-drag-decision-surface.mjs"
+  )).href);
+  const target = {
+    getBoundingClientRect: () => ({
+      left: 10,
+      top: 20,
+      width: 400,
+      height: 200
+    })
+  };
+  const dragEvent = (name, clientX, clientY) => ({
+    clientX,
+    clientY,
+    dataTransfer: { files: [{ name }] }
+  });
+
+  assert.equal(dragDecisionModel.compareDragDecisionZoneForEvent(target, dragEvent("a.svga", 100, 40)), "compare-a");
+  assert.equal(dragDecisionModel.compareDragDecisionZoneForEvent(target, dragEvent("b.svga", 210, 40)), "compare-b");
+  assert.equal(dragDecisionModel.compareDragDecisionZoneForEvent(target, dragEvent("b.svga", 410, 69.99)), "compare-b");
+  assert.equal(dragDecisionModel.compareDragDecisionZoneForEvent(target, dragEvent("open.svga", 100, 70)), "open");
+  assert.equal(dragDecisionModel.compareDragDecisionZoneForEvent(target, dragEvent("open.svga", 390, 180)), "open");
+
+  const emptyA = dragDecisionSurface.dragDecisionForEvent(
+    target,
+    dragEvent("a.svga", 100, 40),
+    { view: "compare", compareSlots: { A: "empty", B: "loaded" } }
+  );
+  assert.equal(emptyA.focusZone, "compare-a");
+  assert.equal(emptyA.supported, true);
+  assert.equal(emptyA.zoneLabels["compare-a"], "打开对比文件 A");
+  assert.equal(emptyA.zoneLabels["compare-b"], "替换对比文件 B");
+  assert.equal(emptyA.zoneLabels.open, "打开文件");
+
+  const unsupportedCompare = dragDecisionSurface.dragDecisionForEvent(
+    target,
+    dragEvent("motion.json", 100, 40),
+    { view: "compare", compareSlots: { A: "loaded", B: "loaded" } }
+  );
+  assert.equal(unsupportedCompare.focusZone, "compare-a");
+  assert.equal(unsupportedCompare.supported, false);
+  assert.equal(unsupportedCompare.fileSupported, false);
+  assert.equal(unsupportedCompare.unsupportedCopy, "当前格式不支持对比");
+  assert.equal(dragDecisionModel.dragActionForDecision(emptyA), "replace-compare-a");
+  assert.equal(dragDecisionModel.dragActionForDecision({
+    ...emptyA,
+    focusZone: "compare-b"
+  }), "replace-compare-b");
+  assert.equal(dragDecisionModel.dragActionForDecision({
+    ...emptyA,
+    focusZone: "open"
+  }), "open");
+  assert.equal(dragDecisionModel.dragActionForDecision({
+    ...unsupportedCompare,
+    fileSupported: true
+  }), "reject-compare");
+  assert.equal(dragDecisionModel.dragActionForDecision(unsupportedCompare), "reject-file");
+
+  const createZone = (dragZone) => {
+    const strong = { textContent: "" };
+    return {
+      dataset: { dragZone },
+      hidden: false,
+      attributes: {},
+      strong,
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+      },
+      querySelector(selector) {
+        return selector === "strong" ? strong : null;
+      }
+    };
+  };
+  const zones = [createZone("compare-a"), createZone("compare-b"), createZone("open")];
+  const overlay = {
+    hidden: true,
+    dataset: { variant: "compare" },
+    querySelectorAll(selector) {
+      return selector === "[data-drag-zone]" ? zones : [];
+    }
+  };
+  dragDecisionSurface.showShortTermDragDecisionOverlay(overlay, emptyA);
+  assert.equal(overlay.dataset.focusZone, "compare-a");
+  assert.deepEqual(zones.map((zone) => zone.strong.textContent), [
+    "打开对比文件 A",
+    "替换对比文件 B",
+    "打开文件"
+  ]);
+
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  assert.match(page, /id="compareDragOverlay"[^>]*data-variant="compare"/u);
+  assert.match(page, /data-drag-zone="compare-a"[^>]*aria-label="打开或替换对比文件 A"/u);
+  assert.match(page, /data-drag-zone="compare-b"[^>]*aria-label="打开或替换对比文件 B"/u);
+  assert.match(page, /data-drag-zone="open"[^>]*aria-label="打开文件"/u);
+  assert.match(modules, /\.dragDecisionOverlay\[data-variant="compare"\][^{]*\{[^}]*grid-template-columns:\s*var\(--asv-drag-overlay-compare-columns\)/u);
+  assert.match(modules, /\[data-variant="compare"\][^\n]*\[data-drag-zone="open"\][^{]*\{[^}]*grid-column:\s*1 \/ -1/u);
+});
+
 test("unsupported drop keeps the workbench shell and follows the frozen drag hierarchy", async () => {
   const fileSurface = await import(pathToFileURL(path.join(
     experimentRoot,
@@ -2554,6 +2776,43 @@ test("0.2 multi-format drag affordance accepts Lottie and VAP while keeping Comp
   assert.equal(overlay.dataset.status, "unsupported");
   assert.equal(overlay.dataset.focusZone, "open");
   assert.equal(openZone.strong.textContent, "不支持的文件格式");
+
+  const compareSvgaA = dragDecisionModel.multiFormatDragDecisionForEvent(
+    target,
+    { ...dragEvent("a.svga"), clientX: 200 },
+    { activeFormat: "svga", view: "compare", compareSlots: { A: "empty", B: "loaded" } }
+  );
+  assert.equal(compareSvgaA.focusZone, "compare-a");
+  assert.equal(compareSvgaA.supported, true);
+  assert.equal(compareSvgaA.fileSupported, true);
+  assert.equal(compareSvgaA.compareSlots.A, "empty");
+
+  const compareSvgaB = dragDecisionModel.multiFormatDragDecisionForEvent(
+    target,
+    { ...dragEvent("b.svga"), clientX: 800 },
+    { activeFormat: "svga", view: "compare", compareSlots: { A: "loaded", B: "loaded" } }
+  );
+  assert.equal(compareSvgaB.focusZone, "compare-b");
+  assert.equal(compareSvgaB.supported, true);
+
+  const compareLottieTop = dragDecisionModel.multiFormatDragDecisionForEvent(
+    target,
+    { ...dragEvent("motion.json"), clientX: 200 },
+    { activeFormat: "svga", view: "compare", compareSlots: { A: "loaded", B: "loaded" } }
+  );
+  assert.equal(compareLottieTop.focusZone, "compare-a");
+  assert.equal(compareLottieTop.supported, false);
+  assert.equal(compareLottieTop.fileSupported, true);
+  assert.equal(compareLottieTop.unsupportedCopy, "当前格式不支持对比");
+
+  const compareVapOpen = dragDecisionModel.multiFormatDragDecisionForEvent(
+    target,
+    { ...dragEvent("fusion.mp4", 400), clientX: 800 },
+    { activeFormat: "svga", view: "compare", compareSlots: { A: "loaded", B: "loaded" } }
+  );
+  assert.equal(compareVapOpen.focusZone, "open");
+  assert.equal(compareVapOpen.supported, true);
+  assert.equal(compareVapOpen.fileSupported, true);
 });
 
 test("short-term optimization result UI fails closed for no-benefit output", async () => {
@@ -9302,7 +9561,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDragDecisionModel, /SHORT_TERM_DRAG_DECISION_COMPARE_RATIO = 1 - SHORT_TERM_DRAG_DECISION_OPEN_RATIO/);
   assert.match(shortTermDragDecisionModel, /dragDecisionZoneForEvent/);
   assert.match(shortTermDragDecisionModel, /event\.clientY < compareBoundary \? "compare" : "open"/);
-  assert.doesNotMatch(shortTermDragDecisionModel, /event\.clientX <|rect\.left \+ rect\.width \/ 2/);
+  assert.doesNotMatch(
+    extractFunctionSource(shortTermDragDecisionModel, "export function dragDecisionZoneForEvent"),
+    /event\.clientX|slotBoundary/
+  );
   assert.match(shortTermDragDecisionSurface, /showShortTermDragDecisionOverlay/);
   assert.match(shortTermDragDecisionSurface, /showShortTermCanvasToast/);
   assert.match(shortTermDragDecisionSurface, /不支持的文件格式/);

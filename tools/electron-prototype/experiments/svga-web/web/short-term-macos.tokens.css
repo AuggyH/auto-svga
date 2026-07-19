@@ -696,6 +696,8 @@
   --asv-component-drag-overlay-label-weight: var(--asv-type-weight-semibold);
   --asv-component-drag-overlay-grid-rows: 1fr 3fr;
   --asv-component-drag-overlay-single-row: 1fr;
+  --asv-component-drag-overlay-compare-columns: 1fr 1fr;
+  --asv-component-drag-overlay-divider: var(--asv-component-right-panel-section-divider);
   --asv-component-drag-overlay-zone-opacity: 0.86;
   --asv-component-drag-overlay-zone-focus-opacity: 1;
   --asv-component-launch-empty-canvas-size: 300px;
@@ -869,6 +871,8 @@
   --asv-drag-overlay-bg: var(--asv-color-surface-drag-overlay);
   --asv-drag-supported-bg: var(--asv-color-surface-drag-supported);
   --asv-drag-unsupported-bg: var(--asv-color-surface-drag-unsupported);
+  --asv-drag-overlay-compare-columns: var(--asv-component-drag-overlay-compare-columns);
+  --asv-drag-overlay-divider: var(--asv-component-drag-overlay-divider);
   --asv-playback-bar-bg: var(--asv-color-surface-playback-bar);
   --asv-playback-control-bg: var(--asv-color-surface-playback-control);
   --asv-playback-control-hover-bg: var(--asv-color-surface-playback-control-hover);

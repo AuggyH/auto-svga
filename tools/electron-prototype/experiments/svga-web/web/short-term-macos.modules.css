@@ -455,6 +455,27 @@
   grid-template-rows: var(--asv-drag-overlay-single-row);
 }
 
+.dragDecisionOverlay[data-variant="compare"] {
+  grid-template-columns: var(--asv-drag-overlay-compare-columns);
+}
+
+.dragDecisionOverlay[data-variant="compare"] [data-drag-zone="compare-a"] {
+  grid-column: 1;
+  grid-row: 1;
+  border-right: var(--asv-drag-overlay-divider);
+}
+
+.dragDecisionOverlay[data-variant="compare"] [data-drag-zone="compare-b"] {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.dragDecisionOverlay[data-variant="compare"] [data-drag-zone="open"] {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  border-top: var(--asv-drag-overlay-divider);
+}
+
 .dragDecisionZone {
   display: grid;
   place-items: center;
@@ -479,13 +500,17 @@
 }
 
 .dragDecisionOverlay[data-status="supported"][data-focus-zone="open"] [data-drag-zone="open"],
-.dragDecisionOverlay[data-status="supported"][data-focus-zone="compare"] [data-drag-zone="compare"] {
+.dragDecisionOverlay[data-status="supported"][data-focus-zone="compare"] [data-drag-zone="compare"],
+.dragDecisionOverlay[data-status="supported"][data-focus-zone="compare-a"] [data-drag-zone="compare-a"],
+.dragDecisionOverlay[data-status="supported"][data-focus-zone="compare-b"] [data-drag-zone="compare-b"] {
   background: var(--asv-drag-supported-bg);
   opacity: var(--asv-drag-zone-focus-opacity);
 }
 
 .dragDecisionOverlay[data-status="unsupported"][data-focus-zone="open"] [data-drag-zone="open"],
-.dragDecisionOverlay[data-status="unsupported"][data-focus-zone="compare"] [data-drag-zone="compare"] {
+.dragDecisionOverlay[data-status="unsupported"][data-focus-zone="compare"] [data-drag-zone="compare"],
+.dragDecisionOverlay[data-status="unsupported"][data-focus-zone="compare-a"] [data-drag-zone="compare-a"],
+.dragDecisionOverlay[data-status="unsupported"][data-focus-zone="compare-b"] [data-drag-zone="compare-b"] {
   background: var(--asv-drag-unsupported-bg);
   opacity: var(--asv-drag-zone-focus-opacity);
 }

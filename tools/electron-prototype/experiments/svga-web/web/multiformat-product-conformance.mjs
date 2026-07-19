@@ -1,4 +1,5 @@
 import {
+  compareDragDecisionZoneForEvent,
   dragDecisionZoneForEvent,
   dragFileFromEvent
 } from "./short-term-macos-drag-decision-model.mjs";
@@ -161,13 +162,29 @@ const ownerSnapshotSchemas = Object.freeze({
 
 export function multiFormatDragDecisionForEvent(target, event, options = {}) {
   const file = dragFileFromEvent(event);
-  const supported = !file || multiFormatDropPattern.test(file.name || "");
+  const fileSupported = !file || multiFormatDropPattern.test(file.name || "");
+  if (options.view === "compare") {
+    const focusZone = compareDragDecisionZoneForEvent(target, event);
+    const compareTarget = focusZone !== "open";
+    return {
+      file,
+      view: "compare",
+      focusZone,
+      supported: fileSupported && (!compareTarget || svgaDropPattern.test(file?.name || "")),
+      fileSupported,
+      compareAvailable: true,
+      compareSlots: options.compareSlots ?? {},
+      unsupportedCopy: compareTarget && fileSupported
+        ? "当前格式不支持对比"
+        : "不支持的文件格式"
+    };
+  }
   const compareAvailable = options.activeFormat === "svga"
     && (!file || svgaDropPattern.test(file.name || ""));
   return {
     file,
     focusZone: compareAvailable ? dragDecisionZoneForEvent(target, event) : "open",
-    supported,
+    supported: fileSupported,
     compareAvailable
   };
 }

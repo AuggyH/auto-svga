@@ -129,8 +129,9 @@ function renderCompareMetricColumns(aModel, bModel) {
 function renderComparePairSlotHtml(slot, model, displayName) {
   const state = model ? "loaded" : "empty";
   const openAction = slot === "A" ? "open-compare-a" : "open-compare-b";
-  const openButton = model ? "" : `
-    <button class="toolbarButton primary comparePairOpenButton" data-component="ToolbarButton" type="button" data-action="${openAction}" aria-label="打开 ${slot} 文件">打开文件</button>
+  const actionCopy = model ? "替换" : "打开";
+  const openButton = `
+    <button class="toolbarButton${model ? "" : " primary"} comparePairOpenButton" data-component="ToolbarButton" type="button" data-action="${openAction}" aria-label="${actionCopy}对比文件 ${slot}">${actionCopy}文件</button>
   `;
   return `
     <div data-slot="${slot}" data-state="${state}">

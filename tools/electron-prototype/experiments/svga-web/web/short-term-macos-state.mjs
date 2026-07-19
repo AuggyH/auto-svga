@@ -22,6 +22,7 @@ export function createShortTermInitialState() {
     primaryPlayback: undefined,
     compareAPlayback: undefined,
     compareBPlayback: undefined,
+    compareBSource: undefined,
     editPlayback: undefined,
     textPreview: "",
     textPreviewValues: {},

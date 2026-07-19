@@ -35,7 +35,9 @@ import {
 } from "./short-term-macos-playback-surface.mjs";
 import {
   enterShortTermGeneralCompare,
+  loadShortTermCompareAFromDroppedFile,
   loadShortTermCompareBFromDroppedFile,
+  openShortTermCompareAFromHost,
   openShortTermCompareBFromHost,
   renderShortTermCompareInfo,
   renderShortTermCompareSlot
@@ -97,6 +99,9 @@ import {
   renderShortTermEditReserved,
   renderShortTermPreviewModel
 } from "./short-term-macos-preview-surface.mjs";
+import {
+  dragActionForDecision,
+} from "./short-term-macos-drag-decision-model.mjs";
 import {
   dragDecisionForEvent,
   hideShortTermCanvasToast,
@@ -164,8 +169,14 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   function setMode(mode) {
+    const leavingCompare = state.view === "compare";
     state.mode = mode;
     applyModeButtons(mode);
+    if (leavingCompare) {
+      stopPlayback("compareA");
+      stopPlayback("compareB");
+      state.compareBSource = undefined;
+    }
     if (!state.sourceBytes) {
       setView("launch");
       return;
@@ -212,12 +223,12 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function openCompareBFromHost() {
-    if (!state.sourceBytes && state.view === "compare") return openCompareAFromHost();
+    const actionCopy = state.compareBSource ? "替换" : "打开";
+    if (!(await confirmDiscardUnsavedOutput(`${actionCopy}对比文件 B 会放弃当前未保存的 SVGA 输出。`))) return false;
     return openShortTermCompareBFromHost({
       bridge,
       nodes,
       state,
-      openFromHostDialog,
       enterGeneralCompare,
       inspectShortTerm,
       mountPlayback,
@@ -226,8 +237,15 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function openCompareAFromHost() {
-    await openFromHostDialog();
-    if (state.sourceBytes) await enterGeneralCompare();
+    const actionCopy = state.sourceBytes ? "替换" : "打开";
+    if (!(await confirmDiscardUnsavedOutput(`${actionCopy}对比文件 A 会放弃当前未保存的 SVGA 输出。`))) return false;
+    return openShortTermCompareAFromHost({
+      bridge,
+      state,
+      loadOpenedSource,
+      enterGeneralCompare,
+      refreshRecentFiles
+    });
   }
 
   async function loadDroppedFile(file) {
@@ -239,8 +257,16 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     });
   }
 
-  async function loadDroppedCompareFile(file) {
+  async function loadDroppedCompareFile(file, slot = "B") {
     hideShortTermCanvasToast(nodes);
+    if (slot === "A") {
+      return loadShortTermCompareAFromDroppedFile({
+        file,
+        state,
+        loadOpenedSource,
+        enterGeneralCompare
+      });
+    }
     return loadShortTermCompareBFromDroppedFile({
       file,
       nodes,
@@ -251,8 +277,9 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     });
   }
 
-  async function loadOpenedSource({ bytes, displayName, sourceId, startPlayback = true }) {
+  async function loadOpenedSource({ bytes, displayName, sourceId, startPlayback = true }, options = {}) {
     hideShortTermCanvasToast(nodes);
+    if (options.preserveComparePeer !== true) state.compareBSource = undefined;
     return loadShortTermOpenedSource({
       nodes,
       state,
@@ -283,7 +310,13 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   function showCanvasDragDecision(event, target, overlay) {
-    const decision = dragDecisionForEvent(target, event);
+    const decision = dragDecisionForEvent(target, event, {
+      view: state.view,
+      compareSlots: {
+        A: state.sourceBytes ? "loaded" : "empty",
+        B: state.compareBSource?.bytes?.byteLength ? "loaded" : "empty"
+      }
+    });
     showShortTermDragDecisionOverlay(overlay, decision);
     return decision;
   }
@@ -292,11 +325,20 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     hideShortTermDragDecisionOverlays(nodes);
   }
 
-  async function dropCanvasFile(event, target, overlay) {
-    const decision = showCanvasDragDecision(event, target, overlay);
+  async function dropCanvasFile(event, target, overlay, providedDecision) {
+    const decision = providedDecision ?? showCanvasDragDecision(event, target, overlay);
     hideCanvasDragDecision();
     if (!decision.file) return;
-    if (!decision.supported) {
+    const action = dragActionForDecision(decision);
+    if (action === "reject-compare") {
+      showShortTermCanvasToast(nodes, "当前格式不支持对比");
+      return;
+    }
+    if (action === "reject-file" && state.view === "compare") {
+      showShortTermCanvasToast(nodes, "不支持的文件格式");
+      return;
+    }
+    if (action === "reject-file") {
       showShortTermUnsupportedDropState({
         nodes,
         state,
@@ -306,13 +348,15 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       renderCommandState();
       return;
     }
-    if (state.sourceBytes && decision.focusZone === "compare") {
-      await loadDroppedCompareFile(decision.file);
+    if (action === "replace-compare-a" || action === "replace-compare-b") {
+      const slot = action === "replace-compare-a" ? "A" : "B";
+      const loaded = slot === "A" ? Boolean(state.sourceBytes) : Boolean(state.compareBSource);
+      const actionCopy = loaded ? "替换" : "打开";
+      if (!(await confirmDiscardUnsavedOutput(`${actionCopy}对比文件 ${slot} 会放弃当前未保存的 SVGA 输出。`))) return;
+      await loadDroppedCompareFile(decision.file, slot);
       return;
     }
-    const returnToCompare = state.view === "compare";
     await loadDroppedFile(decision.file);
-    if (returnToCompare && state.sourceBytes) await enterGeneralCompare();
   }
 
   async function inspectShortTerm(bytes, name) {

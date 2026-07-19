@@ -186,6 +186,7 @@ export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
   state.sourceId = "";
   state.displayName = "";
   state.model = undefined;
+  state.compareBSource = undefined;
   state.selectedImageKey = "";
   state.selectedTextKey = "";
   state.assetFilter = "all";

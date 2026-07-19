@@ -227,8 +227,18 @@ export function createMultiFormatDesktopPreviewController({
     const decision = showCanvasDragDecision(event, target, overlay);
     hideCanvasDragDecision();
     if (!decision.file) return;
-    if (svgaWorkflowActive() && (!decision.supported || decision.focusZone === "compare")) {
-      return svgaController.handlers.dropCanvasFile?.(event, target, overlay);
+    const compareTarget = decision.focusZone === "compare"
+      || decision.focusZone === "compare-a"
+      || decision.focusZone === "compare-b";
+    if (svgaWorkflowActive() && compareTarget) {
+      return svgaController.handlers.dropCanvasFile?.(event, target, overlay, decision);
+    }
+    if (state.view === "compare" && !decision.supported) {
+      showShortTermCanvasToast(nodes, decision.unsupportedCopy || "不支持的文件格式");
+      return;
+    }
+    if (svgaWorkflowActive() && !decision.supported) {
+      return svgaController.handlers.dropCanvasFile?.(event, target, overlay, decision);
     }
     if (!decision.supported) {
       if (state.model && state.sourceId && (activeFormat === "lottie" || activeFormat === "vap")) {
@@ -244,7 +254,14 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function showCanvasDragDecision(event, target, overlay) {
-    const decision = multiFormatDragDecisionForEvent(target, event, { activeFormat });
+    const decision = multiFormatDragDecisionForEvent(target, event, {
+      activeFormat,
+      view: state.view,
+      compareSlots: {
+        A: state.sourceBytes ? "loaded" : "empty",
+        B: state.compareBSource?.bytes?.byteLength ? "loaded" : "empty"
+      }
+    });
     showShortTermDragDecisionOverlay(overlay, decision);
     return decision;
   }
