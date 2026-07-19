@@ -26,11 +26,7 @@ import {
   distributionChannel,
   finalAcceptanceOwner,
   macosPackagerArgs,
-  nativePickerHelperBundleIdentifier,
-  nativePickerHelperBundleName,
-  nativePickerHelperInfoPlistSourceRelativePath,
-  nativePickerHelperName,
-  nativePickerHelperSourceRelativePath,
+  nativePickerSourceRelativePath,
   ownerVisibleLabel,
   packagedRuntimeDependencies,
   productName,
@@ -1540,10 +1536,8 @@ async function createPackagedProofFixture({
   packageVersionOverrides = {},
   omitWindowPlacementSourceFiles = [],
   windowPlacementSourceTransforms = {},
-  omitNativePickerHelper = false,
-  nativePickerHelperMode = 0o755,
-  nativePickerHelperBytes = Buffer.from("fixture-native-picker-helper\n"),
-  nativePickerHelperManifestOverrides = {},
+  includeLegacyNativePickerHelper = false,
+  nativePickerManifestOverrides = {},
   plistTransform = (plist) => plist
 }) {
   const appBundle = path.join(root, "Auto SVGA.app");
@@ -1571,27 +1565,25 @@ async function createPackagedProofFixture({
     const relativeEntry = entry.replace(/^\//, "");
     const entryPath = path.join(asarSource, relativeEntry);
     await mkdir(path.dirname(entryPath), { recursive: true });
-    if (relativeEntry === ".runtime/build-info.json") {
+    if (relativeEntry === nativePickerSourceRelativePath) {
+      await copyFile(path.join(experimentRoot, nativePickerSourceRelativePath), entryPath);
+    } else if (relativeEntry === ".runtime/build-info.json") {
       await writeFile(entryPath, `${JSON.stringify({ schemaVersion: 1, buildCommit, source: "test-package-proof" }, null, 2)}\n`);
     } else if (relativeEntry === ".runtime/manifest.json") {
       const sourceSha256 = createHash("sha256")
-        .update(await readFile(path.join(experimentRoot, nativePickerHelperSourceRelativePath)))
+        .update(await readFile(path.join(experimentRoot, nativePickerSourceRelativePath)))
         .digest("hex");
       await writeFile(entryPath, `${JSON.stringify({
         runtime: "test-package-proof",
-        nativePickerHelper: {
-          source: nativePickerHelperSourceRelativePath,
+        nativePicker: {
+          mode: "electronDialog",
+          source: nativePickerSourceRelativePath,
           sourceSha256,
-          infoPlistSource: nativePickerHelperInfoPlistSourceRelativePath,
-          infoPlistSha256: createHash("sha256")
-            .update(await readFile(path.join(experimentRoot, nativePickerHelperInfoPlistSourceRelativePath)))
-            .digest("hex"),
-          bundleIdentifier: nativePickerHelperBundleIdentifier,
-          bundleRuntimePath: `native/${nativePickerHelperBundleName}`,
-          runtimePath: `native/${nativePickerHelperBundleName}/Contents/MacOS/${nativePickerHelperName}`,
-          executableSha256: createHash("sha256").update(nativePickerHelperBytes).digest("hex"),
-          sizeBytes: nativePickerHelperBytes.byteLength,
-          ...nativePickerHelperManifestOverrides
+          ownerWindowRequired: true,
+          darwinFilters: false,
+          externalHelper: false,
+          launchServicesRequired: false,
+          ...nativePickerManifestOverrides
         }
       }, null, 2)}\n`);
     } else if (relativeEntry.endsWith("/package.json")) {
@@ -1618,16 +1610,11 @@ async function createPackagedProofFixture({
   const asar = requireFromPrototype("@electron/asar");
   const packagedAsarPath = path.join(resources, "app.asar");
   await asar.createPackage(asarSource, packagedAsarPath);
-  if (!omitNativePickerHelper) {
-    const helperBundlePath = path.join(resources, "native", nativePickerHelperBundleName);
-    const helperPath = path.join(helperBundlePath, "Contents", "MacOS", nativePickerHelperName);
+  if (includeLegacyNativePickerHelper) {
+    const helperPath = path.join(resources, "native/Auto SVGA File Picker.app/Contents/MacOS/asv-open-panel");
     await mkdir(path.dirname(helperPath), { recursive: true });
-    await copyFile(
-      path.join(experimentRoot, nativePickerHelperInfoPlistSourceRelativePath),
-      path.join(helperBundlePath, "Contents", "Info.plist")
-    );
-    await writeFile(helperPath, nativePickerHelperBytes);
-    await chmod(helperPath, nativePickerHelperMode);
+    await writeFile(helperPath, "legacy-native-picker-helper\n");
+    await chmod(helperPath, 0o755);
   }
   return {
     appBundle,
@@ -1683,7 +1670,7 @@ test("macOS internal package avoids unsupported Finder .svga document associatio
   assert.ok(packagerArgs.includes(`--build-version=${bundleVersion}`));
   assert.ok(packagerArgs.includes("--icon=packaging/macos/app-icon"));
   assert.ok(packagerArgs.some((arg) => arg === "--extend-info=packaging/macos/Info.plist"));
-  assert.ok(packagerArgs.includes("--extra-resource=.runtime/native"));
+  assert.equal(packagerArgs.includes("--extra-resource=.runtime/native"), false);
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-jit/);
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-unsigned-executable-memory/);
   assert.match(entitlements, /com\.apple\.security\.cs\.disable-library-validation/);
@@ -2039,8 +2026,13 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
     });
     const closure = assertPackagedRuntimeClosure(valid.packagedAsarPath, expectedBuildCommit);
     assert.equal(closure.validated, true);
-    assert.equal(closure.nativePickerHelper.validated, true);
-    assert.equal(closure.nativePickerHelper.executable, true);
+    assert.equal(closure.nativePicker.validated, true);
+    assert.equal(closure.nativePicker.mode, "electronDialog");
+    assert.equal(closure.nativePicker.ownerWindowRequired, true);
+    assert.equal(closure.nativePicker.darwinFilters, false);
+    assert.equal(closure.nativePicker.externalHelper, false);
+    assert.equal(closure.nativePicker.launchServicesRequired, false);
+    assert.equal(closure.nativePicker.legacyHelperAbsent, true);
     assert.deepEqual(
       closure.dependencies
         .filter((dependency) => dependency.expectedVersion)
@@ -2105,38 +2097,24 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
       /video-animation-player version 1\.0\.4 does not match 1\.0\.5/
     );
 
-    const missingHelper = await createPackagedProofFixture({
-      root: path.join(root, "missing-native-picker"),
+    const stalePickerContract = await createPackagedProofFixture({
+      root: path.join(root, "stale-native-picker-contract"),
       buildCommit: expectedBuildCommit,
-      omitNativePickerHelper: true
+      nativePickerManifestOverrides: { darwinFilters: true }
     });
     assert.throws(
-      () => assertPackagedRuntimeClosure(missingHelper.packagedAsarPath, expectedBuildCommit),
-      /native picker helper is missing or unreadable/
+      () => assertPackagedRuntimeClosure(stalePickerContract.packagedAsarPath, expectedBuildCommit),
+      /native picker Electron dialog binding is missing or stale/
     );
 
-    const nonExecutableHelper = await createPackagedProofFixture({
-      root: path.join(root, "non-executable-native-picker"),
+    const legacyHelper = await createPackagedProofFixture({
+      root: path.join(root, "legacy-native-picker-helper"),
       buildCommit: expectedBuildCommit,
-      nativePickerHelperMode: 0o644
+      includeLegacyNativePickerHelper: true
     });
     assert.throws(
-      () => assertPackagedRuntimeClosure(nonExecutableHelper.packagedAsarPath, expectedBuildCommit),
-      /native picker helper is not one executable regular file/
-    );
-
-    const tamperedHelper = await createPackagedProofFixture({
-      root: path.join(root, "tampered-native-picker"),
-      buildCommit: expectedBuildCommit,
-      nativePickerHelperBytes: Buffer.from("tampered-native-picker-helper\n"),
-      nativePickerHelperManifestOverrides: {
-        executableSha256: "0".repeat(64),
-        sizeBytes: 1
-      }
-    });
-    assert.throws(
-      () => assertPackagedRuntimeClosure(tamperedHelper.packagedAsarPath, expectedBuildCommit),
-      /native picker helper hash does not match runtime manifest/
+      () => assertPackagedRuntimeClosure(legacyHelper.packagedAsarPath, expectedBuildCommit),
+      /legacy native picker helper remains in the package/
     );
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -2163,16 +2141,17 @@ test("macOS Info.plist security audit rejects arbitrary network, unused permissi
   assert.ok(audit.finderDocumentAssociations.includes("svga-filename-extension"));
 });
 
-test("macOS native picker proof binds the packaged AppKit helper and rejects disabled selection before autoplay", async () => {
+test("macOS native picker proof binds the owner-window Electron dialog and rejects disabled selection before autoplay", async () => {
   const source = await readFile(
     path.join(experimentRoot, "scripts/run-macos-native-multiformat-picker-proof.mjs"),
     "utf8"
   );
   assert.match(source, /__autoSvgaShortTermActions\.openFromHostDialog/);
-  assert.match(source, /waitForNewPickerPid/);
-  assert.match(source, /exactProcessPids\(nativePickerHelperName\)/);
-  assert.match(source, /packagedNativePickerHelperPath/);
-  assert.match(source, /outside the executable regular-file contract/);
+  assert.match(source, /runtimeManifest\?\.nativePicker\?\.mode !== "electronDialog"/);
+  assert.match(source, /runNativePanelSelection\(productPid, row\.filePath\)/);
+  assert.match(source, /runNativePanelCancel\(child\.pid\)/);
+  assert.doesNotMatch(source, /nativePickerHelperName|packagedNativePickerHelperPath|waitForNewPickerPid/);
+  assert.match(source, /legacy native picker helper/);
   assert.match(source, /events\.keystroke\(directoryPath\)/);
   assert.match(source, /events\.keystroke\(basename\)/);
   assert.match(source, /String\(candidate\.role\(\) \|\| ""\) === "AXRow"/);
@@ -2190,7 +2169,7 @@ test("macOS native picker proof binds the packaged AppKit helper and rejects dis
   assert.match(source, /Promise\.race\(\[\s*client\?\.evaluate\("window\.close\(\); true"\)/u);
   assert.match(source, /inputPathsRedacted: true/);
   assert.doesNotMatch(source, /inspectSvgaUtiDeclaration|inspectSvgaDocumentTypeDeclaration/);
-  assert.doesNotMatch(source, /LaunchServices|lsregister|stageTestApp|readContentTypeTree|nativeAdmission/);
+  assert.doesNotMatch(source, /LaunchServices|lsregister|stageTestApp|readContentTypeTree|nativeAdmission|\/usr\/bin\/open/);
   assert.match(source, /await main\(\)/);
   assert.doesNotMatch(source, /main\(\)\.catch/u);
   assert.doesNotMatch(source, /filePaths:\s*\[/u);
@@ -3728,7 +3707,7 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
   const openFromPicker = async (filePath, label) => {
     const pickerResult = await chooseMultiFormatLocalFile({
       platform: "darwin",
-      async runDarwinPicker() { return { status: "selected", filePath }; },
+      async showOpenDialog() { return { canceled: false, filePaths: [filePath] }; },
       readStats: () => ({ isFile: () => true })
     });
     assert.deepEqual(pickerResult, { status: "selected", filePath });

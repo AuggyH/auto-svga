@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -41,15 +41,9 @@ export const launchServicesLintReferenceApps = Object.freeze([
 ]);
 const appIconSourcePath = path.join(experimentRoot, "packaging/macos/app-icon-source.png");
 const appIconPath = path.join(experimentRoot, "packaging/macos/app-icon.icns");
-export const nativePickerHelperName = "asv-open-panel";
-export const nativePickerHelperBundleName = "Auto SVGA File Picker.app";
-export const nativePickerHelperBundleIdentifier = "local.auto-svga.open-panel";
-export const nativePickerHelperSourceRelativePath = "native/macos/AutoSvgaOpenPanel.swift";
-export const nativePickerHelperInfoPlistSourceRelativePath = "native/macos/AutoSvgaOpenPanel.Info.plist";
-export const nativePickerHelperBundlePackagedRelativePath = `native/${nativePickerHelperBundleName}`;
-export const nativePickerHelperPackagedRelativePath = `${nativePickerHelperBundlePackagedRelativePath}/Contents/MacOS/${nativePickerHelperName}`;
-const nativePickerHelperSourcePath = path.join(experimentRoot, nativePickerHelperSourceRelativePath);
-const nativePickerHelperInfoPlistSourcePath = path.join(experimentRoot, nativePickerHelperInfoPlistSourceRelativePath);
+export const nativePickerSourceRelativePath = "multiformat-native-picker.cjs";
+const nativePickerSourcePath = path.join(experimentRoot, nativePickerSourceRelativePath);
+const legacyNativePickerHelperPackagedRelativePath = "native/Auto SVGA File Picker.app";
 export const windowPlacementPackagedSourceFiles = [
   "main.cjs",
   "acceptance-startup-placement-proof.cjs",
@@ -66,6 +60,7 @@ export const windowPlacementPackagedSourceAuthorities = Object.freeze({
 });
 const sourceAuditFiles = [
   ...windowPlacementPackagedSourceFiles,
+  nativePickerSourceRelativePath,
   "preload.cjs",
   "server.mjs",
   "scripts/macos-signing-workflow.mjs",
@@ -141,6 +136,7 @@ export const packagedRuntimeDependencies = [
   }
 ];
 export const requiredPackagedRuntimeEntries = [
+  `/${nativePickerSourceRelativePath}`,
   "/.runtime/build-info.json",
   "/.runtime/manifest.json",
   ...packagedRuntimeDependencies.flatMap((dependency) => (
@@ -162,7 +158,6 @@ export function macosPackagerArgs(outputRoot = ".artifacts/internal-trial") {
     "--overwrite",
     "--prune=true",
     "--asar",
-    "--extra-resource=.runtime/native",
     `--icon=${path.relative(experimentRoot, appIconPath).replace(/\.icns$/, "")}`,
     `--extend-info=${path.relative(experimentRoot, plistPath)}`,
     "--ignore=^/(tests|scripts|\\.artifacts)($|/)"
@@ -646,14 +641,6 @@ export function assertPackagedRuntimeClosure(packagedAsarPath, expectedBuildComm
   return closure;
 }
 
-export function packagedNativePickerHelperPath(packagedAsarPath) {
-  return path.join(path.dirname(packagedAsarPath), nativePickerHelperPackagedRelativePath);
-}
-
-export function packagedNativePickerHelperInfoPlistPath(packagedAsarPath) {
-  return path.join(path.dirname(packagedAsarPath), nativePickerHelperBundlePackagedRelativePath, "Contents/Info.plist");
-}
-
 export async function assertPackagedWindowPlacementSourceClosure(packagedAsarPath) {
   const sourceHashes = Object.fromEntries(await Promise.all(
     windowPlacementPackagedSourceFiles.map(async (relativePath) => [
@@ -688,19 +675,17 @@ function skippedPackagedRuntimeClosure(packagedAsarPath, skippedReason) {
     },
     requiredEntries: requiredPackagedRuntimeEntries,
     missingEntries: [],
-    nativePickerHelper: {
+    nativePicker: {
       validated: false,
-      source: nativePickerHelperSourceRelativePath,
+      mode: "electronDialog",
+      source: nativePickerSourceRelativePath,
       sourceSha256: null,
-      infoPlistSource: nativePickerHelperInfoPlistSourceRelativePath,
-      infoPlistSha256: null,
-      bundleIdentifier: nativePickerHelperBundleIdentifier,
-      bundleRuntimePath: `native/${nativePickerHelperBundleName}`,
-      runtimePath: nativePickerHelperPackagedRelativePath,
-      packagedPath: path.relative(repoRoot, packagedNativePickerHelperPath(packagedAsarPath)),
-      executableSha256: null,
-      executable: false,
-      sizeBytes: null,
+      packagedSha256: null,
+      ownerWindowRequired: true,
+      darwinFilters: false,
+      externalHelper: false,
+      launchServicesRequired: false,
+      legacyHelperAbsent: false,
       skippedReason
     },
     dependencies: packagedRuntimeDependencies.map((dependency) => ({
@@ -766,78 +751,40 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
         error
       };
     });
-    const helperManifest = runtimeManifest?.nativePickerHelper;
-    const helperPath = packagedNativePickerHelperPath(packagedAsarPath);
-    const expectedSourceSha256 = createHash("sha256").update(readFileSync(nativePickerHelperSourcePath)).digest("hex");
-    const expectedInfoPlistSha256 = createHash("sha256").update(readFileSync(nativePickerHelperInfoPlistSourcePath)).digest("hex");
-    let nativePickerHelper = {
-      ...base.nativePickerHelper,
-      sourceSha256: typeof helperManifest?.sourceSha256 === "string" ? helperManifest.sourceSha256 : null,
-      executableSha256: null,
-      executable: false,
-      sizeBytes: null,
+    const pickerManifest = runtimeManifest?.nativePicker;
+    const expectedSourceSha256 = createHash("sha256").update(readFileSync(nativePickerSourcePath)).digest("hex");
+    let packagedSourceSha256 = null;
+    try {
+      packagedSourceSha256 = createHash("sha256")
+        .update(asar.extractFile(packagedAsarPath, nativePickerSourceRelativePath))
+        .digest("hex");
+    } catch {
+      findings.push("packaged native picker source is missing or unreadable");
+    }
+    const legacyHelperPath = path.join(path.dirname(packagedAsarPath), legacyNativePickerHelperPackagedRelativePath);
+    const legacyHelperAbsent = !existsSync(legacyHelperPath);
+    if (!legacyHelperAbsent) findings.push("legacy native picker helper remains in the package");
+    const nativePicker = {
+      ...base.nativePicker,
+      sourceSha256: typeof pickerManifest?.sourceSha256 === "string" ? pickerManifest.sourceSha256 : null,
+      packagedSha256: packagedSourceSha256,
+      legacyHelperAbsent,
       skippedReason: undefined
     };
-    if (helperManifest?.source !== nativePickerHelperSourceRelativePath) {
-      findings.push("native picker helper source binding is missing or stale");
+    const pickerContractMatches = pickerManifest?.mode === "electronDialog"
+      && pickerManifest?.source === nativePickerSourceRelativePath
+      && pickerManifest?.sourceSha256 === expectedSourceSha256
+      && pickerManifest?.ownerWindowRequired === true
+      && pickerManifest?.darwinFilters === false
+      && pickerManifest?.externalHelper === false
+      && pickerManifest?.launchServicesRequired === false;
+    if (!pickerContractMatches) findings.push("native picker Electron dialog binding is missing or stale");
+    if (packagedSourceSha256 !== expectedSourceSha256) {
+      findings.push("packaged native picker source does not match source");
     }
-    if (helperManifest?.sourceSha256 !== expectedSourceSha256) {
-      findings.push("native picker helper source hash does not match source");
-    }
-    if (helperManifest?.infoPlistSource !== nativePickerHelperInfoPlistSourceRelativePath
-      || helperManifest?.infoPlistSha256 !== expectedInfoPlistSha256) {
-      findings.push("native picker helper Info.plist binding is missing or stale");
-    }
-    if (helperManifest?.bundleIdentifier !== nativePickerHelperBundleIdentifier
-      || helperManifest?.bundleRuntimePath !== `native/${nativePickerHelperBundleName}`) {
-      findings.push("native picker helper bundle identity is missing or stale");
-    }
-    if (helperManifest?.runtimePath !== nativePickerHelperPackagedRelativePath) {
-      findings.push("native picker helper runtime path is missing or stale");
-    }
-    try {
-      const packagedInfoPlistSha256 = createHash("sha256")
-        .update(readFileSync(packagedNativePickerHelperInfoPlistPath(packagedAsarPath)))
-        .digest("hex");
-      const link = lstatSync(helperPath);
-      const helperStats = statSync(helperPath);
-      const executableSha256 = createHash("sha256").update(readFileSync(helperPath)).digest("hex");
-      const executable = link.isFile()
-        && !link.isSymbolicLink()
-        && helperStats.isFile()
-        && helperStats.size > 0
-        && (helperStats.mode & 0o111) !== 0;
-      if (!executable) findings.push("packaged native picker helper is not one executable regular file");
-      if (packagedInfoPlistSha256 !== expectedInfoPlistSha256) {
-        findings.push("packaged native picker helper Info.plist does not match source");
-      }
-      if (helperManifest?.executableSha256 !== executableSha256) {
-        findings.push("packaged native picker helper hash does not match runtime manifest");
-      }
-      if (helperManifest?.sizeBytes !== helperStats.size) {
-        findings.push("packaged native picker helper size does not match runtime manifest");
-      }
-      nativePickerHelper = {
-        ...nativePickerHelper,
-        validated: executable
-          && helperManifest?.source === nativePickerHelperSourceRelativePath
-          && helperManifest?.sourceSha256 === expectedSourceSha256
-          && helperManifest?.infoPlistSource === nativePickerHelperInfoPlistSourceRelativePath
-          && helperManifest?.infoPlistSha256 === expectedInfoPlistSha256
-          && packagedInfoPlistSha256 === expectedInfoPlistSha256
-          && helperManifest?.bundleIdentifier === nativePickerHelperBundleIdentifier
-          && helperManifest?.bundleRuntimePath === `native/${nativePickerHelperBundleName}`
-          && helperManifest?.runtimePath === nativePickerHelperPackagedRelativePath
-          && helperManifest?.executableSha256 === executableSha256
-          && helperManifest?.sizeBytes === helperStats.size,
-        infoPlistSha256: packagedInfoPlistSha256,
-        executableSha256,
-        executable,
-        sizeBytes: helperStats.size
-      };
-    } catch {
-      findings.push("packaged native picker helper is missing or unreadable");
-    }
+    nativePicker.validated = pickerContractMatches
+      && packagedSourceSha256 === expectedSourceSha256
+      && legacyHelperAbsent;
 
     return {
       ...base,
@@ -849,7 +796,7 @@ function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
         error: Boolean(buildCommit) ? null : "packaged runtime build-info is missing buildCommit"
       },
       missingEntries,
-      nativePickerHelper,
+      nativePicker,
       dependencies,
       findings
     };

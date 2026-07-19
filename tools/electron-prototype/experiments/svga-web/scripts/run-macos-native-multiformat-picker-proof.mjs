@@ -5,11 +5,6 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  nativePickerHelperName,
-  packagedNativePickerHelperPath
-} from "./macos-package-proof.mjs";
-
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const requireFromPrototype = createRequire(path.join(experimentRoot, "../..", "package.json"));
@@ -79,19 +74,19 @@ function validateAppBundleAt(appBundle, sourceHead) {
   if (buildInfo.buildCommit !== sourceHead || buildInfo.productMilestoneId !== "0.2-multiformat-preview") {
     throw new Error("Packaged App build identity does not match the exact source head and product milestone.");
   }
-  const pickerHelperPath = packagedNativePickerHelperPath(asarPath);
-  const pickerHelperLink = lstatSync(pickerHelperPath);
-  const pickerHelperStats = statSync(pickerHelperPath);
+  const runtimeManifest = JSON.parse(asar.extractFile(asarPath, ".runtime/manifest.json").toString("utf8"));
   if (
-    !pickerHelperLink.isFile()
-    || pickerHelperLink.isSymbolicLink()
-    || !pickerHelperStats.isFile()
-    || pickerHelperStats.size <= 0
-    || (pickerHelperStats.mode & 0o111) === 0
+    runtimeManifest?.nativePicker?.mode !== "electronDialog"
+    || runtimeManifest?.nativePicker?.ownerWindowRequired !== true
+    || runtimeManifest?.nativePicker?.darwinFilters !== false
+    || runtimeManifest?.nativePicker?.externalHelper !== false
+    || runtimeManifest?.nativePicker?.launchServicesRequired !== false
   ) {
-    throw new Error("Packaged App native picker helper is outside the executable regular-file contract.");
+    throw new Error("Packaged App native picker contract does not bind the owner-window Electron dialog.");
   }
-  return { appBundle, executable, infoPlistPath, asarPath, buildInfo, pickerHelperPath };
+  const legacyHelperPath = path.join(appBundle, "Contents/Resources/native/Auto SVGA File Picker.app");
+  if (existsSync(legacyHelperPath)) throw new Error("Packaged App still contains the legacy native picker helper.");
+  return { appBundle, executable, infoPlistPath, asarPath, buildInfo };
 }
 
 function assertNoAutoSvgaProcess() {
@@ -400,28 +395,6 @@ function run(argv) {
   return JSON.parse(output.trim());
 }
 
-function exactProcessPids(name) {
-  try {
-    return execFileSync("/usr/bin/pgrep", ["-x", name], { encoding: "utf8" })
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map(Number)
-      .filter(Number.isInteger);
-  } catch {
-    return [];
-  }
-}
-
-async function waitForNewPickerPid(beforePids) {
-  const before = new Set(beforePids);
-  return waitFor(() => exactProcessPids(nativePickerHelperName).find((pid) => !before.has(pid)), {
-    timeoutMs: 8000,
-    intervalMs: 50,
-    label: "packaged AppKit picker helper process"
-  });
-}
-
 const rendererSnapshotExpression = String.raw`(() => {
   const actions = window.__autoSvgaShortTermActions;
   let summary = {};
@@ -459,11 +432,9 @@ function rendererReadyForFormat(snapshot, row) {
   return snapshot.runtimeCanvas.width > 0 && snapshot.runtimeCanvas.height > 0 && snapshot.videoReadyState >= 2;
 }
 
-async function proveRow(client, row) {
-  const beforePickerPids = exactProcessPids(nativePickerHelperName);
+async function proveRow(client, productPid, row) {
   await client.evaluate("void window.__autoSvgaShortTermActions.openFromHostDialog()");
-  const pickerPid = await waitForNewPickerPid(beforePickerPids);
-  const picker = runNativePanelSelection(pickerPid, row.filePath);
+  const picker = runNativePanelSelection(productPid, row.filePath);
   if (!picker.openButtonEnabled || !picker.submitted) {
     throw new Error(`${row.alias} native Open button remained disabled.`);
   }
@@ -513,9 +484,6 @@ async function main() {
   const rows = expectedRows.map(validateRegularInput);
   const app = validateAppBundleAt(requiredAbsolutePath("AUTO_SVGA_NATIVE_PICKER_APP"), sourceHead);
   assertNoAutoSvgaProcess();
-  if (exactProcessPids(nativePickerHelperName).length > 0) {
-    throw new Error("Another native picker helper owns the runtime slot.");
-  }
   mkdirSync(artifacts.userDataPath, { mode: 0o700 });
   const childEnv = { ...process.env };
   delete childEnv.AUTO_SVGA_PRODUCT_ARTIFACTS;
@@ -544,13 +512,11 @@ async function main() {
       { timeoutMs: 15000, label: "owner Open action" }
     );
     const results = [];
-    for (const row of rows) results.push(await proveRow(client, row));
+    for (const row of rows) results.push(await proveRow(client, child.pid, row));
 
     const beforeCancel = await client.evaluate(rendererSnapshotExpression);
-    const beforeCancelPickerPids = exactProcessPids(nativePickerHelperName);
     await client.evaluate("void window.__autoSvgaShortTermActions.openFromHostDialog()");
-    const cancelPickerPid = await waitForNewPickerPid(beforeCancelPickerPids);
-    const cancel = runNativePanelCancel(cancelPickerPid);
+    const cancel = runNativePanelCancel(child.pid);
     const afterCancel = await waitFor(async () => {
       const snapshot = await client.evaluate(rendererSnapshotExpression);
       return snapshot.fileIdentity === beforeCancel.fileIdentity && snapshot.format === beforeCancel.format
@@ -589,13 +555,6 @@ async function main() {
     }, null, 2));
   } finally {
     await closeProduct(client, child);
-    for (const pid of exactProcessPids(nativePickerHelperName)) {
-      try { process.kill(pid, "SIGTERM"); } catch {}
-    }
-    await waitFor(() => exactProcessPids(nativePickerHelperName).length === 0, {
-      timeoutMs: 5000,
-      label: "native picker helper cleanup"
-    });
     rmSync(artifacts.userDataPath, { recursive: true, force: true });
     assertNoAutoSvgaProcess();
     if (Number.isInteger(devToolsPort) && devToolsPort > 0) assertNoTcpListener(devToolsPort);
