@@ -524,8 +524,9 @@ test("edit reserved surface follows the frozen placeholder hierarchy", async () 
 
   assert.match(reservedPanel, /data-role="EditReservedPlaceholder"/u);
   assert.match(reservedPanel, /<h2>编辑操作区<\/h2>/u);
-  assert.match(reservedPanel, /<span>短期版本保留占位<\/span>/u);
-  assert.match(reservedPanel, /<span>高级功能后续规划<\/span>/u);
+  assert.match(reservedPanel, /<span>当前文件暂无可用编辑操作<\/span>/u);
+  assert.match(reservedPanel, /<span>可返回预览模式继续检查文件<\/span>/u);
+  assert.doesNotMatch(reservedPanel, /短期版本|后续规划/u);
   assert.doesNotMatch(reservedPanel, /<(?:button|input|select|textarea)\b/u);
 
   assert.match(tokens, /--asv-component-edit-reserved-gap:\s*var\(--asv-space-2\)/u);

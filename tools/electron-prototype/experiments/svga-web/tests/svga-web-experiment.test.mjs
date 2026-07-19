@@ -404,6 +404,10 @@ test("short-term Edit reserved keeps the shared playback control context", async
   assert.match(editView, /data-action="loop-toggle"/);
   assert.match(editView, /id="editPlaybackProgress"/);
   assert.match(editView, /id="editPlaybackTime"/);
+  assert.match(editView, /<h2>编辑操作区<\/h2>/u);
+  assert.match(editView, /<span>当前文件暂无可用编辑操作<\/span>/u);
+  assert.match(editView, /<span>可返回预览模式继续检查文件<\/span>/u);
+  assert.doesNotMatch(editView, /短期版本|后续规划/u);
   assert.doesNotMatch(editView, /fullscreen|全屏/iu);
 });
 
