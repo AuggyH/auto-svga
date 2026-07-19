@@ -27,7 +27,7 @@ const MULTIFORMAT_MAX_RUNTIME_JSON_BYTES = 5 * 1024 * 1024;
 const MULTIFORMAT_MAX_REPLACEMENT_IMAGE_BYTES = 10 * 1024 * 1024;
 const MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 
-const allowedExtensions = new Set([".svga", ".json", ".mp4"]);
+const allowedExtensions = new Set([".svga", ".json", ".mp4", ".aep"]);
 const mediaTypes = new Map([
   [".json", "application/json"],
   [".mp4", "video/mp4"],
@@ -76,6 +76,16 @@ class MultiFormatDesktopPreviewSession {
     const requestId = this.nextRequestId(source);
     this.latestOpenRequestId = requestId;
     const displayName = path.basename(normalizedPath);
+    if (isAepPath(normalizedPath)) {
+      validateAepHandoffSource(normalizedPath);
+      this.disposePendingSession();
+      this.clearActiveSourceAuthority();
+      return this.aepHandoffResult(createAepHandoffModel({
+        requestId,
+        source: ownerOpenSource(source),
+        displayName
+      }));
+    }
     let sourceBinding;
     let model;
     try {
@@ -134,6 +144,12 @@ class MultiFormatDesktopPreviewSession {
   async openDroppedFile(input) {
     const displayName = safeDisplayName(input?.displayName ?? input?.name ?? "dropped-motion-asset");
     validateSupportedPath(displayName);
+    if (isAepPath(displayName)) {
+      const requestId = this.nextRequestId("dragDrop");
+      this.disposePendingSession();
+      this.clearActiveSourceAuthority();
+      return this.aepHandoffResult(createAepHandoffModel({ requestId, source: "dragDrop", displayName }));
+    }
     const bytes = droppedBytes(input);
     const hash = createHash("sha256").update(bytes).digest("hex");
     const dropRoot = path.join(this.sessionRoot, "multiformat-drops");
@@ -275,6 +291,11 @@ class MultiFormatDesktopPreviewSession {
     this.svgaReplacementPreview = undefined;
     this.activeSourceId = "";
     this.activeSourceBinding = undefined;
+  }
+
+  clearActiveSourceAuthority() {
+    if (this.activeSourceBinding) this.discardSourceBinding(this.activeSourceBinding);
+    this.revokeActiveSourceAuthority();
   }
 
   async ensureSession() {
@@ -930,6 +951,21 @@ class MultiFormatDesktopPreviewSession {
     if (!binding) throw new Error("Local motion source is not bound to the current open generation.");
     verifySourceBinding(binding, MULTIFORMAT_MAX_DROPPED_BYTES);
     return binding;
+  }
+
+  aepHandoffResult(model) {
+    return {
+      status: "handoffRequired",
+      outcome: "aepHandoff",
+      model,
+      sourceId: "",
+      sourceAuthority: false,
+      recentAuthority: false,
+      previewAuthority: false,
+      saveAuthority: false,
+      pathRedacted: true,
+      lifecycle: { ...this.lifecycle }
+    };
   }
 }
 
@@ -1773,7 +1809,18 @@ function safeDisplayName(value) {
 function validateSupportedPath(value) {
   const extension = path.extname(String(value)).toLowerCase();
   if (!allowedExtensions.has(extension)) {
-    throw new Error("Only local SVGA, Lottie JSON, and VAP/MP4 candidates are accepted in the 0.2 preview mode.");
+    throw new Error("Only local SVGA, Lottie JSON, VAP/MP4, and After Effects AEP handoff candidates are accepted.");
+  }
+}
+
+function isAepPath(value) {
+  return path.extname(String(value)).toLowerCase() === ".aep";
+}
+
+function validateAepHandoffSource(filePath) {
+  const stat = lstatSync(filePath);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error("After Effects AEB handoff requires a regular task-owned AEP copy.");
   }
 }
 
@@ -1931,6 +1978,99 @@ function createOpenFailureModel(input) {
   };
 }
 
+function createAepHandoffModel(input) {
+  const displayName = safeDisplayName(input.displayName);
+  const issue = {
+    code: "aeb.aep_handoff_required",
+    severity: "warning",
+    message: "请在 After Effects 26.3 中使用 Auto SVGA AEB Dev 26.3 处理任务副本，再打开 finalized AEB package。",
+    path: displayName,
+    details: {
+      reason: "aeb_ae26_handoff_required",
+      requiredHost: "After Effects 26.3",
+      requiredPanel: "Auto SVGA AEB Dev 26.3",
+      acceptedPackageEntry: "ae-export-package.finalized.json",
+      sourceMutationAllowed: false,
+      ae25Allowed: false
+    }
+  };
+  return {
+    schemaVersion: 1,
+    source: "owner-visible-aeb-project-handoff",
+    productMode: "0.2-multiformat-preview-candidate",
+    productVersion: "0.2.0-alpha.2",
+    status: "handoffRequired",
+    requestId: input.requestId,
+    openedFrom: input.source,
+    displayName,
+    detectedFormat: "aep",
+    pathRedacted: true,
+    rendererHasFullPath: false,
+    visibleIn01: false,
+    supportClaim: false,
+    saveExportSupported: false,
+    packageReadiness: {
+      productVersion: "0.2.0-alpha.2",
+      channel: "internal-candidate",
+      packagePromotionAllowed: false,
+      localStableReplacementAllowed: false,
+      supportClaim: false,
+      requiredBeforePromotion: ["code_review", "qa_acceptance", "packaging_gate"]
+    },
+    commands: {
+      openFile: true,
+      dragDrop: true,
+      play: false,
+      pause: false,
+      seek: false,
+      loop: false,
+      recover: false,
+      replace: false,
+      resetReplacement: false,
+      save: false,
+      export: false
+    },
+    canvas: {
+      status: "handoffRequired",
+      format: "aep",
+      playback: { status: "unavailable", currentTimeMs: 0, loop: false },
+      emptyCopy: "After Effects 项目需要通过受控 AEB package handoff 进入 Preview。"
+    },
+    rightPanel: {
+      facts: [{
+        id: "aeb-handoff",
+        label: "AEB Handoff",
+        value: "AE 26.3 -> finalized package -> Auto SVGA",
+        status: "warning"
+      }],
+      assetInventory: emptyAssetInventory("aep"),
+      layers: [],
+      assets: [],
+      lottieTexts: [],
+      vapFusionImages: [],
+      vapFusionTexts: [],
+      unsupportedFeatures: [],
+      issues: [issue]
+    },
+    replacement: {
+      status: "idle",
+      revision: 0,
+      dirty: false,
+      resetEnabled: false,
+      playerAction: "none",
+      active: []
+    },
+    aebHandoff: {
+      schemaVersion: "auto-svga-aeb-client-handoff-v1",
+      pathRedacted: true,
+      sourceReadOnly: true,
+      requiredHost: "After Effects 26.3",
+      requiredPanel: "Auto SVGA AEB Dev 26.3",
+      acceptedPackageEntry: "ae-export-package.finalized.json"
+    }
+  };
+}
+
 function emptyAssetInventory(format) {
   const groups = [
     "image_resources",
@@ -1969,6 +2109,7 @@ function emptyAssetInventory(format) {
 
 function formatFromPath(filePath) {
   const extension = path.extname(String(filePath)).toLowerCase();
+  if (extension === ".aep") return "aep";
   if (extension === ".json") return "lottie";
   if (extension === ".mp4") return "vap";
   if (extension === ".svga") return "svga";

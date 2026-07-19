@@ -197,8 +197,8 @@ function createMultiFormatDesktopProductPreloadApi() {
     localOnly: true,
     telemetry: "disabled",
     capabilities: {
-      documentTypes: Object.freeze(["svga", "lottie-json", "vap-mp4"]),
-      fileOpen: "host-dialog-svga-lottie-json-vap-mp4",
+      documentTypes: Object.freeze(["svga", "lottie-json", "vap-mp4", "after-effects-project-handoff"]),
+      fileOpen: "host-dialog-svga-lottie-json-vap-mp4-aep-handoff",
       dragDrop: "host-path-intake-with-adjacent-resource-context",
       recentFiles: "host-user-data-redacted",
       clipboardWrite: "host-clipboard-write-text-only",

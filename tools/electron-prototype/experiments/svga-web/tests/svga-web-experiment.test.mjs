@@ -2694,7 +2694,13 @@ test("formal 0.2 multi-format preload preserves the SVGA host workflow beside th
   const { exposed, invocations } = await exposePreloadGlobals("0.2-multiformat-preview", "formal");
   const api = exposed.autoSvgaElectronHost;
 
-  assert.deepEqual([...api.capabilities.documentTypes], ["svga", "lottie-json", "vap-mp4"]);
+  assert.deepEqual([...api.capabilities.documentTypes], [
+    "svga",
+    "lottie-json",
+    "vap-mp4",
+    "after-effects-project-handoff"
+  ]);
+  assert.equal(api.capabilities.fileOpen, "host-dialog-svga-lottie-json-vap-mp4-aep-handoff");
   assert.equal(api.capabilities.saveAs, "host-dialog-svga-only");
   assert.equal(api.capabilities.overwriteSave, "host-source-path-from-file-picker-only");
   assert.equal(api.capabilities.export, false);
@@ -3511,7 +3517,10 @@ test("0.2 multi-format desktop session rejects unsupported drops before source r
         bytes: [71, 73, 70, 56]
       }),
       (error) => {
-        assert.match(String(error?.message ?? error), /Only local SVGA, Lottie JSON, and VAP\/MP4 candidates/);
+        assert.match(
+          String(error?.message ?? error),
+          /Only local SVGA, Lottie JSON, VAP\/MP4, and After Effects AEP handoff candidates/
+        );
         assert.doesNotMatch(String(error?.message ?? error), /auto-svga-wp6-session|unsafe-preview/);
         return true;
       }
@@ -5220,6 +5229,134 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
   });
 });
 
+test("0.2 AEP handoff revokes prior preview authority and rejects path aliases without mutating the source", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-aep-handoff-authority-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot: path.join(root, "session"),
+    sourceStore
+  });
+  const previousPath = path.join(root, "previous.json");
+  const aepPath = path.join(root, "task-owned.aep");
+  const aliasPath = path.join(root, "task-owned-alias.aep");
+  const aepBytes = Buffer.from("task-owned-aep-fixture");
+  try {
+    await writeFile(previousPath, JSON.stringify({
+      v: "5.7.4",
+      fr: 30,
+      ip: 0,
+      op: 30,
+      w: 64,
+      h: 64,
+      layers: []
+    }));
+    await writeFile(aepPath, aepBytes);
+    await symlink(aepPath, aliasPath);
+
+    const previous = await session.openLocalFilePath(previousPath, "fileButton");
+    assert.notEqual(previous.sourceId, "");
+    assert.equal(sourceStore.has(previous.sourceId), true);
+
+    const handoff = await session.openLocalFilePath(aepPath, "fileButton");
+    assert.equal(handoff.status, "handoffRequired");
+    assert.equal(handoff.outcome, "aepHandoff");
+    assert.equal(handoff.sourceId, "");
+    assert.equal(handoff.sourceAuthority, false);
+    assert.equal(handoff.recentAuthority, false);
+    assert.equal(handoff.previewAuthority, false);
+    assert.equal(handoff.saveAuthority, false);
+    assert.equal(handoff.pathRedacted, true);
+    assert.equal(handoff.model.status, "handoffRequired");
+    assert.equal(handoff.model.detectedFormat, "aep");
+    assert.equal(sourceStore.has(previous.sourceId), false);
+    assert.deepEqual(await readFile(aepPath), aepBytes);
+    assert.doesNotMatch(JSON.stringify(handoff), /auto-svga-aep-handoff-authority|\/private\/tmp/u);
+    await assert.rejects(
+      session.openLocalFilePath(aliasPath, "fileButton"),
+      /regular task-owned AEP copy/u
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("0.2 renderer preserves typed AEP handoff guidance without source Recent Preview or Save authority", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href
+  );
+  const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-aep-renderer-handoff-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot: path.join(root, "session"),
+    sourceStore
+  });
+  const previousPath = path.join(root, "previous.json");
+  const aepPath = path.join(root, "task-owned.aep");
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  const menus = [];
+  try {
+    await writeFile(previousPath, JSON.stringify({
+      v: "5.7.4",
+      fr: 30,
+      ip: 0,
+      op: 30,
+      w: 64,
+      h: 64,
+      layers: []
+    }));
+    await writeFile(aepPath, "task-owned-aep-fixture");
+    const previous = await session.openLocalFilePath(previousPath, "fileButton");
+    assert.notEqual(previous.sourceId, "");
+    const bridge = {
+      productMilestoneId: "0.2-multiformat-preview",
+      openMultiFormatFile() {
+        return session.openLocalFilePath(aepPath, "fileButton");
+      },
+      updateShortTermMenuState(value) {
+        menus.push(value);
+        return Promise.resolve();
+      },
+      setShortTermWindowMode() { return Promise.resolve(); },
+      controlMultiFormatPreview() { return Promise.resolve({}); }
+    };
+    const state = {
+      view: "preview",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {},
+      model: previous.model,
+      sourceId: previous.sourceId
+    };
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+    controller.initialize();
+
+    await controller.handlers.openFromHostDialog();
+
+    assert.equal(state.view, "preview");
+    assert.equal(state.sourceId, "");
+    assert.equal(state.model.status, "handoffRequired");
+    assert.equal(state.model.rightPanel.issues[0].code, "aeb.aep_handoff_required");
+    assert.match(state.model.rightPanel.issues[0].message, /After Effects 26\.3/);
+    assert.equal(sourceStore.has(previous.sourceId), false);
+    assert.equal(menus.at(-1).canPlay, false);
+    assert.equal(menus.at(-1).canSaveAs, false);
+    assert.equal(menus.at(-1).hasOutput, false);
+    const summary = JSON.parse(controller.handlers.currentStateSummary());
+    assert.equal(summary.format, "aep");
+    assert.equal(summary.saveExportSupported, false);
+    assert.doesNotMatch(JSON.stringify(summary), /\/private\/tmp|auto-svga-aep-renderer-handoff/u);
+  } finally {
+    globalThis.document = originalDocument;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("0.2 owner failure rendering trusts only reviewed codes and never raw host text", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
@@ -5254,7 +5391,7 @@ test("0.2 owner failure rendering trusts only reviewed codes and never raw host 
         code: "unsupported_file_type",
         message: "混合 technical host detail /Users/alice/Secret/input.txt"
       },
-      expected: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"
+      expected: "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。"
     },
     {
       input: {

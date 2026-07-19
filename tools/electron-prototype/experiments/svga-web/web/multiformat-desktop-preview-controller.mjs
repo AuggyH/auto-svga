@@ -39,7 +39,7 @@ import {
 export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 const genericOwnerFailureCopy = "操作未能完成，源文件没有被修改。";
 const reviewedOwnerFailureCopyByCode = Object.freeze({
-  unsupported_file_type: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
+  unsupported_file_type: "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。",
   file_picker_failed: "无法打开文件选择器，源文件没有被修改。",
   open_failed: "无法打开本地文件，源文件没有被修改。",
   open_timeout: "文件加载超时，请重新打开文件。源文件没有被修改。",
@@ -53,7 +53,8 @@ const reviewedOwnerFailureCopyByCode = Object.freeze({
   parse_precondition: "文件内容不完整或格式异常，无法预览。",
   asset_reference_precondition: "文件内容不完整或格式异常，无法预览。",
   playback_failure: "文件预览播放出现问题。",
-  runtime_preview_failed: "无法挂载本地预览，源文件没有被修改。"
+  runtime_preview_failed: "无法挂载本地预览，源文件没有被修改。",
+  aep_handoff_invalid: "After Effects 项目交接信息无效，未授予 Preview、最近打开或 Save 权限。"
 });
 const rendererIssueCopyByCode = Object.freeze({
   missing_resource: "预览所需资源缺失。",
@@ -555,7 +556,9 @@ export function createMultiFormatDesktopPreviewController({
       : result.model;
     const normalizedResult = model === result.model ? result : { ...result, model };
     state.model = model;
-    state.sourceId = result.sourceId || state.sourceId || "";
+    state.sourceId = options.replaceSourceAuthority === true
+      ? result.sourceId
+      : result.sourceId || state.sourceId || "";
     state.displayName = model.displayName || state.displayName || "";
     selectDefaultTargets(model);
     renderModel(normalizedResult);
@@ -623,6 +626,11 @@ export function createMultiFormatDesktopPreviewController({
     }
     if (outcome.kind === "failure") {
       showOpenFailure(outcome);
+      return;
+    }
+    if (outcome.kind === "aepHandoff") {
+      revokeActiveDocumentAuthority();
+      applyHostResult(outcome.result, { replaceSourceAuthority: true });
       return;
     }
     await applyOpenedHostResult(outcome.result);
@@ -2078,27 +2086,34 @@ export async function resolveMultiFormatChooserOutcome(openPromise) {
 }
 
 export function normalizeMultiFormatOpenOutcome(result) {
-  if (result?.kind === "failure") {
+  const kind = readSafeDataValue(result, "kind");
+  const status = readSafeDataValue(result, "status");
+  if (kind === "aepHandoff" || status === "handoffRequired" || readSafeDataValue(result, "outcome") === "aepHandoff") {
+    return normalizeAepHandoffResult(result)
+      ?? ownerFailureOutcome("aep_handoff_invalid", { pathRedacted: true });
+  }
+  if (kind === "failure") {
     return ownerFailureOutcome(trustedOwnerFailureCode(result), {
-      pathRedacted: result?.pathRedacted === true
+      pathRedacted: readSafeDataValue(result, "pathRedacted") === true
     });
   }
-  if (result?.kind === "cancelled" || result?.kind === "model") return result;
-  if (result?.status === "cancelled") return { kind: "cancelled" };
-  const reviewedPickerFailureCode = result?.status === "failed" && result?.pathRedacted === true
+  if (kind === "cancelled" || kind === "model") return result;
+  if (status === "cancelled") return { kind: "cancelled" };
+  const reviewedPickerFailureCode = status === "failed" && readSafeDataValue(result, "pathRedacted") === true
     ? trustedOwnerFailureCode(result)
     : "";
   if (reviewedPickerFailureCode) {
     return ownerFailureOutcome(reviewedPickerFailureCode, { pathRedacted: true });
   }
-  if (result?.status === "missing") {
+  if (status === "missing") {
     return ownerFailureOutcome("recent_file_missing");
   }
-  if (result?.model) {
-    if (isAcceptedMultiFormatOpenModel(result.model)) return { kind: "model", result };
-    return ownerFailureOutcome(openFailureCodeForModel(result.model), { pathRedacted: true });
+  const model = readSafeDataValue(result, "model");
+  if (model) {
+    if (isAcceptedMultiFormatOpenModel(model)) return { kind: "model", result };
+    return ownerFailureOutcome(openFailureCodeForModel(model), { pathRedacted: true });
   }
-  if (result?.status === "opened") {
+  if (status === "opened") {
     return ownerFailureOutcome("open_failed");
   }
   return ownerFailureOutcome("");
@@ -2119,6 +2134,127 @@ function openFailureCodeForModel(model) {
   return model?.status === "failed" || model?.status === "playbackBlocked"
     ? "open_failed"
     : "playback_failure";
+}
+
+function normalizeAepHandoffResult(result) {
+  const record = readExactDataRecord(result, [
+    "status",
+    "outcome",
+    "model",
+    "sourceId",
+    "sourceAuthority",
+    "recentAuthority",
+    "previewAuthority",
+    "saveAuthority",
+    "pathRedacted",
+    "lifecycle"
+  ]);
+  if (!record || hasUnsafeAccessorsOrProxy(record)) return undefined;
+  const model = record.model;
+  if (
+    record.status !== "handoffRequired"
+    || record.outcome !== "aepHandoff"
+    || record.sourceId !== ""
+    || record.sourceAuthority !== false
+    || record.recentAuthority !== false
+    || record.previewAuthority !== false
+    || record.saveAuthority !== false
+    || record.pathRedacted !== true
+    || !model
+    || typeof model !== "object"
+    || readSafeDataValue(model, "status") !== "handoffRequired"
+    || readSafeDataValue(model, "detectedFormat") !== "aep"
+    || readSafeDataValue(model, "pathRedacted") !== true
+    || readSafeDataValue(model, "rendererHasFullPath") !== false
+    || readSafeDataValue(model, "saveExportSupported") !== false
+  ) return undefined;
+
+  const displayName = readSafeDataValue(model, "displayName");
+  const commands = readExactDataRecord(readSafeDataValue(model, "commands"), [
+    "openFile",
+    "dragDrop",
+    "play",
+    "pause",
+    "seek",
+    "loop",
+    "recover",
+    "replace",
+    "resetReplacement",
+    "save",
+    "export"
+  ]);
+  const handoff = readExactDataRecord(readSafeDataValue(model, "aebHandoff"), [
+    "schemaVersion",
+    "pathRedacted",
+    "sourceReadOnly",
+    "requiredHost",
+    "requiredPanel",
+    "acceptedPackageEntry"
+  ]);
+  if (
+    typeof displayName !== "string"
+    || displayName.length === 0
+    || displayName.length > 255
+    || !/\.aep$/iu.test(displayName)
+    || /[\\/]/u.test(displayName)
+    || !commands
+    || ["play", "pause", "seek", "loop", "recover", "replace", "resetReplacement", "save", "export"]
+      .some((key) => commands[key] !== false)
+    || !handoff
+    || handoff.schemaVersion !== "auto-svga-aeb-client-handoff-v1"
+    || handoff.pathRedacted !== true
+    || handoff.sourceReadOnly !== true
+    || handoff.requiredHost !== "After Effects 26.3"
+    || handoff.requiredPanel !== "Auto SVGA AEB Dev 26.3"
+    || handoff.acceptedPackageEntry !== "ae-export-package.finalized.json"
+  ) return undefined;
+  return { kind: "aepHandoff", result };
+}
+
+function readSafeDataValue(value, field) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, field);
+    return descriptor && "value" in descriptor ? descriptor.value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function readExactDataRecord(value, expectedKeys) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype) return undefined;
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key !== "string") || ownKeys.length !== expectedKeys.length) return undefined;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const record = {};
+    for (const key of expectedKeys) {
+      const descriptor = descriptors[key];
+      if (!descriptor || descriptor.enumerable !== true || !("value" in descriptor)) return undefined;
+      record[key] = descriptor.value;
+    }
+    return ownKeys.every((key) => expectedKeys.includes(key)) ? record : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hasUnsafeAccessorsOrProxy(value, seen = new Set()) {
+  if (!value || typeof value !== "object") return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+  try {
+    for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(value))) {
+      if (!descriptor || !("value" in descriptor) || descriptor.get || descriptor.set) return true;
+      if (descriptor.value && typeof descriptor.value === "object" && hasUnsafeAccessorsOrProxy(descriptor.value, seen)) {
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 function applyProductCopy(documentRef = document) {
@@ -2192,6 +2328,7 @@ const playbackStatusCopyById = Object.freeze({
   paused: "已暂停",
   playbackBlocked: "播放受限",
   playbackFailed: "播放异常",
+  handoffRequired: "需要 AEB 交接",
   failed: "加载失败",
   disposed: "已关闭"
 });

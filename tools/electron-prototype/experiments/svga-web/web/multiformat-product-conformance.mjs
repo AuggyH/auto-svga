@@ -3,7 +3,7 @@ import {
   dragFileFromEvent
 } from "./short-term-macos-drag-decision-model.mjs";
 
-const multiFormatDropPattern = /\.(svga|json|mp4)$/i;
+const multiFormatDropPattern = /\.(svga|json|mp4|aep)$/i;
 const svgaDropPattern = /\.svga$/i;
 
 const commonFactIds = new Set([

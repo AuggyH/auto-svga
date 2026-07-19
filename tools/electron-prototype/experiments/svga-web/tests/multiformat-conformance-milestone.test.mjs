@@ -164,7 +164,7 @@ test("accepted-open status gates Recent and unifies terminal model failures", as
 
   assert.match(openPathSource, /isAcceptedMultiFormatOpenModel\(result\?\.model\)/u);
   assert.doesNotMatch(openPathSource, /model\?\.status\s*!==\s*["']failed["']/u);
-  assert.match(controllerSource, /isAcceptedMultiFormatOpenModel\(result\.model\)/u);
+  assert.match(controllerSource, /isAcceptedMultiFormatOpenModel\((?:result\.model|model)\)/u);
 
   const blocked = normalizeMultiFormatOpenOutcome({
     status: "opened",
@@ -222,7 +222,7 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   const openBody = mainSource.slice(openStart, openEnd);
 
   assert.match(openBody, /chooseMultiFormatLocalFile/u);
-  assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
+  assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4[\s\S]*\.aep/u);
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME, "asv-open-panel");
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME, "Auto SVGA File Picker.app");
   assert.equal(DARWIN_MULTI_FORMAT_PICKER_LAUNCHER, "/usr/bin/open");
@@ -284,16 +284,16 @@ test("macOS multi-format picker uses the packaged AppKit helper and validates se
   );
 
   const options = createMultiFormatOpenDialogOptions("darwin");
-  assert.deepEqual(options.filters[0].extensions, ["svga", "json", "mp4"]);
+  assert.deepEqual(options.filters[0].extensions, ["svga", "json", "mp4", "aep"]);
   assert.deepEqual(options.properties, ["openFile"]);
-  assert.deepEqual(createMultiFormatOpenDialogOptions("win32").filters[0].extensions, ["svga", "json", "mp4"]);
-  for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.JSON", "/private/tmp/example.mp4"]) {
+  assert.deepEqual(createMultiFormatOpenDialogOptions("win32").filters[0].extensions, ["svga", "json", "mp4", "aep"]);
+  for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.JSON", "/private/tmp/example.mp4", "/private/tmp/example.aep"]) {
     assert.deepEqual(validateMultiFormatPickerSelection(filePath, regularFileStats), { status: "selected", filePath });
   }
   assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.txt", regularFileStats), {
     status: "failed",
     code: "unsupported_file_type",
-    message: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
+    message: "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。",
     pathRedacted: true
   });
   assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.svga", () => ({ isFile: () => false })), {
@@ -526,7 +526,7 @@ test("host picker cancellation waits for the human decision without a renderer d
 });
 
 test("host picker returns cancel, selected formats, and redacted invalid input without opening early", async () => {
-  for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.json", "/private/tmp/example.mp4"]) {
+  for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.json", "/private/tmp/example.mp4", "/private/tmp/example.aep"]) {
     const result = await chooseMultiFormatLocalFile({
       platform: "darwin",
       async runDarwinPicker() { return { status: "selected", filePath }; },
@@ -554,7 +554,7 @@ test("unsupported picker selection stays typed and mutation-free through the ren
   assert.deepEqual(rendererResult, {
     kind: "failure",
     code: "unsupported_file_type",
-    message: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
+    message: "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。",
     pathRedacted: true
   });
   assert.deepEqual(authority, { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 });

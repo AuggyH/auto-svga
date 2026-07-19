@@ -18,7 +18,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { promisify } = require("node:util");
 
-const SUPPORTED_MULTI_FORMAT_EXTENSIONS = new Set([".svga", ".json", ".mp4"]);
+const SUPPORTED_MULTI_FORMAT_EXTENSIONS = new Set([".svga", ".json", ".mp4", ".aep"]);
 const execFileAsync = promisify(execFile);
 const DARWIN_MULTI_FORMAT_PICKER_LAUNCHER = "/usr/bin/open";
 const DARWIN_MULTI_FORMAT_PICKER_HELPER_BUNDLE_NAME = "Auto SVGA File Picker.app";
@@ -32,10 +32,11 @@ function createMultiFormatOpenDialogOptions() {
   return {
     title: "打开文件",
     filters: [
-      { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] },
+      { name: "SVGA / Lottie JSON / VAP MP4 / AEP Handoff", extensions: ["svga", "json", "mp4", "aep"] },
       { name: "SVGA", extensions: ["svga"] },
       { name: "Lottie JSON", extensions: ["json"] },
-      { name: "VAP MP4", extensions: ["mp4"] }
+      { name: "VAP MP4", extensions: ["mp4"] },
+      { name: "After Effects AEP Handoff", extensions: ["aep"] }
     ],
     properties: ["openFile"]
   };
@@ -46,7 +47,7 @@ function failedPickerResult(code = "file_picker_failed") {
     status: "failed",
     code,
     message: code === "unsupported_file_type"
-      ? "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"
+      ? "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。"
       : "无法打开文件选择器，源文件没有被修改。",
     pathRedacted: true
   };
