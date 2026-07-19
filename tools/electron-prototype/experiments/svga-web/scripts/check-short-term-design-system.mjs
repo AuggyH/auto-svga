@@ -381,6 +381,7 @@ async function main() {
   const recentFilesModel = await readFile(path.join(webRoot, "short-term-macos-recent-files-model.mjs"), "utf8");
   const renderModel = await readFile(path.join(webRoot, "short-term-macos-render-model.mjs"), "utf8");
   const compareModel = await readFile(path.join(webRoot, "short-term-macos-compare-model.mjs"), "utf8");
+  const dragDecisionSurface = await readFile(path.join(webRoot, "short-term-macos-drag-decision-surface.mjs"), "utf8");
   const multiFormatController = await readFile(path.join(webRoot, "multiformat-desktop-preview-controller.mjs"), "utf8");
   const multiFormatConformance = await readFile(path.join(webRoot, "multiformat-product-conformance.mjs"), "utf8");
   const mainProcess = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
@@ -816,9 +817,11 @@ async function main() {
     && /data-state="\$\{state\}"/.test(compareModel)
     && /\.comparePairOpenButton\s*\{[\s\S]*width: var\(--asv-compare-open-button-width\)[\s\S]*min-height: var\(--asv-compare-open-button-height\)/.test(modules));
   record("compare-drag-overlay-keeps-hybrid-25-75-contract", /id="compareDragOverlay"[^>]*data-variant="compare"/.test(page)
-    && /data-drag-zone="compare-a"[^>]*aria-label="打开或替换对比文件 A"/.test(page)
-    && /data-drag-zone="compare-b"[^>]*aria-label="打开或替换对比文件 B"/.test(page)
+    && /data-drag-zone="compare-a"[^>]*aria-label="打开对比文件 A"/.test(page)
+    && /data-drag-zone="compare-b"[^>]*aria-label="打开对比文件 B"/.test(page)
     && /data-drag-zone="open"[^>]*aria-label="打开文件"/.test(page)
+    && /const actionCopy = model \? "替换" : "打开"/.test(compareModel)
+    && /zone\.setAttribute\("aria-label", visibleCopy\)/.test(dragDecisionSurface)
     && /--asv-component-drag-overlay-grid-rows:\s*1fr 3fr/.test(tokens)
     && /--asv-component-drag-overlay-compare-columns:\s*1fr 1fr/.test(tokens)
     && /\.dragDecisionOverlay\[data-variant="compare"\]\s*\{[\s\S]*grid-template-columns: var\(--asv-drag-overlay-compare-columns\)/.test(modules)

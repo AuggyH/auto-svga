@@ -242,9 +242,9 @@
             <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览模式</button>
             <button type="button" data-action="mode-edit" aria-pressed="false">编辑模式</button>
           </div>
-          <section class="dragDecisionOverlay" id="previewDragOverlay" data-component="DragDecisionOverlay" data-page-state="Drag decision overlay" data-drag-overlay data-variant="preview" data-focus-zone="open" data-status="supported" hidden>
-            <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
-            <div class="dragDecisionZone" data-drag-zone="open"><strong>打开新文件</strong></div>
+          <section class="dragDecisionOverlay" id="previewDragOverlay" role="status" aria-live="polite" aria-atomic="true" aria-label="打开新文件" data-component="DragDecisionOverlay" data-page-state="Drag decision overlay" data-drag-overlay data-variant="preview" data-focus-zone="open" data-status="supported" hidden>
+            <div class="dragDecisionZone" data-drag-zone="compare" aria-label="添加为对比文件"><strong>添加为对比文件</strong></div>
+            <div class="dragDecisionZone" data-drag-zone="open" aria-label="打开新文件"><strong>打开新文件</strong></div>
           </section>
           <div class="canvasWrap" id="primaryCanvasWrap">
             <div class="runtimeStageViewport">
@@ -360,9 +360,9 @@
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
           </div>
           <section class="compareStage" id="compareStage" tabindex="-1">
-            <section class="dragDecisionOverlay" id="compareDragOverlay" data-component="DragDecisionOverlay" data-page-state="Drag decision overlay" data-drag-overlay data-variant="compare" data-focus-zone="open" data-status="supported" hidden>
-              <div class="dragDecisionZone" data-drag-zone="compare-a" aria-label="打开或替换对比文件 A"><strong>打开对比文件 A</strong></div>
-              <div class="dragDecisionZone" data-drag-zone="compare-b" aria-label="打开或替换对比文件 B"><strong>打开对比文件 B</strong></div>
+            <section class="dragDecisionOverlay" id="compareDragOverlay" role="status" aria-live="polite" aria-atomic="true" aria-label="打开文件" data-component="DragDecisionOverlay" data-page-state="Drag decision overlay" data-drag-overlay data-variant="compare" data-focus-zone="open" data-status="supported" hidden>
+              <div class="dragDecisionZone" data-drag-zone="compare-a" aria-label="打开对比文件 A"><strong>打开对比文件 A</strong></div>
+              <div class="dragDecisionZone" data-drag-zone="compare-b" aria-label="打开对比文件 B"><strong>打开对比文件 B</strong></div>
               <div class="dragDecisionZone" data-drag-zone="open" aria-label="打开文件"><strong>打开文件</strong></div>
             </section>
             <div class="compareCanvasWrap" id="compareCanvasWrapA" data-component="ComparePreviewCard" data-compare-label="A" data-compare-state="empty">

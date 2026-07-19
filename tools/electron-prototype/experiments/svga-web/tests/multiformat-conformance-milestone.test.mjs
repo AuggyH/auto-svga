@@ -599,6 +599,9 @@ test("multi-format mode availability and drag overlay expose the capability stat
   const overlay = {
     hidden: true,
     dataset: {},
+    setAttribute(name, value) {
+      this[name] = String(value);
+    },
     querySelectorAll: () => zones
   };
   showShortTermDragDecisionOverlay(overlay, {

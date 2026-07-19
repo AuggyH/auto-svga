@@ -103,6 +103,7 @@ import {
 } from "./short-term-macos-preview-surface.mjs";
 import {
   dragActionForDecision,
+  unsupportedDropDisposition,
 } from "./short-term-macos-drag-decision-model.mjs";
 import {
   dragDecisionForEvent,
@@ -340,6 +341,10 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       return;
     }
     if (action === "reject-file" && state.view === "compare") {
+      showShortTermCanvasToast(nodes, "不支持的文件格式");
+      return;
+    }
+    if (action === "reject-file" && unsupportedDropDisposition(state) === "preserve") {
       showShortTermCanvasToast(nodes, "不支持的文件格式");
       return;
     }

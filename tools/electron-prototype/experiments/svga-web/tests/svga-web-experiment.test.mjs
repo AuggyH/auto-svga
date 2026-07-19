@@ -2936,6 +2936,10 @@ test("Compare drag decision preserves 25/75 and splits only the top strip into A
   const overlay = {
     hidden: true,
     dataset: { variant: "compare" },
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
     querySelectorAll(selector) {
       return selector === "[data-drag-zone]" ? zones : [];
     }
@@ -2947,12 +2951,23 @@ test("Compare drag decision preserves 25/75 and splits only the top strip into A
     "替换对比文件 B",
     "打开文件"
   ]);
+  assert.deepEqual(zones.map((zone) => zone.attributes["aria-label"]), [
+    "打开对比文件 A",
+    "替换对比文件 B",
+    "打开文件"
+  ]);
+  assert.equal(overlay.attributes["aria-label"], "打开对比文件 A");
+
+  dragDecisionSurface.showShortTermDragDecisionOverlay(overlay, unsupportedCompare);
+  assert.equal(zones[0].strong.textContent, "当前格式不支持对比");
+  assert.equal(zones[0].attributes["aria-label"], "当前格式不支持对比");
+  assert.equal(overlay.attributes["aria-label"], "当前格式不支持对比");
 
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
-  assert.match(page, /id="compareDragOverlay"[^>]*data-variant="compare"/u);
-  assert.match(page, /data-drag-zone="compare-a"[^>]*aria-label="打开或替换对比文件 A"/u);
-  assert.match(page, /data-drag-zone="compare-b"[^>]*aria-label="打开或替换对比文件 B"/u);
+  assert.match(page, /id="compareDragOverlay"[^>]*role="status"[^>]*aria-live="polite"[^>]*data-variant="compare"/u);
+  assert.match(page, /data-drag-zone="compare-a"[^>]*aria-label="打开对比文件 A"/u);
+  assert.match(page, /data-drag-zone="compare-b"[^>]*aria-label="打开对比文件 B"/u);
   assert.match(page, /data-drag-zone="open"[^>]*aria-label="打开文件"/u);
   assert.match(modules, /\.dragDecisionOverlay\[data-variant="compare"\][^{]*\{[^}]*grid-template-columns:\s*var\(--asv-drag-overlay-compare-columns\)/u);
   assert.match(modules, /\[data-variant="compare"\][^\n]*\[data-drag-zone="open"\][^{]*\{[^}]*grid-column:\s*1 \/ -1/u);
@@ -2962,6 +2977,10 @@ test("unsupported drop keeps the workbench shell and follows the frozen drag hie
   const fileSurface = await import(pathToFileURL(path.join(
     experimentRoot,
     "web/short-term-macos-file-surface.mjs"
+  )).href);
+  const dragDecisionModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-drag-decision-model.mjs"
   )).href);
   const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
   const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
@@ -2982,6 +3001,9 @@ test("unsupported drop keeps the workbench shell and follows the frozen drag hie
   assert.doesNotMatch(page, /class="stateCard error playbackErrorPanel unsupportedDropRecoveryPanel"/);
   assert.match(page, /data-view="unsupported"[\s\S]*data-state="disabled"/);
   assert.match(shortTermController, /showShortTermUnsupportedDropState/);
+  assert.equal(dragDecisionModel.unsupportedDropDisposition({ sourceBytes: new Uint8Array([1]) }), "preserve");
+  assert.equal(dragDecisionModel.unsupportedDropDisposition({}), "recover");
+  assert.match(shortTermController, /unsupportedDropDisposition\(state\) === "preserve"[\s\S]*showShortTermCanvasToast\(nodes, "不支持的文件格式"\)/u);
   assert.match(multiFormatController, /closeFile\(\{ nextView: "unsupported" \}\)/);
   assert.match(multiFormatController, /const nextView = options\.nextView === "unsupported" \? "unsupported" : "launch"/);
   assert.match(multiFormatController, /clearSurfaces\(\);\s*setView\(nextView\);/);
@@ -3012,15 +3034,32 @@ test("unsupported drop keeps the workbench shell and follows the frozen drag hie
   };
   let stopped = 0;
   let view = "preview";
+  const document = { activeElement: undefined, body: {} };
+  const app = new FakeDomElement("main");
+  const launchView = new FakeDomElement("section");
+  const unsupportedView = new FakeDomElement("section");
+  const launchButton = new FakeDomElement("button");
+  const unsupportedRecoveryButton = new FakeDomElement("button");
+  launchView.dataset.view = "launch";
+  unsupportedView.dataset.view = "unsupported";
+  launchView.replaceChildren(launchButton);
+  unsupportedView.replaceChildren(unsupportedRecoveryButton);
+  app.replaceChildren(launchView, unsupportedView);
+  for (const node of [app, launchView, unsupportedView, launchButton, unsupportedRecoveryButton]) {
+    node.ownerDocument = document;
+  }
+  launchButton.focus();
 
   fileSurface.showShortTermUnsupportedDropState({
-    nodes: { saveBanner },
+    nodes: { app, saveBanner, unsupportedRecoveryButton },
     state,
     stopAllPlayback() {
       stopped += 1;
     },
     setView(nextView) {
       view = nextView;
+      launchView.hidden = nextView !== "launch";
+      unsupportedView.hidden = nextView !== "unsupported";
     }
   });
 
@@ -3032,6 +3071,7 @@ test("unsupported drop keeps the workbench shell and follows the frozen drag hie
   assert.equal(state.tab, "overview");
   assert.equal(saveBanner.hidden, true);
   assert.equal(view, "unsupported");
+  assert.equal(document.activeElement, unsupportedRecoveryButton);
 });
 
 test("0.2 multi-format drag affordance accepts Lottie and VAP while keeping Compare SVGA-only", async () => {
@@ -3104,6 +3144,10 @@ test("0.2 multi-format drag affordance accepts Lottie and VAP while keeping Comp
   const overlay = {
     hidden: true,
     dataset: {},
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
     querySelectorAll(selector) {
       return selector === "[data-drag-zone]" ? [compareZone, openZone] : [];
     }
@@ -9114,7 +9158,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /<title>Auto SVGA<\/title>/);
   assert.match(page, /id="previewDragOverlay"/);
   assert.match(page, /id="compareDragOverlay"/);
-  assert.match(page, /data-drag-zone="compare"><strong>添加为对比文件<\/strong><\/div>\s*<div class="dragDecisionZone" data-drag-zone="open"><strong>打开新文件<\/strong>/);
+  assert.match(page, /data-drag-zone="compare"[^>]*><strong>添加为对比文件<\/strong><\/div>\s*<div class="dragDecisionZone" data-drag-zone="open"[^>]*><strong>打开新文件<\/strong>/);
   assert.match(page, /data-component="DragDecisionOverlay"/);
   assert.match(page, /id="canvasToast"/);
   assert.match(page, /data-component="CanvasToast"/);

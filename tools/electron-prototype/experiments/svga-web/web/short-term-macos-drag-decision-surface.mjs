@@ -52,6 +52,7 @@ export function showShortTermDragDecisionOverlay(overlay, decision) {
   overlay.dataset.compareAvailable = compareAvailable ? "true" : "false";
   const zoneLabels = decision.zoneLabels
     ?? (compareView ? compareZoneLabels(decision.compareSlots) : previewZoneLabels);
+  let activeCopy = "";
   overlay.querySelectorAll("[data-drag-zone]").forEach((zone) => {
     const available = compareView || compareAvailable || zone.dataset.dragZone !== "compare";
     const active = zone.dataset.dragZone === decision.focusZone;
@@ -60,10 +61,14 @@ export function showShortTermDragDecisionOverlay(overlay, decision) {
     const label = zoneLabels[zone.dataset.dragZone]
       ?? previewZoneLabels[zone.dataset.dragZone]
       ?? "打开文件";
-    zone.querySelector("strong").textContent = decision.supported || !active
+    const visibleCopy = decision.supported || !active
       ? label
       : decision.unsupportedCopy || "不支持的文件格式";
+    zone.querySelector("strong").textContent = visibleCopy;
+    zone.setAttribute("aria-label", visibleCopy);
+    if (active) activeCopy = visibleCopy;
   });
+  overlay.setAttribute("aria-label", activeCopy || "拖拽文件操作");
 }
 
 export function hideShortTermDragDecisionOverlays(nodes) {

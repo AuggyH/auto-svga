@@ -22,6 +22,7 @@ export function collectShortTermNodes() {
     compareDragOverlay: document.querySelector("#compareDragOverlay"),
     canvasToast: document.querySelector("#canvasToast"),
     unsupportedDropRecovery: document.querySelector("#unsupportedDropRecovery"),
+    unsupportedRecoveryButton: document.querySelector("[data-view='unsupported'] [data-action='open']"),
     primaryCanvas: document.querySelector("#primaryCanvas"),
     playbackErrorRecovery: document.querySelector("#playbackErrorRecovery"),
     playbackErrorMessage: document.querySelector("#playbackErrorMessage"),

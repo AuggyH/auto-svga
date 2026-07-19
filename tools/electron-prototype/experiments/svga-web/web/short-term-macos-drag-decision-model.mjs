@@ -7,6 +7,10 @@ export function isSupportedShortTermDropFile(file) {
   return /\.svga$/i.test(file.name || "");
 }
 
+export function unsupportedDropDisposition(state = {}) {
+  return state.sourceBytes?.byteLength ? "preserve" : "recover";
+}
+
 export const SHORT_TERM_DRAG_DECISION_OPEN_RATIO = 0.75;
 export const SHORT_TERM_DRAG_DECISION_COMPARE_RATIO = 1 - SHORT_TERM_DRAG_DECISION_OPEN_RATIO;
 export const SHORT_TERM_COMPARE_DRAG_SLOT_RATIO = 0.5;

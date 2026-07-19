@@ -239,9 +239,11 @@ export function showShortTermUnsupportedDropState({
   stopAllPlayback,
   setView
 }) {
+  const focusContext = captureViewTransitionFocus(nodes);
   clearShortTermCurrentFile({ state, stopAllPlayback });
   state.mode = "preview";
   state.tab = "overview";
   hideShortTermSaveBanner(nodes);
   setView("unsupported");
+  moveViewTransitionFocus(focusContext, nodes.unsupportedRecoveryButton);
 }
