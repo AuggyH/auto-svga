@@ -5,9 +5,11 @@ import {
   optimizationTabView
 } from "./short-term-macos-optimization-model.mjs";
 import {
+  focusOptimizationResult,
   prependOptimizationResult,
   renderOptimizationFindings,
-  renderOptimizationRunningState
+  renderOptimizationRunningState,
+  restoreOptimizationInteractionFocus
 } from "./short-term-macos-optimization-renderers.mjs";
 import { clearShortTermSaveBanner } from "./short-term-macos-feedback-surface.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
@@ -44,6 +46,7 @@ export async function renderShortTermOptimizationCompare({
   setCompareSlot("B", model.resultTitle || "优化结果", undefined, "优化副本");
   renderCompareInfo("A", "原始文件", state.model, state.displayName);
   renderShortTermOptimizationCompareResult({ nodes, model });
+  focusOptimizationResult(nodes);
   const comparePlaybackOptions = { loop: state.comparePlaybackLooping !== false };
   await Promise.all([
     mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes, comparePlaybackOptions),
@@ -97,9 +100,14 @@ export async function runShortTermOptimizationWorkflow({
   setTab("optimization");
   clearShortTermSaveBanner(nodes);
   renderOptimizationRunningState(nodes, true);
-  const finishRunning = () => {
+  const finishRunning = ({ restoreFocus = true } = {}) => {
     renderOptimizationRunningState(nodes, false);
     renderShortTermOptimization({ nodes, model: state.model });
+    if (restoreFocus) {
+      restoreOptimizationInteractionFocus(nodes);
+    } else {
+      delete nodes.panelOptimization.dataset.returnFocus;
+    }
   };
   try {
     const result = await optimizeShortTermSvga({
@@ -123,7 +131,7 @@ export async function runShortTermOptimizationWorkflow({
       summary: result.optimization.resultSummary,
       details: result.optimization
     });
-    finishRunning();
+    finishRunning({ restoreFocus: false });
     await renderShortTermOptimizationCompare({
       nodes,
       state,

@@ -203,8 +203,8 @@ export function renderOptimizationCompareResultHtml(model) {
     .map((method) => `<li data-component="OptimizationResultDetailRow" data-result-disposition="skipped"><strong>${escapeHtml(method.label)}</strong><span>${escapeHtml(method.reason)}</span></li>`)
     .join("");
   return `
-    <section class="compareSummary optimizationResultSummary" data-status="${escapeHtml(tone)}">
-      <h2>优化结果</h2>
+    <section class="compareSummary optimizationResultSummary" data-status="${escapeHtml(tone)}" tabindex="-1" aria-labelledby="optimizationResultHeading">
+      <h2 id="optimizationResultHeading">优化结果</h2>
     </section>
     ${(model.metrics ?? []).length ? `<section class="compareMetricGrid optimizationMetricGrid" aria-label="优化指标">${(model.metrics ?? []).map(renderOptimizationMetricCellHtml).join("")}</section>` : ""}
     <div class="compareActions optimizationActions">

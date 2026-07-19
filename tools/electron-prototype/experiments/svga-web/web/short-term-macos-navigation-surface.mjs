@@ -12,5 +12,5 @@ export function handleShortTermTabListKeydown({ event, setTab }) {
 
 export function openShortTermTab({ state, tab, setMode, setTab }) {
   if (state.sourceBytes && state.view !== "preview") setMode("preview");
-  setTab(tab);
+  setTab(tab, { focus: true, scroll: true });
 }

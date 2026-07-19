@@ -809,22 +809,46 @@ test("short-term save banner states expose direct accessible page-state semantic
 });
 
 test("short-term optimization running state uses the Figma progress hierarchy without fabricated values", async () => {
-  const { renderOptimizationRunningState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-optimization-renderers.mjs")).href);
+  const {
+    focusOptimizationResult,
+    renderOptimizationRunningState,
+    restoreOptimizationInteractionFocus
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-optimization-renderers.mjs")).href);
   const { renderOptimizationFindingHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
   const attributes = new Map();
+  const documentRef = { activeElement: null };
+  const focusable = (extra = {}) => ({
+    ...extra,
+    focusOptions: undefined,
+    focus(options) {
+      this.focusOptions = options;
+      documentRef.activeElement = this;
+    }
+  });
+  const runOptimizationButton = focusable({ disabled: false, hidden: false });
+  const closeOptimizationButton = focusable({ disabled: false });
+  const optimizationProgress = focusable({ hidden: true });
+  const optimizationResult = focusable();
   const nodes = {
     panelOptimization: {
       dataset: {},
+      ownerDocument: documentRef,
       setAttribute(name, value) {
         attributes.set(name, value);
       }
     },
-    optimizationProgress: { hidden: true },
+    optimizationProgress,
     optimizationProgressBar: { attributes: { role: "progressbar" } },
-    runOptimizationButton: { disabled: false, hidden: false },
-    closeOptimizationButton: { disabled: false }
+    runOptimizationButton,
+    closeOptimizationButton,
+    compareInfoB: {
+      querySelector(selector) {
+        return selector === ".optimizationResultSummary" ? optimizationResult : null;
+      }
+    }
   };
 
+  runOptimizationButton.focus();
   renderOptimizationRunningState(nodes, true);
 
   assert.equal(nodes.panelOptimization.dataset.workflowState, "running");
@@ -835,19 +859,37 @@ test("short-term optimization running state uses the Figma progress hierarchy wi
   assert.equal(nodes.closeOptimizationButton.disabled, true);
   assert.equal(nodes.optimizationProgressBar.attributes.role, "progressbar");
   assert.equal(Object.hasOwn(nodes.optimizationProgressBar.attributes, "aria-valuenow"), false);
+  assert.equal(documentRef.activeElement, optimizationProgress);
+  assert.deepEqual(optimizationProgress.focusOptions, { preventScroll: true });
 
   renderOptimizationRunningState(nodes, false);
+  nodes.runOptimizationButton.disabled = true;
+  restoreOptimizationInteractionFocus(nodes);
 
   assert.equal(nodes.panelOptimization.dataset.workflowState, "idle");
   assert.equal(attributes.get("aria-busy"), "false");
   assert.equal(nodes.optimizationProgress.hidden, true);
   assert.equal(nodes.runOptimizationButton.hidden, false);
   assert.equal(nodes.closeOptimizationButton.disabled, false);
+  assert.equal(documentRef.activeElement, closeOptimizationButton);
+
+  const unrelatedControl = focusable();
+  unrelatedControl.focus();
+  renderOptimizationRunningState(nodes, true);
+  assert.equal(documentRef.activeElement, unrelatedControl, "mouse or unrelated keyboard focus must not be stolen");
+  renderOptimizationRunningState(nodes, false);
+  restoreOptimizationInteractionFocus(nodes);
+  assert.equal(documentRef.activeElement, unrelatedControl);
+
+  focusOptimizationResult(nodes);
+  assert.equal(documentRef.activeElement, optimizationResult);
+  assert.deepEqual(optimizationResult.focusOptions, { preventScroll: true });
 
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const tokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
   const modules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
   assert.match(page, /data-component="OptimizationRunningState"[\s\S]*优化执行中…[\s\S]*role="progressbar"[\s\S]*正在生成优化文件，请勿关闭…/u);
+  assert.match(page, /id="optimizationProgress"[^>]*tabindex="-1"/u);
   assert.doesNotMatch(page, /优化执行中…\s*65%|\(2\/3\)/u);
   assert.match(tokens, /--asv-component-optimization-progress-track-height:\s*4px/u);
   assert.match(tokens, /--asv-component-optimization-progress-width:\s*var\(--asv-component-right-surface-content-width\)/u);
@@ -855,6 +897,7 @@ test("short-term optimization running state uses the Figma progress hierarchy wi
   assert.match(tokens, /--asv-component-optimization-progress-label-size:\s*var\(--asv-type-size-footnote\)/u);
   assert.match(modules, /\.optimizationProgressBarFill\s*\{[\s\S]*animation:\s*optimization-progress-indeterminate/u);
   assert.match(modules, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.optimizationProgressBarFill/u);
+  assert.match(modules, /\.optimizationResultSummary:focus-visible\s*\{[^}]*box-shadow:\s*var\(--asv-focus-inset\)/u);
 
   const candidateHtml = renderOptimizationFindingHtml({
     title: "移除未引用图片资源",
@@ -1187,6 +1230,23 @@ test("short-term optimization detail exposes the frozen action group and an expl
   };
   listeners.get("click")({ target: exitButton });
   assert.deepEqual(openedTabs, ["overview"]);
+
+  const { openShortTermTab } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-navigation-surface.mjs")).href);
+  const tabTransitions = [];
+  openShortTermTab({
+    state: { sourceBytes: new Uint8Array([1]), view: "preview" },
+    tab: "optimization",
+    setMode() {
+      assert.fail("opening optimization from Preview must not change mode");
+    },
+    setTab(tab, options) {
+      tabTransitions.push({ tab, options });
+    }
+  });
+  assert.deepEqual(tabTransitions, [{
+    tab: "optimization",
+    options: { focus: true, scroll: true }
+  }]);
 });
 
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
