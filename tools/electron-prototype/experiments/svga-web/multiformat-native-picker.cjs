@@ -249,27 +249,29 @@ async function runDarwinMultiFormatPicker(
   let cleanupFailed = false;
   try {
     channel = createDarwinPickerResultChannel();
-    await execute(
-      DARWIN_MULTI_FORMAT_PICKER_LAUNCHER,
-      [
-        "-n",
-        "-W",
-        "-a",
-        helperBundlePath,
-        "--stderr",
-        channel.stderr.filePath,
-        "--args",
-        `--auto-svga-picker-channel=${channel.token}`,
-        `--auto-svga-picker-root=${channel.rootPath}`,
-        `--auto-svga-picker-parent-pid=${process.pid}`
-      ],
-      {
-        encoding: "utf8",
-        maxBuffer: DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES,
-        timeout: DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS,
-        killSignal: "SIGTERM"
-      }
-    );
+    try {
+      await execute(
+        DARWIN_MULTI_FORMAT_PICKER_LAUNCHER,
+        [
+          "-n",
+          "-W",
+          "-a",
+          helperBundlePath,
+          "--stderr",
+          channel.stderr.filePath,
+          "--args",
+          `--auto-svga-picker-channel=${channel.token}`,
+          `--auto-svga-picker-root=${channel.rootPath}`,
+          `--auto-svga-picker-parent-pid=${process.pid}`
+        ],
+        {
+          encoding: "utf8",
+          maxBuffer: DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES,
+          timeout: DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS,
+          killSignal: "SIGTERM"
+        }
+      );
+    } catch {}
     readBoundedPrivateResultFile(channel, channel.stderr);
     outcome = parseDarwinPickerOutput(readBoundedPrivateResultFile(channel, channel.result));
   } catch {

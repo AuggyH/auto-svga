@@ -381,6 +381,21 @@ test("macOS picker result channel fails closed on cancellation, replacement, gro
   assert.equal(existsSync(firstRoot), false);
 });
 
+test("macOS picker trusts a valid private result when installed LaunchServices reports a nonzero exit", async () => {
+  let selectedRoot = "";
+  const selected = await runDarwinMultiFormatPicker(async (_command, args) => {
+    const resultPath = path.join(path.dirname(args[args.indexOf("--stderr") + 1]), "picker-result.json");
+    selectedRoot = path.dirname(resultPath);
+    writeFileSync(resultPath, '{"status":"selected","filePath":"/private/tmp/example.svga"}\n');
+    const launchError = new Error("installed LaunchServices wait returned nonzero");
+    launchError.code = 1;
+    throw launchError;
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+
+  assert.deepEqual(selected, { status: "selected", filePath: "/private/tmp/example.svga" });
+  assert.equal(existsSync(selectedRoot), false);
+});
+
 test("macOS picker timeout releases ownership so recovery can open a fresh helper", async () => {
   let timeoutRoot = "";
   let timeoutOptions = null;
