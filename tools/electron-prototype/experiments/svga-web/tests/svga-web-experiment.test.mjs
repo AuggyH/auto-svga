@@ -1185,6 +1185,134 @@ test("short-term loading, failure, and playback recovery keep keyboard focus rea
   assert.equal(success.document.activeElement, unrelatedFocus);
 });
 
+test("short-term Preview, Edit, and Compare navigation keeps focus in the active workspace", async () => {
+  const { enterShortTermGeneralCompare } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-surface.mjs")).href);
+  const {
+    captureViewTransitionFocus,
+    focusModeViewTransition
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs")).href);
+  const document = { activeElement: undefined, body: {} };
+  const app = new FakeDomElement("main");
+  const previewView = new FakeDomElement("section");
+  const editView = new FakeDomElement("section");
+  const compareView = new FakeDomElement("section");
+  previewView.dataset.view = "preview";
+  editView.dataset.view = "edit";
+  compareView.dataset.view = "compare";
+  const previewEditButton = new FakeDomElement("button");
+  const previewModeButton = new FakeDomElement("button");
+  const editModeButton = new FakeDomElement("button");
+  const compareOpenAButton = new FakeDomElement("button");
+  const compareOpenBButton = new FakeDomElement("button");
+  const compareStage = new FakeDomElement("section");
+  previewView.replaceChildren(previewModeButton, previewEditButton);
+  editView.replaceChildren(editModeButton);
+  compareView.replaceChildren(compareStage, compareOpenAButton, compareOpenBButton);
+  app.replaceChildren(previewView, editView, compareView);
+  for (const node of [
+    app,
+    previewView,
+    editView,
+    compareView,
+    previewEditButton,
+    previewModeButton,
+    editModeButton,
+    compareOpenAButton,
+    compareOpenBButton,
+    compareStage
+  ]) node.ownerDocument = document;
+  const setView = (view) => {
+    for (const candidate of [previewView, editView, compareView]) {
+      candidate.hidden = candidate.dataset.view !== view;
+    }
+  };
+  const nodes = {
+    app,
+    previewModeButton,
+    editModeButton,
+    compareView,
+    compareStage,
+    compareOpenAButton,
+    compareOpenBButton,
+    compareCanvasA: {},
+    compareCanvasB: {},
+    compareCanvasWrapA: { dataset: {}, classList: { toggle() {} }, querySelector() { return undefined; } },
+    compareCanvasWrapB: { dataset: {}, classList: { toggle() {} }, querySelector() { return undefined; } },
+    compareCanvasTitleA: { textContent: "" },
+    compareCanvasTitleB: { textContent: "" },
+    compareCanvasMetaA: { textContent: "" },
+    compareCanvasMetaB: { textContent: "" },
+    compareInfoA: { innerHTML: "" },
+    compareInfoB: { innerHTML: "" }
+  };
+
+  previewEditButton.focus();
+  const editFocus = captureViewTransitionFocus(nodes);
+  setView("edit");
+  focusModeViewTransition(nodes, "edit", editFocus);
+  assert.equal(document.activeElement, editModeButton);
+
+  const previewFocus = captureViewTransitionFocus(nodes);
+  setView("preview");
+  focusModeViewTransition(nodes, "preview", previewFocus);
+  assert.equal(document.activeElement, previewModeButton);
+
+  previewModeButton.focus();
+  await enterShortTermGeneralCompare({
+    nodes,
+    state: { comparePlaybackLooping: true },
+    setView,
+    async mountPlayback() {},
+    clearCanvas() {}
+  });
+  assert.equal(document.activeElement, compareOpenAButton);
+
+  const state = {
+    sourceBytes: Uint8Array.from([1]),
+    previewBytes: Uint8Array.from([1]),
+    displayName: "A.svga",
+    model: undefined,
+    compareBSource: undefined,
+    comparePlaybackLooping: true
+  };
+  previewModeButton.focus();
+  setView("preview");
+  await enterShortTermGeneralCompare({
+    nodes,
+    state,
+    setView,
+    async mountPlayback() {},
+    clearCanvas() {}
+  });
+  assert.equal(document.activeElement, compareOpenBButton);
+
+  state.compareBSource = {
+    bytes: Uint8Array.from([2]),
+    displayName: "B.svga",
+    model: undefined
+  };
+  previewModeButton.focus();
+  setView("preview");
+  await enterShortTermGeneralCompare({
+    nodes,
+    state,
+    setView,
+    async mountPlayback() {},
+    clearCanvas() {}
+  });
+  assert.equal(document.activeElement, compareStage);
+
+  const unrelated = new FakeDomElement("button");
+  unrelated.ownerDocument = document;
+  unrelated.focus();
+  const unrelatedContext = captureViewTransitionFocus(nodes);
+  focusModeViewTransition(nodes, "preview", unrelatedContext);
+  assert.equal(document.activeElement, unrelated);
+
+  const controllerSource = await readFile(path.join(experimentRoot, "web/short-term-macos-controller.mjs"), "utf8");
+  assert.match(controllerSource, /function setMode\(mode\) \{[\s\S]*captureViewTransitionFocus\(nodes\)[\s\S]*focusModeViewTransition\(nodes, mode, focusContext\)/u);
+});
+
 test("short-term preview right surface exposes page-state trace semantics", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const { applyTabState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);

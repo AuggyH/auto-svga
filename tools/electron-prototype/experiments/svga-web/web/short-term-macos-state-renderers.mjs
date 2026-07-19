@@ -22,6 +22,13 @@ export function moveViewTransitionFocus(context, target) {
   return true;
 }
 
+export function focusModeViewTransition(nodes, mode, context) {
+  return moveViewTransitionFocus(
+    context,
+    mode === "edit" ? nodes.editModeButton : nodes.previewModeButton
+  );
+}
+
 export function renderFileHeader(nodes, displayName, playbackMeta, options = {}) {
   const dirty = options.dirty === true;
   nodes.fileIdentity.textContent = dirty ? `${displayName} *` : displayName;

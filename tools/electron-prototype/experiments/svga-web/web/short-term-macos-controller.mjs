@@ -3,6 +3,8 @@ import {
   applyViewState
 } from "./short-term-macos-dom-state.mjs";
 import {
+  captureViewTransitionFocus,
+  focusModeViewTransition,
   hidePlaybackFailureRecovery,
   renderDiscardMessage,
   showPlaybackFailureRecovery
@@ -169,6 +171,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   function setMode(mode) {
+    const focusContext = captureViewTransitionFocus(nodes);
     const leavingCompare = state.view === "compare";
     state.mode = mode;
     applyModeButtons(mode);
@@ -187,6 +190,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       stopPlayback("compareB");
       setView("edit");
       renderEditReserved();
+      focusModeViewTransition(nodes, mode, focusContext);
       mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
       return;
     }
@@ -195,6 +199,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     stopPlayback("compareB");
     setTab("overview");
     setView("preview");
+    focusModeViewTransition(nodes, mode, focusContext);
     mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
   }
 

@@ -965,7 +965,8 @@ canvas {
 }
 
 .stateCard:focus-visible,
-.previewStagePanel:focus-visible {
+.previewStagePanel:focus-visible,
+.compareStage:focus-visible {
   outline: none;
   box-shadow: var(--asv-focus-inset);
 }

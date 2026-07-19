@@ -14,6 +14,10 @@ import {
   markCompareSlotLoaded,
   renderCompareInfoPanel
 } from "./short-term-macos-compare-renderers.mjs";
+import {
+  captureViewTransitionFocus,
+  moveViewTransitionFocus
+} from "./short-term-macos-state-renderers.mjs";
 
 export function renderShortTermCompareSlot({ nodes, slot, title, model, fallbackMeta = "" }) {
   applyCompareSlotView(nodes, slot, compareSlotView(slot, title, model, fallbackMeta));
@@ -63,6 +67,7 @@ export async function enterShortTermGeneralCompare({
   mountPlayback,
   clearCanvas
 }) {
+  const focusContext = captureViewTransitionFocus(nodes);
   setView("compare");
   renderShortTermGeneralCompareTrace(nodes);
   renderShortTermCompareSlot({
@@ -84,6 +89,14 @@ export async function enterShortTermGeneralCompare({
       `<button class="toolbarButton compareExitButton" type="button" data-action="back-preview">退出对比</button>`
     ]
   });
+  moveViewTransitionFocus(
+    focusContext,
+    !state.sourceBytes
+      ? nodes.compareOpenAButton
+      : state.compareBSource?.bytes?.byteLength
+        ? nodes.compareStage
+        : nodes.compareOpenBButton
+  );
   if (state.sourceBytes) {
     await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes, {
       loop: state.comparePlaybackLooping !== false
