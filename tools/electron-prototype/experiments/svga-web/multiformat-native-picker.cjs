@@ -239,6 +239,21 @@ function resolveDarwinMultiFormatPickerHelperPath(options = {}) {
   );
 }
 
+function isLaunchServicesExecutableUnavailable(error) {
+  const diagnostic = [error?.stdout, error?.stderr, error?.message]
+    .filter((value) => typeof value === "string")
+    .join("\n");
+  return /(?:Code=-10827|kLSNoExecutableErr)/u.test(diagnostic);
+}
+
+function createDarwinPickerHelperArguments(channel) {
+  return [
+    `--auto-svga-picker-channel=${channel.token}`,
+    `--auto-svga-picker-root=${channel.rootPath}`,
+    `--auto-svga-picker-parent-pid=${process.pid}`
+  ];
+}
+
 async function runDarwinMultiFormatPicker(
   execute = execFileAsync,
   helperBundlePath = resolveDarwinMultiFormatPickerHelperBundlePath()
@@ -250,6 +265,8 @@ async function runDarwinMultiFormatPicker(
   let cleanupFailed = false;
   try {
     channel = createDarwinPickerResultChannel();
+    const helperArguments = createDarwinPickerHelperArguments(channel);
+    let launchError = null;
     try {
       await execute(
         DARWIN_MULTI_FORMAT_PICKER_LAUNCHER,
@@ -261,9 +278,7 @@ async function runDarwinMultiFormatPicker(
           "--stderr",
           channel.stderr.filePath,
           "--args",
-          `--auto-svga-picker-channel=${channel.token}`,
-          `--auto-svga-picker-root=${channel.rootPath}`,
-          `--auto-svga-picker-parent-pid=${process.pid}`
+          ...helperArguments
         ],
         {
           encoding: "utf8",
@@ -272,9 +287,27 @@ async function runDarwinMultiFormatPicker(
           killSignal: "SIGTERM"
         }
       );
-    } catch {}
+    } catch (error) {
+      launchError = error;
+    }
+    let resultOutput = readBoundedPrivateResultFile(channel, channel.result);
+    if (!resultOutput.trim() && isLaunchServicesExecutableUnavailable(launchError)) {
+      try {
+        await execute(
+          path.join(helperBundlePath, "Contents", "MacOS", DARWIN_MULTI_FORMAT_PICKER_HELPER_NAME),
+          helperArguments,
+          {
+            encoding: "utf8",
+            maxBuffer: DARWIN_MULTI_FORMAT_PICKER_RESULT_MAX_BYTES,
+            timeout: DARWIN_MULTI_FORMAT_PICKER_TIMEOUT_MS,
+            killSignal: "SIGTERM"
+          }
+        );
+      } catch {}
+      resultOutput = readBoundedPrivateResultFile(channel, channel.result);
+    }
     readBoundedPrivateResultFile(channel, channel.stderr);
-    outcome = parseDarwinPickerOutput(readBoundedPrivateResultFile(channel, channel.result));
+    outcome = parseDarwinPickerOutput(resultOutput);
   } catch {
   } finally {
     try {

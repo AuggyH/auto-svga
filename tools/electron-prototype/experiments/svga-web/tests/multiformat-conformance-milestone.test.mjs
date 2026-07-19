@@ -452,6 +452,31 @@ test("macOS picker trusts a valid private result when installed LaunchServices r
   assert.equal(existsSync(selectedRoot), false);
 });
 
+test("macOS picker falls back to the bound helper executable only when LaunchServices cannot resolve it", async () => {
+  const calls = [];
+  const selected = await runDarwinMultiFormatPicker(async (command, args) => {
+    calls.push({ command, args });
+    if (command === "/usr/bin/open") {
+      const launchError = new Error("LaunchServices could not resolve the nested helper executable");
+      launchError.code = 1;
+      launchError.stdout = 'Error Domain=NSOSStatusErrorDomain Code=-10827 "kLSNoExecutableErr"';
+      throw launchError;
+    }
+    const rootArgument = args.find((argument) => argument.startsWith("--auto-svga-picker-root="));
+    const resultPath = path.join(rootArgument.split("=").slice(1).join("="), "picker-result.json");
+    writeFileSync(resultPath, '{"status":"selected","filePath":"/private/tmp/example.svga"}\n');
+    return { stdout: "" };
+  }, "/private/runtime/native/Auto SVGA File Picker.app");
+
+  assert.deepEqual(selected, { status: "selected", filePath: "/private/tmp/example.svga" });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].command, "/usr/bin/open");
+  assert.equal(calls[1].command, "/private/runtime/native/Auto SVGA File Picker.app/Contents/MacOS/asv-open-panel");
+  assert.match(calls[1].args[0], /^--auto-svga-picker-channel=[a-f0-9]{32}$/u);
+  assert.match(calls[1].args[1], /^--auto-svga-picker-root=.+auto-svga-native-picker-[a-f0-9]{32}$/u);
+  assert.equal(calls[1].args[2], `--auto-svga-picker-parent-pid=${process.pid}`);
+});
+
 test("macOS picker timeout releases ownership so recovery can open a fresh helper", async () => {
   let timeoutRoot = "";
   let timeoutOptions = null;
