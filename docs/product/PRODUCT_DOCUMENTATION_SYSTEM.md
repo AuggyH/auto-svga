@@ -97,7 +97,7 @@ Create a new product document only when all are true:
 | Product question | Source of truth | Maintain when |
 | --- | --- | --- |
 | What is the project-level PRD authority? | `docs/product/PRODUCT_ROADMAP.md` | Product goal, scope, phases, requirements, interactions, or release eligibility changes |
-| How do confirmed Product Owner feature or optimization requests move from PRD into implementation and QA? | `docs/product/requirements/` requirement tickets, governed by this document | A Product Owner request is evaluated, confirmed, added to PRD or a subordinate product brief, and needs an accountable implementation/QA handoff |
+| How do confirmed Product Owner feature or optimization requests move from PRD into implementation and QA? | GitHub PRs and Issues, governed by this document | A confirmed requirement needs one accountable implementation owner and measurable acceptance evidence |
 | How are product versions, alpha/beta/RC stages, distribution channels, and build identities named? | `docs/product/VERSIONING_AND_RELEASE_POLICY.md` | Version line, release-stage, package-channel, tag, review-packet, or build-identity rules change |
 | What is Auto SVGA? | `docs/product/auto-svga-product-principles.md` | Positioning, anti-drift, input boundary, or editing boundary changes; must not override the main PRD |
 | What is the short-, mid-, and long-term product requirement plan? | `docs/product/PRODUCT_ROADMAP.md` | Product horizon, phase, requirement group, interaction class, or global non-goal changes |
@@ -117,8 +117,8 @@ Create a new product document only when all are true:
 | What is Web/Desktop source-of-truth behavior? | `docs/product/WEB_PREVIEW_PRODUCT_SOURCE_OF_TRUTH.md` and `docs/product/P6_SHARED_FRONTEND_ARCHITECTURE.md` | Shared frontend, host adapter, parity, or rollback boundary changes |
 | What could be built later? | `docs/product/auto-svga-backlog.md` | New idea, reprioritization, owner feedback, or deferred item change |
 | Why was a product/architecture choice made? | `docs/decisions/ADR-*.md` | Durable decision with alternatives or long-lived consequences |
-| What did a task change? | `docs/reviews/YYYY-MM-DD-agent-task.md` | Every completed task that changes source or durable docs |
-| What did the project learn from recent work? | `docs/retrospectives/PROJECT_REVIEW_SYSTEM.md`, `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md`, and `docs/retrospectives/TASK_RETRO_LEDGER.jsonl` | Task retrospectives, weekly/monthly project reviews, reusable lessons, or token-cost rules change; must not override the main PRD |
+| What did a task change? | GitHub PR | Every merged source or durable-doc change; create a repository review file only for meaningful checkpoints or broad audits |
+| What did the project learn from recent work? | `docs/retrospectives/PROJECT_REVIEW_SYSTEM.md`, weekly/monthly reports, and `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md` | Weekly/monthly reviews and reusable lessons; `TASK_RETRO_LEDGER.jsonl` is historical input, not a required per-task write |
 | What proves a package/release candidate? | `review/<task-or-milestone>-<head>/` and generated validation summaries | Only at meaningful product checkpoints on final head |
 
 ## Documentation Cleanup Audit
@@ -166,8 +166,8 @@ Required fields:
 - Rollback path.
 - Documents to update when complete.
 
-Small bug fixes may use the task review file instead of a separate brief, but
-the acceptance criteria and non-goals still need to be visible somewhere.
+Small bug fixes may use the GitHub Issue and PR instead of a separate brief, but
+acceptance criteria and non-goals still need to be visible.
 
 ## Development Readiness Rule
 
@@ -203,37 +203,26 @@ confirmation, a committed requirement must follow this flow:
 1. Promote the requirement into `docs/product/PRODUCT_ROADMAP.md` or the
    closest subordinate product brief, with explicit acceptance criteria and
    non-goals.
-2. Create an `ASV-REQ-YYYYMMDD-###` requirement ticket under
-   `docs/product/requirements/` using the local template.
+2. Create or link one GitHub Issue only when the work needs cross-PR tracking,
+   defect handling, or an explicit backlog item. A focused PR may carry a small
+   requirement directly.
 3. Assign one accountable implementation owner and optional secondary owners.
    Do not ask multiple lanes to implement the same requirement in parallel
-   unless the ticket names one integration owner.
-4. Send a short handoff to the responsible owner thread with the requirement
-   ticket path, PRD anchor, priority, response expectation, acceptance
-   criteria, and QA handoff expectation.
-5. The implementation owner moves the ticket through accepted, in progress,
-   and implementation-ready states, then returns a completion handoff with
-   commit, review file, validation summary, skipped checks, and test notes.
-6. The completed implementation is handed to the Test Engineer lane for
-   acceptance testing. QA writes a report or creates a linked `ASV-QA` ticket
-   if regression finds a defect.
-7. The requirement ticket is closed only after the implementation owner and QA
-   handoff are both recorded, or after Product Manager explicitly defers or
-   cancels the requirement.
+   unless the Issue names one integration owner.
+4. The implementation owner opens a self-tested PR with the PRD anchor,
+   acceptance criteria, risk, validation, skipped checks, and rollback.
+5. QA tests the merged exact candidate when user-visible acceptance is needed.
+   Create a defect Issue only for a real finding. Close the delivery Issue when
+   implementation and required QA evidence are linked, or record a disposition.
 
-Requirement tickets are for approved product delivery work. They are separate
-from `ASV-QA` defect tickets:
-
-- `ASV-REQ` tracks a confirmed requirement from product decision to
-  implementation and QA handoff.
-- `ASV-QA` tracks a bug, regression, acceptance failure, or test finding from
-  reproduction through fix and closure.
-- A requirement may produce one or more QA tickets during testing; those QA
-  tickets must link back to the requirement ticket.
+Historical `ASV-REQ` and `ASV-QA` repository tickets remain valid lineage. New
+work uses GitHub PRs and Issues by default; durable repository tickets are an
+exception for release evidence, sensitive routing boundaries, or explicit
+Product Owner requests.
 
 If a Product Owner request is still being researched, debated, or held as a
 candidate idea, do not create an implementation requirement ticket yet. Keep it
-in the roadmap, backlog, research note, or review document until Product Owner
+in the roadmap, backlog, research note, or GitHub Issue until Product Owner
 confirmation makes it committed scope.
 
 ## Status Vocabulary
@@ -304,14 +293,13 @@ decision. They are not part of the current first distributable version.
 ## Maintenance Cadence
 
 - Task start: read the product roadmap, active status, relevant boundary docs,
-  the requested task review/evidence path, and relevant sections of
+  the requested Issue/PR/evidence path, and relevant sections of
   `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md`.
 - During implementation: update only the docs directly affected by the change.
-- Task completion: update the task review retrospective section and append a
-  compact entry to `docs/retrospectives/TASK_RETRO_LEDGER.jsonl` for
-  meaningful tasks.
-- Weekly: aggregate recent reviews, task-ledger entries, commits, blockers,
-  and token-cost patterns into `docs/retrospectives/weekly/YYYY-WW.md`.
+- Task completion: record scope, evidence, risk, and rollback in the PR. Do not
+  create a review file or ledger entry by default.
+- Weekly: aggregate merged PRs, Issues, milestones, blockers, and token/time
+  samples into `docs/retrospectives/weekly/YYYY-WW.md`.
 - Monthly or after four weekly reviews: distill repeated lessons into
   `docs/retrospectives/monthly/YYYY-MM.md` and
   `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md`.

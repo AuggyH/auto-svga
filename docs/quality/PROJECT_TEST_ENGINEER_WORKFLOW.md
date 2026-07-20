@@ -48,23 +48,14 @@ before asking an implementation owner to choose silently.
 
 ## Ticket Location
 
-Every tracked issue uses one ticket ID:
+Use one GitHub Issue for each real defect. The Issue is the default ticket,
+reproduction record, routing state, fix link, and regression result. Use the
+`Product defect` Issue form and link the fixing PR.
 
-```text
-ASV-QA-YYYYMMDD-###
-```
-
-Store files under:
-
-| Artifact | Path |
-| --- | --- |
-| Ticket | `docs/quality/tickets/ASV-QA-YYYYMMDD-###.md` |
-| Reproduction report | `docs/quality/reports/ASV-QA-YYYYMMDD-###-repro.md` |
-| Owner fix report | `docs/quality/reports/ASV-QA-YYYYMMDD-###-fix.md` |
-| Regression report | `docs/quality/reports/ASV-QA-YYYYMMDD-###-regression.md` |
-| Optional non-sensitive evidence | `docs/quality/evidence/ASV-QA-YYYYMMDD-###/` |
-
-Use the templates in `docs/quality/templates/`.
+Create `ASV-QA-YYYYMMDD-###` repository reports only when a defect needs a
+long-lived release/acceptance record, cannot be represented safely in GitHub,
+or the Product Owner explicitly requests one. Do not create separate repro,
+fix, and regression files for an ordinary defect.
 
 Do not commit production SVGA files, design source files, screenshots with
 private user data, large videos, local job folders, or generated runtime output.
@@ -76,20 +67,15 @@ in a committed report.
 
 | Status | Meaning | Next owner |
 | --- | --- | --- |
-| New | Product Owner or another lane reported a problem. | Test Engineer |
-| Intake | Test Engineer is collecting minimum context. | Test Engineer |
+| New | A defect Issue was reported. | Test Engineer |
+| Triage | Test Engineer is collecting or narrowing evidence. | Test Engineer |
 | Needs Info | Required reproduction context is missing. | Product Owner or reporter |
 | Reproducible | Test Engineer reproduced or created a narrow failing case. | Test Engineer |
-| Not Reproduced | Current evidence cannot reproduce; ticket stays open only with a clear next attempt. | Test Engineer / reporter |
-| Routed | Ticket and repro report were sent to the responsible owner. | Responsible owner |
-| Accepted By Owner | Owner accepted responsibility and started investigation or fix. | Responsible owner |
-| Fix Ready | Owner provided a fix commit, report, and requested QA regression. | Test Engineer |
-| Regression | Test Engineer is validating the fix. | Test Engineer |
+| In Progress | One accountable owner is implementing a fix. | Responsible owner |
+| Ready For QA | A linked, self-tested PR is merged into the exact candidate. | Test Engineer |
 | Closed | Original issue and agreed regressions pass. | None |
 | Reopened | Regression failed or the fix introduced a related break. | Responsible owner |
-| Deferred | Product Manager or owner intentionally deferred the issue. | Product Manager |
-| Duplicate | Another ticket is the source of truth. | Linked ticket |
-| Won't Fix | Product Manager or owner intentionally rejected the change. | Product Manager |
+| Dispositioned | Deferred, duplicate, not reproduced, or won't fix with a recorded reason. | Product Manager or Test Engineer |
 
 Do not use `PASS`, accepted, released, or fixed unless the exact evidence and
 gate are named.
@@ -119,16 +105,15 @@ Route by the smallest owner who can fix the issue without redefining scope:
 | AE bridge, AE plugin/export package, compatibility matrix, bake strategy, AE-to-client handoff, source-effect conversion | AEB Main Engineer |
 | Local stable app promotion, packaged dependency, app icon, bundle identity, unsigned ZIP, LaunchServices, packaging script | Release/Packaging Owner |
 | Requirement conflict, hidden/deferred scope resurfacing, priority ambiguity, acceptance criteria missing | Product Manager |
-| Unknown or cross-lane issue | Test Engineer keeps ticket in Intake, adds suspected lanes, then asks Product Manager to route |
+| Unknown or cross-lane issue | Test Engineer keeps the Issue in Triage, adds suspected lanes, then asks Product Manager to route |
 
 When an issue spans several lanes, nominate one primary owner and list secondary
-owners. The primary owner is accountable for returning one fix-ready handoff to
-QA.
+owners. The primary owner is accountable for one linked fix PR and QA handoff.
 
 ## Standard Flow
 
-1. Intake
-   - Create or update a ticket from `BUG_TICKET_TEMPLATE.md`.
+1. Triage
+   - Create or update one GitHub Issue using the product defect form.
    - Capture reporter, date, app/build identity, affected file alias, observed
      behavior, expected behavior, and privacy boundary.
    - Assign preliminary severity and suspected lane.
@@ -140,85 +125,31 @@ QA.
    - If reproduction needs a production file, keep the file out of Git and
      redact sensitive path details in committed docs.
 
-3. Report
-   - Create `ASV-QA-...-repro.md`.
-   - Mark the ticket `Reproducible`, `Not Reproduced`, or `Needs Info`.
-   - Include only concise evidence and links, not full logs or raw chat.
-
-4. Route
-   - Send the ticket and repro report path to the responsible thread.
-   - Do not paste the full report into chat unless the recipient cannot access
-     the repository.
-   - Ask the owner for either `Accepted By Owner` or a clear routing objection.
-   - If the owner accepts, the Test Engineer updates the ticket to
-     `Accepted By Owner` and records the owner thread.
-   - The routing handoff must state that acceptance starts the repair loop. Do
-     not leave the implementation owner with only an acknowledgement request
-     when the ticket is ready to fix.
-
-5. Fix
+3. Route and fix
+   - Assign one accountable owner and move the Issue to `In Progress`.
    - The implementation owner reproduces or explains why it cannot reproduce.
-   - The owner fixes on the correct lane, writes `ASV-QA-...-fix.md`, and
-     provides commit hash, changed files, validation, risk, and QA callback
-     criteria.
-   - When the owner reaches `Fix Ready`, the owner must actively return the
-     ticket to the Test Engineer thread. A completed commit or local report in
-     the owner thread is not enough by itself.
-   - The return-to-QA message must include ticket ID, `Fix Ready`, fix commit,
-     branch, fix report path, callback evidence path, validation summary, and
-     any skipped checks or known limitations.
-   - The Test Engineer monitors routed tickets. If a routed or accepted ticket
-     appears complete in the owner thread but was not returned, the Test
-     Engineer pulls the handoff, updates the ticket to `Fix Ready`, records the
-     process gap, and continues regression without waiting for Product Owner
-     prompting.
+   - The fixing PR links the Issue and records scope, risk, validation, skipped
+     checks, and rollback. CR and CI inspect only self-tested PRs.
 
-6. Regress
+4. Regress
    - Test Engineer reruns the original reproduction steps.
    - Add adjacent checks based on risk and owner callback criteria.
-   - Write `ASV-QA-...-regression.md`.
+   - Record the concise result on the Issue and exact merged candidate.
 
-7. Close or Reopen
+5. Close or reopen
    - Close only when the original issue and agreed regression checks pass.
    - Reopen with the failed step, current evidence, and the responsible owner
      when the fix fails or creates a related regression.
 
 ## Cross-Thread Handoff Rules
 
-- Chat is the transport; repository docs are the durable record.
-- Every routed message must include ticket ID, severity, primary owner, current
-  status, and paths to the ticket/repro report.
-- Keep each handoff short. Link to docs instead of pasting long reports.
+- GitHub Issue, PR, and Actions are the durable record; chat only routes work.
+- Every routed message includes the Issue, severity, primary owner, exact
+  candidate, and next gate.
+- Keep each handoff short. Link to the Issue or PR instead of duplicating it.
 - Do not ask multiple owners to fix the same issue in parallel unless the
   ticket names one primary owner.
-- If the receiving owner finds the route wrong, they must state the reason and
-  suggested owner in the ticket before handoff returns to QA or PM.
-- Implementation owners must not close tickets directly. They return `Fix
-  Ready`; QA closes after regression.
-- Implementation owners must send the `Fix Ready` handoff back to the Test
-  Engineer thread that routed the ticket. A final answer only in the owner
-  thread is an incomplete QA handoff.
-- Test Engineer owns cross-thread follow-up. When an expected callback is
-  missing, QA checks the owner thread, updates the ticket state from durable
-  evidence, and sends the next required handoff instead of waiting for the
-  Product Owner to relay status.
 - Product scope disputes go to PM before implementation.
-
-## Callback Tracking Rules
-
-- Every routed ticket should have one accountable owner thread and one expected
-  callback state.
-- After `Accepted By Owner`, the expected callback is `Fix Ready`, `Deferred`,
-  `Won't Fix`, `Cannot reproduce`, or a routing objection.
-- After `Fix Ready`, the expected callback owner becomes the Test Engineer and
-  the next state is `Regression`.
-- If implementation finishes but does not explicitly return the ticket, QA
-  records this as a handoff gap in the ticket or regression report and proceeds
-  from the available fix report and commit.
-- Product Owner intervention should be required only for missing source
-  material, acceptance judgment, product-scope decisions, or explicit priority
-  changes; ordinary routing, callback, regression, and closure must be handled
-  by the QA lane and responsible owner lanes.
 
 ## Minimum Evidence By Issue Type
 
@@ -246,8 +177,8 @@ QA.
 
 A ticket is closed only when:
 
-1. The ticket status is `Closed`.
-2. The regression report exists and links to the fix report.
+1. The GitHub Issue is closed by QA or the designated acceptance owner.
+2. The Issue links the merged fix PR and exact tested candidate.
 3. The original reproduction steps pass or the accepted product behavior is
    explicitly different.
 4. Required adjacent checks are recorded.
@@ -257,7 +188,5 @@ A ticket is closed only when:
 
 ## Templates
 
-- `docs/quality/templates/BUG_TICKET_TEMPLATE.md`
-- `docs/quality/templates/TEST_REPRO_REPORT_TEMPLATE.md`
-- `docs/quality/templates/OWNER_FIX_REPORT_TEMPLATE.md`
-- `docs/quality/templates/REGRESSION_ACCEPTANCE_REPORT_TEMPLATE.md`
+- `.github/ISSUE_TEMPLATE/bug.yml` is the default.
+- `docs/quality/templates/` is retained for exceptional durable reports only.
