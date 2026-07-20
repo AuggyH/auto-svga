@@ -4274,7 +4274,8 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   assert.match(controller, /function beginHostFileOpen/);
   assert.match(controller, /function completeHostFileOpen/);
   assert.match(controller, /function failHostFileOpen/);
-  assert.match(controller, /resolveMultiFormatOpenOutcome\(Promise\.resolve\(payload\?\.result\)/);
+  assert.match(controller, /bridge\.consumeMultiFormatHostFileOpen\?\.\(\{/);
+  assert.match(controller, /resolveMultiFormatOpenOutcome\(Promise\.resolve\(hostResult\)/);
   assert.match(controller, /isActiveRequest\(hostFileOpenRequest\)/);
   const dispatchSource = main.slice(main.indexOf("async function dispatchMultiFormatOpenFileEvent"), main.indexOf("function traceSourceId"));
   assert.ok(
@@ -4288,9 +4289,11 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   );
   assert.match(
     dispatchSource,
-    /const completed = await invokeMultiFormatRendererDecision\(window, "completeHostFileOpen"/u,
+    /completed = await invokeMultiFormatRendererDecision\(window, "completeHostFileOpen"/u,
     "Recent authority requires the renderer terminal action to return an explicit accepted receipt"
   );
+  assert.match(dispatchSource, /pendingMultiFormatRendererOpenResults\.set\(item\.eventId, result\)/u);
+  assert.doesNotMatch(dispatchSource, /eventId: item\.eventId,\s*result/u);
   assert.doesNotMatch(
     dispatchSource,
     /rememberShortTermRecentFile/u,
@@ -6379,6 +6382,7 @@ test("0.2 composed open cancellation and failure preserve active authority for e
             state.selectedImageKey = "avatar";
             state.selectedTextKey = "title";
             state.textPreviewValues = { title: "旧文字" };
+            return true;
           },
           refreshRecentFiles() {},
           deactivateForMultiFormat() {

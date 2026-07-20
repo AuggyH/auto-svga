@@ -126,7 +126,7 @@ export async function loadShortTermOpenedSource({
   });
   try {
     const model = await inspectShortTerm(bytes, state.displayName);
-    if (!authorityIsCurrent()) return;
+    if (!authorityIsCurrent()) return false;
     state.model = model;
     state.selectedImageKey = model.replaceableElements.images[0]?.imageKey || "";
     state.selectedTextKey = model.replaceableElements.texts[0]?.textKey || "";
@@ -135,18 +135,23 @@ export async function loadShortTermOpenedSource({
     setView("preview");
     moveViewTransitionFocus(focusContext, nodes.previewStagePanel);
   } catch (error) {
-    if (!authorityIsCurrent()) return;
+    if (!authorityIsCurrent()) return false;
     clearShortTermCurrentFile({ state, stopAllPlayback });
     showFailure(error);
-    return;
+    return false;
   }
   try {
     await mountPrimaryPlayback(state.previewBytes);
-    if (!authorityIsCurrent()) stopAllPlayback();
+    if (!authorityIsCurrent()) {
+      stopAllPlayback();
+      return false;
+    }
+    return true;
   } catch (error) {
-    if (!authorityIsCurrent()) return;
+    if (!authorityIsCurrent()) return false;
     stopAllPlayback();
     showPlaybackFailure(error);
+    return false;
   }
 }
 

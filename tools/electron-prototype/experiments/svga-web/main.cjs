@@ -362,6 +362,7 @@ const multiFormatTrace = createMultiFormatOpenRuntimeTrace({
 const sourceFilePaths = new Map();
 const referenceFileIds = new Set();
 const pendingMultiFormatRecentCommits = new Map();
+const pendingMultiFormatRendererOpenResults = new Map();
 const committedMultiFormatRecentSourceIds = new Set();
 let multiFormatDesktopSession;
 let multiFormatDesktopRendererReady = false;
@@ -5595,6 +5596,16 @@ function commitMultiFormatOpen(input) {
   return { status: "committed", sourceId, recorded: true, pathRedacted: true };
 }
 
+function consumeMultiFormatHostFileOpen(input) {
+  const eventId = typeof input?.eventId === "string" ? input.eventId : "";
+  if (!/^fileOpenEvent:\d+$/u.test(eventId)) {
+    return { status: "failed", code: "open_failed", pathRedacted: true };
+  }
+  const result = pendingMultiFormatRendererOpenResults.get(eventId);
+  pendingMultiFormatRendererOpenResults.delete(eventId);
+  return result ?? { status: "failed", code: "open_failed", pathRedacted: true };
+}
+
 async function openMultiFormatFile() {
   assertMultiFormatDesktopProduct();
   const selection = await chooseMultiFormatLocalFile({
@@ -5951,10 +5962,16 @@ async function dispatchMultiFormatOpenFileEvent(window, item) {
     if (!failed) throw error;
     return;
   }
-  const completed = await invokeMultiFormatRendererDecision(window, "completeHostFileOpen", {
-    eventId: item.eventId,
-    result
-  });
+  pendingMultiFormatRendererOpenResults.set(item.eventId, result);
+  let completed = false;
+  try {
+    completed = await invokeMultiFormatRendererDecision(window, "completeHostFileOpen", {
+      eventId: item.eventId
+    });
+  } finally {
+    pendingMultiFormatRendererOpenResults.delete(item.eventId);
+    if (!completed && result?.sourceId) pendingMultiFormatRecentCommits.delete(result.sourceId);
+  }
   multiFormatTrace.record({
     phase: "renderer_complete_result",
     eventId: item.eventId,
@@ -7447,6 +7464,12 @@ async function createExperimentWindow() {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     assertMultiFormatDesktopProduct();
     return openMultiFormatFile();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.consumeMultiFormatHostFileOpen, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
+    return consumeMultiFormatHostFileOpen(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.commitMultiFormatOpen, async (event, input) => {

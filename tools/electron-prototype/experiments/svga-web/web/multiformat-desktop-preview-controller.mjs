@@ -176,13 +176,15 @@ export function createMultiFormatDesktopPreviewController({
 
   async function completeHostFileOpen(payload = {}) {
     if (!hostFileOpenIsActive(payload)) return false;
-    const outcome = await resolveMultiFormatOpenOutcome(Promise.resolve(payload?.result), {
+    const hostResult = payload?.result ?? await bridge.consumeMultiFormatHostFileOpen?.({
+      eventId: payload.eventId
+    });
+    const outcome = await resolveMultiFormatOpenOutcome(Promise.resolve(hostResult), {
       deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS
     });
     if (!hostFileOpenIsActive(payload)) return false;
     clearHostFileOpenRequest();
-    await applyOpenOutcome(outcome);
-    return true;
+    return (await applyOpenOutcome(outcome, { requireTerminalAcceptance: true })) !== false;
   }
 
   function failHostFileOpen(payload = {}) {
@@ -593,7 +595,7 @@ export function createMultiFormatDesktopPreviewController({
     setView(model.status === "failed" ? "failed" : "preview");
   }
 
-  async function applyOpenedHostResult(result) {
+  async function applyOpenedHostResult(result, options = {}) {
     if (result?.model?.detectedFormat === "svga" && svgaController?.handlers?.loadOpenedSource) {
       const bytes = result?.svgaSource?.bytes;
       if (!bytes?.byteLength) {
@@ -603,16 +605,17 @@ export function createMultiFormatDesktopPreviewController({
       clearRuntimePreview();
       clearRuntimeReplacementValues();
       activeFormat = "svga";
-      await svgaController.handlers.loadOpenedSource({
+      const loaded = await svgaController.handlers.loadOpenedSource({
         bytes,
         displayName: result.svgaSource.displayName || result.model.displayName || "local.svga",
         sourceId: result.sourceId || "",
         openedFromHost: true,
         startPlayback: result.model.status === "playing"
       });
+      if (options.requireTerminalAcceptance === true && loaded !== true) return false;
       await commitAcceptedOpen(result);
       await svgaController.handlers.refreshRecentFiles?.();
-      return;
+      return true;
     }
     if (activeFormat === "svga") svgaController?.handlers?.deactivateForMultiFormat?.();
     activeFormat = result?.model?.detectedFormat || "";
@@ -627,6 +630,7 @@ export function createMultiFormatDesktopPreviewController({
     applyHostResult(result);
     await commitAcceptedOpen(result);
     await svgaController?.handlers?.refreshRecentFiles?.();
+    return true;
   }
 
   async function commitAcceptedOpen(result) {
@@ -654,20 +658,20 @@ export function createMultiFormatDesktopPreviewController({
     setView("loading");
   }
 
-  async function applyOpenOutcome(outcome) {
+  async function applyOpenOutcome(outcome, options = {}) {
     if (outcome.kind === "cancelled") {
-      return;
+      return true;
     }
     if (outcome.kind === "failure") {
       showOpenFailure(outcome);
-      return;
+      return true;
     }
     if (outcome.kind === "aepHandoff") {
       revokeActiveDocumentAuthority();
       applyHostResult(outcome.result, { replaceSourceAuthority: true });
-      return;
+      return true;
     }
-    await applyOpenedHostResult(outcome.result);
+    return applyOpenedHostResult(outcome.result, options);
   }
 
   function renderModel(result) {

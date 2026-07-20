@@ -15,6 +15,7 @@ const IPC_CHANNELS = Object.freeze({
   getRecentSvgaFiles: "svga-web-experiment:get-recent-svga-files",
   openRecentSvgaFile: "svga-web-experiment:open-recent-svga-file",
   clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
+  consumeMultiFormatHostFileOpen: "svga-web-experiment:consume-multiformat-host-file-open",
   commitMultiFormatOpen: "svga-web-experiment:commit-multiformat-open",
   openMultiFormatFile: "svga-web-experiment:open-multiformat-file",
   openDroppedMultiFormatFile: "svga-web-experiment:open-dropped-multiformat-file",
@@ -217,6 +218,9 @@ function createMultiFormatDesktopProductPreloadApi() {
     },
     openMultiFormatFile() {
       return invoke(IPC_CHANNELS.openMultiFormatFile);
+    },
+    consumeMultiFormatHostFileOpen(input) {
+      return invoke(IPC_CHANNELS.consumeMultiFormatHostFileOpen, input);
     },
     commitMultiFormatOpen(input) {
       return invoke(IPC_CHANNELS.commitMultiFormatOpen, input);

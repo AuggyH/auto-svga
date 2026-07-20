@@ -456,6 +456,7 @@ test("host-opened SVGA delegates established save, optimize, and rename workflow
     handlers: {
       async loadOpenedSource(input) {
         calls.push(["load", input]);
+        return true;
       },
       async refreshRecentFiles() {
         calls.push(["refresh"]);
@@ -526,7 +527,9 @@ test("file-event Recent authority commits only after the active renderer termina
     state: { view: "launch" },
     svgaController: {
       handlers: {
-        async loadOpenedSource() {},
+        async loadOpenedSource() {
+          return true;
+        },
         async refreshRecentFiles() {}
       }
     }
@@ -544,6 +547,116 @@ test("file-event Recent authority commits only after the active renderer termina
 
   assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "active-event", result }), true);
   assert.deepEqual(commits, [{ sourceId: "sha256:warm-open" }]);
+});
+
+test("host file-event consumes its source payload through preload IPC without JSON binary loss", async () => {
+  const calls = [];
+  const result = {
+    sourceId: "sha256:ipc-warm-open",
+    model: { detectedFormat: "svga", displayName: "warm.svga", status: "playing" },
+    svgaSource: { displayName: "warm.svga", bytes: Uint8Array.from([1, 2, 3]) }
+  };
+  const controller = createMultiFormatDesktopPreviewController({
+    bridge: {
+      async consumeMultiFormatHostFileOpen(input) {
+        calls.push(["consume", input]);
+        return result;
+      },
+      async commitMultiFormatOpen(input) {
+        calls.push(["commit", input]);
+        return { status: "committed", sourceId: input.sourceId, pathRedacted: true };
+      }
+    },
+    nodes: {},
+    state: { view: "launch" },
+    svgaController: {
+      handlers: {
+        async loadOpenedSource(input) {
+          calls.push(["load", input]);
+          return true;
+        },
+        async refreshRecentFiles() {
+          calls.push(["refresh"]);
+        }
+      }
+    }
+  });
+
+  assert.equal(controller.handlers.beginHostFileOpen({ eventId: "ipc-warm-event" }), true);
+  assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "ipc-warm-event" }), true);
+  assert.deepEqual(calls.map(([name]) => name), ["consume", "load", "commit", "refresh"]);
+  assert.deepEqual(calls[0][1], { eventId: "ipc-warm-event" });
+  assert.deepEqual(Array.from(calls[1][1].bytes), [1, 2, 3]);
+});
+
+test("host file-event cannot report terminal acceptance when SVGA loading fails", async () => {
+  const commits = [];
+  const controller = createMultiFormatDesktopPreviewController({
+    bridge: {
+      async consumeMultiFormatHostFileOpen() {
+        return {
+          sourceId: "sha256:failed-warm-open",
+          model: { detectedFormat: "svga", displayName: "failed.svga", status: "playing" },
+          svgaSource: { displayName: "failed.svga", bytes: Uint8Array.from([4, 5, 6]) }
+        };
+      },
+      async commitMultiFormatOpen(input) {
+        commits.push(input);
+        return { status: "committed", sourceId: input.sourceId, pathRedacted: true };
+      }
+    },
+    nodes: {},
+    state: { view: "preview" },
+    svgaController: {
+      handlers: {
+        async loadOpenedSource() {
+          return false;
+        },
+        async refreshRecentFiles() {}
+      }
+    }
+  });
+
+  assert.equal(controller.handlers.beginHostFileOpen({ eventId: "failed-warm-event" }), true);
+  assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "failed-warm-event" }), false);
+  assert.deepEqual(commits, []);
+});
+
+test("host file-event payload is consumed once without entering the renderer action JSON", () => {
+  const mainSource = source("main.cjs");
+  const consumeSource = extractFunctionSource(mainSource, "function consumeMultiFormatHostFileOpen");
+  const dispatchSource = extractFunctionSource(mainSource, "async function dispatchMultiFormatOpenFileEvent");
+  const eventId = "fileOpenEvent:7";
+  const result = {
+    sourceId: "a".repeat(24),
+    svgaSource: { bytes: Uint8Array.from([7, 8, 9]) }
+  };
+  const context = {
+    pendingMultiFormatRendererOpenResults: new Map([[eventId, result]])
+  };
+  vm.runInNewContext(`${consumeSource}; globalThis.consumeOpen = consumeMultiFormatHostFileOpen;`, context);
+
+  const consumed = context.consumeOpen({ eventId });
+  assert.equal(consumed.sourceId, result.sourceId);
+  assert.deepEqual(Array.from(consumed.svgaSource.bytes), [7, 8, 9]);
+  const duplicate = context.consumeOpen({ eventId });
+  assert.equal(duplicate.status, "failed");
+  assert.equal(duplicate.code, "open_failed");
+  assert.equal(duplicate.pathRedacted, true);
+  const unbound = context.consumeOpen({ eventId: "unbound" });
+  assert.equal(unbound.status, "failed");
+  assert.equal(unbound.code, "open_failed");
+  assert.equal(unbound.pathRedacted, true);
+  assert.match(dispatchSource, /pendingMultiFormatRendererOpenResults\.set\(item\.eventId, result\)/u);
+  assert.match(
+    dispatchSource,
+    /invokeMultiFormatRendererDecision\(window, "completeHostFileOpen", \{\s*eventId: item\.eventId\s*\}\)/u
+  );
+  assert.doesNotMatch(dispatchSource, /eventId: item\.eventId,\s*result/u);
+  assert.match(
+    dispatchSource,
+    /if \(!completed && result\?\.sourceId\) pendingMultiFormatRecentCommits\.delete\(result\.sourceId\)/u
+  );
 });
 
 test("host Recent commit is source-bound and exactly once", () => {
