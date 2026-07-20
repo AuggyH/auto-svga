@@ -381,6 +381,9 @@ async function main() {
   const recentFilesModel = await readFile(path.join(webRoot, "short-term-macos-recent-files-model.mjs"), "utf8");
   const renderModel = await readFile(path.join(webRoot, "short-term-macos-render-model.mjs"), "utf8");
   const compareModel = await readFile(path.join(webRoot, "short-term-macos-compare-model.mjs"), "utf8");
+  const compareSurface = await readFile(path.join(webRoot, "short-term-macos-compare-surface.mjs"), "utf8");
+  const commandState = await readFile(path.join(webRoot, "short-term-macos-command-state.mjs"), "utf8");
+  const actionBridge = await readFile(path.join(webRoot, "short-term-macos-action-bridge.mjs"), "utf8");
   const dragDecisionSurface = await readFile(path.join(webRoot, "short-term-macos-drag-decision-surface.mjs"), "utf8");
   const multiFormatController = await readFile(path.join(webRoot, "multiformat-desktop-preview-controller.mjs"), "utf8");
   const multiFormatConformance = await readFile(path.join(webRoot, "multiformat-product-conformance.mjs"), "utf8");
@@ -810,6 +813,10 @@ async function main() {
     && /--asv-component-compare-empty-prompt-width:\s*var\(--asv-component-launch-content-width\)/.test(tokens)
     && /\.compareEmptyPrompt\s*\{[\s\S]*gap: var\(--asv-compare-empty-prompt-gap\)[\s\S]*width: min\(var\(--asv-compare-empty-prompt-width\), 100%\)/.test(modules)
     && /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareEmptyPrompt\s*\{[\s\S]*display: none/.test(modules));
+  record("compare-entry-requires-loaded-preview-source", /const canCompare = hasFile[\s\S]*input\.view === "preview"[\s\S]*input\.view === "compare"/.test(commandState)
+    && /canEnterShortTermGeneralCompare\(state\)/.test(compareSurface)
+    && /toggleCompare: \(\) => \{/.test(actionBridge)
+    && /if \(!canEnterShortTermGeneralCompare\(state\)\) return false/.test(actionBridge));
   record("compare-right-panel-slots-use-open-or-replace-action-contract", /function renderComparePairSlotHtml\(slot, model, displayName\)/.test(compareModel)
     && /const openAction = slot === "A" \? "open-compare-a" : "open-compare-b"/.test(compareModel)
     && /const actionCopy = model \? "替换" : "打开"/.test(compareModel)

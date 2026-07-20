@@ -1356,27 +1356,33 @@ test("short-term Preview, Edit, and Compare navigation keeps focus in the active
   } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs")).href);
   const document = { activeElement: undefined, body: {} };
   const app = new FakeDomElement("main");
+  const launchView = new FakeDomElement("section");
   const previewView = new FakeDomElement("section");
   const editView = new FakeDomElement("section");
   const compareView = new FakeDomElement("section");
+  launchView.dataset.view = "launch";
   previewView.dataset.view = "preview";
   editView.dataset.view = "edit";
   compareView.dataset.view = "compare";
+  const launchOpenButton = new FakeDomElement("button");
   const previewEditButton = new FakeDomElement("button");
   const previewModeButton = new FakeDomElement("button");
   const editModeButton = new FakeDomElement("button");
   const compareOpenAButton = new FakeDomElement("button");
   const compareOpenBButton = new FakeDomElement("button");
   const compareStage = new FakeDomElement("section");
+  launchView.replaceChildren(launchOpenButton);
   previewView.replaceChildren(previewModeButton, previewEditButton);
   editView.replaceChildren(editModeButton);
   compareView.replaceChildren(compareStage, compareOpenAButton, compareOpenBButton);
-  app.replaceChildren(previewView, editView, compareView);
+  app.replaceChildren(launchView, previewView, editView, compareView);
   for (const node of [
     app,
+    launchView,
     previewView,
     editView,
     compareView,
+    launchOpenButton,
     previewEditButton,
     previewModeButton,
     editModeButton,
@@ -1385,12 +1391,13 @@ test("short-term Preview, Edit, and Compare navigation keeps focus in the active
     compareStage
   ]) node.ownerDocument = document;
   const setView = (view) => {
-    for (const candidate of [previewView, editView, compareView]) {
+    for (const candidate of [launchView, previewView, editView, compareView]) {
       candidate.hidden = candidate.dataset.view !== view;
     }
   };
   const nodes = {
     app,
+    launchOpenButton,
     previewModeButton,
     editModeButton,
     compareView,
@@ -1420,17 +1427,24 @@ test("short-term Preview, Edit, and Compare navigation keeps focus in the active
   focusModeViewTransition(nodes, "preview", previewFocus);
   assert.equal(document.activeElement, previewModeButton);
 
-  previewModeButton.focus();
-  await enterShortTermGeneralCompare({
+  compareStage.focus();
+  const noSourceState = { view: "compare", comparePlaybackLooping: true };
+  const noSourceResult = await enterShortTermGeneralCompare({
     nodes,
-    state: { comparePlaybackLooping: true },
-    setView,
+    state: noSourceState,
+    setView(view) {
+      noSourceState.view = view;
+      setView(view);
+    },
     async mountPlayback() {},
     clearCanvas() {}
   });
-  assert.equal(document.activeElement, compareOpenAButton);
+  assert.equal(noSourceResult, false);
+  assert.equal(noSourceState.view, "launch");
+  assert.equal(document.activeElement, launchOpenButton);
 
   const state = {
+    view: "preview",
     sourceBytes: Uint8Array.from([1]),
     previewBytes: Uint8Array.from([1]),
     displayName: "A.svga",
@@ -1440,13 +1454,18 @@ test("short-term Preview, Edit, and Compare navigation keeps focus in the active
   };
   previewModeButton.focus();
   setView("preview");
-  await enterShortTermGeneralCompare({
+  const loadedResult = await enterShortTermGeneralCompare({
     nodes,
     state,
-    setView,
+    setView(view) {
+      state.view = view;
+      setView(view);
+    },
     async mountPlayback() {},
     clearCanvas() {}
   });
+  assert.equal(loadedResult, true);
+  assert.equal(state.view, "compare");
   assert.equal(document.activeElement, compareOpenBButton);
 
   state.compareBSource = {
@@ -1456,10 +1475,14 @@ test("short-term Preview, Edit, and Compare navigation keeps focus in the active
   };
   previewModeButton.focus();
   setView("preview");
+  state.view = "preview";
   await enterShortTermGeneralCompare({
     nodes,
     state,
-    setView,
+    setView(view) {
+      state.view = view;
+      setView(view);
+    },
     async mountPlayback() {},
     clearCanvas() {}
   });
@@ -1474,6 +1497,57 @@ test("short-term Preview, Edit, and Compare navigation keeps focus in the active
 
   const controllerSource = await readFile(path.join(experimentRoot, "web/short-term-macos-controller.mjs"), "utf8");
   assert.match(controllerSource, /function setMode\(mode\) \{[\s\S]*captureViewTransitionFocus\(nodes\)[\s\S]*focusModeViewTransition\(nodes, mode, focusContext\)/u);
+});
+
+test("short-term Compare command is available only for loaded Preview and exits back to Preview", async () => {
+  const { installShortTermActionBridge } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs")).href);
+  const { buildCommandState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-command-state.mjs")).href);
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const launchView = page.match(/<section class="view launchView"[\s\S]*?<section class="view previewView"/)?.[0] ?? "";
+
+  assert.doesNotMatch(launchView, /data-action="compare"|进入对比/u);
+  assert.equal(buildCommandState({ view: "launch", hasFile: false }).actionStates.compare.enabled, false);
+  assert.equal(buildCommandState({ view: "launch", hasFile: false }).menuState.canCompare, false);
+  assert.equal(buildCommandState({ view: "loading", hasFile: true }).menuState.canCompare, false);
+  assert.equal(buildCommandState({ view: "preview", hasFile: true }).menuState.canCompare, true);
+  assert.equal(buildCommandState({ view: "compare", hasFile: true }).menuState.canCompare, true);
+
+  const state = { view: "launch", sourceBytes: undefined };
+  const calls = [];
+  const windowRef = {};
+  installShortTermActionBridge({
+    windowRef,
+    documentRef: {},
+    state,
+    handlers: {
+      enterGeneralCompare() {
+        calls.push("enter");
+        return true;
+      },
+      openCompareBFromHost() {
+        calls.push("open-b");
+        return true;
+      },
+      setMode(mode) {
+        calls.push(`mode:${mode}`);
+        return true;
+      }
+    }
+  });
+
+  assert.equal(windowRef.__autoSvgaShortTermActions.toggleCompare(), false);
+  assert.equal(windowRef.__autoSvgaShortTermActions.openCompareB(), false);
+  assert.deepEqual(calls, []);
+
+  state.sourceBytes = Uint8Array.from([1]);
+  state.view = "preview";
+  assert.equal(windowRef.__autoSvgaShortTermActions.toggleCompare(), true);
+  assert.equal(windowRef.__autoSvgaShortTermActions.openCompareB(), true);
+  assert.deepEqual(calls, ["enter", "open-b"]);
+
+  state.view = "compare";
+  assert.equal(windowRef.__autoSvgaShortTermActions.toggleCompare(), true);
+  assert.deepEqual(calls, ["enter", "open-b", "mode:preview"]);
 });
 
 test("short-term preview right surface exposes page-state trace semantics", async () => {
@@ -1779,7 +1853,7 @@ test("short-term general compare exposes missing-slot open actions in the right 
   assert.match(loadedHtml, /data-action="open-compare-b"[\s\S]*aria-label="替换对比文件 B"/);
 });
 
-test("Compare A/B dropped-file loaders preserve the peer slot and support B-first state", async () => {
+test("Compare A/B loaders require an active primary source and preserve the peer slot", async () => {
   const {
     loadShortTermCompareAFromDroppedFile,
     loadShortTermCompareBFromDroppedFile,
@@ -1812,22 +1886,75 @@ test("Compare A/B dropped-file loaders preserve the peer slot and support B-firs
   };
   const bModel = { overview: { facts: [] } };
   const mountCalls = [];
-  await loadShortTermCompareBFromDroppedFile({
+  let noSourceACalls = 0;
+  assert.equal(await openShortTermCompareAFromHost({
+    bridge: {
+      async openSvgaFile() {
+        noSourceACalls += 1;
+        return { status: "opened" };
+      }
+    },
+    state,
+    loadOpenedSource: async () => { noSourceACalls += 1; },
+    enterGeneralCompare: async () => { noSourceACalls += 1; },
+    refreshRecentFiles: async () => { noSourceACalls += 1; }
+  }), false);
+  assert.equal(await loadShortTermCompareAFromDroppedFile({
+    file: {
+      async arrayBuffer() {
+        noSourceACalls += 1;
+        return Uint8Array.from([1]).buffer;
+      }
+    },
+    state,
+    loadOpenedSource: async () => { noSourceACalls += 1; },
+    enterGeneralCompare: async () => { noSourceACalls += 1; }
+  }), false);
+  assert.equal(noSourceACalls, 0);
+
+  let readCalls = 0;
+  assert.equal(await loadShortTermCompareBFromDroppedFile({
     file: {
       name: "b.svga",
-      arrayBuffer: async () => Uint8Array.from([4, 5, 6]).buffer
+      arrayBuffer: async () => {
+        readCalls += 1;
+        return Uint8Array.from([4, 5, 6]).buffer;
+      }
     },
     nodes,
     state,
     enterGeneralCompare: async () => {},
     inspectShortTerm: async () => bModel,
     mountPlayback: async (...args) => mountCalls.push(args)
-  });
+  }), false);
+  assert.equal(readCalls, 0);
+  assert.equal(state.compareBSource, undefined);
+  assert.deepEqual(mountCalls, []);
+
+  state.sourceBytes = Uint8Array.from([1, 2, 3]);
+  state.displayName = "a.svga";
+  state.model = { overview: { facts: [] } };
+  assert.equal(await loadShortTermCompareBFromDroppedFile({
+    file: {
+      name: "b.svga",
+      arrayBuffer: async () => {
+        readCalls += 1;
+        return Uint8Array.from([4, 5, 6]).buffer;
+      }
+    },
+    nodes,
+    state,
+    enterGeneralCompare: async () => {},
+    inspectShortTerm: async () => bModel,
+    mountPlayback: async (...args) => mountCalls.push(args)
+  }), true);
+  assert.equal(readCalls, 1);
   assert.deepEqual(Array.from(state.compareBSource.bytes), [4, 5, 6]);
   assert.equal(state.compareBSource.displayName, "b.svga");
   assert.equal(state.compareBSource.model, bModel);
   assert.equal(nodes.compareCanvasWrapB.dataset.compareState, "loaded");
-  assert.match(nodes.compareInfoB.innerHTML, /data-compare-state="waiting-a"/);
+  assert.match(nodes.compareInfoB.innerHTML, /data-compare-state="loaded"/);
+  assert.match(nodes.compareInfoB.innerHTML, /data-slot="A" data-state="loaded"[\s\S]*a\.svga/);
   assert.match(nodes.compareInfoB.innerHTML, /data-slot="B" data-state="loaded"[\s\S]*b\.svga/);
   assert.equal(mountCalls[0][0], "compareB");
 
@@ -10390,8 +10517,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermController, /async function openCompareAFromHost/);
   assert.match(shortTermEventBindings, /action === "open-compare-a"/);
   assert.match(shortTermCommandState, /appearance/);
-  assert.match(shortTermCommandState, /compare: \{ enabled: true, reason: "" \}/);
-  assert.match(shortTermCommandState, /canCompare: true/);
+  assert.match(shortTermCommandState, /const canCompare = hasFile/);
+  assert.match(shortTermCommandState, /compare: \{ enabled: canCompare/);
+  assert.match(shortTermCommandState, /canCompare,/);
   assert.match(shortTermCommandSurface, /appearance: state\.appearance/);
   assert.match(shortTermActionBridge, /openSettings: handlers\.openSettings/);
   assert.match(shortTermActionBridge, /setAppearance: handlers\.setAppearance/);

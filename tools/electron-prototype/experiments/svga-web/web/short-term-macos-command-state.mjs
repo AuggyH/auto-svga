@@ -19,10 +19,11 @@ export function buildCommandState(input) {
   const canResetImageReplacement = input.activeOutput?.kind === "replacement";
   const canShowOptimizationComparison = input.activeOutput?.kind === "optimization"
     && Boolean(input.activeOutput.bytes?.byteLength);
+  const canCompare = hasFile && (input.view === "preview" || input.view === "compare");
 
   return {
     actionStates: {
-      compare: { enabled: true, reason: "" },
+      compare: { enabled: canCompare, reason: "请先打开 SVGA" },
       "play-pause": { enabled: hasFile, reason: "请先打开 SVGA" },
       replay: { enabled: hasFile, reason: "请先打开 SVGA" },
       "loop-toggle": { enabled: hasFile, reason: "请先打开 SVGA" },
@@ -46,7 +47,7 @@ export function buildCommandState(input) {
       canOverwrite,
       canSaveAs,
       saveBusy,
-      canCompare: true,
+      canCompare,
       canPlay: hasFile,
       canReplay: hasFile,
       canLoop: hasFile,
