@@ -693,7 +693,7 @@ async function pageSnapshot() {
 async function captureFormatPixels(format) {
   if (format === "svga") return captureCanvasBackingPixels('#primaryCanvas[data-runtime-player="svga-web"]');
   if (format === "lottie") return captureElementPixels("#multiFormatRuntimeMount svg", "lottie-svg");
-  return captureWebglBackingPixels("#multiFormatRuntimeMount canvas");
+  return captureElementPixels("#multiFormatRuntimeMount canvas", "vap-webgl-canvas");
 }
 
 function isMeaningfulPixels(pixels) {
@@ -776,82 +776,29 @@ async function captureCanvasBackingPixels(selector) {
   };
 }
 
-async function captureWebglBackingPixels(selector) {
-  const pixels = await runInPage("webgl backing pixels", `
-    (() => {
-      const canvas = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find((candidate) => {
-        try {
-          const rect = candidate.getBoundingClientRect();
-          return rect.width > 1 && rect.height > 1 && (candidate.getContext("webgl") || candidate.getContext("experimental-webgl"));
-        } catch {
-          return false;
-        }
-      });
-      if (!canvas) return undefined;
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-      if (!gl) return undefined;
-      const width = Number(gl.drawingBufferWidth) || Number(canvas.width) || 0;
-      const height = Number(gl.drawingBufferHeight) || Number(canvas.height) || 0;
-      if (width <= 0 || height <= 0) return undefined;
-      const data = new Uint8Array(width * height * 4);
-      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
-      let nonWhite = 0;
-      let nonTransparent = 0;
-      let binary = "";
-      for (let index = 0; index < data.length; index += 4) {
-        const r = data[index] ?? 0;
-        const g = data[index + 1] ?? 0;
-        const b = data[index + 2] ?? 0;
-        const a = data[index + 3] ?? 0;
-        if (a > 0) nonTransparent += 1;
-        if (a > 0 && (r < 245 || g < 245 || b < 245)) nonWhite += 1;
-      }
-      const chunkSize = 8192;
-      for (let index = 0; index < data.length; index += chunkSize) {
-        binary += String.fromCharCode(...data.subarray(index, index + chunkSize));
-      }
-      const rect = canvas.getBoundingClientRect();
-      return {
-        source: "webgl-backing-store",
-        selector: ${JSON.stringify(selector)},
-        width,
-        height,
-        cssWidth: rect.width,
-        cssHeight: rect.height,
-        backingWidth: Number(canvas.width) || 0,
-        backingHeight: Number(canvas.height) || 0,
-        nonWhite,
-        nonTransparent,
-        dataBase64: btoa(binary)
-      };
-    })()
-  `);
-  if (!pixels) throw new Error(`Missing WebGL backing pixels for ${selector}`);
-  const bytes = Buffer.from(String(pixels.dataBase64 || ""), "base64");
-  return {
-    source: pixels.source,
-    selector: pixels.selector,
-    width: Number(pixels.width) || 0,
-    height: Number(pixels.height) || 0,
-    cssWidth: Number(pixels.cssWidth) || 0,
-    cssHeight: Number(pixels.cssHeight) || 0,
-    backingWidth: Number(pixels.backingWidth) || 0,
-    backingHeight: Number(pixels.backingHeight) || 0,
-    nonWhite: Number(pixels.nonWhite) || 0,
-    nonTransparent: Number(pixels.nonTransparent) || 0,
-    sha256: createHash("sha256").update(bytes).digest("hex")
-  };
-}
-
 async function captureElementPixels(selector, label) {
   const rect = await runInPage(`${label} rect`, `
     (() => {
       const element = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).find((candidate) => {
         const rect = candidate.getBoundingClientRect();
-        return rect.width > 1 && rect.height > 1;
+        if (rect.width <= 1 || rect.height <= 1) return false;
+        const style = globalThis.getComputedStyle?.(candidate);
+        if (style?.display === "none" || style?.visibility === "hidden" || Number(style?.opacity) === 0) return false;
+        if (${JSON.stringify(label)} !== "vap-webgl-canvas") return true;
+        try {
+          return Boolean(candidate.getContext?.("webgl") || candidate.getContext?.("experimental-webgl"));
+        } catch {
+          return false;
+        }
       });
       if (!element) return undefined;
       const rect = element.getBoundingClientRect();
+      const viewportWidth = Math.max(0, Number(document.documentElement?.clientWidth) || Number(globalThis.innerWidth) || 0);
+      const viewportHeight = Math.max(0, Number(document.documentElement?.clientHeight) || Number(globalThis.innerHeight) || 0);
+      const fullyVisible = rect.left >= 0
+        && rect.top >= 0
+        && rect.right <= viewportWidth
+        && rect.bottom <= viewportHeight;
       return {
         x: Math.max(0, Math.floor(rect.x)),
         y: Math.max(0, Math.floor(rect.y)),
@@ -861,15 +808,24 @@ async function captureElementPixels(selector, label) {
         cssHeight: rect.height,
         backingWidth: Number(element.width) || 0,
         backingHeight: Number(element.height) || 0,
+        viewportWidth,
+        viewportHeight,
+        fullyVisible,
         markup: ${JSON.stringify(label)} === "lottie-svg" ? element.outerHTML : ""
       };
     })()
   `);
   if (!rect) throw new Error(`Missing capturable ${label} element.`);
+  if (label === "vap-webgl-canvas" && rect.fullyVisible !== true) {
+    throw new Error(`The VAP WebGL canvas is not fully visible for compositor capture.`);
+  }
   await delay(40);
   const image = await windowRef.webContents.capturePage(rect);
   const size = image.getSize();
   const bitmap = image.toBitmap();
+  if (size.width <= 1 || size.height <= 1 || bitmap.length < size.width * size.height * 4) {
+    throw new Error(`The ${label} compositor capture is empty or truncated.`);
+  }
   let nonWhite = 0;
   let nonTransparent = 0;
   for (let index = 0; index < bitmap.length; index += 4) {
@@ -883,12 +839,16 @@ async function captureElementPixels(selector, label) {
   return {
     source: "compositor-child-capture",
     selector,
+    label,
     width: size.width,
     height: size.height,
     cssWidth: rect.cssWidth,
     cssHeight: rect.cssHeight,
     backingWidth: rect.backingWidth,
     backingHeight: rect.backingHeight,
+    viewportWidth: rect.viewportWidth,
+    viewportHeight: rect.viewportHeight,
+    fullyVisible: rect.fullyVisible,
     nonWhite,
     nonTransparent,
     sha256: createHash("sha256").update(bitmap).digest("hex"),

@@ -8245,9 +8245,10 @@ test("multi-format runtime self-test uses the owner replacement path for each fo
   assert.match(proofSource, /Runtime self-test motion proof/u);
   assert.match(proofSource, /backgroundThrottling:\s*false/u);
   assert.match(proofSource, /markupSha256/u);
-  assert.match(proofSource, /webgl-backing-store/u);
-  const webglCaptureSource = extractFunctionSource(proofSource, "async function captureWebglBackingPixels");
-  assert.doesNotMatch(webglCaptureSource, /refreshRuntimePreviewFrame|drawFrame/u);
+  assert.doesNotMatch(proofSource, /webgl-backing-store|captureWebglBackingPixels/u);
+  const elementCaptureSource = extractFunctionSource(proofSource, "async function captureElementPixels");
+  assert.match(elementCaptureSource, /windowRef\.webContents\.capturePage\(rect\)/u);
+  assert.match(elementCaptureSource, /fullyVisible/u);
   const bridgeSource = readFileSync(
     path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"),
     "utf8"
@@ -8261,6 +8262,50 @@ test("multi-format runtime self-test uses the owner replacement path for each fo
   assert.match(proofSource, /actions\.updateTextPreview\(/u);
   assert.match(proofSource, /actions\.resetTextPreview\(/u);
   assert.match(proofSource, /snapshot\.summaryText\?\.includes\("未保存输出："\)/u);
+});
+
+test("multi-format runtime self-test treats VAP compositor pixels as visible authority", async () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-multiformat-runtime-selftest.cjs"),
+    "utf8"
+  );
+  const captureSource = extractFunctionSource(proofSource, "async function captureFormatPixels");
+  let backingCaptures = 0;
+  let compositorCaptures = 0;
+  const result = await vm.runInNewContext(`(${captureSource})("vap")`, {
+    captureCanvasBackingPixels: async () => ({ source: "canvas-backing-store" }),
+    captureWebglBackingPixels: async () => {
+      backingCaptures += 1;
+      return {
+        source: "webgl-backing-store",
+        width: 120,
+        height: 80,
+        nonWhite: 0,
+        nonTransparent: 0
+      };
+    },
+    captureElementPixels: async (selector, label) => {
+      compositorCaptures += 1;
+      return {
+        source: "compositor-child-capture",
+        selector,
+        label,
+        width: 240,
+        height: 160,
+        cssWidth: 120,
+        cssHeight: 80,
+        backingWidth: 120,
+        backingHeight: 80,
+        nonWhite: 64,
+        nonTransparent: 64
+      };
+    }
+  });
+  assert.equal(result.source, "compositor-child-capture");
+  assert.equal(result.selector, "#multiFormatRuntimeMount canvas");
+  assert.equal(result.label, "vap-webgl-canvas");
+  assert.equal(compositorCaptures, 1);
+  assert.equal(backingCaptures, 0, "discarded default framebuffer contents are not visible-pixel authority");
 });
 
 test("multi-format runtime self-test waits for a delayed first presented frame without driving VAP", async () => {
