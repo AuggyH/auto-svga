@@ -149,7 +149,6 @@ export async function openShortTermCompareBFromHost({
   refreshRecentFiles
 }) {
   if (!bridge?.openSvgaFile) return;
-  if (state.view !== "compare") await enterGeneralCompare();
   applyCompareSlotView(nodes, "B", {
     title: "选择 B 文件",
     meta: "等待选择 SVGA",
@@ -168,6 +167,7 @@ export async function openShortTermCompareBFromHost({
     });
     return false;
   }
+  if (state.view !== "compare") await enterGeneralCompare();
   const bytes = toUint8Array(opened.bytes);
   applyCompareSlotView(nodes, "B", {
     title: opened.basename || "B 文件",
