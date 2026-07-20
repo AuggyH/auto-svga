@@ -373,6 +373,7 @@ async function main() {
     : "";
   const appEntry = await readFile(path.join(webRoot, "short-term-macos-app.mjs"), "utf8");
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
+  const overviewModel = await readFile(path.join(webRoot, "short-term-macos-overview-model.mjs"), "utf8");
   const overviewRenderer = await readFile(path.join(webRoot, "short-term-macos-overview-renderers.mjs"), "utf8");
   const optimizationRenderer = await readFile(path.join(webRoot, "short-term-macos-optimization-renderers.mjs"), "utf8");
   const feedbackModel = await readFile(path.join(webRoot, "short-term-macos-feedback-model.mjs"), "utf8");
@@ -713,6 +714,10 @@ async function main() {
   record("right-surface-asset-row-copy-stays-figma-scoped", !/次引用/.test(overviewRenderer), {
     disallowedCopy: "次引用"
   });
+  record("no-audio-overview-uses-one-normalized-zero-count-source",
+    /export function normalizedOverviewAssets\(model\)/.test(overviewModel)
+      && /audioGroup\?\.status === "empty"/.test(overviewModel)
+      && /const assets = normalizedOverviewAssets\(model\)/.test(overviewModel));
   record("scrollable-surfaces-do-not-force-visible-scrollbar-gutter", !/scrollbar-gutter:\s*stable/.test(baseCss + atoms + molecules + components + modules + pageStatesCss));
   record("scrollable-surfaces-use-tokenized-hidden-scrollbar-contract", /--asv-component-scrollable-surface-scrollbar-size:\s*0px/.test(tokens)
     && /--asv-scrollable-surface-scrollbar-size:\s*var\(--asv-component-scrollable-surface-scrollbar-size\)/.test(tokens)

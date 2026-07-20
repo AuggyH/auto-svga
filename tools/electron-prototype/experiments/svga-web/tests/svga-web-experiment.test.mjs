@@ -2179,7 +2179,8 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
         facts: [],
         audioGroup: {
           status: "empty",
-          copy: "当前文件暂无音频资产"
+          copy: "当前文件暂无音频资产",
+          count: 0
         }
       },
       assets: [{
@@ -2189,9 +2190,25 @@ test("short-term asset empty filters follow frozen no-sequence and no-audio stat
         fileSize: "41.8 KB",
         findingCodes: [],
         thumbnail: { type: "image", resourceIds: [] }
+      }, {
+        id: "audio",
+        kind: "audio",
+        name: "音频资产",
+        dimensions: "-",
+        fileSize: "-",
+        findingCodes: [],
+        thumbnail: { type: "audio-empty", resourceIds: [] }
       }]
     };
     const view = overviewTabView(model);
+
+    assert.equal(view.assets.some((asset) => asset.kind === "audio"), false);
+    assert.deepEqual(view.assetTabs.map(({ id, count }) => ({ id, count })), [
+      { id: "all", count: 1 },
+      { id: "image", count: 1 },
+      { id: "sequence", count: 0 },
+      { id: "audio", count: 0 }
+    ]);
 
     assert.equal(assetFilterTabCopy({ label: "序列帧", count: 0 }), "序列帧");
     assert.equal(assetFilterTabCopy({ label: "音频", count: 3 }), "音频 (3)");
