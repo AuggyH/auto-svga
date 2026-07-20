@@ -1,0 +1,55 @@
+{
+  "ticket": "ASV-QA-20260708-003",
+  "status": "fix_ready_callback_evidence",
+  "branch": "agent/codex/short-term-preview-qa-20260708",
+  "baseHead": "c2a6a85039e43c27d091e7d69d4dc9faf98a56e4",
+  "pmClarificationHead": "c2a6a85039e43c27d091e7d69d4dc9faf98a56e4",
+  "ownerAssetAlias": "owner-lucky-notice-optimized-001",
+  "evidenceKind": "product_model_classification_regression",
+  "privacy": {
+    "productionSvgaCommitted": false,
+    "ownerScreenshotsCommitted": false
+  },
+  "fixAssertions": [
+    {
+      "case": "text1 and text2",
+      "expected": "classified as runtime text targets, not image replacement rows"
+    },
+    {
+      "case": "from and to",
+      "expected": "classified as runtime text targets by deterministic naming rule"
+    },
+    {
+      "case": "avatar",
+      "expected": "remains an image replacement target"
+    }
+  ],
+  "validation": [
+    {
+      "command": "npm run build",
+      "result": "PASS"
+    },
+    {
+      "command": "node --test dist/tests/short-term-product-model.test.js dist/tests/short-term-image-replacement-workflow.test.js dist/tests/short-term-image-replacement-preview-session.test.js dist/tests/svga-image-resource-editor.test.js dist/tests/nq1-r1-hardening.test.js",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run test:all",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run desktop:smoke",
+      "result": "PASS"
+    }
+  ],
+  "qaRerunRequired": [
+    "Open the owner file with text1/text2.",
+    "Confirm those rows appear in runtime text/text elements.",
+    "Confirm image-only actions are absent on text rows.",
+    "Confirm text preview remains byte-immutable and key rename remains the only dirty/save path."
+  ],
+  "limitations": [
+    "Runtime text visual application still depends on the player bridge capability for the exact file.",
+    "If player bridge support is unavailable, QA should expect a truthful unsupported text-preview fallback, not image replacement actions."
+  ]
+}

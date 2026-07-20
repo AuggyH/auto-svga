@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { AvatarFrameProject, Keyframe, LayerTransform, ProjectLayer } from "../types/project.js";
+import type { Anchor, AvatarFrameProject, FrameRange, Keyframe, LayerSourceTiming, LayerTransform, ProjectLayer } from "../types/project.js";
 import { writeJsonFile } from "../utils/fs.js";
 
 export interface SvgaMap {
@@ -39,18 +39,18 @@ export interface SvgaSpriteMap {
   width: number;
   height: number;
   zIndex: number;
+  anchor: Anchor;
   transform: LayerTransform;
   keyframes: Keyframe[];
   blendMode: ProjectLayer["blendMode"];
   fallbackBlendMode: ProjectLayer["fallbackBlendMode"];
   fallbackOpacityMultiplier: number;
+  visible?: boolean;
+  sourceTiming?: LayerSourceTiming;
   mask?: ProjectLayer["mask"];
   bakedMaskAssetPath?: string;
   maskStrategy: "none" | "baked_asset_preferred" | "baked_per_frame_fixed_alpha_mask";
-  visibleFrameRange?: {
-    start: number;
-    end: number;
-  };
+  visibleFrameRange?: FrameRange;
   replaceable: boolean;
 }
 
@@ -121,11 +121,11 @@ export function buildSvgaMap(project: AvatarFrameProject): SvgaMap {
         transform: layer.transform
       };
     }),
-    sprites: project.layers.map((layer) => {
+    sprites: [...project.layers].sort(compareLayerStack).map((layer) => {
       const asset = assetMap.get(layer.assetId);
       const animation = animationMap.get(layer.id);
       const bakedMaskAssetPath = bakedMaskAssetPathFor(layer, assetMap);
-      const visibleFrameRange = layer.metadata?.sweepBakedFrame?.visibleFrameRange;
+      const visibleFrameRange = layer.activeFrameRange ?? layer.metadata?.sweepBakedFrame?.visibleFrameRange;
       return {
         spriteId: `sprite_${layer.id}`,
         layerId: layer.id,
@@ -134,11 +134,14 @@ export function buildSvgaMap(project: AvatarFrameProject): SvgaMap {
         width: asset?.width ?? 0,
         height: asset?.height ?? 0,
         zIndex: layer.zIndex,
+        anchor: layer.anchor,
         transform: layer.transform,
         keyframes: animation?.keyframes ?? [],
         blendMode: layer.blendMode,
         fallbackBlendMode: layer.fallbackBlendMode,
         fallbackOpacityMultiplier: layer.fallbackOpacityMultiplier,
+        visible: layer.sourceTiming ? layer.visible : undefined,
+        sourceTiming: layer.sourceTiming,
         mask: layer.mask,
         bakedMaskAssetPath,
         maskStrategy: layer.metadata?.sweepBakedFrame
@@ -151,6 +154,14 @@ export function buildSvgaMap(project: AvatarFrameProject): SvgaMap {
       };
     })
   };
+}
+
+function compareLayerStack(first: ProjectLayer, second: ProjectLayer): number {
+  return first.zIndex - second.zIndex || compareIdentifiers(first.id, second.id);
+}
+
+function compareIdentifiers(first: string, second: string): number {
+  return first < second ? -1 : first > second ? 1 : 0;
 }
 
 function bakedMaskAssetPathFor(layer: ProjectLayer, assetMap: Map<string, { path: string }>): string | undefined {

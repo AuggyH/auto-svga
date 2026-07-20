@@ -1,5 +1,10 @@
 # Current Status
 
+Status: historical status snapshot from 2026-06-13. Do not use this file as the
+current product authority. Current product requirements live in
+`docs/product/PRODUCT_ROADMAP.md`; active Workbench run state lives in
+`docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`.
+
 Date: 2026-06-13
 
 ## Main Branch

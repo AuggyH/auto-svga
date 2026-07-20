@@ -1,0 +1,295 @@
+/* Molecule styles compose atoms into small reusable controls. */
+
+.toolbarButton {
+  padding: 0 var(--asv-space-3);
+  font-weight: var(--asv-type-weight-medium);
+  white-space: nowrap;
+}
+
+.largeOpenButton {
+  display: inline-flex;
+  gap: var(--asv-space-2);
+  align-items: center;
+  justify-content: center;
+  min-width: var(--asv-launch-action-width);
+  min-height: calc(var(--asv-control-height) + var(--asv-space-2));
+  padding: 0 var(--asv-space-5);
+}
+
+.buttonIcon {
+  flex: 0 0 auto;
+  width: var(--asv-launch-button-icon-size);
+  height: var(--asv-launch-button-icon-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.modeSwitch,
+.canvasModeSwitch {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  width: var(--asv-mode-switch-width);
+  min-height: var(--asv-mode-switch-height);
+  gap: var(--asv-mode-switch-gap);
+  padding: var(--asv-mode-switch-padding);
+  border: 0;
+  border-radius: var(--asv-base-radius-full);
+  background: var(--asv-mode-switch-bg);
+  box-shadow: var(--asv-mode-switch-shadow);
+  backdrop-filter: var(--asv-mode-switch-backdrop-filter);
+}
+
+.modeSwitch button,
+.canvasModeSwitch button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--asv-mode-button-width);
+  min-width: var(--asv-mode-button-width);
+  min-height: var(--asv-mode-button-height);
+  padding: var(--asv-mode-button-padding-block) var(--asv-mode-button-padding-inline);
+  border: 0;
+  border-radius: var(--asv-base-radius-full);
+  background: transparent;
+  background-image: none;
+  box-shadow: var(--asv-mode-button-shadow);
+  color: var(--asv-mode-button-color);
+  cursor: default;
+  font-family: inherit;
+  font-size: var(--asv-mode-button-font-size);
+  font-weight: var(--asv-mode-button-font-weight);
+  line-height: var(--asv-mode-button-line-height);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.modeSwitch button:hover:not(.isSelected),
+.canvasModeSwitch button:hover:not(.isSelected) {
+  background: var(--asv-mode-button-hover-bg);
+  box-shadow: var(--asv-mode-button-shadow);
+}
+
+.modeSwitch button.isSelected,
+.canvasModeSwitch button.isSelected {
+  background: var(--asv-mode-selected-bg);
+  background-color: var(--asv-mode-selected-bg);
+  background-image: none;
+  box-shadow: var(--asv-mode-selected-shadow);
+  color: var(--asv-mode-selected-color);
+  font-weight: var(--asv-mode-button-font-weight);
+}
+
+.modeSwitch button:focus-visible,
+.canvasModeSwitch button:focus-visible {
+  box-shadow: var(--asv-focus);
+}
+
+.renameEditor {
+  display: grid;
+  gap: var(--asv-space-1);
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-caption);
+}
+
+.renameInputInline {
+  min-width: 0;
+  width: 100%;
+  height: var(--asv-text-input-height);
+  padding: var(--asv-text-input-padding-block) var(--asv-text-input-padding-inline);
+  border: 1px solid var(--asv-border-strong);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-panel);
+  color: var(--asv-text);
+  font-size: var(--asv-text-input-font-size);
+  line-height: var(--asv-text-input-line-height);
+}
+
+.renameInputInline:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
+}
+
+.runtimeTextInput {
+  min-width: 0;
+  justify-self: end;
+  width: min(var(--asv-runtime-text-input-width), 100%);
+  height: var(--asv-text-input-height);
+  padding: var(--asv-text-input-padding-block) var(--asv-text-input-padding-inline);
+  border: 1px solid var(--asv-control-border);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-panel);
+  color: var(--asv-text);
+  font-size: var(--asv-text-input-font-size);
+  line-height: var(--asv-text-input-line-height);
+}
+
+.runtimeTextInput::placeholder {
+  color: var(--asv-subtle);
+}
+
+.runtimeTextResetButton,
+.resetImagePreviewButton {
+  display: grid;
+  place-items: center;
+  width: var(--asv-runtime-text-reset-size);
+  min-width: var(--asv-runtime-text-reset-size);
+  height: var(--asv-runtime-text-reset-size);
+  min-height: var(--asv-runtime-text-reset-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--asv-radius-sm);
+  background: transparent;
+  color: var(--asv-action);
+  box-shadow: none;
+}
+
+.runtimeTextResetIcon {
+  width: var(--asv-runtime-text-reset-icon-size);
+  height: var(--asv-runtime-text-reset-icon-size);
+}
+
+.runtimeTextResetIcon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: var(--asv-row-icon-stroke-width);
+}
+
+.runtimeTextResetButton:hover:not(:disabled),
+.resetImagePreviewButton:hover:not(:disabled),
+.runtimeTextResetButton:focus-visible,
+.resetImagePreviewButton:focus-visible {
+  background: var(--asv-control-hover-bg);
+  color: var(--asv-action);
+}
+
+.runtimeTextResetButton:disabled,
+.resetImagePreviewButton:disabled {
+  color: var(--asv-subtle);
+  cursor: default;
+  opacity: var(--asv-row-action-disabled-opacity);
+}
+
+.runtimeTextResetButton:focus-visible,
+.resetImagePreviewButton:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
+}
+
+.replacementRowActions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: var(--asv-space-1);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.replaceableIdentity,
+.runtimeTextActions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.replaceableIdentity {
+  gap: var(--asv-space-3);
+  overflow: hidden;
+}
+
+.replaceableIdentity .thumb {
+  flex: 0 0 auto;
+}
+
+.replaceableIdentity .rowText {
+  flex: 1 1 auto;
+}
+
+.runtimeTextActions {
+  justify-self: end;
+  gap: var(--asv-space-2);
+}
+
+.inlineActions {
+  display: flex;
+  gap: var(--asv-space-1);
+}
+
+.inlineActions button {
+  height: var(--asv-control-height);
+  padding: 0 var(--asv-space-2);
+  border: 1px solid var(--asv-border);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-panel);
+  color: var(--asv-text);
+  font: inherit;
+}
+
+.rowMenuButton {
+  display: grid;
+  place-items: center;
+  width: var(--asv-row-menu-size);
+  min-width: var(--asv-row-menu-size);
+  height: var(--asv-row-menu-size);
+  min-height: var(--asv-row-menu-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--asv-radius-sm);
+  background: transparent;
+  color: var(--asv-muted);
+  box-shadow: none;
+}
+
+.rowMenuIcon {
+  width: var(--asv-row-menu-icon-size);
+  height: var(--asv-row-menu-icon-size);
+}
+
+.rowMenuIcon circle {
+  fill: currentColor;
+}
+
+.rowMenuButton:hover,
+.rowMenuButton:focus-visible {
+  background: var(--asv-control-hover-bg);
+  color: var(--asv-text);
+}
+
+.rowMenuButton:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
+}
+
+.replaceImageButton {
+  height: var(--asv-replace-image-action-height);
+  padding: 0 var(--asv-replace-image-action-padding-inline);
+  border: 0;
+  border-radius: var(--asv-replace-image-action-radius);
+  background: var(--asv-replace-image-action-bg);
+  color: var(--asv-replace-image-action-color);
+  font: inherit;
+  font-size: var(--asv-replace-image-action-font-size);
+  font-weight: var(--asv-replace-image-action-font-weight);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.replaceImageButton:hover,
+.replaceImageButton:focus-visible {
+  background: var(--asv-replace-image-action-hover-bg);
+  color: var(--asv-replace-image-action-color);
+}
+
+.replaceImageButton:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
+}

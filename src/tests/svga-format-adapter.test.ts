@@ -8,6 +8,7 @@ import { deflateSync } from "node:zlib";
 import test from "node:test";
 import protobuf from "protobufjs";
 import { validateMvpSvgaOutput } from "../mvp/svga-exporter.js";
+import { Sha256ResourceHasher } from "../hosts/sha256-resource-hasher.js";
 import { createTransparentImage, encodeRgbaPng } from "../utils/png-writer.js";
 import type { MotionAssetSource } from "../workbench/contracts.js";
 import {
@@ -56,6 +57,14 @@ test("SVGA FormatAdapter preserves current protobuf inspection metadata", async 
     ["png", "png"]
   );
   assert.deepEqual(
+    asset.resources.map(({ role }) => role),
+    ["mask_or_matte", "static_image"]
+  );
+  assert.deepEqual(
+    asset.resources.map(({ metadata }) => metadata?.roleEvidence),
+    [["referenced_by_matteKey"], ["referenced_by_sprite"]]
+  );
+  assert.deepEqual(
     asset.layers.map(({ resourceIds }) => resourceIds),
     reference.sprites.map(({ imageKey }) => imageKey ? [imageKey] : [])
   );
@@ -86,6 +95,45 @@ test("SVGA FormatAdapter probe recognizes valid SVGA bytes", async () => {
   assert.equal(result.format, "svga");
   assert.equal(result.confidence, 1);
   assert.deepEqual(result.issues, []);
+});
+
+test("SVGA FormatAdapter accepts host-provided encoded resource hashes", async () => {
+  const bytes = await createSvgaFixture();
+  const inspector = new NodeProtobufSvgaInspector();
+  const reference = await inspector.inspect(bytes);
+  const adapter = new SvgaFormatAdapter(
+    inspector,
+    undefined,
+    new Sha256ResourceHasher()
+  );
+  const result = await adapter.parse(sourceFromBytes("fixture.svga", bytes));
+
+  assert.ok(result.value);
+  assert.deepEqual(
+    result.value.resources.map(({ contentHash }) => contentHash),
+    reference.images.map(({ bytes: imageBytes }) => ({
+      algorithm: "sha256",
+      value: sha256(imageBytes),
+      scope: "encoded_bytes"
+    }))
+  );
+});
+
+test("SVGA FormatAdapter exposes designer-named imageKeys as replaceable without promoting automatic or matte resources", async () => {
+  const bytes = await createNamedReplaceableSvgaFixture();
+  const adapter = new SvgaFormatAdapter(new NodeProtobufSvgaInspector());
+  const result = await adapter.parse(sourceFromBytes("wide-replaceable.svga", bytes));
+
+  assert.ok(result.value);
+  assert.deepEqual(
+    result.value.resources.map(({ id, replaceable }) => ({ id, replaceable: replaceable === true })),
+    [
+      { id: "profile_frame", replaceable: true },
+      { id: "img_001", replaceable: false },
+      { id: "designer_matte", replaceable: false },
+      { id: "internal_unused_designer_badge", replaceable: false }
+    ]
+  );
 });
 
 test("SVGA FormatAdapter counts match the existing MVP SVGA validator", async () => {
@@ -155,6 +203,41 @@ async function createSvgaFixture(): Promise<Uint8Array> {
       {
         imageKey: "img_sweep",
         matteKey: "img_frame",
+        frames: createFrames(24)
+      }
+    ],
+    audios: []
+  };
+  const verificationError = MovieEntity.verify(payload);
+  assert.equal(verificationError, null);
+  return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+async function createNamedReplaceableSvgaFixture(): Promise<Uint8Array> {
+  const root = await protobuf.load(protoPath());
+  const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
+  const payload = {
+    version: "2.0",
+    params: {
+      viewBoxWidth: 800,
+      viewBoxHeight: 320,
+      fps: 24,
+      frames: 48
+    },
+    images: {
+      profile_frame: encodeRgbaPng(createTransparentImage(300, 120)),
+      img_001: encodeRgbaPng(createTransparentImage(48, 48)),
+      designer_matte: encodeRgbaPng(createTransparentImage(300, 120)),
+      internal_unused_designer_badge: encodeRgbaPng(createTransparentImage(64, 64))
+    },
+    sprites: [
+      {
+        imageKey: "profile_frame",
+        frames: createFrames(48)
+      },
+      {
+        imageKey: "img_001",
+        matteKey: "designer_matte",
         frames: createFrames(24)
       }
     ],

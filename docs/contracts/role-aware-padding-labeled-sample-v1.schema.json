@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://auto-svga.local/contracts/role-aware-padding-labeled-sample-v1.schema.json",
+  "title": "Auto SVGA role-aware padding labeled sample v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "sampleId",
+    "assetType",
+    "canvasSize",
+    "fps",
+    "durationMs",
+    "sourceType",
+    "reviewer",
+    "reviewDate",
+    "labelConfidence",
+    "resources",
+    "groups"
+  ],
+  "anyOf": [
+    { "required": ["fileName"] },
+    { "required": ["externalReference"] }
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sampleId": { "type": "string", "minLength": 1 },
+    "fileName": { "type": "string", "minLength": 1 },
+    "externalReference": { "type": "string", "minLength": 1 },
+    "assetType": { "const": "avatar_frame" },
+    "canvasSize": { "$ref": "#/$defs/dimensions" },
+    "fps": { "type": "number", "exclusiveMinimum": 0 },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "sourceType": {
+      "enum": ["production_target", "legacy", "experimental", "unknown"]
+    },
+    "reviewer": { "type": "string", "minLength": 1 },
+    "reviewDate": { "type": "string", "format": "date" },
+    "labelConfidence": { "$ref": "#/$defs/confidence" },
+    "resources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resourceLabel" }
+    },
+    "groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/groupLabel" }
+    }
+  },
+  "$defs": {
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "confidence": {
+      "enum": ["high", "medium", "low", "unknown"]
+    },
+    "resourceRole": {
+      "enum": [
+        "static_image",
+        "sequence_frame",
+        "baked_sweep_frame",
+        "mask_or_matte",
+        "unknown"
+      ]
+    },
+    "defectType": {
+      "enum": [
+        "excessive_static_padding",
+        "excessive_sequence_padding",
+        "unnecessary_canvas_aligned_frames",
+        "required_canvas_alignment",
+        "fully_transparent_unused_frame",
+        "near_empty_frame",
+        "mask_size_mismatch",
+        "baked_sweep_expected_padding",
+        "classifier_wrong_role",
+        "no_issue",
+        "unknown"
+      ]
+    },
+    "defectSeverity": {
+      "enum": ["critical", "major", "minor", "info", "unknown"]
+    },
+    "paddingIntent": {
+      "enum": [
+        "accidental_waste",
+        "required_alignment",
+        "required_mask_match",
+        "required_sequence_consistency",
+        "baked_effect_artifact",
+        "unknown"
+      ]
+    },
+    "resourceLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resourceKey",
+        "detectedRole",
+        "humanRoleLabel",
+        "roleLabelConfidence",
+        "isDefect",
+        "defectType",
+        "defectSeverity",
+        "paddingIntent",
+        "notes"
+      ],
+      "properties": {
+        "resourceKey": { "type": "string", "minLength": 1 },
+        "detectedRole": { "$ref": "#/$defs/resourceRole" },
+        "humanRoleLabel": { "$ref": "#/$defs/resourceRole" },
+        "roleLabelConfidence": { "$ref": "#/$defs/confidence" },
+        "isDefect": { "type": ["boolean", "null"] },
+        "defectType": { "$ref": "#/$defs/defectType" },
+        "defectSeverity": { "$ref": "#/$defs/defectSeverity" },
+        "paddingIntent": { "$ref": "#/$defs/paddingIntent" },
+        "notes": { "type": "string" }
+      }
+    },
+    "groupLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "groupId",
+        "groupType",
+        "frameCount",
+        "intendedAlignment",
+        "canCropWithOffset",
+        "shouldRemainCanvasAligned",
+        "groupDefectType",
+        "groupSeverity",
+        "notes"
+      ],
+      "properties": {
+        "groupId": { "type": "string", "minLength": 1 },
+        "groupType": {
+          "enum": [
+            "sequence_frame",
+            "baked_sweep_frame",
+            "mask_or_matte",
+            "unknown"
+          ]
+        },
+        "frameCount": { "type": "integer", "minimum": 1 },
+        "intendedAlignment": {
+          "enum": ["canvas", "local_bounds", "target_layer", "unknown"]
+        },
+        "canCropWithOffset": { "type": ["boolean", "null"] },
+        "shouldRemainCanvasAligned": { "type": ["boolean", "null"] },
+        "groupDefectType": { "$ref": "#/$defs/defectType" },
+        "groupSeverity": { "$ref": "#/$defs/defectSeverity" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

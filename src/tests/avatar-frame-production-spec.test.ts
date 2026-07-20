@@ -6,12 +6,19 @@ import type {
   MotionAssetSource
 } from "../workbench/contracts.js";
 import { MotionAssetInspectionService } from "../workbench/inspection-service.js";
-import { avatarFrameProductionSpec } from "../workbench/specs/index.js";
+import {
+  avatarFrameLegacyCompatibilityProfile,
+  avatarFrameProductionProfile,
+  avatarFrameProductionSpec
+} from "../workbench/specs/index.js";
 import { SvgaMotionSpecChecker } from "../workbench/svga/index.js";
 
 test("avatar-frame production preset contains the current production baseline", () => {
   assert.equal(avatarFrameProductionSpec.id, "avatar-frame-production");
   assert.equal(avatarFrameProductionSpec.label, "Avatar Frame Production");
+  assert.deepEqual(avatarFrameProductionSpec.profile, avatarFrameProductionProfile);
+  assert.equal(avatarFrameProductionProfile.id, "production_target");
+  assert.equal(avatarFrameProductionProfile.approvedForNewDelivery, true);
   assert.deepEqual(avatarFrameProductionSpec.maxDimensions, {
     width: 300,
     height: 300
@@ -24,14 +31,23 @@ test("avatar-frame production preset contains the current production baseline", 
     width: 300,
     height: 300
   });
+  assert.equal(avatarFrameProductionSpec.maxTransparentPaddingRatio, 0.5);
   assert.equal(avatarFrameProductionSpec.metadata?.assetType, "avatar_frame");
-  assert.equal(avatarFrameProductionSpec.metadata?.target, "production");
+  assert.equal(avatarFrameProductionSpec.metadata?.target, "production_target");
   assert.equal(avatarFrameProductionSpec.metadata?.calibrationStatus, "provisional");
   assert.equal(avatarFrameProductionSpec.metadata?.calibrationSampleCount, 2);
   assert.deepEqual(
     avatarFrameProductionSpec.metadata?.needsProductCalibration,
-    ["maxFileSizeBytes", "maxResourceCount"]
+    ["maxFileSizeBytes", "maxResourceCount", "maxTransparentPaddingRatio"]
   );
+});
+
+test("avatar-frame legacy compatibility remains a non-production profile boundary", () => {
+  assert.equal(avatarFrameLegacyCompatibilityProfile.id, "legacy_compatibility");
+  assert.equal(avatarFrameLegacyCompatibilityProfile.approvedForNewDelivery, false);
+  assert.match(avatarFrameLegacyCompatibilityProfile.purpose, /existing catalog compatibility/i);
+  assert.equal("maxFps" in avatarFrameLegacyCompatibilityProfile, false);
+  assert.equal("maxFileSizeBytes" in avatarFrameLegacyCompatibilityProfile, false);
 });
 
 test("avatar-frame calibrated file-size and resource limits pass exact boundaries", async () => {
@@ -120,7 +136,15 @@ function asset(
       id: `resource_${index}`,
       name: `resource_${index}`,
       kind: "image" as const,
-      dimensions: { width: 1, height: 1 }
+      dimensions: { width: 1, height: 1 },
+      alphaBounds: {
+        status: "known" as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        transparentPaddingRatio: 0
+      }
     }))
   };
 }

@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6-R1",
+  "contractId": "MACOS_WORKBENCH_LAYOUT_CONTRACT",
+  "purpose": "Define the owner-visible macOS workbench layout rules for Source / Preview / Inspector without starting Phase 2.",
+  "productionApproved": false,
+  "phase2Started": false,
+  "windowSizingSystem": {
+    "defaultLaunchWindow": {
+      "width": 1440,
+      "height": 900,
+      "aspect": "16:10",
+      "policy": "Recommended balanced macOS workbench launch size when available display bounds allow it."
+    },
+    "displayFitPolicy": {
+      "availableScreenFitRatio": 0.86,
+      "policy": "On smaller displays, use the largest centered window that fits within roughly 86% of available screen bounds while preserving a similar 16:10 feel."
+    },
+    "comfortableWorkbenchWindow": {
+      "width": 1280,
+      "height": 800,
+      "policy": "Comfortable owner-review and daily-workbench size; Source, Preview, and Inspector should all remain readable."
+    },
+    "compactWorkbenchRange": {
+      "minWidth": 1180,
+      "minHeight": 760,
+      "maxWidth": 1279,
+      "policy": "Compact supported range. Left Source, center Preview, and right Inspector remain inline; layoutEngine compresses side widths before any content breaks."
+    },
+    "legacyStressViewport": {
+      "width": 900,
+      "height": 720,
+      "policy": "Legacy stress viewport only. It is not the default window, not the canonical macOS product size, not the main screenshot proof, and not the sole responsive acceptance criterion."
+    }
+  },
+  "minimumSupportedWindow": {
+    "width": 1180,
+    "height": 760,
+    "policy": "Preview Stage keeps priority while Source and Inspector remain visible. 900x720 is retained only as a legacy stress viewport, not as the supported minimum."
+  },
+  "layoutModes": {
+    "fullWorkbench": {
+      "minWidth": 1180,
+      "layout": "LEFT | CENTER | RIGHT",
+      "policy": "Left source, center preview, and right inspector are all inline and readable."
+    },
+    "compactWorkbench": {
+      "minWidth": 1180,
+      "maxWidth": 1279,
+      "layout": "LEFT | CENTER | RIGHT",
+      "policy": "Side panels remain inline and their widths are compressed by layoutEngine."
+    },
+    "minimalWorkbench": {
+      "maxWidth": 1179,
+      "layout": "legacy stress observation",
+      "policy": "Below 1180px is not a supported product size and must not define acceptance; evidence may be captured for stress observation only."
+    }
+  },
+  "layoutEngine": {
+    "source": "src/layout/layoutEngine.ts",
+    "adapter": "src/layout/layoutAdapter.ts",
+    "runtimeImport": "dist/layout/layoutAdapter.js",
+    "policy": "Layout mode selection and panel widths are resolved by the deterministic layout engine before CSS is applied."
+  },
+  "regions": [
+    {
+      "id": "source_document",
+      "role": "left_panel",
+      "direction": "column",
+      "spacingToken": "--visual-space-body",
+      "paddingToken": "--visual-card-padding",
+      "widthSource": "layoutEngine",
+      "minWidth": 240,
+      "maxWidth": 320,
+      "hugContent": false,
+      "fillContainer": true,
+      "collapsePriority": "not_applicable_persistent",
+      "contentPriority": ["file_overview", "source_tabs", "resource_rows"],
+      "overflowRule": "panel scrolls vertically; file names truncate with title text",
+      "parentResponseRule": "remain inline at and above the minimum supported window"
+    },
+    {
+      "id": "preview_stage",
+      "role": "center_stage",
+      "direction": "column",
+      "spacingToken": "--visual-space-section",
+      "paddingToken": "--visual-card-padding",
+      "minWidth": 520,
+      "maxWidth": "fill",
+      "minHeight": 360,
+      "hugContent": false,
+      "fillContainer": true,
+      "collapsePriority": 99,
+      "contentPriority": ["loaded_canvas", "primary_action", "playback_controls", "metadata"],
+      "overflowRule": "preview canvas scales; playback controls stay readable; metadata collapses first",
+      "parentResponseRule": "keeps visual anchor at default launch, comfortable, compact, minimum supported, and legacy stress sizes"
+    },
+    {
+      "id": "inspector",
+      "role": "right_panel",
+      "direction": "column",
+      "spacingToken": "--visual-space-body",
+      "paddingToken": "--visual-card-padding",
+      "widthSource": "layoutEngine",
+      "minWidth": 280,
+      "maxWidth": 360,
+      "hugContent": false,
+      "fillContainer": true,
+      "collapsePriority": "not_applicable_persistent",
+      "contentPriority": ["diagnostics", "review_only_actions", "future_properties"],
+      "overflowRule": "diagnostic copy wraps in detail surfaces; actions never masquerade as active future features",
+      "parentResponseRule": "remain inline at and above the minimum supported window"
+    }
+  ],
+  "components": [
+    {
+      "id": "FileOverviewCard",
+      "hostRegion": "source_document",
+      "kind": "card",
+      "direction": "column",
+      "rowHeightToken": "--visual-row-height",
+      "wrapping": "labels stay one line; values truncate with accessible full text",
+      "forbidden": ["duplicate in inspector", "consume resource list height"]
+    },
+    {
+      "id": "ResourceRow",
+      "hostRegion": "source_document",
+      "kind": "row",
+      "direction": "row",
+      "rowHeightToken": "--visual-row-height",
+      "wrapping": "resource name truncates; badges never wrap vertically",
+      "forbidden": ["imageKey as primary sidebar group"]
+    },
+    {
+      "id": "LayerRow",
+      "hostRegion": "source_document",
+      "kind": "row",
+      "direction": "row",
+      "rowHeightToken": "--visual-row-height",
+      "wrapping": "layer name truncates; sprite attributes remain secondary"
+    },
+    {
+      "id": "PreviewCard",
+      "hostRegion": "preview_stage",
+      "kind": "card",
+      "direction": "column",
+      "wrapping": "file identity/status/action/metadata/playback share one template across local, compare, and export-review"
+    },
+    {
+      "id": "InspectorPanel",
+      "hostRegion": "inspector",
+      "kind": "panel",
+      "direction": "column",
+      "wrapping": "diagnostics wrap in cards; unavailable future actions stay review-only text"
+    },
+    {
+      "id": "ActivityRow",
+      "hostRegion": "activity_history",
+      "kind": "row",
+      "direction": "row",
+      "wrapping": "user-readable message first; internal diagnostics behind advanced disclosure"
+    },
+    {
+      "id": "StatusBadge",
+      "hostRegion": "all",
+      "kind": "badge",
+      "direction": "row",
+      "wrapping": "never vertical; truncate only at intentional compact icon threshold"
+    }
+  ],
+  "responsiveRules": [
+    {
+      "id": "default_launch_1440x900",
+      "condition": "width >= 1440 and height >= 900",
+      "layout": "source preview inspector grid",
+      "required": ["source visible", "preview visible", "inspector visible", "preview primary"]
+    },
+    {
+      "id": "comfortable_1280x800",
+      "condition": "width >= 1280 and height >= 800",
+      "layout": "source preview inspector grid",
+      "required": ["source visible", "preview visible", "inspector visible", "primary actions readable"]
+    },
+    {
+      "id": "compact_workbench",
+      "condition": "width >= 1180 and width < 1280 and height >= 760",
+      "layout": "source preview inspector grid",
+      "required": ["preview primary", "source readable", "inspector readable", "primary actions readable"]
+    },
+    {
+      "id": "minimum_supported_1180x760",
+      "condition": "width >= 1180 and height >= 760",
+      "layout": "source preview inspector grid",
+      "required": ["no one-character status chips", "no hidden primary actions", "no overlapping controls", "file names truncate"]
+    },
+    {
+      "id": "legacy_stress_900x720",
+      "condition": "width == 900 and height == 720",
+      "layout": "legacy stress viewport; not a supported product size",
+      "required": ["stress-only evidence", "not default launch", "not minimum supported", "not sole responsive acceptance criterion"]
+    }
+  ],
+  "futureCapacityRules": [
+    "Phase 2 optimization lives in Resources + Inspector Actions + Preview before/after; not visible as active P6-R1 buttons.",
+    "Phase 3 imageKey/text/key editing lives in Layers/Resources + Inspector Properties + Preview; not visible as active P6-R1 editing.",
+    "Phase 4 sequence repair lives in sequence resource groups + diagnostics + before/after preview; not implemented in P6-R1.",
+    "Multi-format and Agent/Motion Plan capacity must attach through adapters/jobs later, not through current clickable placeholders."
+  ]
+}

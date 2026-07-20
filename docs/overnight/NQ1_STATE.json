@@ -1,0 +1,773 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "NQ1",
+  "title": "Overnight Reliability, Compatibility And Evidence Hardening",
+  "startedAt": "2026-06-20T20:39:40.564Z",
+  "hardDeadline": "2026-06-21T04:09:40.564Z",
+  "packagingStartTime": "2026-06-21T03:24:40.564Z",
+  "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
+  "branch": "agent/codex/nq1-overnight-hardening",
+  "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
+  "currentWorkPackage": "terminal-source-state",
+  "completedWorkPackages": [
+    "NQ1-WP01",
+    "NQ1-WP02",
+    "NQ1-WP03",
+    "NQ1-WP04",
+    "NQ1-WP05",
+    "NQ1-WP06",
+    "NQ1-WP07",
+    "NQ1-WP08",
+    "NQ1-WP09",
+    "NQ1-WP10"
+  ],
+  "blockedWorkPackages": [],
+  "partialWorkPackages": [],
+  "remainingWorkPackages": [],
+  "workPackages": [
+    {
+      "id": "NQ1-WP01",
+      "title": "Baseline, queue, and resumable state",
+      "status": "complete",
+      "startedAt": "2026-06-20T20:39:40.564Z",
+      "finishedAt": "2026-06-20T20:42:09.287Z",
+      "startCommit": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
+      "endCommit": "f625aa6c795a865048cd7aab71d7724a9c6e6610",
+      "filesChanged": [
+        "docs/overnight/NQ1_QUEUE.md",
+        "docs/overnight/NQ1_STATE.json",
+        "docs/overnight/NQ1_HISTORY.jsonl",
+        "docs/overnight/NQ1_BLOCKERS.md",
+        "docs/overnight/NQ1_FINAL_REPORT.md",
+        "docs/overnight/NQ1_RESUME.md"
+      ],
+      "commands": [
+        {
+          "command": "git switch -c agent/codex/nq1-overnight-hardening",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --cached --check",
+          "status": "pass"
+        },
+        {
+          "command": "npm run loop:validate",
+          "status": "pass",
+          "durationMs": 63953
+        }
+      ],
+      "testResults": [
+        {
+          "id": "loop-validate-baseline",
+          "status": "pass",
+          "headCommitAtStart": "f625aa6c795a865048cd7aab71d7724a9c6e6610",
+          "headCommitAtFinish": "f625aa6c795a865048cd7aab71d7724a9c6e6610",
+          "sourceWorkspaceCleanAtStart": true,
+          "sourceWorkspaceCleanAtFinish": true,
+          "durationMs": 63953,
+          "summary": {
+            "handoffTests": "54 pass / 0 fail",
+            "rootTests": "170 pass / 0 fail",
+            "launcherTests": "3 pass / 0 fail",
+            "webInspectionTests": "13 pass / 0 fail",
+            "electronPrototypeTests": "3 pass / 0 fail",
+            "svgaWebPrototypeTests": "14 pass / 0 fail"
+          },
+          "knownGaps": {
+            "lint": "not_available",
+            "format": "not_available",
+            "performanceBenchmark": "not_available",
+            "visualQuality": "manual_review",
+            "svgaWebRenderSmoke": "optional_heavy_check"
+          }
+        }
+      ],
+      "findings": [
+        "P4 final machine HEAD is recorded.",
+        "NQ1 branch, deadline fields, queue, resume instructions, blocker log, and final report placeholder exist.",
+        "Initial loop validation passed on a clean source workspace."
+      ],
+      "deferredItems": []
+    },
+    {
+      "id": "NQ1-WP02",
+      "title": "Synthetic multi-resource fixture matrix",
+      "status": "complete",
+      "startedAt": "2026-06-20T20:44:09.619Z",
+      "finishedAt": "2026-06-20T20:46:21.797Z",
+      "startCommit": "c97682a1718bdba79e26925f6306d0496321a243",
+      "endCommit": "c30fe909dc985ae412d2f05995fce623bd535e2b",
+      "filesChanged": [
+        "fixtures/generated/nq1/.gitignore",
+        "fixtures/generated/nq1/fixture-matrix.manifest.json",
+        "src/tests/helpers/nq1-svga-fixture.ts",
+        "src/tests/nq1-fixture-matrix.test.ts",
+        "tools/nq1/generate-fixture-matrix.mjs",
+        "package.json",
+        "docs/overnight/NQ1_STATE.json",
+        "docs/overnight/NQ1_HISTORY.jsonl"
+      ],
+      "commands": [
+        {
+          "command": "npm run build && node --test dist/tests/nq1-fixture-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:fixture-matrix",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-resource-editor.test.js",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-fixture-matrix-targeted",
+          "status": "pass",
+          "summary": "5 pass / 0 fail"
+        },
+        {
+          "id": "svga-image-resource-editor-regression",
+          "status": "pass",
+          "summary": "9 pass / 0 fail"
+        },
+        {
+          "id": "fixture-matrix-artifact",
+          "status": "pass",
+          "summary": "7 fixtures generated, 6 supported, 1 unsupported boundary, resource counts 1/2/3/5/10/25, no absolute path in report"
+        }
+      ],
+      "findings": [
+        "Approved synthetic fixture matrix is deterministic and does not use real user assets.",
+        "Supported fixtures inflate, decode, and expose expected editor resources.",
+        "Unsupported unknown-field boundary fixture fails closed in the editor.",
+        "Generated NQ1 fixture matrix report is under ignored `.artifacts/product/NQ1/fixture-matrix.json`."
+      ],
+      "deferredItems": []
+    },
+    {
+      "id": "NQ1-WP03",
+      "title": "Model-driven undo/redo state-machine tests",
+      "status": "complete",
+      "startedAt": "2026-06-20T20:47:28.863Z",
+      "finishedAt": "2026-06-20T20:51:16.717Z",
+      "startCommit": "c30fe909dc985ae412d2f05995fce623bd535e2b",
+      "endCommit": "3d8498f24fe7d4cf1208034897eefcd03721bba8",
+      "filesChanged": [
+        "src/tests/helpers/nq1-history-model.ts",
+        "src/tests/nq1-history-model.test.ts",
+        "tools/nq1/generate-model-history-report.mjs",
+        "package.json",
+        "docs/overnight/NQ1_STATE.json",
+        "docs/overnight/NQ1_HISTORY.jsonl"
+      ],
+      "commands": [
+        {
+          "command": "npm run build && node --test dist/tests/nq1-history-model.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:model-history",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-edit-history.test.js",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-model-history-targeted",
+          "status": "pass",
+          "summary": "100 seeds x 100 operations = 10,000 operations, 0 failures"
+        },
+        {
+          "id": "svga-image-edit-history-regression",
+          "status": "pass",
+          "summary": "6 pass / 0 fail"
+        },
+        {
+          "id": "model-history-artifact",
+          "status": "pass",
+          "summary": "model-based-history-report.json passed with all invariant coverage flags true and no absolute path"
+        }
+      ],
+      "findings": [
+        "Pure reference model matched the implementation for replace, repeated replace, reset selected, reset all, undo, redo, save point, invalid replace, failed preview no-op, open new file, redo branch truncation, and history cap.",
+        "Generated `.artifacts/product/NQ1/model-based-history-report.json` records seed count, operation count, invariant coverage, and failures."
+      ],
+      "deferredItems": []
+    },
+    {
+      "id": "NQ1-WP04",
+      "title": "Async race and failure injection",
+      "status": "complete",
+      "startedAt": "2026-06-20T20:54:05.000Z",
+      "finishedAt": "2026-06-20T20:59:06.292Z",
+      "startCommit": "afeffd98d2ff5c505c2c28a2c98fa925d8d79bc6",
+      "endCommit": "f970080b58552de76809bddebbcd73e1aa58daaf",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-async-race-harness.ts",
+        "src/tests/nq1-async-race.test.ts",
+        "tools/nq1/generate-async-race-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-async-race.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:async-race",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-edit-history.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-async-race-targeted",
+          "status": "pass",
+          "summary": "7 scenarios, 0 failures, staleResultCount=4, rollbackCount=1, saveRejectionCount=1"
+        },
+        {
+          "id": "svga-image-edit-history-regression",
+          "status": "pass",
+          "summary": "6 pass / 0 fail"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        },
+        {
+          "id": "async-race-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/async-race-and-failure-injection-report.json passed and contains no absolute paths"
+        }
+      ],
+      "findings": [
+        "A synthetic async race harness now exercises stale success, stale failure, latest failure rollback, reset-all ordering, open-new-file invalidation, save rejection after state change, and clean save success.",
+        "The harness commits successful preview results through the existing SVGA edit history API and records ignored stale results without advancing history.",
+        "Generated NQ1 async race report is under ignored `.artifacts/product/NQ1/async-race-and-failure-injection-report.json`."
+      ],
+      "deferredItems": []
+    },
+    {
+      "id": "NQ1-WP05",
+      "title": "Multi-resource round-trip matrix",
+      "status": "complete",
+      "startedAt": "2026-06-20T20:59:15.000Z",
+      "finishedAt": "2026-06-20T21:04:20.378Z",
+      "startCommit": "60f009782d5e7d3524b7bf556c6173f9a0d1af90",
+      "endCommit": "1d80f71788cd25b774c0b9574de330603fbc06ac",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-round-trip-matrix.ts",
+        "src/tests/nq1-round-trip-matrix.test.ts",
+        "tools/nq1/generate-round-trip-matrix-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-round-trip-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:round-trip-matrix",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-resource-editor.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-fixture-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-round-trip-matrix-targeted",
+          "status": "pass",
+          "summary": "6 supported fixtures, 1 unsupported fixture, 15 replacement attempts, 1 fail-closed unsupported boundary"
+        },
+        {
+          "id": "svga-image-resource-editor-regression",
+          "status": "pass",
+          "summary": "9 pass / 0 fail"
+        },
+        {
+          "id": "nq1-fixture-matrix-regression",
+          "status": "pass",
+          "summary": "5 pass / 0 fail"
+        },
+        {
+          "id": "round-trip-matrix-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/multi-resource-round-trip-matrix-report.json passed and contains no absolute paths"
+        }
+      ],
+      "findings": [
+        "Supported synthetic fixtures with resource counts 1, 2, 3, 5, 10, and 25 preserve source bytes, replaced resource hashes, and untouched resource hashes across round trip.",
+        "P3 single-resource replacement and P4 multi-resource replacement boundaries are both represented.",
+        "Unsupported unknown-field fixture remains fail-closed before editing."
+      ],
+      "deferredItems": []
+    },
+    {
+      "id": "NQ1-WP06",
+      "title": "Cross-platform path and Save As safety matrix",
+      "status": "complete",
+      "startedAt": "2026-06-20T21:11:17.488Z",
+      "finishedAt": "2026-06-20T21:11:17.488Z",
+      "startCommit": "be4ea49892b19b56fc2cb376b5847784e835a810",
+      "endCommit": "f02284ac18ebdaf3b6388f268acd7e9a8c06e78f",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-save-as-safety-matrix.ts",
+        "src/tests/nq1-save-as-safety-matrix.test.ts",
+        "tools/nq1/generate-save-as-safety-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-save-as-safety-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:save-as-safety",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-save-as-safety-matrix",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-save-as-safety-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/save-as-safety-matrix-report.json passed with 13 source checks, 9 scenarios, 1 deferred Windows runtime risk, and no absolute user paths"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Save As source and target same-path rejection, picker-source binding, exclusive temporary file writes, cleanup, basename-only response, redacted target path, bounded sourceId cache, and IPC sender validation are covered by source checks.",
+        "macOS and Windows same-case Save As scenarios are covered by deterministic path checks.",
+        "The Electron prototype preload bridge still exposes no filesystem, dialog, or shell module."
+      ],
+      "deferredItems": [
+        "Windows case-variant same-path detection requires real Windows filesystem runtime validation because path.win32.resolve does not prove case-insensitive equality."
+      ]
+    },
+    {
+      "id": "NQ1-WP07",
+      "title": "Resource, process, and memory cleanup stress",
+      "status": "complete",
+      "startedAt": "2026-06-20T21:16:37.695Z",
+      "finishedAt": "2026-06-20T21:16:37.695Z",
+      "startCommit": "f73045f53d0f139bb36e69271cefd152fddc8bbf",
+      "endCommit": "57bb4b3379d0669b40f1c15ca3a78d051c01ea20",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-cleanup-stress.ts",
+        "src/tests/nq1-cleanup-stress.test.ts",
+        "tools/nq1/generate-cleanup-stress-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-cleanup-stress.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:cleanup-stress",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/electron-prototype/experiments/svga-web/web/prototype.js",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-cleanup-stress",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-cleanup-stress-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/resource-process-memory-cleanup-stress-report.json passed with 17 source checks, 5 scenarios, cleanupCount=125, finalActiveResourceCount=0, and no absolute user paths"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Process cleanup boundaries are source-checked: session roots stay under os.tmpdir, userData/sessionData are scoped to the session root, cleanupRuntime is idempotent, closes the local server, and removes the session root.",
+        "Renderer cleanup boundaries are source-checked: cleanupPlayer destroys player/parser, clears active references, resets playback flags, clears canvas, and runs before new loads and on error paths.",
+        "The deterministic stress model ran 80 cycles with maxActiveResourceCount=2 and finalActiveResourceCount=0."
+      ],
+      "deferredItems": [
+        "This package validates deterministic cleanup boundaries and model stress, not OS-level memory pressure or real long-running renderer heap behavior."
+      ]
+    },
+    {
+      "id": "NQ1-WP08",
+      "title": "Performance baseline",
+      "status": "complete",
+      "startedAt": "2026-06-20T21:18:45.597Z",
+      "finishedAt": "2026-06-20T21:18:45.597Z",
+      "startCommit": "b5020c9ab61ac25f68aee8905456c4b06b06593e",
+      "endCommit": "7a3c1c72f45df94ad60054599aa17a8b4a75bbe9",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-performance-baseline.ts",
+        "src/tests/nq1-performance-baseline.test.ts",
+        "tools/nq1/generate-performance-baseline-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-performance-baseline.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:performance-baseline",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-round-trip-matrix.test.js dist/tests/nq1-history-model.test.js dist/tests/nq1-cleanup-stress.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-performance-baseline",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-performance-baseline-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/performance-baseline-report.json passed with 5 metrics, totalDurationMs=224.131, hangGuardMs=120000, and no absolute user paths"
+        },
+        {
+          "id": "nq1-adjacent-regressions",
+          "status": "pass",
+          "summary": "round-trip, history model, and cleanup stress tests: 3 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Performance baseline captured 5 deterministic local hardening metrics with totalDurationMs=224.131.",
+        "The baseline covers fixture generation, multi-resource round trip, 10k history model operations, async race validation, and cleanup stress model.",
+        "The baseline uses a broad hang guard rather than strict timing thresholds to avoid flaky performance gates."
+      ],
+      "deferredItems": [
+        "This package records local baseline timings only; it is not a formal performance benchmark across machines or operating systems."
+      ]
+    },
+    {
+      "id": "NQ1-WP09",
+      "title": "Accessibility, keyboard, and error semantics audit",
+      "status": "complete",
+      "startedAt": "2026-06-20T21:21:43.160Z",
+      "finishedAt": "2026-06-20T21:21:43.160Z",
+      "startCommit": "56fd64ffed0b52e5c700e0194c67b3016c02761d",
+      "endCommit": "e7249cb9663d4f2b443ae747e55fdd67d3c6aeb7",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-accessibility-audit.ts",
+        "src/tests/nq1-accessibility-audit.test.ts",
+        "tools/nq1/generate-accessibility-audit-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-accessibility-audit.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:accessibility-audit",
+          "status": "pass"
+        },
+        {
+          "command": "node --test tools/svga-player-preview/inspection-report-view.test.mjs tools/svga-player-preview/server-inspection-report.test.mjs",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/electron-prototype/experiments/svga-web/web/prototype.js && node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-accessibility-audit",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-accessibility-audit-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/accessibility-keyboard-error-semantics-audit-report.json passed with 23 source checks, 2 advisories, and no absolute user paths"
+        },
+        {
+          "id": "web-inspection-regression",
+          "status": "pass",
+          "summary": "13 pass / 0 fail"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Accessibility audit source-checked 23 document, keyboard, focus, and error semantics boundaries.",
+        "Keyboard source checks cover open, undo, redo, space playback toggle, replay, and input-field guard behavior.",
+        "Error semantics source checks cover retry action, folded technical details, and escaped error details."
+      ],
+      "deferredItems": [
+        "axe_and_screen_reader_not_run: This audit is source-level only; axe, VoiceOver/NVDA, real keyboard traversal, and reduced-motion checks remain manual.",
+        "resource_list_items_without_explicit_option_role: Resource items are native buttons inside a labelled listbox; keyboard activation is available, but explicit option semantics should be reviewed before production."
+      ]
+    },
+    {
+      "id": "NQ1-WP10",
+      "title": "Test determinism, flake, and developer documentation",
+      "status": "complete",
+      "startedAt": "2026-06-20T21:28:08.000Z",
+      "finishedAt": "2026-06-20T21:34:03.894Z",
+      "startCommit": "96f3205b7d7b3a7862c1f736d8302a4fc448aa15",
+      "endCommit": "fc719b9c764d1479175ec0261562a0183acb990a",
+      "filesChanged": [
+        "package.json",
+        "docs/product/EDITOR_TEST_MATRIX.md",
+        "docs/product/EDITOR_TROUBLESHOOTING.md",
+        "docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md",
+        "src/tests/helpers/nq1-flake-stability.ts",
+        "src/tests/nq1-flake-stability.test.ts",
+        "tools/nq1/generate-flake-stability-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build && node --test dist/tests/nq1-flake-stability.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:flake-stability",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-fixture-matrix.test.js dist/tests/nq1-flake-stability.test.js dist/tests/nq1-round-trip-matrix.test.js dist/tests/nq1-performance-baseline.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/nq1/generate-flake-stability-report.mjs",
+          "status": "pass"
+        },
+        {
+          "command": "npm test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-flake-stability-targeted",
+          "status": "pass",
+          "summary": "2 pass / 0 fail"
+        },
+        {
+          "id": "nq1-flake-stability-artifact",
+          "status": "pass",
+          "summary": "10 static checks passed; core targeted tests 5/5 pass; electron smoke 3/3 pass; round-trip subset 3/3 pass; no advisories"
+        },
+        {
+          "id": "adjacent-nq1-regressions",
+          "status": "pass",
+          "summary": "9 pass / 0 fail"
+        },
+        {
+          "id": "root-tests",
+          "status": "pass",
+          "summary": "184 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "WP10 adds a repeat-run flake stability report for core targeted tests, Electron smoke, and round-trip subset validation.",
+        "Developer documentation now maps editor tests, troubleshooting, and the supported editable SVGA boundary.",
+        "The generated flake report contains no absolute user paths and records no advisories."
+      ],
+      "deferredItems": [
+        "Real Windows runtime path behavior remains manual validation.",
+        "Screen-reader output and pixel-perfect visual parity remain manual validation.",
+        "Long-running renderer memory pressure remains outside the bounded NQ1 checks."
+      ]
+    }
+  ],
+  "checkpointValidations": [
+    {
+      "id": "after-wp03-loop-validate",
+      "status": "pass",
+      "command": "npm run loop:validate",
+      "startedAt": "2026-06-20T20:52:56.412Z",
+      "finishedAt": "2026-06-20T20:53:57.497Z",
+      "durationMs": 61085,
+      "headCommitAtStart": "3d8498f24fe7d4cf1208034897eefcd03721bba8",
+      "headCommitAtFinish": "3d8498f24fe7d4cf1208034897eefcd03721bba8",
+      "sourceWorkspaceCleanAtStart": true,
+      "sourceWorkspaceCleanAtFinish": true,
+      "summary": {
+        "handoffTests": "54 pass / 0 fail",
+        "rootTests": "176 pass / 0 fail",
+        "launcherTests": "3 pass / 0 fail",
+        "webInspectionTests": "13 pass / 0 fail",
+        "electronPrototypeTests": "3 pass / 0 fail",
+        "svgaWebPrototypeTests": "14 pass / 0 fail"
+      },
+      "knownGaps": {
+        "lint": "not_available",
+        "format": "not_available",
+        "performanceBenchmark": "not_available",
+        "visualQuality": "manual_review",
+        "svgaWebRenderSmoke": "optional_heavy_check"
+      }
+    },
+    {
+      "id": "after-wp06-loop-validate",
+      "status": "pass",
+      "command": "npm run loop:validate",
+      "startedAt": "2026-06-20T21:11:30.821Z",
+      "finishedAt": "2026-06-20T21:12:35.084Z",
+      "durationMs": 64263,
+      "headCommitAtStart": "38a487c8d4346cc8de7f7673ada97079ce3f3e97",
+      "headCommitAtFinish": "38a487c8d4346cc8de7f7673ada97079ce3f3e97",
+      "sourceWorkspaceCleanAtStart": true,
+      "sourceWorkspaceCleanAtFinish": true,
+      "summary": {
+        "handoffTests": "54 pass / 0 fail",
+        "rootTests": "179 pass / 0 fail",
+        "launcherTests": "3 pass / 0 fail",
+        "webInspectionTests": "13 pass / 0 fail",
+        "electronPrototypeTests": "3 pass / 0 fail",
+        "svgaWebPrototypeTests": "14 pass / 0 fail"
+      },
+      "knownGaps": {
+        "lint": "not_available",
+        "format": "not_available",
+        "performanceBenchmark": "not_available",
+        "visualQuality": "manual_review",
+        "svgaWebRenderSmoke": "optional_heavy_check"
+      }
+    },
+    {
+      "id": "after-wp09-loop-validate",
+      "status": "pass",
+      "command": "npm run loop:validate",
+      "startedAt": "2026-06-20T21:26:26.081Z",
+      "finishedAt": "2026-06-20T21:27:27.260Z",
+      "durationMs": 61179,
+      "headCommitAtStart": "eaa26de6300ddae1d1bc541503eac34109e45059",
+      "headCommitAtFinish": "eaa26de6300ddae1d1bc541503eac34109e45059",
+      "sourceWorkspaceCleanAtStart": true,
+      "sourceWorkspaceCleanAtFinish": true,
+      "summary": {
+        "handoffTests": "54 pass / 0 fail",
+        "rootTests": "182 pass / 0 fail",
+        "launcherTests": "3 pass / 0 fail",
+        "webInspectionTests": "13 pass / 0 fail",
+        "electronPrototypeTests": "3 pass / 0 fail",
+        "svgaWebPrototypeTests": "14 pass / 0 fail"
+      },
+      "knownGaps": {
+        "lint": "not_available",
+        "format": "not_available",
+        "performanceBenchmark": "not_available",
+        "visualQuality": "manual_review",
+        "svgaWebRenderSmoke": "optional_heavy_check"
+      }
+    }
+  ],
+  "terminalStatus": "PASS",
+  "terminalNextAction": "external_review",
+  "terminalSourcePreparedAt": "2026-06-20T21:37:34.259Z"
+}

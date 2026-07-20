@@ -1,0 +1,54 @@
+{
+  "$schema": "../contracts/role-aware-padding-labeled-sample-v1.schema.json",
+  "schemaVersion": 1,
+  "sampleId": "sample-001",
+  "externalReference": "external://avatar-frame-batch/sample-001.svga",
+  "assetType": "avatar_frame",
+  "canvasSize": {
+    "width": 300,
+    "height": 300
+  },
+  "fps": 24,
+  "durationMs": 3000,
+  "sourceType": "unknown",
+  "reviewer": "reviewer-id",
+  "reviewDate": "2026-06-19",
+  "labelConfidence": "medium",
+  "resources": [
+    {
+      "resourceKey": "img_static_example",
+      "detectedRole": "static_image",
+      "humanRoleLabel": "static_image",
+      "roleLabelConfidence": "high",
+      "isDefect": false,
+      "defectType": "no_issue",
+      "defectSeverity": "info",
+      "paddingIntent": "required_alignment",
+      "notes": "Synthetic example only. Confirm visual intent before labeling a real resource."
+    },
+    {
+      "resourceKey": "img_sequence_001",
+      "detectedRole": "sequence_frame",
+      "humanRoleLabel": "unknown",
+      "roleLabelConfidence": "unknown",
+      "isDefect": null,
+      "defectType": "unknown",
+      "defectSeverity": "unknown",
+      "paddingIntent": "unknown",
+      "notes": "Review this resource together with its sequence group."
+    }
+  ],
+  "groups": [
+    {
+      "groupId": "sequence:synthetic-example:001-003",
+      "groupType": "sequence_frame",
+      "frameCount": 3,
+      "intendedAlignment": "unknown",
+      "canCropWithOffset": null,
+      "shouldRemainCanvasAligned": null,
+      "groupDefectType": "unknown",
+      "groupSeverity": "unknown",
+      "notes": "Synthetic example only. Use unknown until group alignment intent is verified."
+    }
+  ]
+}

@@ -8,9 +8,18 @@ importers:
 
   .:
     dependencies:
+      fast-png:
+        specifier: 8.0.0
+        version: 8.0.0
+      lottie-web:
+        specifier: 5.13.0
+        version: 5.13.0
       protobufjs:
         specifier: ^8.5.0
         version: 8.5.0
+      video-animation-player:
+        specifier: 1.0.5
+        version: 1.0.5
     devDependencies:
       '@types/node':
         specifier: ^20.12.12
@@ -188,13 +197,25 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  fast-png@8.0.0:
+    resolution: {integrity: sha512-gCysNasJ8KEMgfdYIKd/wTDo6ENK1PWT0RJO7O+0pgmuHPw2O6tA1WvdxFRJoLf9V8yFYpG0FA1YgI8X97OhJA==}
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  iobuffer@6.0.1:
+    resolution: {integrity: sha512-SZWYkWNfjIXIBYSDpXDYIgshqtbOPsi4lviawAEceR1Kqk+sHDlcQjWrzNQsii80AyBY0q5c8HCTNjqo74ul+Q==}
+
   long@5.3.2:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
+
+  lottie-web@5.13.0:
+    resolution: {integrity: sha512-+gfBXl6sxXMPe8tKQm7qzLnUy5DUPJPKIyRHwtpCpyUEYjHYRJC/5gjUvdkuO2c3JllrPtHXH5UJJK8LRYl5yQ==}
 
   protobufjs@8.5.0:
     resolution: {integrity: sha512-df1jWDPA5VIBNRtuAHjqr09f2qN5D4Vke1wYqOQg1XJ7ZDpA7BD6L7E4tyChgGRLB5hqk2m79Zsy0WHwV9a84A==}
@@ -212,6 +233,9 @@ packages:
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
+  video-animation-player@1.0.5:
+    resolution: {integrity: sha512-KLz+uL6zojOYXEPFxL2AB0iKSLHnmKQPBnXmFWHpGtAdB6/j9EWCbWcUDCg0KVOBTFRHa2UfiSNK0y1I+LEfpA==}
 
 snapshots:
 
@@ -326,10 +350,21 @@ snapshots:
       '@esbuild/win32-ia32': 0.28.0
       '@esbuild/win32-x64': 0.28.0
 
+  fast-png@8.0.0:
+    dependencies:
+      fflate: 0.8.3
+      iobuffer: 6.0.1
+
+  fflate@0.8.3: {}
+
   fsevents@2.3.3:
     optional: true
 
+  iobuffer@6.0.1: {}
+
   long@5.3.2: {}
+
+  lottie-web@5.13.0: {}
 
   protobufjs@8.5.0:
     dependencies:
@@ -344,3 +379,5 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@6.21.0: {}
+
+  video-animation-player@1.0.5: {}

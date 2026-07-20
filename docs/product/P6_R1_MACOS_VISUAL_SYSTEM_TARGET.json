@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6-R1",
+  "target": "owner_visible_macos_local_preview_workbench",
+  "status": "repair_contract",
+  "sourceOfTruth": [
+    "tools/shared/product-tokens.css",
+    "tools/shared/product-frontend/product-styles.css",
+    "tools/shared/product-frontend/product-shell.html",
+    "tools/shared/product-frontend/product-app.mjs",
+    "tools/shared/product-frontend/inspection-report-view.mjs",
+    "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+    "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+    "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
+  ],
+  "requiredTokens": [
+    "--visual-surface-0",
+    "--visual-surface-1",
+    "--visual-surface-2",
+    "--visual-surface-3",
+    "--visual-window-background",
+    "--visual-toolbar-background",
+    "--visual-panel-surface",
+    "--visual-card-surface",
+    "--visual-card-surface-elevated",
+    "--visual-inline-surface",
+    "--visual-control-surface",
+    "--visual-hairline",
+    "--visual-border",
+    "--visual-border-strong",
+    "--visual-text-primary",
+    "--visual-text-secondary",
+    "--visual-text-tertiary",
+    "--visual-accent",
+    "--visual-danger",
+    "--visual-warning",
+    "--visual-success",
+    "--visual-focus-ring",
+    "--visual-radius-window",
+    "--visual-radius-panel",
+    "--visual-radius-card",
+    "--visual-radius-control",
+    "--visual-radius-small",
+    "--visual-space-tight",
+    "--visual-space-body",
+    "--visual-space-section",
+    "--visual-font-title",
+    "--visual-font-body",
+    "--visual-font-meta",
+    "--visual-line-title",
+    "--visual-line-body",
+    "--visual-line-meta",
+    "--preview-card-surface",
+    "--preview-card-border",
+    "--preview-card-radius",
+    "--visual-minimum-workbench-width",
+    "--visual-row-height",
+    "--visual-row-padding",
+    "--visual-card-padding",
+    "--visual-tab-height",
+    "--visual-subtab-height",
+    "--visual-icon-button-size",
+    "--visual-preview-control-height",
+    "--panel-header-padding",
+    "--metric-card-surface",
+    "--resource-row-surface",
+    "--log-row-surface",
+    "--inline-feedback-surface",
+    "--compact-toolbar-height",
+    "--compact-toolbar-gap",
+    "--status-badge-radius"
+  ],
+  "requiredComponentClasses": [
+    "previewCard",
+    "panelHeader",
+    "segmentedControl",
+    "metricCard",
+    "resourceRow",
+    "diagnosticSummary",
+    "actionGroup",
+    "activityRow",
+    "logRow",
+    "metricRow",
+    "iconButton",
+    "statusBadge",
+    "emptyPanel",
+    "emptyState",
+    "inlineFeedback",
+    "inspectorSection",
+    "compactToolbar",
+    "workbenchPanel",
+    "sourcePanel",
+    "previewDeck",
+    "inspectorPanel",
+    "fileOverviewCard",
+    "sourceTabs",
+    "sourceTabPanel",
+    "inspectorTabPanel",
+    "inspectorActionCard",
+    "panelCollapseButton",
+    "layerRow"
+  ],
+  "ownerVisibleCopyBans": [
+    "SVGA 播放与导出验收",
+    "Spec Check",
+    "Avatar Frame Production Target",
+    "production_target",
+    "INFO",
+    "SUCC",
+    "ERR",
+    "复制 imageKey"
+  ],
+  "responsiveTargets": [
+    "default_launch_1440x900",
+    "comfortable_workbench_1280x800",
+    "compact_minimum_1180x760",
+    "legacy_stress_900x720",
+    "both_loaded_ab_aligned"
+  ],
+  "evidenceTargets": [
+    "empty_state",
+    "loaded_state",
+    "invalid_state",
+    "recovered_state",
+    "info_overview",
+    "resources",
+    "diagnostics",
+    "logs",
+    "settings",
+    "source_resources",
+    "source_layers",
+    "inspector_actions",
+    "logs_hidden_default",
+    "default_launch_1440x900",
+    "comfortable_workbench_1280x800",
+    "minimum_supported_1180x760",
+    "local_preview_legacy_stress_900x720",
+    "workbench_region_map",
+    "roadmap_capacity_map"
+  ],
+  "primaryOwnerEvidenceTargets": [
+    {
+      "id": "desktop_empty",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-empty.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_loaded",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-loaded.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_default_launch_1440x900",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-1440x900.png",
+      "minimumWidth": 1440,
+      "minimumHeight": 900,
+      "sizeClass": "default_launch"
+    },
+    {
+      "id": "desktop_comfortable_1280x800",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-1280x800.png",
+      "minimumWidth": 1280,
+      "minimumHeight": 800,
+      "sizeClass": "comfortable"
+    },
+    {
+      "id": "desktop_invalid",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-invalid.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_recovered",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-recovered-from-invalid.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_info_overview",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-info-overview-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_info_assets",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-info-assets-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_source_resources",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-source-resources-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_source_layers",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-source-layers-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_inspector_actions",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-inspector-actions-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_info_diagnostics",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-info-diagnostics-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_logs_hidden_default",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-logs-hidden-default.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_minimum_size",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-minimum-size.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760,
+      "sizeClass": "minimum_supported"
+    },
+    {
+      "id": "desktop_local_logs",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-logs-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_settings",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-settings-open.png",
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_local_preview_legacy_stress_900x720",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720,
+      "sizeClass": "legacy_stress"
+    },
+    {
+      "id": "workbench_region_map",
+      "kind": "json",
+      "path": ".artifacts/product/P6/workbench-region-map.json"
+    },
+    {
+      "id": "visual_system_audit_target",
+      "kind": "json",
+      "path": "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json"
+    },
+    {
+      "id": "workbench_foundation_contract",
+      "kind": "json",
+      "path": "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json"
+    },
+    {
+      "id": "workbench_layout_contract",
+      "kind": "json",
+      "path": "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json"
+    },
+    {
+      "id": "roadmap_capacity_map",
+      "kind": "json",
+      "path": "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
+    }
+  ],
+  "auditRules": {
+    "hardcodedOwnerVisibleColorCountMax": 120,
+    "hardcodedOwnerVisibleRadiusCountMax": 110,
+    "hardcodedOwnerVisibleFontSizeCountMax": 140,
+    "requiredTokenReferenceMinimum": 42,
+    "forbidScreenshotExistenceOnly": true,
+    "forbidSourceOnlyFinalEvidence": true,
+    "requiredWorkbenchRegions": [
+      "source_document",
+      "preview_stage",
+      "inspector",
+      "resources",
+      "action_workflow",
+      "activity_history"
+    ],
+    "requiredFutureStatuses": [
+      "deferred_phase2_foundation_ready",
+      "deferred_phase3_foundation_ready",
+      "deferred_phase4_foundation_ready",
+      "mid_term_adapter_foundation",
+      "long_term_agent_engine"
+    ]
+  },
+  "phase1PostAcceptanceBacklog": [
+    "Full A/B information comparison details",
+    "Audio asset support",
+    "Deep optimization scoring",
+    "Optional tab slider animation"
+  ]
+}

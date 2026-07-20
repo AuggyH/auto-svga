@@ -1,0 +1,33 @@
+{
+  "name": "auto-svga-svga-web-strict-csp-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated strict-CSP svga-web playback spike for Auto SVGA.",
+  "main": "main.cjs",
+  "scripts": {
+    "spike:svga-web:prepare": "npm --prefix ../.. run spike:electron:prepare && node scripts/prepare-runtime.mjs",
+    "spike:svga-web:test": "npm run spike:svga-web:prepare && node --test tests/*.test.mjs",
+    "spike:svga-web:smoke": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron . --smoke",
+    "desktop:dev": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron .",
+    "desktop:smoke": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron . --smoke --product-smoke",
+    "desktop:p2:normal-proof": "npm run spike:svga-web:prepare && node scripts/run-canonical-normal-proof.mjs",
+    "desktop:short-term:acceptance-matrix": "node scripts/build-short-term-acceptance-matrix.mjs",
+    "desktop:short-term:design-system-check": "node scripts/check-short-term-design-system.mjs",
+    "desktop:p2:web-reference": "node scripts/capture-p2-web-reference.mjs",
+    "desktop:p2:parity-report": "node scripts/build-p2-parity-report.mjs",
+    "desktop:p2:reviewer-b": "node scripts/build-p2-reviewer-b-categories.mjs",
+    "desktop:p2:upload-package": "node scripts/build-p2-upload-package.mjs",
+    "desktop:p3:upload-package": "node scripts/build-p3-upload-package.mjs",
+    "desktop:p4:upload-package": "node scripts/build-p4-upload-package.mjs",
+    "desktop:p5:live-smoke": "npm run spike:svga-web:prepare && node scripts/prepare-p5-runtime.mjs && AUTO_SVGA_PRODUCT_MILESTONE=P5 ../../node_modules/.bin/electron . --smoke --product-smoke",
+    "internal:trial:parity": "node scripts/run-real-sample-parity-audit.mjs",
+    "internal:trial:proof:mac": "node scripts/macos-package-proof.mjs",
+    "spike:svga-web:package:mac": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=darwin --arch=arm64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
+    "spike:svga-web:package:win": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=win32 --arch=x64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
+    "internal:trial:package:mac": "node scripts/package-internal-trial.mjs",
+    "internal:trial:sign:mac": "node scripts/macos-signing-workflow.mjs sign",
+    "internal:trial:notarize:mac": "node scripts/macos-signing-workflow.mjs notarize",
+    "internal:trial:signing-plan:mac": "node scripts/macos-signing-workflow.mjs plan"
+  }
+}

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="auto-svga-csp" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
+    <title>auto-svga 播放验证</title>
+    <link rel="stylesheet" href="/tools/shared/product-tokens.css">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div
+      id="productShellMount"
+      data-product-shell-src="/tools/shared/product-frontend/product-shell.html"
+      data-product-shell-sha256="1cd1a65a9e2a817824d345aaa0b9c1cd5543e19fbcb8b5587ce2226b5063d0fd"
+    ></div>
+    <script src="/legacy-vendor/pako-2.1.0.min.js"></script>
+    <script type="module" src="/desktop-product-entry.mjs"></script>
+  </body>
+</html>

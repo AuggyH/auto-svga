@@ -1,0 +1,328 @@
+import type { AvatarFrameInspectionReport } from "./avatar-frame-inspection-report.js";
+
+export const MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION = 1 as const;
+const SUPPORTED_REPORT_CONTRACT_VERSIONS = [
+  MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION
+] as const;
+
+export type SupportedMotionAssetAuditReportContractVersion =
+  (typeof SUPPORTED_REPORT_CONTRACT_VERSIONS)[number];
+
+export interface MotionAssetAuditReportContractValidation {
+  valid: boolean;
+  errors: readonly string[];
+}
+
+const OBJECT_PATHS = [
+  "asset",
+  "asset.timing",
+  "memoryEstimation",
+  "memoryDiagnostics",
+  "memoryDiagnostics.byRole",
+  "memoryDiagnostics.byRole.static_image",
+  "memoryDiagnostics.byRole.sequence_frame",
+  "memoryDiagnostics.byRole.baked_sweep_frame",
+  "memoryDiagnostics.byRole.mask_or_matte",
+  "memoryDiagnostics.byRole.unknown",
+  "sequenceResidencyDiagnostics",
+  "sequenceFrameEvidence",
+  "auditSummary",
+  "auditPresentation"
+] as const;
+
+const ARRAY_PATHS = [
+  "issues",
+  "calibrationNotes",
+  "memoryEstimation.resources",
+  "memoryEstimation.largestResourcesByDecodedBytes",
+  "memoryEstimation.unknownResourceIds",
+  "sequenceResidencyDiagnostics.framesPerGroup",
+  "sequenceResidencyDiagnostics.largestSequenceGroupsByDecodedBytes",
+  "sequenceResidencyDiagnostics.possibleResidencyModels",
+  "sequenceResidencyDiagnostics.evidence",
+  "sequenceResidencyDiagnostics.ungroupedResourceIds",
+  "sequenceFrameEvidence.duplicateFrameGroups",
+  "sequenceFrameEvidence.fullyTransparentFrames",
+  "sequenceFrameEvidence.emptyOrNearEmptyFrames",
+  "sequenceFrameEvidence.repeatedAlphaBoundsGroups",
+  "sequenceFrameEvidence.repeatedDimensionsGroups",
+  "sequenceFrameEvidence.missingContentHashResourceIds",
+  "sequenceFrameEvidence.missingAlphaBoundsResourceIds",
+  "auditSummary.primaryFindings",
+  "auditSummary.optimizationOpportunities",
+  "auditSummary.riskSignals",
+  "auditSummary.evidenceRefs",
+  "auditPresentation.findingCards",
+  "auditPresentation.opportunityCards",
+  "auditPresentation.uncertaintyNotes",
+  "auditPresentation.evidenceRefs"
+] as const;
+
+const STRING_PATHS = [
+  "asset.format",
+  "asset.name",
+  "specId",
+  "profileId",
+  "profileLabel",
+  "profilePurpose",
+  "memoryEstimation.memoryRiskLevel",
+  "sequenceResidencyDiagnostics.advisoryRiskLevel",
+  "sequenceResidencyDiagnostics.uncertainty",
+  "sequenceFrameEvidence.duplicateEvidenceStatus",
+  "sequenceFrameEvidence.evidenceConfidence",
+  "sequenceFrameEvidence.uncertainty",
+  "auditSummary.auditStatus",
+  "auditSummary.uncertainty",
+  "auditPresentation.severityLevel"
+] as const;
+
+const NUMBER_PATHS = [
+  "asset.sizeBytes",
+  "asset.layerCount",
+  "asset.resourceCount",
+  "memoryEstimation.bytesPerPixel",
+  "sequenceResidencyDiagnostics.sequenceGroupCount",
+  "sequenceFrameEvidence.analyzedResourceCount",
+  "sequenceFrameEvidence.nearEmptyTransparentPaddingRatio"
+] as const;
+
+const REQUIRED_PATHS = [
+  "memoryEstimation.totalEstimatedDecodedResourceBytes",
+  "memoryEstimation.sequenceFrameEstimatedDecodedBytes",
+  "memoryDiagnostics.sequenceFrameEstimatedDecodedBytes",
+  "sequenceResidencyDiagnostics.totalSequenceFrameEstimatedDecodedBytes"
+] as const;
+
+const LOCALIZATION_KEY_PATHS = [
+  "auditPresentation.statusLabel",
+  "auditPresentation.severityLabel",
+  "auditPresentation.summaryTitle",
+  "auditPresentation.summaryDescription"
+] as const;
+
+export function serializeMotionAssetAuditReportV1(
+  report: AvatarFrameInspectionReport
+): string {
+  return JSON.stringify(report);
+}
+
+export function getCurrentReportContractVersion(
+): SupportedMotionAssetAuditReportContractVersion {
+  return MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION;
+}
+
+export function getSupportedReportContractVersions(
+): readonly SupportedMotionAssetAuditReportContractVersion[] {
+  return [...SUPPORTED_REPORT_CONTRACT_VERSIONS];
+}
+
+export function isSupportedReportContractVersion(
+  version: unknown
+): version is SupportedMotionAssetAuditReportContractVersion {
+  return typeof version === "number"
+    && SUPPORTED_REPORT_CONTRACT_VERSIONS.some((supported) => supported === version);
+}
+
+export function assertSupportedReportContractVersion(
+  version: unknown
+): asserts version is SupportedMotionAssetAuditReportContractVersion {
+  if (!isSupportedReportContractVersion(version)) {
+    throw new Error(`Unsupported Motion Asset Audit report contract version: ${String(version)}`);
+  }
+}
+
+export function parseReportContractVersion(value: unknown): number {
+  if (!isRecord(value) || !("contractVersion" in value)) {
+    throw new Error("Motion Asset Audit report contractVersion is required");
+  }
+  const version = value.contractVersion;
+  if (!Number.isSafeInteger(version) || (version as number) < 1) {
+    throw new Error("Motion Asset Audit report contractVersion must be a positive integer");
+  }
+  return version as number;
+}
+
+export function parseMotionAssetAuditReportV1(
+  serialized: string
+): AvatarFrameInspectionReport {
+  const value: unknown = JSON.parse(serialized);
+  const version = parseReportContractVersion(value);
+  assertSupportedReportContractVersion(version);
+  if (version !== MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION) {
+    throw new Error(`Motion Asset Audit report version ${version} requires a version-specific parser`);
+  }
+  const validation = validateMotionAssetAuditReportV1(value);
+  if (!validation.valid) {
+    throw new Error(`Invalid Motion Asset Audit report v1: ${validation.errors.join(", ")}`);
+  }
+  return value as AvatarFrameInspectionReport;
+}
+
+export function validateMotionAssetAuditReportV1(
+  value: unknown
+): MotionAssetAuditReportContractValidation {
+  if (!isRecord(value)) return { valid: false, errors: ["report must be an object"] };
+  const errors: string[] = [];
+
+  try {
+    const version = parseReportContractVersion(value);
+    if (version !== MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION) {
+      errors.push(`contractVersion must equal ${MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION} for v1 validation`);
+    }
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : "contractVersion is invalid");
+  }
+  validatePaths(value, OBJECT_PATHS, isRecord, "an object", errors);
+  validatePaths(value, ARRAY_PATHS, Array.isArray, "an array", errors);
+  validatePaths(value, STRING_PATHS, (item) => typeof item === "string", "a string", errors);
+  validatePaths(value, NUMBER_PATHS, (item) => typeof item === "number", "a number", errors);
+  validatePaths(value, REQUIRED_PATHS, (item) => item !== MISSING, "present", errors);
+  validatePaths(value, LOCALIZATION_KEY_PATHS, isLocalizationKey, "an audit localization key", errors);
+  if (typeof value.passed !== "boolean") errors.push("passed must be a boolean");
+
+  validateCards(value, "findingCards", false, errors);
+  validateCards(value, "opportunityCards", true, errors);
+  validateLocalizationKeyArray(value, "uncertaintyNotes", errors);
+  validateOptionalAssetIntelligence(value, errors);
+  return { valid: errors.length === 0, errors };
+}
+
+function validateOptionalAssetIntelligence(
+  report: Record<string, unknown>,
+  errors: string[]
+): void {
+  if (!("assetIntelligence" in report)) return;
+  const value = report.assetIntelligence;
+  if (!isRecord(value)) {
+    errors.push("assetIntelligence must be an object when present");
+    return;
+  }
+  if (value.schemaVersion !== 1) errors.push("assetIntelligence.schemaVersion must equal 1");
+  for (const path of ["resources", "findings", "supportedSortKeys"]) {
+    if (!Array.isArray(value[path])) errors.push(`assetIntelligence.${path} must be an array`);
+  }
+  if (!isRecord(value.summary)) errors.push("assetIntelligence.summary must be an object");
+  validateAssetIntelligenceResources(value, errors);
+  validateAssetIntelligenceFindings(value, errors);
+}
+
+function validateAssetIntelligenceResources(
+  value: Record<string, unknown>,
+  errors: string[]
+): void {
+  const resources = value.resources;
+  if (!Array.isArray(resources)) return;
+  resources.forEach((resource, index) => {
+    const parent = `assetIntelligence.resources[${index}]`;
+    if (!isRecord(resource)) {
+      errors.push(`${parent} must be an object`);
+      return;
+    }
+    for (const key of ["resourceId", "name", "kind", "role", "abnormalityLevel"]) {
+      if (typeof resource[key] !== "string") errors.push(`${parent}.${key} must be a string`);
+    }
+    if (!Array.isArray(resource.concepts)) errors.push(`${parent}.concepts must be an array`);
+    if (!Array.isArray(resource.usedByLayerIds)) errors.push(`${parent}.usedByLayerIds must be an array`);
+    if (!Array.isArray(resource.findingCodes)) errors.push(`${parent}.findingCodes must be an array`);
+    if (typeof resource.usageCount !== "number") errors.push(`${parent}.usageCount must be a number`);
+    if (typeof resource.replaceable !== "boolean") errors.push(`${parent}.replaceable must be a boolean`);
+  });
+}
+
+function validateAssetIntelligenceFindings(
+  value: Record<string, unknown>,
+  errors: string[]
+): void {
+  const findings = value.findings;
+  if (!Array.isArray(findings)) return;
+  findings.forEach((finding, index) => {
+    const parent = `assetIntelligence.findings[${index}]`;
+    if (!isRecord(finding)) {
+      errors.push(`${parent} must be an object`);
+      return;
+    }
+    for (const key of ["code", "title", "reason", "severity", "confidence", "optimizationDisposition"]) {
+      if (typeof finding[key] !== "string") errors.push(`${parent}.${key} must be a string`);
+    }
+    if (!Array.isArray(finding.evidenceRefs)) errors.push(`${parent}.evidenceRefs must be an array`);
+    if (!Array.isArray(finding.affectedResourceIds)) errors.push(`${parent}.affectedResourceIds must be an array`);
+    if (typeof finding.safeToAutoOptimize !== "boolean") errors.push(`${parent}.safeToAutoOptimize must be a boolean`);
+    if (typeof finding.roundTripRequired !== "boolean") errors.push(`${parent}.roundTripRequired must be a boolean`);
+  });
+}
+
+const MISSING = Symbol("missing");
+
+function validatePaths(
+  value: Record<string, unknown>,
+  paths: readonly string[],
+  predicate: (item: unknown) => boolean,
+  expectation: string,
+  errors: string[]
+): void {
+  for (const path of paths) {
+    if (!predicate(valueAt(value, path))) errors.push(`${path} must be ${expectation}`);
+  }
+}
+
+function validateCards(
+  report: Record<string, unknown>,
+  field: "findingCards" | "opportunityCards",
+  opportunity: boolean,
+  errors: string[]
+): void {
+  const cards = valueAt(report, `auditPresentation.${field}`);
+  if (!Array.isArray(cards)) return;
+  cards.forEach((card, index) => {
+    const parent = `auditPresentation.${field}[${index}]`;
+    if (!isRecord(card)) {
+      errors.push(`${parent} must be an object`);
+      return;
+    }
+    for (const key of ["code", "description", "category"]) {
+      if (typeof card[key] !== "string") errors.push(`${parent}.${key} must be a string`);
+    }
+    for (const key of ["title", "descriptionKey", "categoryLabel"]) {
+      if (!isLocalizationKey(card[key])) errors.push(`${parent}.${key} must be an audit localization key`);
+    }
+    if (!Array.isArray(card.evidenceRefs)) errors.push(`${parent}.evidenceRefs must be an array`);
+    if (opportunity) {
+      if (card.actionType !== "review_only") errors.push(`${parent}.actionType must equal review_only`);
+      if (!isLocalizationKey(card.actionTypeLabel)) errors.push(`${parent}.actionTypeLabel must be an audit localization key`);
+    } else {
+      if (typeof card.severity !== "string") errors.push(`${parent}.severity must be a string`);
+      if (!isLocalizationKey(card.severityLabel)) errors.push(`${parent}.severityLabel must be an audit localization key`);
+    }
+  });
+}
+
+function validateLocalizationKeyArray(
+  report: Record<string, unknown>,
+  field: string,
+  errors: string[]
+): void {
+  const values = valueAt(report, `auditPresentation.${field}`);
+  if (!Array.isArray(values)) return;
+  values.forEach((value, index) => {
+    if (!isLocalizationKey(value)) {
+      errors.push(`auditPresentation.${field}[${index}] must be an audit localization key`);
+    }
+  });
+}
+
+function valueAt(value: Record<string, unknown>, path: string): unknown {
+  let current: unknown = value;
+  for (const segment of path.split(".")) {
+    if (!isRecord(current) || !(segment in current)) return MISSING;
+    current = current[segment];
+  }
+  return current;
+}
+
+function isLocalizationKey(value: unknown): boolean {
+  return typeof value === "string" && value.startsWith("audit.");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

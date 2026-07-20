@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6-R1",
+  "contractRevision": 3,
+  "authorizedScope": "WP0_RECOVERY_GATE_BOOTSTRAP_ONLY",
+  "configPurpose": "Minimal WP0 recovery gate rules for finding stages, machine/human gates, reviewer verdicts, final-head binding, and failure-first negative fixtures.",
+  "legalResolutionStages": [
+    "unresolved",
+    "implementing",
+    "machine_resolved_pending_integration",
+    "integrated_resolved_pending_external_review",
+    "externally_confirmed_closed",
+    "regressed"
+  ],
+  "findingIds": [
+    "P6-F001",
+    "P6-F002",
+    "P6-F003",
+    "P6-F004",
+    "P6-F005",
+    "P6-F006",
+    "P6-F007",
+    "P6-F008",
+    "P6-F009",
+    "P6-F010",
+    "P6-F011",
+    "P6-F012",
+    "P6-F013"
+  ],
+  "wp0FindingIds": [
+    "P6-F010",
+    "P6-F012"
+  ],
+  "primaryRecoveryWorkPackages": {
+    "P6-F001": "WP1",
+    "P6-F002": "WP1",
+    "P6-F003": "WP3",
+    "P6-F004": "WP4",
+    "P6-F005": "WP3",
+    "P6-F006": "WP4",
+    "P6-F007": "WP5",
+    "P6-F008": "WP4",
+    "P6-F009": "WP5",
+    "P6-F010": "WP0",
+    "P6-F011": "WP5",
+    "P6-F012": "WP0",
+    "P6-F013": "WP2"
+  },
+  "findingRequiredFields": [
+    "findingId",
+    "currentStatus",
+    "resolutionStage",
+    "primaryRecoveryWorkPackage",
+    "evidenceRefs"
+  ],
+  "allowedResolutionTransitions": {
+    "unresolved": [
+      "implementing",
+      "regressed"
+    ],
+    "implementing": [
+      "machine_resolved_pending_integration",
+      "regressed"
+    ],
+    "machine_resolved_pending_integration": [
+      "integrated_resolved_pending_external_review",
+      "regressed"
+    ],
+    "integrated_resolved_pending_external_review": [
+      "externally_confirmed_closed",
+      "regressed"
+    ],
+    "externally_confirmed_closed": [
+      "regressed"
+    ],
+    "regressed": [
+      "implementing"
+    ]
+  },
+  "closureRule": {
+    "externallyConfirmedClosedRequires": [
+      "final_independent_product_external_review_pass",
+      "same_sealed_head",
+      "finding_ledger_closure_step"
+    ],
+    "internalReviewersMayCloseFindings": false,
+    "wp0AllowedFinalStage": "machine_resolved_pending_integration",
+    "wp0CurrentStatusMustRemain": "open"
+  },
+  "gateTaxonomy": {
+    "machineGateRequiredStatuses": [
+      "passed"
+    ],
+    "machineGateBlockingStatuses": [
+      "failed",
+      "missing",
+      "stale",
+      "untrusted"
+    ],
+    "humanRequiredReachability": {
+      "requiresAllRequiredMachineGatesPassed": true,
+      "blockedByAnyRequiredMachineGateStatus": [
+        "failed",
+        "missing",
+        "stale",
+        "untrusted"
+      ]
+    },
+    "ownerHumanGateReachability": {
+      "requiresHumanRequiredMaterialsReady": true,
+      "requiresAllRequiredMachineGatesPassed": true,
+      "blockedByAnyRequiredMachineGateStatus": [
+        "failed",
+        "missing",
+        "stale",
+        "untrusted"
+      ]
+    }
+  },
+  "reviewerProductSchema": {
+    "requiredFields": [
+      "reviewerRole",
+      "independence",
+      "reviewedTree",
+      "reviewedHead",
+      "reviewScope",
+      "categoryVerdicts",
+      "evidenceRefs",
+      "overallVerdict"
+    ],
+    "requiredCategoryVerdicts": [
+      "state_correctness",
+      "interaction_evidence",
+      "visual_motion_evidence",
+      "app_delivery",
+      "handoff_privacy_binding"
+    ],
+    "validOverallVerdicts": [
+      "PASS",
+      "REPAIR_REQUIRED"
+    ],
+    "genericPassWithoutCategoriesIsValid": false
+  },
+  "finalHeadBindingRule": {
+    "bindingMode": "same_commit_or_same_staged_tree",
+    "requiredBoundArtifacts": [
+      "evidence",
+      "reviewerVerdict",
+      "reviewPacket",
+      "targetCommitOrTree"
+    ],
+    "mismatchResult": "fail"
+  },
+  "negativeFixtures": [
+    {
+      "id": "required_machine_gate_failed_but_human_required",
+      "mapsToFindingIds": [
+        "P6-F010"
+      ],
+      "mustReject": true
+    },
+    {
+      "id": "generic_reviewer_pass_missing_category_verdicts",
+      "mapsToFindingIds": [
+        "P6-F012"
+      ],
+      "mustReject": true
+    },
+    {
+      "id": "head_binding_mismatch",
+      "mapsToFindingIds": [
+        "P6-F010",
+        "P6-F012"
+      ],
+      "mustReject": true
+    },
+    {
+      "id": "finding_closed_without_external_confirmation",
+      "mapsToFindingIds": [
+        "P6-F010",
+        "P6-F012"
+      ],
+      "mustReject": true
+    }
+  ],
+  "positiveFixtureRequirements": {
+    "machineGates": "all required statuses passed",
+    "reviewerVerdict": "all required category verdicts present and overall PASS",
+    "headBinding": "all bound artifacts share the same commit or staged tree",
+    "wp0FindingStage": "P6-F010 and P6-F012 may be machine_resolved_pending_integration with currentStatus open"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "requirementId": "ASV-REQ-20260709-003",
+  "parentTicketId": "ASV-QA-20260714-001",
+  "findings": [
+    "ASV-QA-20260714-006",
+    "ASV-QA-20260714-009",
+    "MF-NATIVE-PICKER-CR-001"
+  ],
+  "branch": "codex/0.2-multiformat-native-picker-repair-20260715",
+  "baseCommit": "3231f2beb6c34de6cfe020dc5f62159ec6d45f7d",
+  "status": "fix-ready-pending-pm-owned-code-re-review",
+  "exactHeadBinding": "Fix Ready callback and post-commit source proof",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "f6eaaa6be3f5621ad8a65b76dc9f642c4fc372f60a6c62b12f75d70942103413"
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sha256": "72ca52d8a2ca0b65c2f2f9c1113b3ec46abc69e2cfd2e7137cc8cb114e15fcaf"
+    },
+    {
+      "path": "FINAL_RESPONSE.txt",
+      "sha256": "d6766da937c38a0ba634142a6fb151a6dc39a6a9367370e98b808f73af6934c0"
+    }
+  ],
+  "boundaries": {
+    "productionAssetsIncluded": false,
+    "rawPathsPublished": false,
+    "installedAppMutated": false,
+    "foregroundUsed": false,
+    "qaTicketsClosed": false,
+    "nativeButtonAcceptanceClaimed": false
+  }
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Legacy Electron Spike — not product mainline</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header>
+      <strong>Legacy Electron Spike — not product mainline</strong>
+      <span id="runtimeStatus">正在加载本地资源</span>
+    </header>
+    <main>
+      <section class="playerPanel" aria-labelledby="previewTitle">
+        <div class="sectionTitle">
+          <h1 id="previewTitle">合成 SVGA 预览</h1>
+          <span id="playbackStatus">等待播放</span>
+        </div>
+        <div id="player" aria-label="Synthetic SVGA player"></div>
+      </section>
+      <section class="reportPanel" aria-labelledby="reportTitle">
+        <div class="sectionTitle">
+          <h2 id="reportTitle">检查报告</h2>
+          <span>只读</span>
+        </div>
+        <div id="reportRoot"></div>
+      </section>
+    </main>
+    <script src="/vendor/pako-2.1.0.min.js"></script>
+    <script src="/vendor/svgaplayerweb-2.3.1.min.js"></script>
+    <script type="module" src="/prototype.js"></script>
+  </body>
+</html>

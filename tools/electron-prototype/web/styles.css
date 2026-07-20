@@ -1,0 +1,84 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f3f4f6;
+  color: #17181a;
+}
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 680px; min-height: 100vh; }
+
+header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid #d8dadd;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+header span, .sectionTitle span { color: #6b7078; font-size: 12px; }
+
+main {
+  height: calc(100vh - 56px);
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(320px, 420px);
+  gap: 12px;
+  padding: 12px;
+}
+
+section {
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid #d8dadd;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.sectionTitle {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid #e4e5e7;
+}
+
+h1, h2, h3, p { margin: 0; }
+h1, h2 { font-size: 15px; }
+
+#player {
+  width: min(76vh, 100%);
+  aspect-ratio: 1;
+  margin: 24px auto;
+  background: repeating-conic-gradient(#eef0f2 0 25%, #fff 0 50%) 50% / 20px 20px;
+}
+
+#reportRoot { padding: 12px; }
+.specReportSection, .auditReportSection { display: grid; gap: 10px; }
+.specReportHeader, .auditReportHeader, .auditCardMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.specReportHeader small, .auditReportHeader small, .auditCardMeta, .auditEvidence,
+.specReportHint, .auditSummary p { color: #6b7078; font-size: 12px; }
+.specReportBadge { padding: 2px 7px; border-radius: 5px; background: #e8f1ff; }
+.specAssetSummary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.specAssetSummary div, .auditCard, .specReportGroup, .auditUncertainty {
+  padding: 9px;
+  border: 1px solid #e2e4e7;
+  border-radius: 6px;
+}
+.specAssetSummary dt, .specAssetSummary dd { margin: 0; font-size: 12px; }
+.specIssueList, .calibrationList, .auditCardList, .auditUncertainty ul { margin: 0; padding-left: 18px; }
+.auditCardList { list-style: none; padding: 0; display: grid; gap: 8px; }
+.auditCard p { margin-top: 5px; font-size: 12px; line-height: 1.5; }
+
+@media (prefers-color-scheme: dark) {
+  :root { background: #17181a; color: #f2f3f5; }
+  header, section { background: #222428; border-color: #3a3d43; }
+  .sectionTitle, .auditCard, .specReportGroup, .auditUncertainty, .specAssetSummary div { border-color: #3a3d43; }
+}

@@ -1,0 +1,19 @@
+Implementation Ready for ASV-QA-20260711-001 / ASV-REQ-20260709-003 VAP replacement-control closure.
+
+Branch: codex/0.2-vap-replacement-control-20260713
+Base: 2795dcb786a8579125fc8fdfe92cebeb014d0766
+
+The native/menu replacement command and row replacement action now share a 0.2-gated host picker path with mandatory source identity guards, bounded redacted file reads, redacted feedback, and VAP runtime replacement/remount/reset behavior.
+
+Repair findings closed for re-review:
+- MF-VAP-REPLACE-CR-001: missing/blank sourceId fails before dialog; stale sourceId is checked before and after picker selection.
+- MF-VAP-REPLACE-CR-002: selected images are read through fd + fstat + bounded MAX+1 reads; read/delete/permission errors return typed redacted failures.
+
+Validation before handoff:
+- npm run build: PASS
+- npm run test:all: PASS 528/528
+- desktop:short-term:design-system-check: PASS
+- focused replacement/runtime/control tests: PASS 6/6
+- hidden real VAP runtime proof: PASS
+
+No QA, Packaging, installed-app mutation, foreground action, save/export/conversion, Product Owner acceptance, support claim, production claim, or release readiness claim.

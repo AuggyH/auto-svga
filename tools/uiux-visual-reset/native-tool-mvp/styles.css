@@ -1,0 +1,1351 @@
+:root {
+  color-scheme: light;
+  --asv-bg: #070707;
+  --asv-window: #f7f8fb;
+  --asv-check-a: rgba(221, 225, 233, 0.34);
+  --asv-check-b: rgba(255, 255, 255, 0.34);
+  --asv-text-muted: #8f949d;
+  --asv-icon-muted: #aeb3bb;
+  --asv-dash: #c8ccd4;
+  --asv-blue: #087cff;
+  --asv-blue-bottom: #0070f2;
+  --asv-green: #24c65a;
+  --asv-red: #ff3b46;
+  --asv-white: #ffffff;
+  --asv-shadow: 0 44px 90px rgba(0, 0, 0, 0.62), 0 18px 36px rgba(0, 0, 0, 0.45);
+  --asv-window-radius: 16px;
+  --asv-control-radius: 11px;
+  --asv-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--asv-bg);
+  color: #1d1d1f;
+  font-family: var(--asv-font);
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.asvThemeDark {
+  --asv-bg: #020203;
+  --asv-window: #1d1f24;
+  --asv-check-a: rgba(255, 255, 255, 0.04);
+  --asv-check-b: rgba(0, 0, 0, 0.04);
+  --asv-text-muted: #8b909b;
+  --asv-icon-muted: #8b909b;
+  --asv-dash: rgba(255, 255, 255, 0.18);
+  color: #f5f5f7;
+}
+
+.asvLaunchDirection,
+.asvPreviewDirection {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 48px;
+}
+
+.asvWindow {
+  position: relative;
+  width: min(960px, calc(100vw - 96px), calc(100vh - 96px));
+  aspect-ratio: 1;
+  min-width: 560px;
+  min-height: 560px;
+  overflow: hidden;
+  border-radius: var(--asv-window-radius);
+  background-color: var(--asv-window);
+  background-image:
+    linear-gradient(45deg, var(--asv-check-a) 25%, transparent 25% 75%, var(--asv-check-a) 75%),
+    linear-gradient(45deg, var(--asv-check-a) 25%, transparent 25% 75%, var(--asv-check-a) 75%),
+    linear-gradient(var(--asv-check-b), var(--asv-check-b));
+  background-position: 0 0, 12px 12px, 0 0;
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+  box-shadow: var(--asv-shadow);
+}
+
+.asvTrafficLights {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.asvTraffic {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+}
+
+.asvTrafficClose {
+  background: #ff5f57;
+}
+
+.asvTrafficMin {
+  background: #febc2e;
+}
+
+.asvTrafficMax {
+  background: #28c840;
+}
+
+.asvLaunchAction {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  transform: translate(-50%, -50%);
+}
+
+.asvDropIcon {
+  display: grid;
+  place-items: center;
+  width: 90px;
+  height: 90px;
+  border: 1.5px dashed var(--asv-dash);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--asv-icon-muted);
+}
+
+.asvDropIcon svg {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.asvDropText {
+  margin-top: 18px;
+  color: var(--asv-text-muted);
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.asvOpenButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 180px;
+  height: 56px;
+  margin-top: 28px;
+  border-radius: var(--asv-control-radius);
+  background: linear-gradient(180deg, var(--asv-blue), var(--asv-blue-bottom));
+  box-shadow: 0 10px 22px rgba(0, 112, 242, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  color: var(--asv-white);
+  font-size: 24px;
+  font-weight: 520;
+  line-height: 30px;
+}
+
+.asvOpenButton svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.asvRecentGroup {
+  position: absolute;
+  top: 69%;
+  left: 50%;
+  width: min(460px, 58%);
+  display: grid;
+  transform: translateX(-50%);
+}
+
+.asvRecentHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin-bottom: 12px;
+  color: #5f636b;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 22px;
+}
+
+.asvRecentHeader svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: #8b9098;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.asvRecentRows {
+  display: grid;
+  gap: 13px;
+}
+
+.asvRecentRows div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  color: #8f949d;
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.asvRecentRows span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asvRecentRows time {
+  color: #8f949d;
+  white-space: nowrap;
+}
+
+.asvPreviewWindow {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 520px;
+  width: min(1860px, calc(100vw - 96px));
+  height: min(1080px, calc(100vh - 96px));
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--asv-window-radius);
+  background: #ffffff;
+  box-shadow: var(--asv-shadow);
+}
+
+body.asvThemeDark .asvPreviewWindow,
+body.asvThemeDark .asvEditWindow {
+  background: #202126;
+}
+
+.asvPreviewCanvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background-color: var(--asv-window);
+  background-image:
+    linear-gradient(45deg, var(--asv-check-a) 25%, transparent 25% 75%, var(--asv-check-a) 75%),
+    linear-gradient(45deg, var(--asv-check-a) 25%, transparent 25% 75%, var(--asv-check-a) 75%),
+    linear-gradient(var(--asv-check-b), var(--asv-check-b));
+  background-position: 0 0, 12px 12px, 0 0;
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+}
+
+.asvModeSwitch {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  z-index: 5;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  transform: translateX(-50%);
+  color: #8e929a;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 28px;
+  white-space: nowrap;
+}
+
+.asvModeSwitch span {
+  display: grid;
+  min-width: 146px;
+  height: 52px;
+  place-items: center;
+  border-radius: 11px;
+}
+
+.asvModeSwitch .isSelected {
+  background: rgba(8, 124, 255, 0.12);
+  color: var(--asv-blue);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+.asvWolfFrame {
+  position: absolute;
+  top: 50%;
+  left: 51%;
+  width: min(430px, 38vw, 46vh);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 22px 26px rgba(140, 82, 12, 0.18));
+}
+
+.asvWolfFrame.isBlurred {
+  filter: blur(18px) saturate(0.85);
+  opacity: 0.62;
+}
+
+.asvWolfTop,
+.asvWolfBottom,
+.asvWolfSide,
+.asvWolfGem,
+.asvWolfHead,
+.asvWolfCenter {
+  position: absolute;
+}
+
+.asvWolfTop {
+  top: 11%;
+  left: 18%;
+  width: 64%;
+  height: 26%;
+  border-radius: 50% 50% 22% 22%;
+  background:
+    radial-gradient(circle at 50% 0, #8ee9ff 0 8%, transparent 9%),
+    linear-gradient(135deg, #fff4a8 0%, #d48922 36%, #9f5a17 62%, #ffe28b 100%);
+  clip-path: polygon(0 66%, 18% 18%, 34% 45%, 50% 0, 66% 45%, 82% 18%, 100% 66%, 78% 100%, 22% 100%);
+}
+
+.asvWolfSide {
+  top: 24%;
+  width: 28%;
+  height: 54%;
+  background:
+    radial-gradient(circle at 50% 76%, #9b5d16 0 10%, transparent 11%),
+    linear-gradient(150deg, #fff0a4, #e19a28 34%, #875313 78%);
+  clip-path: polygon(52% 0, 100% 6%, 74% 100%, 6% 76%, 0 24%);
+}
+
+.asvWolfLeft {
+  left: 17%;
+  transform: skewY(-10deg);
+}
+
+.asvWolfRight {
+  right: 17%;
+  transform: scaleX(-1) skewY(-10deg);
+}
+
+.asvWolfBottom {
+  left: 28%;
+  bottom: 10%;
+  width: 44%;
+  height: 24%;
+  border-radius: 0 0 48% 48%;
+  background: linear-gradient(135deg, #ffe18a, #c47819 46%, #1d8ee6 48% 70%, #ffc64f 72%);
+  clip-path: polygon(0 36%, 26% 0, 50% 42%, 74% 0, 100% 36%, 74% 100%, 26% 100%);
+}
+
+.asvWolfGem {
+  top: 10%;
+  left: 45%;
+  width: 10%;
+  height: 10%;
+  border-radius: 28%;
+  background: linear-gradient(135deg, #ffffff, #1db8ff 50%, #0068d8);
+  transform: rotate(45deg);
+  box-shadow: 0 0 18px rgba(25, 170, 255, 0.62);
+}
+
+.asvWolfHead {
+  bottom: 26%;
+  width: 19%;
+  height: 26%;
+  border-radius: 46% 46% 36% 36%;
+  background:
+    radial-gradient(circle at 38% 44%, #321b0b 0 4%, transparent 5%),
+    radial-gradient(circle at 62% 44%, #321b0b 0 4%, transparent 5%),
+    linear-gradient(135deg, #fff0a4, #c07518 70%);
+  clip-path: polygon(50% 0, 76% 18%, 94% 68%, 68% 100%, 32% 100%, 6% 68%, 24% 18%);
+}
+
+.asvWolfHeadLeft {
+  left: 31%;
+}
+
+.asvWolfHeadRight {
+  right: 31%;
+  transform: scaleX(-1);
+}
+
+.asvWolfCenter {
+  inset: 26% 31% 27%;
+  border-radius: 34%;
+  background:
+    radial-gradient(circle at 42% 34%, rgba(30, 175, 255, 0.28) 0 3%, transparent 4%),
+    radial-gradient(circle at 58% 56%, rgba(30, 175, 255, 0.22) 0 2%, transparent 3%),
+    rgba(255, 255, 255, 0.36);
+  box-shadow: inset 0 0 0 3px rgba(255, 235, 171, 0.42);
+}
+
+.asvPlayerControls {
+  position: absolute;
+  z-index: 4;
+  right: 42px;
+  bottom: 34px;
+  left: 52px;
+  display: grid;
+  grid-template-columns: 36px 64px minmax(140px, 1fr) auto 64px 42px;
+  gap: 24px;
+  align-items: center;
+}
+
+.asvPlayerControls.isDisabled {
+  opacity: 0.42;
+}
+
+.asvPlayerControls.isDisabled .asvProgress span {
+  width: 0;
+}
+
+.asvControlIcon,
+.asvPlayButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.asvControlIcon {
+  width: 42px;
+  height: 42px;
+  color: #8c929d;
+}
+
+.asvPlayButton {
+  width: 64px;
+  height: 64px;
+  border-radius: 15px;
+  background: linear-gradient(180deg, var(--asv-blue), var(--asv-blue-bottom));
+  box-shadow: 0 10px 22px rgba(0, 112, 242, 0.26);
+}
+
+.asvPlayButton::before {
+  width: 0;
+  height: 0;
+  margin-left: 5px;
+  border-top: 15px solid transparent;
+  border-bottom: 15px solid transparent;
+  border-left: 21px solid #ffffff;
+  content: "";
+}
+
+.asvReplayIcon::before,
+.asvLoopIcon::before {
+  width: 24px;
+  height: 24px;
+  border: 4px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+}
+
+.asvReplayIcon::after,
+.asvLoopIcon::after {
+  position: absolute;
+  top: 8px;
+  left: 6px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 8px solid currentColor;
+  content: "";
+}
+
+.asvLoopIcon {
+  border-radius: 15px;
+  background: rgba(8, 124, 255, 0.1);
+  color: var(--asv-blue);
+}
+
+.asvFullscreenIcon::before,
+.asvFullscreenIcon::after {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--asv-blue);
+  content: "";
+}
+
+.asvFullscreenIcon::before {
+  clip-path: polygon(0 0, 42% 0, 42% 18%, 18% 18%, 18% 42%, 0 42%);
+}
+
+.asvFullscreenIcon::after {
+  clip-path: polygon(58% 58%, 82% 58%, 82% 82%, 100% 82%, 100% 100%, 58% 100%);
+}
+
+.asvProgress {
+  height: 5px;
+  border-radius: 999px;
+  background: #dce0e7;
+}
+
+.asvProgress span {
+  display: block;
+  width: 28%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--asv-blue);
+}
+
+.asvTime {
+  color: #8c929d;
+  font-size: 20px;
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.asvPreviewSidebar {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 38px 34px 40px;
+  background: #ffffff;
+  color: #2b2d33;
+}
+
+body.asvThemeDark .asvPreviewSidebar,
+body.asvThemeDark .asvLayerSidebar,
+body.asvThemeDark .asvReservedPane {
+  background: #202126;
+  color: #f5f5f7;
+}
+
+.asvPreviewSidebar::before,
+.asvPreviewSidebar::after {
+  display: none;
+}
+
+.asvSidebarHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 36px;
+}
+
+.asvSidebarHeader h1 {
+  margin: 0;
+  overflow: hidden;
+  color: #2c2d33;
+  font-size: 26px;
+  font-weight: 760;
+  line-height: 34px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.asvThemeDark .asvSidebarHeader h1,
+body.asvThemeDark .asvMetricGrid strong,
+body.asvThemeDark .asvImageKeyRow strong,
+body.asvThemeDark .asvAssetList strong,
+body.asvThemeDark .asvCompareInfoGrid h2,
+body.asvThemeDark .asvCompareMetricCard strong,
+body.asvThemeDark .asvLayerSidebar h1,
+body.asvThemeDark .asvLayerRow strong,
+body.asvThemeDark .asvPlainAction {
+  color: #f5f5f7;
+}
+
+.asvSaveButton,
+.asvMetricGrid b,
+.asvKeyAction,
+.asvAssetFilters span,
+.asvPrimaryWideButton,
+.asvLinkAction,
+.asvPlainAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.asvSaveButton {
+  height: 48px;
+  padding: 0 28px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--asv-blue), var(--asv-blue-bottom));
+  box-shadow: 0 10px 22px rgba(0, 112, 242, 0.24);
+  color: var(--asv-white);
+  font-size: 19px;
+  font-weight: 650;
+}
+
+.asvSaveButton.isDisabled {
+  background: #eef0f3;
+  box-shadow: none;
+  color: #aeb3bb;
+}
+
+.asvMetricGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 34px 44px;
+  margin-bottom: 34px;
+}
+
+.asvMetricGrid div {
+  display: grid;
+  justify-items: start;
+}
+
+.asvMetricGrid span,
+.asvImageKeyBlock h2,
+.asvAssetBlock h2 {
+  margin: 0;
+  color: #9a9a9f;
+  font-size: 17px;
+  font-weight: 520;
+  line-height: 23px;
+}
+
+body.asvThemeDark .asvMetricGrid span,
+body.asvThemeDark .asvImageKeyBlock h2,
+body.asvThemeDark .asvAssetBlock h2,
+body.asvThemeDark .asvAssetList em,
+body.asvThemeDark .asvCompareMetricCard span,
+body.asvThemeDark .asvCompareMetricCard em,
+body.asvThemeDark .asvLayerList h2,
+body.asvThemeDark .asvLayerFilters {
+  color: #8d929d;
+}
+
+.asvMetricGrid strong {
+  margin-top: 10px;
+  color: #2c2d33;
+  font-size: 27px;
+  font-weight: 760;
+  line-height: 34px;
+}
+
+.asvMetricGrid strong em {
+  color: #8c8d94;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.asvMetricGrid b {
+  height: 34px;
+  margin-top: 12px;
+  padding: 0 14px;
+  background: #ffdfe1;
+  color: #ff4d55;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.asvImageKeyBlock,
+.asvAssetBlock {
+  padding-top: 32px;
+  border-top: 1px solid #ececf0;
+}
+
+body.asvThemeDark .asvImageKeyBlock,
+body.asvThemeDark .asvAssetBlock {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.asvImageKeyBlock {
+  margin-bottom: 34px;
+}
+
+.asvImageKeyRows {
+  display: grid;
+  gap: 15px;
+  margin-top: 16px;
+}
+
+.asvImageKeyRow {
+  display: grid;
+  grid-template-columns: 70px auto 22px minmax(96px, 1fr) 24px;
+  gap: 12px;
+  align-items: center;
+  min-height: 66px;
+}
+
+.asvKeyThumb,
+.asvAssetPreviewThumb {
+  border-radius: 12px;
+  background:
+    linear-gradient(45deg, rgba(155, 161, 174, 0.22) 25%, transparent 25% 75%, rgba(155, 161, 174, 0.22) 75%),
+    #fbfcff;
+  background-size: 10px 10px;
+}
+
+body.asvThemeDark .asvKeyThumb,
+body.asvThemeDark .asvAssetPreviewThumb {
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.08) 75%),
+    #24262c;
+  background-size: 10px 10px;
+}
+
+.asvKeyThumb {
+  width: 70px;
+  height: 66px;
+}
+
+.asvKeyThumbText::after {
+  display: block;
+  width: 46px;
+  height: 20px;
+  margin: 23px auto 0;
+  background: #000000;
+  content: "";
+}
+
+.asvKeyThumbAvatar::after {
+  display: block;
+  width: 50px;
+  height: 50px;
+  margin: 8px auto 0;
+  border-radius: 50%;
+  background: #000000;
+  content: "";
+}
+
+.asvImageKeyRow strong {
+  color: #2e3035;
+  font-size: 23px;
+  font-weight: 760;
+  line-height: 30px;
+}
+
+.asvEditGlyph,
+.asvResetGlyph {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  color: #45484f;
+}
+
+.asvEditGlyph::before {
+  position: absolute;
+  inset: 5px 4px 4px 6px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-right-color: transparent;
+  content: "";
+}
+
+.asvEditGlyph::after {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 11px;
+  height: 3px;
+  background: currentColor;
+  content: "";
+  transform: rotate(-45deg);
+}
+
+.asvResetGlyph::before {
+  position: absolute;
+  inset: 3px;
+  border: 2px solid #c3c5cb;
+  border-left-color: transparent;
+  border-radius: 50%;
+  content: "";
+}
+
+.asvResetGlyph::after {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid #c3c5cb;
+  content: "";
+}
+
+.asvKeyAction {
+  justify-self: end;
+  min-width: 136px;
+  height: 42px;
+  padding: 0 18px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 2px #e0e1e5;
+  color: #555960;
+  font-size: 19px;
+  line-height: 24px;
+}
+
+body.asvThemeDark .asvKeyAction {
+  background: #25272d;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+  color: #d9dce3;
+}
+
+body.asvThemeDark .asvKeyAction.isBlue {
+  background: #2b2e35;
+  box-shadow: none;
+  color: #0a84ff;
+}
+
+.asvTextInput {
+  border-radius: 18px;
+}
+
+.asvKeyAction.isPlaceholder {
+  color: #c3c5cb;
+}
+
+.asvKeyAction.isBlue {
+  min-width: 104px;
+  background: #f3f4f6;
+  box-shadow: none;
+  color: var(--asv-blue);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.asvAssetFilters {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  margin: 18px 0;
+  color: var(--asv-blue);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.asvAssetFilters span:first-child {
+  height: 34px;
+  padding: 0 17px;
+  background: #f3f4f6;
+}
+
+body.asvThemeDark .asvAssetFilters span:first-child,
+body.asvThemeDark .asvLayerFilters span:first-child,
+body.asvThemeDark .asvLayerRow.isSelected,
+body.asvThemeDark .asvCompareMetricCard {
+  background: #2a2c31;
+}
+
+.asvAssetList {
+  display: grid;
+  gap: 20px;
+}
+
+.asvAssetList div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  column-gap: 18px;
+  align-items: center;
+}
+
+.asvAssetPreviewThumb {
+  grid-row: 1 / span 2;
+  width: 72px;
+  height: 72px;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 28%, #1e2430 29% 35%, transparent 36%),
+    conic-gradient(from 18deg, #fff0a4, #d89b38, #a96b22, #ffe49a, #d18a2e, #fff0a4);
+}
+
+.asvAssetList strong {
+  overflow: hidden;
+  color: #2e3035;
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 30px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asvAssetList em {
+  color: #9a9ba0;
+  font-size: 17px;
+  font-style: normal;
+  line-height: 22px;
+}
+
+.asvCompareCanvas {
+  overflow: hidden;
+}
+
+.asvCompareSlots,
+.asvCompareArtboards {
+  position: absolute;
+  inset: 76px 0 112px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+
+.asvCompareDrop {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  height: 100%;
+}
+
+.asvCompareDrop .asvDropIcon {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+}
+
+.asvCompareDrop .asvOpenButton {
+  margin-top: 26px;
+}
+
+.asvCompareArtboards {
+  justify-items: center;
+}
+
+.asvCompareWolf {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: min(440px, 30vw, 48vh);
+  transform: none;
+}
+
+.asvCompareNames {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  color: #2c2d33;
+  font-size: 21px;
+  font-weight: 760;
+  line-height: 28px;
+}
+
+.asvCompareInfoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.asvCompareInfoGrid h2 {
+  margin: 0 0 12px;
+  color: #2c2d33;
+  font-size: 19px;
+  font-weight: 760;
+  line-height: 26px;
+}
+
+.asvCompareInfoGrid h2.isSuccess,
+.asvCompareMetricCard.isSuccess span,
+.asvCompareMetricCard.isSuccess strong {
+  color: var(--asv-green);
+}
+
+.asvCompareMetricCard {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #f3f3f4;
+}
+
+.asvCompareMetricCard span {
+  color: #8f949d;
+  font-size: 17px;
+  font-weight: 520;
+  line-height: 22px;
+}
+
+.asvCompareMetricCard strong {
+  margin-bottom: 14px;
+  color: #2c2d33;
+  font-size: 27px;
+  font-weight: 760;
+  line-height: 32px;
+}
+
+.asvCompareMetricCard em {
+  color: #8c8d94;
+  font-size: 19px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.asvDragDecision,
+.asvDragInvalid {
+  position: absolute;
+  z-index: 3;
+  inset: 76px 0 112px;
+}
+
+.asvDragDecision {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.asvDragHalf {
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.48);
+  color: #ffffff;
+  font-size: 40px;
+  font-weight: 760;
+  line-height: 48px;
+}
+
+.asvDragHalf.isFocus {
+  background: rgba(35, 169, 82, 0.62);
+  box-shadow: inset 0 0 0 2px rgba(36, 198, 90, 0.88);
+}
+
+.asvDragInvalid {
+  display: grid;
+  place-items: center;
+  background: rgba(202, 30, 36, 0.68);
+  box-shadow: inset 0 0 0 2px rgba(255, 59, 70, 0.92);
+  color: #ffffff;
+  font-size: 40px;
+  font-weight: 760;
+  line-height: 48px;
+}
+
+.asvSingleHeader {
+  grid-template-columns: 1fr;
+}
+
+.asvOptimizationActions {
+  display: grid;
+  gap: 28px;
+  margin-top: 34px;
+}
+
+.asvPrimaryWideButton {
+  height: 58px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--asv-blue), var(--asv-blue-bottom));
+  box-shadow: 0 10px 22px rgba(0, 112, 242, 0.24);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.asvLinkAction,
+.asvPlainAction {
+  color: var(--asv-blue);
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 28px;
+}
+
+.asvPlainAction {
+  color: #2c2d33;
+}
+
+.asvEditWindow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 520px minmax(0, 1fr) 520px;
+  width: min(1860px, calc(100vw - 96px));
+  height: min(1080px, calc(100vh - 96px));
+  overflow: hidden;
+  border-radius: var(--asv-window-radius);
+  background: #ffffff;
+  box-shadow: var(--asv-shadow);
+}
+
+.asvSettingsDirection .asvPreviewWindow {
+  isolation: isolate;
+}
+
+.asvModalBackdrop {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(12px) saturate(1.08);
+}
+
+.asvSettingsSheet {
+  width: min(520px, calc(100vw - 96px));
+  margin: 0;
+  padding: 28px;
+  border: 0;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2c2d33;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.asvSettingsSheet h1 {
+  margin: 0 0 26px;
+  color: inherit;
+  font-size: 25px;
+  font-weight: 760;
+  line-height: 32px;
+}
+
+.asvSettingsRows {
+  display: grid;
+  gap: 18px;
+}
+
+.asvSettingsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.asvSettingsRow > span {
+  color: #6e737d;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 23px;
+}
+
+.asvThemeOptions {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(92px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(118, 118, 128, 0.12);
+}
+
+.asvThemeOptions span {
+  display: grid;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  color: #6e737d;
+  font-size: 15px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.asvThemeOptions .isSelected {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1d1d1f;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+body.asvThemeDark .asvSettingsSheet {
+  background: rgba(38, 40, 46, 0.9);
+  color: #f5f5f7;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body.asvThemeDark .asvSettingsRow > span,
+body.asvThemeDark .asvThemeOptions span {
+  color: #a7abb4;
+}
+
+body.asvThemeDark .asvThemeOptions {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.asvThemeDark .asvThemeOptions .isSelected {
+  background: rgba(255, 255, 255, 0.14);
+  color: #f5f5f7;
+  box-shadow: none;
+}
+
+.asvLayerSidebar,
+.asvReservedPane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.asvLayerSidebar {
+  padding: 124px 34px 36px;
+}
+
+.asvLayerSidebar h1 {
+  margin: 0 0 34px;
+  overflow: hidden;
+  color: #2c2d33;
+  font-size: 25px;
+  font-weight: 760;
+  line-height: 33px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asvLayerList h2 {
+  margin: 0 0 18px;
+  color: #9a9a9f;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.asvLayerFilters {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 18px;
+  color: #8f949d;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.asvLayerFilters span:first-child {
+  display: inline-grid;
+  min-width: 70px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: #f3f4f6;
+}
+
+.asvLayerRow {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  min-height: 96px;
+  margin-bottom: 18px;
+  padding: 12px;
+  border-radius: 18px;
+}
+
+.asvLayerRow.isSelected {
+  background: #f0f0f1;
+}
+
+.asvLayerRow.isMuted {
+  opacity: 0.38;
+}
+
+.asvLayerRow .asvAssetPreviewThumb {
+  width: 74px;
+  height: 74px;
+}
+
+.asvLayerRow strong {
+  overflow: hidden;
+  color: #2e3035;
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 30px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asvLayerRow em {
+  grid-column: 2;
+  color: #625bff;
+  font-size: 17px;
+  font-style: normal;
+  line-height: 22px;
+}
+
+@media (max-width: 760px) {
+  .asvLaunchDirection {
+    padding: 28px;
+  }
+
+  .asvWindow {
+    width: calc(100vw - 56px);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .asvTrafficLights {
+    top: 18px;
+    left: 18px;
+    gap: 8px;
+  }
+
+  .asvTraffic {
+    width: 16px;
+    height: 16px;
+  }
+
+  .asvDropIcon {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+  }
+
+  .asvDropText {
+    font-size: 17px;
+    line-height: 24px;
+  }
+
+  .asvOpenButton {
+    min-width: 156px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  .asvRecentGroup {
+    top: 68%;
+    width: min(340px, 70%);
+  }
+
+  .asvRecentHeader,
+  .asvRecentRows div {
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .asvRecentRows {
+    gap: 8px;
+  }
+
+  .asvPreviewDirection {
+    padding: 28px;
+  }
+
+  .asvPreviewWindow {
+    grid-template-columns: 1fr;
+    width: calc(100vw - 56px);
+    height: calc(100vh - 56px);
+  }
+
+  .asvWolfFrame {
+    left: 50%;
+    width: min(310px, 68vw, 46vh);
+  }
+
+  .asvPreviewSidebar {
+    display: none;
+  }
+
+  .asvPlayerControls {
+    left: 28px;
+    right: 28px;
+    grid-template-columns: 36px 56px minmax(0, 1fr) 42px;
+    gap: 14px;
+  }
+
+  .asvPlayButton {
+    width: 56px;
+    height: 56px;
+  }
+
+  .asvTime,
+  .asvFullscreenIcon {
+    display: none;
+  }
+}

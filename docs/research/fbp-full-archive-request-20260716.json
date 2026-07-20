@@ -1,0 +1,804 @@
+{
+  "schemaVersion": 1,
+  "requestId": "uiux-fbp-full-frozen-archive-20260716",
+  "preparedAt": "2026-07-16T00:00:00+08:00",
+  "preparedBy": "Codex UI/UX lane",
+  "preparedFromHead": "0dfb4b8a3394eced600704e1c968f8a9780cc3c8",
+  "status": "prepared-not-executable-until-pm-post-cr-route",
+  "file": {
+    "key": "7hIydrsyIzxs6E5dJQ53tu",
+    "includedPages": [
+      {
+        "id": "0:1",
+        "name": "auto-svga"
+      },
+      {
+        "id": "88:4020",
+        "name": "🎨 设计令牌"
+      },
+      {
+        "id": "88:4275",
+        "name": "🧱 组件库"
+      }
+    ],
+    "excludedPages": [
+      {
+        "id": "70:1538",
+        "name": "备份"
+      }
+    ]
+  },
+  "archiveRoot": "/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-15-figma-frozen-auto-svga",
+  "sourceMcpManifest": "/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-15-figma-frozen-auto-svga/manifests/targets.json",
+  "executionBoundary": {
+    "currentForegroundAllowed": false,
+    "currentFigmaMcpAllowed": false,
+    "currentFbpAllowed": false,
+    "resumeCondition": "PM routes post-CR FBP verification or grants an explicit foreground/FBP lease.",
+    "noOwnerManualActions": true,
+    "stopOn": [
+      "login-prompt",
+      "permission-or-security-prompt",
+      "wrong-file-or-page",
+      "node-identity-mismatch",
+      "manual-token-entry-required",
+      "manual-selection-required",
+      "external-upload-or-network-asset-transfer",
+      "destructive-figma-edit",
+      "secret-or-private-path-exposure"
+    ]
+  },
+  "requiredOutputs": {
+    "perTargetPackageDirectory": "fbp/packages/<targetSlug>/",
+    "perTargetRequiredFiles": [
+      "figma-handoff-package.zip",
+      "manifest.json",
+      "scene.json",
+      "document.json",
+      "styles.json",
+      "variables.json",
+      "previews/reference.png",
+      "previews/manifest.json",
+      "assets/manifest.json",
+      "reports/validation.json"
+    ],
+    "runRequiredFiles": [
+      "fbp/full-archive-delivery/latest/delivery.json",
+      "fbp/full-archive-delivery/latest/hashes.json",
+      "fbp/full-archive-delivery/latest/uiux-context-callback.json",
+      "fbp/full-archive-delivery/latest/progress.json"
+    ],
+    "everyFileNeeds": [
+      "byteLength",
+      "sha256",
+      "mediaType",
+      "packageRelativePath"
+    ],
+    "everyPackageNeeds": [
+      "fileKey",
+      "pageId",
+      "pageName",
+      "nodeId",
+      "nodeName",
+      "targetSlug",
+      "targetKind",
+      "sourceFingerprint",
+      "packageFingerprint",
+      "packageSha256",
+      "referencePreviewSha256",
+      "referencePreviewByteLength",
+      "referencePreviewDimensions",
+      "validationStatus",
+      "pluginVersion",
+      "bridgeVersion"
+    ]
+  },
+  "acceptanceGates": {
+    "targetCoverage": "29/29 exactly once",
+    "backupPagePolicy": "inventory-only; no implementation package for page 备份",
+    "identity": [
+      "fileKey matches 7hIydrsyIzxs6E5dJQ53tu",
+      "pageId/pageName/nodeId/nodeName match source MCP manifest",
+      "no duplicate targetSlug",
+      "no package for unlisted target",
+      "no stale package imported without revalidation"
+    ],
+    "packageIntegrity": [
+      "all required files exist",
+      "all package file hashes match delivery hashes",
+      "zip CRC/integrity pass",
+      "reference preview hash and dimensions match preview manifest",
+      "manifest.media and actual bytes agree on path/type/hash/byteLength"
+    ],
+    "crossSourceReconciliation": [
+      "MCP screenshot sidecar and FBP reference preview both present for every page-state target",
+      "MCP token counts and FBP variables are reconciled for token-reference",
+      "MCP component section indexes and FBP component hierarchy are reconciled for atom/molecule/module",
+      "zero missing, duplicate, wrong-page, wrong-node, wrong-name, stale-hash, or contaminated entries"
+    ],
+    "autonomousOperation": [
+      "cold-start run starts or reconnects bridge and Figma without Product Owner clicks",
+      "recovery run resumes from a recorded checkpoint after a bounded failure",
+      "no manual token copy, manual selection, manual page switching, or manual plugin button operation"
+    ],
+    "nonClaims": [
+      "not product runtime proof",
+      "not installed-client visual acceptance",
+      "not pixel-fidelity pass",
+      "not Product Owner acceptance",
+      "not packaging or release readiness"
+    ]
+  },
+  "targets": [
+    {
+      "order": 1,
+      "slug": "launch-default",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "37:154",
+      "nodeName": "启动 / 默认",
+      "expectedPackageDirectory": "fbp/packages/launch-default",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 2,
+      "slug": "loading",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "80:16365",
+      "nodeName": "加载 / 加载中",
+      "expectedPackageDirectory": "fbp/packages/loading",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 3,
+      "slug": "load-failed",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "80:16612",
+      "nodeName": "加载 / 加载失败",
+      "expectedPackageDirectory": "fbp/packages/load-failed",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 4,
+      "slug": "playback-error",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "80:16859",
+      "nodeName": "加载 / 播放异常",
+      "expectedPackageDirectory": "fbp/packages/playback-error",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 5,
+      "slug": "preview-default",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "27:2",
+      "nodeName": "预览 / 默认",
+      "expectedPackageDirectory": "fbp/packages/preview-default",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 6,
+      "slug": "preview-replaceable",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "82:616",
+      "nodeName": "预览 / 可替换元素",
+      "expectedPackageDirectory": "fbp/packages/preview-replaceable",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 7,
+      "slug": "preview-imagekey-dirty",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "82:1821",
+      "nodeName": "预览 / imageKey 重命名 Dirty 状态",
+      "expectedPackageDirectory": "fbp/packages/preview-imagekey-dirty",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 8,
+      "slug": "preview-no-replaceable",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "82:1139",
+      "nodeName": "预览 / 无可替换元素",
+      "expectedPackageDirectory": "fbp/packages/preview-no-replaceable",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 9,
+      "slug": "preview-no-audio",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "82:1423",
+      "nodeName": "预览 / 无音频资产",
+      "expectedPackageDirectory": "fbp/packages/preview-no-audio",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 10,
+      "slug": "preview-no-sequence",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "298:9755",
+      "nodeName": "预览 / 无序列帧资产",
+      "expectedPackageDirectory": "fbp/packages/preview-no-sequence",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 11,
+      "slug": "preview-optimization-detail",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "82:2669",
+      "nodeName": "预览 / 优化详情",
+      "expectedPackageDirectory": "fbp/packages/preview-optimization-detail",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 12,
+      "slug": "preview-optimization-running",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "83:2318",
+      "nodeName": "预览 / 优化执行中",
+      "expectedPackageDirectory": "fbp/packages/preview-optimization-running",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 13,
+      "slug": "preview-optimization-result",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "64:2040",
+      "nodeName": "预览 / 优化结果对比",
+      "expectedPackageDirectory": "fbp/packages/preview-optimization-result",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 14,
+      "slug": "save-saving",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "82:2948",
+      "nodeName": "保存 / 保存中",
+      "expectedPackageDirectory": "fbp/packages/save-saving",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 15,
+      "slug": "save-success",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "82:3324",
+      "nodeName": "保存 / 保存成功",
+      "expectedPackageDirectory": "fbp/packages/save-success",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 16,
+      "slug": "save-failed",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "83:1136",
+      "nodeName": "保存 / 保存失败",
+      "expectedPackageDirectory": "fbp/packages/save-failed",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 17,
+      "slug": "drag-existing-compare",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "55:197",
+      "nodeName": "拖拽 / 已有文件_拖入对比",
+      "expectedPackageDirectory": "fbp/packages/drag-existing-compare",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 18,
+      "slug": "drag-unsupported-hover",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "64:361",
+      "nodeName": "拖拽 / 格式不支持_拖拽中",
+      "expectedPackageDirectory": "fbp/packages/drag-unsupported-hover",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 19,
+      "slug": "drag-unsupported-drop",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "86:1271",
+      "nodeName": "拖拽 / 格式不支持_Drop后",
+      "expectedPackageDirectory": "fbp/packages/drag-unsupported-drop",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 20,
+      "slug": "compare-empty",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "66:522",
+      "nodeName": "对比 / 空态",
+      "expectedPackageDirectory": "fbp/packages/compare-empty",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 21,
+      "slug": "compare-dragging",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "66:899",
+      "nodeName": "对比 / 拖拽中",
+      "expectedPackageDirectory": "fbp/packages/compare-dragging",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 22,
+      "slug": "compare-waiting-b",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "83:2239",
+      "nodeName": "对比 / 已有文件A_等待文件B",
+      "expectedPackageDirectory": "fbp/packages/compare-waiting-b",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 23,
+      "slug": "compare-loaded",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "64:1320",
+      "nodeName": "对比 / 双文件已加载",
+      "expectedPackageDirectory": "fbp/packages/compare-loaded",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 24,
+      "slug": "edit-default",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "55:535",
+      "nodeName": "编辑 / 默认",
+      "expectedPackageDirectory": "fbp/packages/edit-default",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 25,
+      "slug": "settings",
+      "kind": "page-state",
+      "pageId": "0:1",
+      "pageName": "auto-svga",
+      "nodeId": "83:2069",
+      "nodeName": "参考 / 设置面板",
+      "expectedPackageDirectory": "fbp/packages/settings",
+      "mcpCoverageRequired": [
+        "screenshot",
+        "screenshotSidecar",
+        "designContext",
+        "variables"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 26,
+      "slug": "token-reference",
+      "kind": "token-system",
+      "pageId": "88:4020",
+      "pageName": "🎨 设计令牌",
+      "nodeId": "88:4025",
+      "nodeName": "令牌参考文档",
+      "expectedPackageDirectory": "fbp/packages/token-reference",
+      "mcpCoverageRequired": [
+        "collections",
+        "variables",
+        "localStyles",
+        "referenceHierarchy",
+        "visualReference"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 27,
+      "slug": "atom",
+      "kind": "component-section",
+      "pageId": "88:4275",
+      "pageName": "🧱 组件库",
+      "nodeId": "339:8370",
+      "nodeName": "Atom",
+      "expectedPackageDirectory": "fbp/packages/atom",
+      "mcpCoverageRequired": [
+        "sectionIndex",
+        "componentSets",
+        "componentContracts",
+        "visualReference"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 28,
+      "slug": "molecule",
+      "kind": "component-section",
+      "pageId": "88:4275",
+      "pageName": "🧱 组件库",
+      "nodeId": "339:8371",
+      "nodeName": "Molecule",
+      "expectedPackageDirectory": "fbp/packages/molecule",
+      "mcpCoverageRequired": [
+        "sectionIndex",
+        "componentSets",
+        "componentContracts",
+        "visualReference"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    },
+    {
+      "order": 29,
+      "slug": "module",
+      "kind": "component-section",
+      "pageId": "88:4275",
+      "pageName": "🧱 组件库",
+      "nodeId": "339:8372",
+      "nodeName": "Module",
+      "expectedPackageDirectory": "fbp/packages/module",
+      "mcpCoverageRequired": [
+        "sectionIndex",
+        "componentSets",
+        "componentContracts",
+        "visualReference"
+      ],
+      "fbpCoverageRequired": true,
+      "canReuseHistoricalPackageOnlyIf": [
+        "autonomous flow revalidates file/page/node identity",
+        "package bytes are copied into this archive root",
+        "hashes are recorded in this run delivery",
+        "target appears exactly once in final package manifest"
+      ]
+    }
+  ],
+  "targetCount": 29,
+  "requestSha256": "6a8c2485a5d0824c5213365e014aab4f523da4295f846d1b8222380602e37e0d"
+}

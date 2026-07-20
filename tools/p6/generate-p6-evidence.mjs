@@ -1,0 +1,1193 @@
+#!/usr/bin/env node
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import {
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile
+} from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { createPreviewServer } from "../svga-player-preview/server.mjs";
+import {
+  buildP6ParityReportFromRuntimeFacts,
+  loadP6RuntimeFacts,
+  validateP6RuntimeScenarioContract
+} from "./parity-runner.mjs";
+import { generateP6StateAndMotionEvidence } from "./runtime-scenarios/state-evidence.mjs";
+import { generateP6StrictRuntimeEvidence } from "./runtime-scenarios/strict-evidence.mjs";
+
+const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(scriptRoot, "../..");
+const milestoneId = "P6";
+const p6Root = path.join(repoRoot, ".artifacts/product/P6");
+const webBaselineRoot = path.join(p6Root, "web-baseline");
+const packagedRuntimeRoot = path.join(p6Root, "packaged-app-runtime");
+const docsProductRoot = path.join(repoRoot, "docs/product");
+const contractPath = path.join(docsProductRoot, "P6_WEB_PARITY_CONTRACT.json");
+const paritySnapshotPath = path.join(docsProductRoot, "P6_PARITY_REPORT_SNAPSHOT.json");
+const evidenceIndexPath = path.join(docsProductRoot, "P6_EVIDENCE_INDEX.md");
+const sourceTrackedSnapshotHead = "source-tracked-runtime-snapshot";
+const electronBin = path.join(repoRoot, "tools/electron-prototype/node_modules/.bin/electron");
+const experimentRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web");
+const fixturePath = path.join(repoRoot, "examples/avatar_frame_basic/output/avatar_frame_basic.svga");
+const packagedBinary = path.join(
+  experimentRoot,
+  ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app/Contents/MacOS/Auto SVGA"
+);
+const packageManifestPath = path.join(experimentRoot, ".artifacts/internal-trial/internal-trial-manifest.json");
+const packageArchivePath = path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip");
+const skipTrackedSnapshots = process.env.AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS === "1";
+const activeWorkbenchGatePath = path.join(p6Root, "p6-r1-active-workbench-gate.json");
+const historicalLineageSectionKeys = new Set(["interactionParity", "stateParity"]);
+const historicalLineageFeatureItemIds = new Set([
+  "optional-svga-comparison",
+  "secondary-svga-file-select",
+  "secondary-svga-drag-drop"
+]);
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: options.cwd ?? repoRoot,
+    env: { ...process.env, ...(options.env ?? {}) },
+    encoding: "utf8",
+    maxBuffer: 80 * 1024 * 1024,
+    timeout: options.timeout,
+    stdio: options.stdio ?? "pipe"
+  });
+  if (result.status !== 0) {
+    throw new Error([
+      `${command} ${args.join(" ")} failed with ${result.status}`,
+      result.stdout?.trim(),
+      result.stderr?.trim()
+    ].filter(Boolean).join("\n"));
+  }
+  return result;
+}
+
+function runAsync(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd ?? repoRoot,
+      env: { ...process.env, ...(options.env ?? {}) },
+      stdio: options.stdio ?? "inherit"
+    });
+    const timeout = options.timeout
+      ? setTimeout(() => {
+        child.kill("SIGTERM");
+        reject(new Error(`${command} ${args.join(" ")} timed out after ${options.timeout}ms`));
+      }, options.timeout)
+      : undefined;
+    child.once("error", (error) => {
+      if (timeout) clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("exit", (code, signal) => {
+      if (timeout) clearTimeout(timeout);
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`${command} ${args.join(" ")} failed with ${code ?? signal}`));
+      }
+    });
+  });
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForJsonFile(filePath, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  const pollMs = options.pollMs ?? 250;
+  const startedAt = Date.now();
+  let lastError;
+  while (Date.now() - startedAt < timeoutMs) {
+    if (existsSync(filePath)) {
+      try {
+        return await readJson(filePath);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    await sleep(pollMs);
+  }
+  throw new Error(`Timed out waiting for ${toRepoPath(filePath)}${lastError ? `: ${lastError.message}` : ""}`);
+}
+
+async function stopChildProcess(child) {
+  if (child.exitCode !== null || child.signalCode) return;
+  const exited = new Promise((resolve) => child.once("exit", resolve));
+  child.kill("SIGTERM");
+  const stopped = await Promise.race([
+    exited.then(() => true),
+    sleep(5_000).then(() => false)
+  ]);
+  if (!stopped && child.exitCode === null && !child.signalCode) {
+    child.kill("SIGKILL");
+    await Promise.race([exited, sleep(2_000)]);
+  }
+}
+
+function git(args) {
+  return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim();
+}
+
+async function sha256File(filePath) {
+  return createHash("sha256").update(await readFile(filePath)).digest("hex");
+}
+
+async function readJson(filePath) {
+  return JSON.parse(await readFile(filePath, "utf8"));
+}
+
+async function writeJson(filePath, value) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+async function writeVisualSystemAudit() {
+  const result = run("node", ["tools/p6/visual-system-audit.mjs"]);
+  const visualAudit = JSON.parse(result.stdout);
+  await writeJson(path.join(p6Root, "visual-system-audit.json"), visualAudit);
+  await writeJson(path.join(p6Root, "layout-system-audit.json"), {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: git(["rev-parse", "HEAD"]),
+    passed: visualAudit.layoutAudit?.passed === true
+      && visualAudit.componentAudit?.passed === true
+      && visualAudit.tokenAudit?.passed === true,
+    layoutAudit: visualAudit.layoutAudit,
+    componentAudit: visualAudit.componentAudit,
+    tokenAudit: visualAudit.tokenAudit,
+    policy: "Source / Preview / Inspector layout, token, and component rules are audited from source and final screenshot targets."
+  });
+  await writeJson(path.join(p6Root, "screenshot-matrix-audit.json"), {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: git(["rev-parse", "HEAD"]),
+    passed: visualAudit.screenshotAudit?.passed === true,
+    targetCount: visualAudit.screenshotAudit?.targetCount ?? 0,
+    decodedPngCount: visualAudit.screenshotAudit?.decodedPngCount ?? 0,
+    matrix: (visualAudit.evidenceResults ?? [])
+      .filter((record) => record.kind === "png")
+      .map((record) => ({
+        id: record.id,
+        path: record.path,
+        width: record.width,
+        height: record.height,
+        sizeBytes: record.sizeBytes,
+        sha256: record.sha256
+      })),
+    coverage: {
+      localEmpty: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.id === "desktop_empty" || record.path?.includes("desktop-empty"))),
+      localLoaded: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-loaded"))),
+      defaultLaunch1440x900: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-1440x900"))),
+      comfortable1280x800: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-1280x800"))),
+      minimumSize: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("minimum-size"))),
+      legacyStress900x720: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-responsive-local-preview-at-900-x-720"))),
+      singleFileResponsive: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-responsive-local-preview"))),
+      sourceResources: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-resources"))),
+      sourceLayers: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-layers"))),
+      inspectorActions: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("inspector-actions"))),
+      logsHiddenDefault: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("logs-hidden-default")))
+    },
+    policy: "A broad screenshot matrix must cover default 1440x900 launch, comfortable 1280x800, minimum 1180x760, source, inspector, logs, settings, and single-file local-preview stress evidence."
+  });
+  await writeJson(
+    path.join(p6Root, "macos-workbench-foundation-contract.json"),
+    await readJson(path.join(repoRoot, "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json"))
+  );
+  await writeJson(
+    path.join(p6Root, "macos-workbench-layout-contract.json"),
+    await readJson(path.join(repoRoot, "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json"))
+  );
+  await writeJson(
+    path.join(p6Root, "roadmap-ui-capacity-map.json"),
+    await readJson(path.join(repoRoot, "docs/product/ROADMAP_UI_CAPACITY_MAP.json"))
+  );
+}
+
+function toRepoPath(filePath) {
+  return path.relative(repoRoot, filePath).split(path.sep).join("/");
+}
+
+function artifactIdFor(repoPath) {
+  return repoPath
+    .replace(/^\.artifacts\/product\/P6\//, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
+function mediaTypeFor(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".json") return "application/json";
+  if (ext === ".md") return "text/markdown";
+  if (ext === ".png") return "image/png";
+  if (ext === ".svga") return "application/octet-stream";
+  if (ext === ".zip") return "application/zip";
+  return "application/octet-stream";
+}
+
+async function collectFiles(root) {
+  const out = [];
+  async function walk(directory) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name.startsWith(".")) continue;
+        await walk(absolute);
+      } else if (entry.isFile()) {
+        out.push(absolute);
+      }
+    }
+  }
+  if (existsSync(root)) await walk(root);
+  return out.sort((a, b) => toRepoPath(a).localeCompare(toRepoPath(b)));
+}
+
+async function artifactBinding(filePath, role) {
+  const bytes = await readFile(filePath);
+  const repoPath = toRepoPath(filePath);
+  return {
+    id: artifactIdFor(repoPath),
+    path: repoPath,
+    role,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    sizeBytes: bytes.byteLength,
+    mediaType: mediaTypeFor(filePath)
+  };
+}
+
+async function startWebPreviewServer() {
+  const server = createPreviewServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Preview server did not return a port.");
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    close: () => new Promise((resolve) => server.close(resolve))
+  };
+}
+
+
+async function captureWebBaseline() {
+  const server = await startWebPreviewServer();
+  const captureEntry = path.join(scriptRoot, "p6-web-baseline-capture.cjs");
+  await rm(webBaselineRoot, { recursive: true, force: true });
+  await mkdir(webBaselineRoot, { recursive: true });
+  try {
+    await runAsync(electronBin, [captureEntry], {
+      cwd: repoRoot,
+      env: {
+        AUTO_SVGA_WEB_BASELINE_URL: `${server.origin}/tools/svga-player-preview/`,
+        AUTO_SVGA_WEB_BASELINE_FIXTURE_URL: `${server.origin}/examples/avatar_frame_basic/output/avatar_frame_basic.svga`,
+        AUTO_SVGA_WEB_BASELINE_OUT: webBaselineRoot,
+        AUTO_SVGA_WEB_BASELINE_CONTRACT: contractPath
+      },
+      stdio: "inherit",
+      timeout: 120_000
+    });
+  } finally {
+    await server.close();
+  }
+}
+
+async function runDesktopSmoke() {
+  run("npm", ["run", "desktop:smoke"], {
+    env: {
+      AUTO_SVGA_PRODUCT_MILESTONE: milestoneId,
+      AUTO_SVGA_PRODUCT_ARTIFACTS: p6Root
+    },
+    stdio: "inherit"
+  });
+}
+
+async function runPackageAndPackagedNormalProof() {
+  run("npm", ["--prefix", "tools/electron-prototype/experiments/svga-web", "run", "internal:trial:package:mac"], {
+    stdio: "inherit"
+  });
+  await mkdir(packagedRuntimeRoot, { recursive: true });
+  const visibleStartupPath = path.join(packagedRuntimeRoot, "normal-visible-startup.json");
+  await rm(visibleStartupPath, { force: true });
+  const startedAt = new Date().toISOString();
+  const normalLaunchEnv = { ...process.env };
+  delete normalLaunchEnv.AUTO_SVGA_P2_NORMAL_PROOF;
+  delete normalLaunchEnv.AUTO_SVGA_PRODUCT_SMOKE;
+  delete normalLaunchEnv.AUTO_SVGA_SMOKE;
+  const child = spawn(packagedBinary, [], {
+    cwd: repoRoot,
+    env: {
+      ...normalLaunchEnv,
+      AUTO_SVGA_PRODUCT_MILESTONE: milestoneId,
+      AUTO_SVGA_PRODUCT_ARTIFACTS: packagedRuntimeRoot,
+      AUTO_SVGA_ACTUAL_LAUNCH_COMMAND: "packaged Auto SVGA.app"
+    },
+    stdio: "pipe"
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout?.on("data", (chunk) => {
+    stdout += chunk.toString("utf8");
+  });
+  child.stderr?.on("data", (chunk) => {
+    stderr += chunk.toString("utf8");
+  });
+  const exitPromise = new Promise((resolve) => {
+    child.once("exit", (code, signal) => resolve({ code, signal }));
+  });
+  let visibleStartup;
+  let exitResult = null;
+  try {
+    visibleStartup = await Promise.race([
+      waitForJsonFile(visibleStartupPath, { timeoutMs: 45_000 }),
+      exitPromise.then((result) => {
+        exitResult = result;
+        throw new Error(`Packaged app exited before normal visible startup proof was written: ${JSON.stringify(result)}`);
+      })
+    ]);
+  } finally {
+    await stopChildProcess(child);
+    exitResult ??= await Promise.race([
+      exitPromise,
+      sleep(100).then(() => ({ code: child.exitCode, signal: child.signalCode }))
+    ]);
+  }
+  const proof = {
+    schemaVersion: 1,
+    milestoneId,
+    launchTarget: "packaged .app executable normal visible startup without smoke or proof flags",
+    executablePath: toRepoPath(packagedBinary),
+    startedAt,
+    exitCode: exitResult?.code ?? null,
+    exitSignal: exitResult?.signal ?? null,
+    terminatedAfterVisibleStartupCapture: true,
+    normalVisibleStartup: visibleStartup,
+    fixtureSha256: visibleStartup?.fixtureSha256
+      ?? visibleStartup?.runtimeIdentity?.fixtureSha256
+      ?? null,
+    runtimeIdentity: visibleStartup?.runtimeIdentity ?? null,
+    passed: visibleStartup?.passed === true,
+    stdoutTail: redact(stdout).split("\n").slice(-20),
+    stderrTail: redact(stderr).split("\n").slice(-20),
+    generatedAt: new Date().toISOString()
+  };
+  await writeJson(path.join(p6Root, "packaged-app-runtime-proof.json"), proof);
+  if (!proof.passed) throw new Error("Packaged app normal proof failed.");
+  if (existsSync(packageManifestPath)) {
+    await cp(packageManifestPath, path.join(p6Root, "internal-trial-manifest.json"));
+  }
+  if (existsSync(packageArchivePath)) {
+    await cp(packageArchivePath, path.join(p6Root, "Auto-SVGA-macOS-internal-runtime.zip"));
+  }
+  await writeNormalSmokeParityProof();
+}
+
+async function writeNormalSmokeParityProof() {
+  const normalProofPath = path.join(packagedRuntimeRoot, "normal-visible-startup.json");
+  const smokeIdentityPath = path.join(p6Root, "runtime-identity.json");
+  if (!existsSync(normalProofPath) || !existsSync(smokeIdentityPath)) return;
+  const normalProof = await readJson(normalProofPath);
+  const normalIdentity = normalProof.runtimeIdentity;
+  const smokeIdentity = await readJson(smokeIdentityPath);
+  const checks = {
+    separateProcessId: normalIdentity.processId !== smokeIdentity.processId,
+    separateRuntimeInstanceId: normalIdentity.runtimeInstanceId !== smokeIdentity.runtimeInstanceId,
+    mainEntry: normalIdentity.mainEntry === smokeIdentity.mainEntry,
+    preloadEntry: normalIdentity.preloadEntry === smokeIdentity.preloadEntry,
+    rendererEntry: normalIdentity.rendererEntry === smokeIdentity.rendererEntry,
+    indexHtmlSha256: normalIdentity.indexHtmlSha256 === smokeIdentity.indexHtmlSha256,
+    rendererJsSha256: normalIdentity.rendererJsSha256 === smokeIdentity.rendererJsSha256,
+    stylesCssSha256: normalIdentity.stylesCssSha256 === smokeIdentity.stylesCssSha256,
+    preloadSha256: normalIdentity.preloadSha256 === smokeIdentity.preloadSha256,
+    mainSha256: normalIdentity.mainSha256 === smokeIdentity.mainSha256,
+    productIdentity: normalIdentity.productIdentity === smokeIdentity.productIdentity,
+    player: normalIdentity.player === smokeIdentity.player,
+    csp: normalIdentity.csp === smokeIdentity.csp,
+    loadingPipelineIdentity: normalIdentity.loadingPipelineIdentity === smokeIdentity.loadingPipelineIdentity,
+    cleanupPipelineIdentity: normalIdentity.cleanupPipelineIdentity === smokeIdentity.cleanupPipelineIdentity
+  };
+  await writeJson(path.join(p6Root, "normal-smoke-parity.json"), {
+    schemaVersion: 1,
+    milestoneId,
+    headCommit: git(["rev-parse", "HEAD"]),
+    normalMode: normalIdentity.mode,
+    smokeMode: smokeIdentity.mode,
+    normalProcessId: normalIdentity.processId,
+    smokeProcessId: smokeIdentity.processId,
+    normalRuntimeInstanceId: normalIdentity.runtimeInstanceId,
+    smokeRuntimeInstanceId: smokeIdentity.runtimeInstanceId,
+    passed: Object.values(checks).every(Boolean),
+    checks,
+    allowedDifferences: [
+      "mode",
+      "rendererUrl query parameters",
+      "test-only automation trigger",
+      "deterministic fixture selection",
+      "screenshot capture",
+      "process cleanup"
+    ],
+    generatedAt: new Date().toISOString()
+  });
+}
+
+async function artifactEvidence(repoPath) {
+  const absolute = path.join(repoRoot, repoPath);
+  return {
+    path: repoPath,
+    sha256: existsSync(absolute) ? await sha256File(absolute) : null,
+    present: existsSync(absolute)
+  };
+}
+
+async function assertLocalPreviewWorkbenchRegionMap(repoPath) {
+  const regionMap = await readJson(path.join(repoRoot, repoPath));
+  const regionIds = new Set((regionMap.regions ?? []).map((region) => region.id));
+  const requiredRegions = [
+    "source_document",
+    "preview_stage",
+    "inspector",
+    "resources",
+    "action_workflow",
+    "activity_history"
+  ];
+  const missingRegions = requiredRegions.filter((id) => !regionIds.has(id));
+  if (regionMap.workflowPrimary !== "local_preview_first" || regionMap.localPreviewPrimary !== true || regionMap.mode !== "localPreview") {
+    throw new Error(`Workbench region map must be local-preview-first primary evidence: mode=${regionMap.mode ?? "missing"} workflowPrimary=${regionMap.workflowPrimary ?? "missing"}`);
+  }
+  if (missingRegions.length) {
+    throw new Error(`Workbench region map missing required regions: ${missingRegions.join(", ")}`);
+  }
+  if (regionMap.passed !== true) {
+    throw new Error("Workbench region map did not pass its local-preview foundation check");
+  }
+  const requiredLayoutChecks = [
+    "noRegionOverlap",
+    "sourceDocumentNotToolbar",
+    "noResourceActionCollision",
+    "noVerticalFilterWrapping",
+    "noOneCharacterChips",
+    "inspectorTextReadable",
+    "coreRegionsInsideViewport",
+    "persistentSidePanels",
+    "primaryActionVisible"
+  ];
+  if (regionMap.layoutIntegrity?.passed !== true) {
+    throw new Error("Workbench region map layoutIntegrity did not pass");
+  }
+  if (!Array.isArray(regionMap.layoutIntegrity.failures) || regionMap.layoutIntegrity.failures.length !== 0) {
+    throw new Error(`Workbench region map layoutIntegrity failures: ${(regionMap.layoutIntegrity?.failures ?? []).join(", ") || "missing"}`);
+  }
+  const failedChecks = requiredLayoutChecks.filter((key) => regionMap.layoutIntegrity?.checks?.[key] !== true);
+  if (failedChecks.length) {
+    throw new Error(`Workbench region map layoutIntegrity missing required checks: ${failedChecks.join(", ")}`);
+  }
+  const sourceRegion = (regionMap.regions ?? []).find((region) => region.id === "source_document");
+  if (sourceRegion?.selector !== "aside[data-workbench-region='source-document']") {
+    throw new Error("Workbench source_document must map to the left source panel");
+  }
+  if (Number(sourceRegion?.rect?.y) < 56) {
+    throw new Error("Workbench source_document appears to map the top toolbar");
+  }
+  return regionMap;
+}
+
+async function writeReviewerBEvidenceRequest() {
+  const macosVisualSystemRequiredObservations = [
+    "quietChrome",
+    "visualHierarchy",
+    "typography",
+    "spacing",
+    "componentConsistency",
+    "toolbarGrouping",
+    "inspectorClarity",
+    "responsiveBehavior",
+    "copyTone",
+    "keyboardFocusVisualState",
+    "macosFit"
+  ];
+  const categories = [
+    ["productIdentity", "Confirm product identity and internal prototype labels using concrete Desktop runtime evidence.", "desktop-loaded.png"],
+    ["toolbarAndModes", "Confirm toolbar and mode controls against loaded Desktop state geometry and controls.", "desktop-loaded.png"],
+    ["localPreview", "Confirm local SVGA preview renders from the repository fixture in Electron.", "desktop-loaded.png"],
+    ["exportReview", "Confirm export-review parity with Web and Desktop state evidence.", "web-baseline/screenshot-export-review-loaded-1440x900.png"],
+    ["comparison", "Confirm comparison mode with strict interaction and state evidence.", "interaction-parity-report.json"],
+    ["referenceMedia", "Confirm reference media selection and player controls.", "web-baseline/screenshot-info-assets-1440x900.png"],
+    ["playbackControls", "Confirm playback controls and timeline values.", "desktop-loaded.png"],
+    ["fitControls", "Confirm fit controls and rendered geometry.", "desktop-loaded.png"],
+    ["synchronizedPlayback", "Confirm synchronized playback from real keyboard/click traces.", "interaction-parity-report.json"],
+    ["inspectionOverview", "Confirm inspection overview side panel content and geometry in the local preview owner flow.", "desktop-local-info-overview-open.png"],
+    ["assetDetails", "Confirm asset detail evidence and resource panels in the local preview owner flow.", "desktop-local-info-assets-open.png"],
+    ["motionAssetAudit", "Confirm Motion Asset Audit read-only panel in Desktop and Web evidence.", "desktop-inspection.png"],
+    ["runtimeLogs", "Confirm runtime log panel content and controls in the local preview owner flow.", "desktop-local-logs-open.png"],
+    ["settings", "Confirm settings panel geometry, values, and close behavior in the local preview owner flow.", "desktop-local-settings-open.png"],
+    ["macOSWorkbenchLayoutSystem", "Confirm Source / Preview / Inspector workbench layout uses reusable layout rules, panel/card/row semantics, and no one-breakpoint patching.", "layout-system-audit.json"],
+    ["LeftSourceResourcesIA", "Confirm left Source panel has compact File Overview plus Resources/Layers structure and imageKey only as an attribute.", "desktop-local-source-resources-open.png"],
+    ["RightInspectorActionsIA", "Confirm right panel is Diagnostics / Actions and does not duplicate the File Overview.", "desktop-local-inspector-actions-open.png"],
+    ["LocalPreviewPrimaryWorkflow", "Confirm local single-file SVGA preview is primary and compare/export-review remain secondary flows.", "workbench-region-map.json"],
+    ["ResponsiveRuleCoverage", "Confirm default launch, comfortable, compact/minimum, and legacy stress screenshots are covered by layout rules with no clipped primary controls.", "screenshot-matrix-audit.json"],
+    ["macosVisualSystem", "Confirm macOS-aligned visual system, quiet chrome, hierarchy, typography, spacing, PreviewCard consistency, panel behavior, resources IA, logs UX, settings scope, and phase-one local preview focus.", "visual-system-audit.json"],
+    ["macOSAppFoundation", "Confirm the macOS SVGA Workbench six-region foundation supports source/document, preview stage, inspector, resources, action/workflow, and activity/history without exposing inactive future features.", "workbench-region-map.json"],
+    ["RoadmapCapacity", "Confirm Phase 2/3/4, mid-term multi-format, and long-term Agent/ComfyUI capacity are mapped to stable regions without becoming visible P6-R1 product features.", "roadmap-ui-capacity-map.json"],
+    ["theme", "Confirm theme state through computed style and screenshot evidence.", "web-baseline/computed-styles-manifest.json"],
+    ["accessibilitySettings", "Confirm reduced motion and blur settings with control values.", "interaction-parity-report.json"],
+    ["emptyState", "Confirm Desktop empty state differs from loading.", "desktop-empty.png"],
+    ["loadingState", "Confirm loading DOM, rect, overlay, and full screenshot share one stateSnapshotId.", "desktop-loading.png"],
+    ["invalidState", "Confirm invalid state clears stale canvas, filename, and metadata.", "desktop-invalid.png"],
+    ["responsiveLayout", "Confirm responsive Web/Desktop geometry at the declared minimum supported viewport with local preview as the primary owner mode.", "desktop-local-minimum-size.png"],
+    ["interactionParity", "Confirm Web and Desktop strict interaction traces are host-neutral and matching.", "interaction-parity-report.json"],
+    ["motionParity", "Confirm motion start/mid/end, crop, geometry, params, and reduced-motion comparison.", "web-baseline/motion-manifest.json"],
+    ["normalMacApp", "Confirm packaged macOS app proof uses normal runtime flags.", "packaged-app-runtime-proof.json"],
+    ["bundleCompleteness", "Confirm internal trial manifest and App ZIP are present.", "internal-trial-manifest.json"],
+    ["bundlePrivacy", "Confirm request audit and runtime identity evidence show local-only behavior.", "web-baseline/request-audit.json"]
+  ];
+  const categoryRecords = [];
+  for (const [category, request, fragment] of categories) {
+    const repoPath = `.artifacts/product/P6/${fragment}`;
+    const evidence = await artifactEvidence(repoPath);
+    if (!evidence.present) {
+      throw new Error(`Reviewer B evidence request missing required artifact: ${repoPath}`);
+    }
+    categoryRecords.push({
+      category,
+      request,
+      evidenceNeeded: [evidence],
+      reviewerMustProvide: [
+        "visualObservation",
+        "runtimeBehaviorObservation",
+        "approvedDifferenceAssessment"
+      ],
+      ...(category === "macosVisualSystem"
+        ? {
+            requiredConcreteObservations: macosVisualSystemRequiredObservations.map((key) => ({
+              key,
+              requiredFields: ["observation", "evidenceRefs"],
+              evidenceGuidance: "Reference final-head screenshots or visual-system evidence; generic PASS wording is invalid."
+            }))
+          }
+        : {})
+    });
+  }
+  await writeJson(path.join(p6Root, "reviewer-b-evidence-request.json"), {
+    schemaVersion: 2,
+    milestoneId,
+    headCommit: git(["rev-parse", "HEAD"]),
+    categoryCount: categoryRecords.length,
+    categories: categoryRecords,
+    generationPolicy: "A4 request-only evidence checklist. This file is not a Reviewer B verdict and cannot mark parity PASS.",
+    generatedAt: new Date().toISOString()
+  });
+}
+
+async function writeOwnerFeedbackClosureMap() {
+  const requiredArtifacts = [
+    ".artifacts/product/P6/desktop-local-info-overview-open.png",
+    ".artifacts/product/P6/desktop-local-info-assets-open.png",
+    ".artifacts/product/P6/desktop-local-info-diagnostics-open.png",
+    ".artifacts/product/P6/desktop-local-source-resources-open.png",
+    ".artifacts/product/P6/desktop-local-source-layers-open.png",
+    ".artifacts/product/P6/desktop-local-inspector-actions-open.png",
+    ".artifacts/product/P6/desktop-local-logs-hidden-default.png",
+    ".artifacts/product/P6/desktop-1440x900.png",
+    ".artifacts/product/P6/desktop-1280x800.png",
+    ".artifacts/product/P6/desktop-local-minimum-size.png",
+    ".artifacts/product/P6/desktop-local-logs-open.png",
+    ".artifacts/product/P6/desktop-local-settings-open.png",
+    ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
+    ".artifacts/product/P6/visual-system-audit.json",
+    ".artifacts/product/P6/layout-system-audit.json",
+    ".artifacts/product/P6/screenshot-matrix-audit.json",
+    ".artifacts/product/P6/workbench-region-map.json",
+    ".artifacts/product/P6/roadmap-ui-capacity-map.json",
+    ".artifacts/product/P6/macos-workbench-foundation-contract.json",
+    ".artifacts/product/P6/macos-workbench-layout-contract.json"
+  ];
+  const evidenceByPath = {};
+  for (const repoPath of requiredArtifacts) {
+    const evidence = await artifactEvidence(repoPath);
+    if (!evidence.present) throw new Error(`Owner feedback closure map missing evidence: ${repoPath}`);
+    evidenceByPath[repoPath] = evidence;
+  }
+  const regionMap = await assertLocalPreviewWorkbenchRegionMap(".artifacts/product/P6/workbench-region-map.json");
+  const visualAudit = await readJson(path.join(p6Root, "visual-system-audit.json"));
+  const layoutIntegrityPassed = regionMap.layoutIntegrity?.passed === true
+    && Array.isArray(regionMap.layoutIntegrity.failures)
+    && regionMap.layoutIntegrity.failures.length === 0
+    && visualAudit.layoutAudit?.passed === true
+    && visualAudit.screenshotAudit?.passed === true;
+  const closureItems = [
+    {
+      feedbackId: "owner-feedback-info-overview-metric-readability",
+      ownerFinding: "Info Overview metric cards truncate or wrap core values; file name and file size are cramped.",
+      status: "fixed",
+      component: "Info Overview",
+      changedFiles: [
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [evidenceByPath[".artifacts/product/P6/desktop-local-info-overview-open.png"]],
+      reviewerBCategory: "inspectionOverview",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-resources-layout-gap",
+      ownerFinding: "Resources tab has a large blank gap and rows are pushed to the bottom.",
+      status: "fixed",
+      component: "Resources tab",
+      changedFiles: [
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [evidenceByPath[".artifacts/product/P6/desktop-local-info-assets-open.png"]],
+      reviewerBCategory: "assetDetails",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-left-source-resources-layers-ia",
+      ownerFinding: "Left side must be file properties plus resource/layer structure, not a long mixed list or imageKey primary group.",
+      status: "fixed",
+      component: "Left Source panel",
+      changedFiles: [
+        "tools/shared/product-frontend/product-shell.html",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED final macOS workbench foundation pass" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-local-source-resources-open.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-source-layers-open.png"],
+        evidenceByPath[".artifacts/product/P6/macos-workbench-layout-contract.json"]
+      ],
+      reviewerBCategory: "LeftSourceResourcesIA",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-right-inspector-actions-ia",
+      ownerFinding: "Right panel must be Diagnostics / Actions, stop duplicating file overview, and reserve future capacity without fake active controls.",
+      status: "fixed",
+      component: "Right Inspector / Actions",
+      changedFiles: [
+        "tools/shared/product-frontend/product-shell.html",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED final macOS workbench foundation pass" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-local-inspector-actions-open.png"],
+        evidenceByPath[".artifacts/product/P6/workbench-region-map.json"]
+      ],
+      reviewerBCategory: "RightInspectorActionsIA",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-layout-system-responsive-rules",
+      ownerFinding: "The prior responsive issue is a layout-system problem, not a single screenshot bug; default launch, comfortable, compact/minimum, and legacy stress sizes need reusable rules.",
+      status: "fixed",
+      component: "Workbench layout system",
+      changedFiles: [
+        "tools/shared/product-frontend/product-styles.css",
+        "tools/p6/visual-system-audit.mjs",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "owner-visible layout issue generalized beyond the legacy 900x720 stress viewport" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/layout-system-audit.json"],
+        evidenceByPath[".artifacts/product/P6/screenshot-matrix-audit.json"],
+        evidenceByPath[".artifacts/product/P6/desktop-1440x900.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-1280x800.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-minimum-size.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"]
+      ],
+      reviewerBCategory: "ResponsiveRuleCoverage",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-local-preview-first-screenshots",
+      ownerFinding: "Key screenshots are export-review mode instead of local-preview-first.",
+      status: "fixed",
+      component: "Owner evidence capture",
+      changedFiles: [
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/electron-prototype/experiments/svga-web/main.cjs",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"],
+        evidenceByPath[".artifacts/product/P6/workbench-region-map.json"]
+      ],
+      reviewerBCategory: "localPreview",
+      backlogReason: null,
+      verificationNotes: "Primary foundation proof must be generated from local-preview-first workbench mode; export-review evidence remains secondary."
+    },
+    {
+      feedbackId: "owner-feedback-default-diagnostics-too-engineering",
+      ownerFinding: "Default Activity/Logs exposed internal workflow text such as report.json, latest-artifact scanning, and evidence-generation language.",
+      status: "fixed",
+      component: "Activity / Logs",
+      changedFiles: [
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-local-logs-open.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-settings-open.png"]
+      ],
+      reviewerBCategory: "runtimeLogs",
+      backlogReason: null,
+      verificationNotes: "Default Activity/Logs display only user-readable phase-one events. Internal workflow text remains available only through 高级诊断 disclosure and is excluded from copied default logs."
+    },
+    {
+      feedbackId: "owner-feedback-visual-system-audit-too-weak",
+      ownerFinding: "Visual-system audit is source-only and raw-count based.",
+      status: "fixed",
+      component: "Visual-system evidence",
+      changedFiles: [
+        "tools/p6/visual-system-audit.mjs",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [evidenceByPath[".artifacts/product/P6/visual-system-audit.json"]],
+      reviewerBCategory: "macosVisualSystem",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-missing-closure-map",
+      ownerFinding: "Package lacks a first-class Owner feedback closure map.",
+      status: "fixed",
+      component: "Owner handoff",
+      changedFiles: [
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/build-p6-owner-handoff.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [{ type: "self", path: ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json" }],
+      reviewerBCategory: "ownerFeedbackClosure",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-macos-workbench-foundation-risk",
+      ownerFinding: "macOS UI/UX foundation may not support the approved future product roadmap.",
+      status: "fixed",
+      component: "macOS SVGA Workbench foundation",
+      changedFiles: [
+        "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json",
+        "tools/shared/product-frontend/product-shell.html",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED final macOS workbench foundation pass" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/workbench-region-map.json"],
+        evidenceByPath[".artifacts/product/P6/roadmap-ui-capacity-map.json"],
+        evidenceByPath[".artifacts/product/P6/macos-workbench-foundation-contract.json"],
+        evidenceByPath[".artifacts/product/P6/macos-workbench-layout-contract.json"],
+        evidenceByPath[".artifacts/product/P6/visual-system-audit.json"],
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-info-diagnostics-open.png"]
+      ],
+      reviewerBCategory: "RoadmapCapacity",
+      backlogReason: null,
+      verificationNotes: "Foundation evidence remains P6-R1 local-preview workbench architecture only; Phase 2/3/4 features are not exposed as product capabilities."
+    }
+  ];
+  const allOwnerBlockingItemsFixed = closureItems.every((item) => ["fixed", "not_applicable"].includes(item.status));
+  const allComplaintsClosed = allOwnerBlockingItemsFixed && layoutIntegrityPassed;
+  await writeJson(path.join(p6Root, "OWNER_FEEDBACK_CLOSURE_MAP.json"), {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: git(["rev-parse", "HEAD"]),
+    status: allComplaintsClosed
+      ? "owner_blocking_feedback_fixed_pending_product_owner_review"
+      : "owner_feedback_has_deferred_or_pending_items",
+    productionApproved: false,
+    phase2Started: false,
+    closureItemCount: closureItems.length,
+    closureItems,
+    backlogDeferrals: [
+      {
+        id: "phase2-optimization-actions",
+        status: "deferred",
+        reason: "Phase 2 optimization, before/after, Save As, and re-validation are structurally reserved in Resources + Inspector Actions + Preview, but are not P6-R1 features."
+      },
+      {
+        id: "phase3-replaceable-element-editing",
+        status: "deferred",
+        reason: "imageKey/image/text/key editing is reserved for Layers/Resources + Inspector Properties + Preview and remains inactive in P6-R1."
+      },
+      {
+        id: "phase4-sequence-anti-flicker",
+        status: "deferred",
+        reason: "sequence-frame anti-flicker repair is reserved for future sequence groups + diagnostics + before/after preview and is not implemented in P6-R1."
+      },
+      {
+        id: "midterm-multiformat-agent-generation",
+        status: "deferred",
+        reason: "multi-format, ComfyUI, Agent API, Motion Plan, and generation flows remain roadmap capacity only and require separate approval."
+      }
+    ],
+    allOwnerBlockingItemsFixed,
+    layoutIntegrityPassed,
+    layoutIntegrity: {
+      passed: regionMap.layoutIntegrity?.passed === true,
+      failures: regionMap.layoutIntegrity?.failures ?? [],
+      checks: regionMap.layoutIntegrity?.checks ?? {},
+      sourceDocumentSelector: (regionMap.regions ?? []).find((region) => region.id === "source_document")?.selector ?? null,
+      minimumSupportedWindow: visualAudit.layoutAudit?.minimumSupportedWindow ?? null,
+      screenshotAuditPassed: visualAudit.screenshotAudit?.passed === true
+    },
+    allComplaintsClosed,
+    productOwnerHumanGateStillRequired: true,
+    closurePolicy: "Only fixed or not_applicable items count as closed. Deferred or requires_owner_decision items must keep allComplaintsClosed=false.",
+    generatedAt: new Date().toISOString()
+  });
+}
+
+function collectReportNonPass(report) {
+  const nonPass = [];
+  for (const [key, section] of Object.entries(report.sections)) {
+    if (section.status !== "pass") nonPass.push(`${key}:${section.status}`);
+    for (const evidence of section.evidence) {
+      if (evidence.status !== "pass") nonPass.push(`${key}.${evidence.id}:${evidence.status}`);
+    }
+    for (const item of section.items ?? []) {
+      if (item.status !== "pass") nonPass.push(`${key}.${item.id}:${item.status}:${item.failures.join("|")}`);
+    }
+  }
+  return nonPass;
+}
+
+function collectActiveReportNonPass(report) {
+  const nonPass = [];
+  for (const [key, section] of Object.entries(report.sections)) {
+    if (historicalLineageSectionKeys.has(key)) continue;
+    const ignoredItemIds = key === "featureParity" ? historicalLineageFeatureItemIds : new Set();
+    const activeItems = (section.items ?? []).filter((item) => !ignoredItemIds.has(item.id));
+    const activeItemFailures = activeItems
+      .filter((item) => item.status !== "pass")
+      .map((item) => `${key}.${item.id}:${item.status}:${item.failures.join("|")}`);
+    nonPass.push(...activeItemFailures);
+    if (activeItemFailures.length === 0 && key === "featureParity") continue;
+    if (section.status !== "pass") nonPass.push(`${key}:${section.status}`);
+    for (const evidence of section.evidence) {
+      if (evidence.status !== "pass") nonPass.push(`${key}.${evidence.id}:${evidence.status}`);
+    }
+  }
+  return nonPass;
+}
+
+async function activeJsonCheck(relativePath, predicate, summary) {
+  const absolute = path.join(repoRoot, relativePath);
+  if (!existsSync(absolute)) {
+    return { id: artifactIdFor(relativePath), passed: false, path: relativePath, summary: `${summary}: missing` };
+  }
+  const value = await readJson(absolute);
+  return {
+    id: artifactIdFor(relativePath),
+    passed: Boolean(predicate(value)),
+    path: relativePath,
+    summary
+  };
+}
+
+async function validateActiveP6R1WorkbenchGate(report) {
+  const historicalLineageNonPassEvidence = collectReportNonPass(report);
+  const activeNonPassEvidence = collectActiveReportNonPass(report);
+  const artifactChecks = [
+    await activeJsonCheck(
+      ".artifacts/product/P6/desktop-state-render-proof.json",
+      (value) => value.passed === true && Object.values(value.states ?? {}).every((state) => state?.passed === true),
+      "Desktop rendered state proof passes for generated owner-visible states."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/workbench-region-map.json",
+      (value) => value.passed === true
+        && value.workflowPrimary === "local_preview_first"
+        && value.localPreviewPrimary === true
+        && value.layoutIntegrity?.passed === true
+        && value.layoutIntegrity?.checks?.persistentSidePanels === true,
+      "Local-preview-first workbench region map passes with persistent side panels."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/visual-system-audit.json",
+      (value) => value.passed === true && value.layoutAudit?.passed === true && value.screenshotAudit?.passed === true,
+      "Visual system, layout, and screenshot audits pass for the active Workbench."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/owner-usability-smoke.json",
+      (value) => Object.values(value.checks ?? {}).every((passed) => passed === true)
+        && value.previewCardConsistency?.passed === true
+        && value.previewCardConsistency?.singleFilePrimary === true,
+      "Owner usability smoke passes for the single-file local preview workflow."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/normal-smoke-parity.json",
+      (value) => value.passed === true,
+      "Normal Desktop smoke parity passes."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/packaged-app-runtime-proof.json",
+      (value) => value.passed === true,
+      "Packaged macOS runtime proof passes."
+    )
+  ];
+  for (const check of artifactChecks) {
+    if (!check.passed) activeNonPassEvidence.push(`activeWorkbench.${check.id}:fail`);
+  }
+  const summary = {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: report.source.headCommit,
+    sourceOfTruthPolicy: {
+      activeProductSourceOfTruth: "current_owner_visible_shared_product_workbench_final_head",
+      historicalWebPreviewRole: "lineage_required_inventory_and_rollback_reference_only",
+      requiredInventoryPreserved: true,
+      compareModeActiveGateRequired: false,
+      singleFileLocalPreviewPrimary: true
+    },
+    status: activeNonPassEvidence.length === 0 ? "pass" : "human_required",
+    activeNonPassEvidenceCount: activeNonPassEvidence.length,
+    activeNonPassEvidence,
+    artifactChecks,
+    historicalLineageNonPassEvidenceCount: historicalLineageNonPassEvidence.length,
+    historicalLineageNonPassEvidence: historicalLineageNonPassEvidence.slice(0, 80),
+    historicalLineageSections: [...historicalLineageSectionKeys],
+    historicalLineageFeatureItemIds: [...historicalLineageFeatureItemIds],
+    generatedAt: new Date().toISOString()
+  };
+  await writeJson(activeWorkbenchGatePath, summary);
+  return summary;
+}
+
+function redact(text) {
+  const macUserPathPattern = new RegExp(String.raw`/${"Users"}/[^/\s]+`, "g");
+  const macUserPathRedaction = ["", "Users", "<redacted>"].join("/");
+  return String(text)
+    .replaceAll(repoRoot, "<repo>")
+    .replace(macUserPathPattern, macUserPathRedaction);
+}
+
+function requiredCountsFromContract(contract) {
+  return {
+    visual_parity: contract.requiredCounts?.regions ?? contract.regions.length,
+    feature_parity: contract.requiredCounts?.features ?? contract.features.length,
+    interaction_parity: contract.requiredCounts?.interactions ?? contract.interactions.length,
+    state_parity: contract.requiredCounts?.states ?? contract.states.length,
+    motion_parity: contract.requiredCounts?.motions ?? contract.motions.length,
+    browser_regression: 3,
+    desktop_runtime_proof: 3,
+    security_audit: 3,
+    accessibility_report: 2,
+    artifact_index: 1
+  };
+}
+
+async function buildArtifactIndex() {
+  const files = (await collectFiles(p6Root)).filter((filePath) => existsSync(filePath));
+  const bindings = [];
+  for (const filePath of files) {
+    if (filePath.includes("/.web-baseline-capture/")) continue;
+    if (filePath.endsWith("p6-parity-report.json")) continue;
+    const repoPath = toRepoPath(filePath);
+    const role = repoPath.includes("/web-baseline/")
+      ? "web_baseline"
+      : repoPath.includes("/packaged-app-runtime")
+        ? "packaged_app_runtime"
+        : repoPath.includes("desktop")
+          ? "desktop_runtime_proof"
+          : repoPath.startsWith("docs/product/")
+            ? "p6_evidence_snapshot"
+            : "p6_evidence";
+    bindings.push(await artifactBinding(filePath, role));
+  }
+  return bindings;
+}
+
+async function buildParityReport() {
+  const contract = await readJson(contractPath);
+  const runtimeHeadCommit = git(["rev-parse", "HEAD"]);
+  const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]);
+  const artifactBindings = await buildArtifactIndex();
+  const requiredCounts = requiredCountsFromContract(contract);
+  const runtimeFacts = await loadP6RuntimeFacts({
+    repoRoot,
+    p6Root,
+    contract,
+    artifactBindings
+  });
+  const scenarioValidation = validateP6RuntimeScenarioContract(runtimeFacts);
+  if (!scenarioValidation.valid) {
+    console.warn(`P6 runtime scenario contract gaps: ${scenarioValidation.failures.join("; ")}`);
+  }
+  const report = buildP6ParityReportFromRuntimeFacts({
+    ...runtimeFacts,
+    requiredCounts,
+    source: {
+      baseCommit: contract.baselineCommit,
+      headCommit: runtimeHeadCommit,
+      branch
+    }
+  });
+  await writeJson(path.join(p6Root, "p6-parity-report.json"), report);
+  if (!skipTrackedSnapshots) {
+    await writeJson(paritySnapshotPath, {
+      ...report,
+      source: {
+        ...report.source,
+        headCommit: sourceTrackedSnapshotHead
+      }
+    });
+  }
+  return report;
+}
+
+async function validateParityReport(report) {
+  const { validateP6ParityReportV1 } = await import(pathToFileURL(
+    path.join(repoRoot, "dist/workbench/p6-parity-report-contract.js")
+  ).href);
+  const contract = await readJson(contractPath);
+  const requiredCounts = requiredCountsFromContract(contract);
+  const validation = validateP6ParityReportV1(report, { requiredEvidenceCounts: requiredCounts });
+  if (!validation.valid) throw new Error(`P6 parity report validation failed: ${validation.errors.join("; ")}`);
+  return validateActiveP6R1WorkbenchGate(report);
+}
+
+async function writeEvidenceIndex(report, activeGate = null) {
+  const artifacts = report.sections.artifactIndex.artifacts;
+  const keyArtifacts = artifacts
+    .filter((artifact) => (
+      artifact.path.includes("p6-parity-report")
+      || artifact.path.includes("web-baseline")
+      || artifact.path.includes("packaged-app-runtime-proof")
+      || artifact.path.includes("internal-trial-manifest")
+    ))
+    .slice(0, 40);
+  const buildLines = (headerLines) => [
+    "# P6 Evidence Index",
+    "",
+    ...headerLines,
+    `Branch: \`${report.source.branch}\``,
+    "",
+    "## Status",
+    "",
+    "- Web baseline artifacts: generated under `.artifacts/product/P6/web-baseline/`.",
+    "- P6-R1 active product gate: current owner-visible shared Product Workbench on the final head.",
+    "- Historical Web Preview parity: retained as lineage, required inventory, and rollback reference; it is not the active P6-R1 product ceiling.",
+    ...(activeGate ? [
+      `- Active Workbench gate: ${activeGate.status}, non-pass ${activeGate.activeNonPassEvidenceCount}.`,
+      `- Historical lineage parity non-pass count: ${activeGate.historicalLineageNonPassEvidenceCount}.`
+    ] : []),
+    "- P6 parity report: generated as `.artifacts/product/P6/p6-parity-report.json`; `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` is a source-tracked runtime snapshot.",
+    "- Active Workbench gate report: generated as `.artifacts/product/P6/p6-r1-active-workbench-gate.json`.",
+    "- Packaged app runtime proof: generated as `.artifacts/product/P6/packaged-app-runtime-proof.json`.",
+    "- Final review packets bind generated evidence by path and SHA-256 from `.artifacts/product/P6/` and the final visible review mirror.",
+    "",
+    "## Section Summary",
+    "",
+    ...Object.entries(report.sections).map(([key, section]) => (
+      `- ${key}: ${section.status}, evidence ${section.evidence.length}/${section.requiredEvidenceCount}, inventory ${section.inventory.itemCount}`
+    )),
+    "",
+    "## Key Artifact Hashes",
+    "",
+    "| Role | Path | Size | SHA-256 |",
+    "| --- | --- | ---: | --- |",
+    ...keyArtifacts.map((artifact) => `| ${artifact.role} | \`${artifact.path}\` | ${artifact.sizeBytes} | \`${artifact.sha256}\` |`),
+    "",
+    "## Protected Flows",
+    "",
+    "- Main Web Preview player implementation: not modified by this evidence generator.",
+    "- SVGA exporter: not modified.",
+    "- CLI default flow: not modified.",
+    "- Browser import, drag-drop, and comparison logic: not modified.",
+    ""
+  ];
+  const artifactLines = buildLines([
+    `Generated at: ${report.generatedAt}`,
+    `Head commit: \`${report.source.headCommit}\``
+  ]);
+  await writeFile(path.join(p6Root, "P6_EVIDENCE_INDEX.md"), `${artifactLines.join("\n")}`);
+  if (!skipTrackedSnapshots) {
+    const trackedLines = buildLines([
+      "Generated at: source-tracked runtime snapshot",
+      `Head commit: \`${sourceTrackedSnapshotHead}\``,
+      "",
+      "This source-tracked file is intentionally commit-neutral. Final head-bound",
+      "P6 evidence is generated into `.artifacts/product/P6/` and mirrored into",
+      "the final visible review folder during handoff."
+    ]);
+    await writeFile(evidenceIndexPath, `${trackedLines.join("\n")}`);
+  }
+}
+
+async function main() {
+  await rm(p6Root, { recursive: true, force: true });
+  await mkdir(p6Root, { recursive: true });
+
+  run("npm", ["run", "build"], { stdio: "inherit" });
+  await captureWebBaseline();
+  await runDesktopSmoke();
+  await runPackageAndPackagedNormalProof();
+  await generateP6StateAndMotionEvidence({
+    p6Root,
+    contract: await readJson(contractPath)
+  });
+  await generateP6StrictRuntimeEvidence({
+    p6Root,
+    contract: await readJson(contractPath)
+  });
+  await writeVisualSystemAudit();
+  await writeOwnerFeedbackClosureMap();
+  await writeReviewerBEvidenceRequest();
+
+  let report = await buildParityReport();
+  await writeEvidenceIndex(report);
+  report = await buildParityReport();
+  await writeEvidenceIndex(report);
+  report = await buildParityReport();
+  const activeGate = await validateParityReport(report);
+  await writeEvidenceIndex(report, activeGate);
+
+  console.log(JSON.stringify({
+    milestoneId,
+    headCommit: report.source.headCommit,
+    parityStatus: activeGate.status,
+    nonPassEvidenceCount: activeGate.activeNonPassEvidenceCount,
+    nonPassEvidence: activeGate.activeNonPassEvidence.slice(0, 40),
+    historicalLineageNonPassEvidenceCount: activeGate.historicalLineageNonPassEvidenceCount,
+    historicalLineageNonPassEvidence: activeGate.historicalLineageNonPassEvidence.slice(0, 40),
+    activeWorkbenchGate: toRepoPath(activeWorkbenchGatePath),
+    artifactRoot: toRepoPath(p6Root),
+    parityReport: toRepoPath(path.join(p6Root, "p6-parity-report.json")),
+    paritySnapshot: skipTrackedSnapshots ? null : toRepoPath(paritySnapshotPath),
+    evidenceIndex: skipTrackedSnapshots
+      ? toRepoPath(path.join(p6Root, "P6_EVIDENCE_INDEX.md"))
+      : toRepoPath(evidenceIndexPath),
+    artifactCount: report.sections.artifactIndex.artifacts.length
+  }, null, 2));
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+});

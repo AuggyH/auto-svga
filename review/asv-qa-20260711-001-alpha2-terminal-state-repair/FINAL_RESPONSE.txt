@@ -1,0 +1,28 @@
+Fix Ready for ASV-QA-20260711-001 alpha2 terminal-state repair.
+
+Branch: codex/0.2-alpha2-intake-terminal-state-repair
+Base: 7077c867bb31e3fd72823649b2c6412bb8af6de2
+
+Summary:
+- Packaged multi-format desktop sessions now use the packaged .runtime root
+  instead of a source-checkout root.
+- Main-process and renderer open paths now terminalize missing model, rejected,
+  malformed, and stalled outcomes into typed path-redacted failure states.
+- Synthetic Lottie and VAP desktop opens reach terminal preview-ready states in
+  source tests.
+
+Validation:
+- npm run build: PASS
+- focused Electron desktop/package/open suite: PASS 6/6
+- npm run test:all: PASS 524/524
+- design-system check: PASS
+- git diff --check: PASS
+- package/lockfile/media/formal-0.1 scans: PASS
+
+Boundary:
+No package build, promotion, installed-app replacement, foreground launch, QA
+rerun, Lottie/VAP support claim, real-material visual success claim, or
+save/export/conversion support.
+
+Next:
+Code Review, then Packaging rebuild/install, then QA foreground regression.

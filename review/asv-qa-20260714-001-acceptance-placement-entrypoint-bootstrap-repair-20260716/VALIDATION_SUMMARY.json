@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "task": "acceptance-placement-entrypoint-bootstrap-repair",
+  "startingHead": "5019ec4725f7af077b82b5108d60543bafd1717a",
+  "branch": "codex/0.2-acceptance-placement-entrypoint-bootstrap-20260716",
+  "productDiffSha256": "de19b7d47f12d55cf587a51be238bfd5936e0ee65e30dbe7eb8f67ac441be202",
+  "qaFactSource": "4edffa2022a230c2995e8ee337e653ed70818366",
+  "qaEvidenceSha256": "657894b665bba1c37e2832bf835416b8d4cda85f4c2e194f023827ae0022fd1f",
+  "checks": [
+    {
+      "name": "main syntax",
+      "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+      "status": "passed"
+    },
+    {
+      "name": "placement proof helper syntax",
+      "command": "node --check tools/electron-prototype/experiments/svga-web/acceptance-startup-placement-proof.cjs",
+      "status": "passed"
+    },
+    {
+      "name": "focused placement picker group",
+      "command": "node --test --test-name-pattern \"placement|acceptance startup|native picker|picker\" tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed",
+      "result": "13/13"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "status": "passed"
+    },
+    {
+      "name": "root full source suite",
+      "command": "npm run test:all",
+      "status": "passed",
+      "result": "538/538"
+    },
+    {
+      "name": "design system",
+      "command": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:design-system-check",
+      "status": "passed"
+    },
+    {
+      "name": "svga-web all source tests without dependency overlay",
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/*.test.mjs",
+      "status": "failed_environment",
+      "result": "133/135; missing @electron/asar in this worktree"
+    },
+    {
+      "name": "svga-web all source tests with hash-matched read-only d657 NODE_PATH",
+      "command": "NODE_PATH=/Users/huangtengxin/.codex/worktrees/d657/auto-svga/tools/electron-prototype/node_modules node --test tools/electron-prototype/experiments/svga-web/tests/*.test.mjs",
+      "status": "passed",
+      "result": "135/135"
+    },
+    {
+      "name": "macOS package proof direct script",
+      "command": "npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:proof:mac",
+      "status": "failed_stale_local_artifact",
+      "result": "local .artifacts/internal-trial package buildCommit=9e99f750..., not current source; no rebuild authorized"
+    }
+  ],
+  "boundaries": {
+    "foregroundUsed": false,
+    "electronLaunched": false,
+    "installedAppMutated": false,
+    "packageBuilt": false,
+    "qaRouted": false,
+    "codeReviewRouted": false,
+    "productOwnerAcceptanceClaimed": false,
+    "supportOrReleaseClaimed": false
+  }
+}

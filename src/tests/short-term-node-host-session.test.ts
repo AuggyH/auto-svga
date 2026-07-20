@@ -1,0 +1,156 @@
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { createShortTermNodeHostSession } from "../hosts/short-term-node-host-session.js";
+import {
+  createShortTermOptimizableSvgaFixture,
+  createShortTermSvgaFixture
+} from "./helpers/short-term-svga-fixtures.js";
+
+test("short-term node host session opens real local files and restores recent records", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-"));
+  const sourcePath = path.join(tempDir, "opened.svga");
+  const storePath = path.join(tempDir, "state", "recent.json");
+
+  try {
+    await writeFile(sourcePath, await createShortTermSvgaFixture());
+    const session = await createShortTermNodeHostSession({ recentStorePath: storePath });
+    const opened = await session.openLocalFile({
+      requestId: "open-1",
+      source: "fileButton",
+      localPath: sourcePath
+    });
+
+    assert.equal(opened.actionResult?.status, "completed");
+    assert.equal(opened.recentPersistence.status, "saved");
+    assert.equal(opened.state.facade.model.appState.currentFile?.displayName, "opened.svga");
+    assert.equal(JSON.stringify(opened.state.facade.model).includes(tempDir), false);
+    assert.equal((await readFile(storePath, "utf8")).includes(sourcePath), true);
+
+    const restored = await createShortTermNodeHostSession({ recentStorePath: storePath });
+    const recent = restored.getState().facade.model.recentFiles.launchRecentFiles[0];
+
+    assert.equal(recent.displayName, "opened.svga");
+    assert.equal(recent.pathRedacted, true);
+    assert.equal(JSON.stringify(restored.getState().facade.model).includes(tempDir), false);
+
+    const reopened = await restored.openRecentFile({
+      requestId: "recent-1",
+      recentFileId: recent.id,
+      source: "recentMenu"
+    });
+
+    assert.equal(reopened.actionResult?.status, "completed");
+    assert.equal(reopened.recentPersistence.status, "saved");
+    assert.equal(reopened.state.facade.model.appState.currentFile?.displayName, "opened.svga");
+    assert.equal(JSON.stringify(reopened.state.facade.model).includes(tempDir), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("short-term node host session can run without a configured recent store", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-no-store-"));
+  const sourcePath = path.join(tempDir, "opened.svga");
+
+  try {
+    await writeFile(sourcePath, await createShortTermSvgaFixture());
+    const session = await createShortTermNodeHostSession();
+    const opened = await session.openLocalFile({
+      requestId: "open-1",
+      source: "menuOpen",
+      localPath: sourcePath
+    });
+
+    assert.equal(opened.actionResult?.status, "completed");
+    assert.equal(opened.recentPersistence.status, "notConfigured");
+    assert.equal(JSON.stringify(opened.state.facade.model).includes(tempDir), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("short-term node host session recovers from invalid local files without stale data", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-invalid-"));
+  const invalidPath = path.join(tempDir, "broken.svga");
+  const validPath = path.join(tempDir, "valid.svga");
+
+  try {
+    await writeFile(invalidPath, new Uint8Array([1, 2, 3, 4]));
+    await writeFile(validPath, await createShortTermSvgaFixture());
+    const session = await createShortTermNodeHostSession();
+
+    const failed = await session.openLocalFile({
+      requestId: "bad-1",
+      source: "dragDrop",
+      localPath: invalidPath
+    });
+
+    assert.equal(failed.actionResult?.status, "failed");
+    assert.equal(failed.actionResult?.diagnostic?.code, "local_file_inspection_failed");
+    assert.equal(failed.state.facade.model.appState.state, "loadFailed");
+    assert.equal(failed.state.facade.model.appState.currentFile, undefined);
+    assert.equal(failed.state.currentLocalPath, undefined);
+    assert.equal(failed.state.activeOutputBytes, undefined);
+    assert.equal(failed.state.facade.model.appState.staleFileDataCleared, true);
+    assert.equal(JSON.stringify(failed.state.facade.model).includes(tempDir), false);
+
+    const recovered = await session.openLocalFile({
+      requestId: "good-1",
+      source: "fileButton",
+      localPath: validPath
+    });
+
+    assert.equal(recovered.actionResult?.status, "completed");
+    assert.equal(recovered.state.facade.model.appState.state, "previewReady");
+    assert.equal(recovered.state.facade.model.appState.currentFile?.displayName, "valid.svga");
+    assert.equal(recovered.state.currentLocalPath, validPath);
+    assert.equal(JSON.stringify(recovered.state.facade.model).includes(tempDir), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("short-term node host session exposes lifecycle and guarded quit for dirty output", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-lifecycle-"));
+  const sourcePath = path.join(tempDir, "optimizable.svga");
+
+  try {
+    await writeFile(sourcePath, await createShortTermOptimizableSvgaFixture());
+    const session = await createShortTermNodeHostSession();
+    await session.openLocalFile({
+      requestId: "open-1",
+      source: "fileButton",
+      localPath: sourcePath
+    });
+    await session.dispatchMenuAction({
+      commandId: "runOptimization"
+    });
+
+    const lifecycle = session.evaluateLifecycleRequest({
+      request: "appQuit"
+    });
+    assert.equal(lifecycle.status, "blocked");
+    assert.equal(lifecycle.diagnostic?.code, "lifecycle_requires_discard_confirmation");
+    assert.equal(JSON.stringify(lifecycle).includes(tempDir), false);
+
+    const blockedQuit = await session.dispatchMenuAction({
+      commandId: "quit"
+    });
+    assert.equal(blockedQuit.actionResult?.status, "blocked");
+    assert.equal(blockedQuit.actionResult?.diagnostic?.code, "lifecycle_requires_discard_confirmation");
+    assert.ok(blockedQuit.state.activeOutputBytes);
+
+    const confirmedQuit = await session.dispatchMenuAction({
+      commandId: "quit",
+      discardUnsavedChanges: true
+    });
+    assert.equal(confirmedQuit.actionResult?.status, "delegated");
+    assert.equal(confirmedQuit.actionResult?.diagnostic?.code, "menu_command_delegated_to_native_after_lifecycle_check");
+    assert.ok(confirmedQuit.state.activeOutputBytes);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});

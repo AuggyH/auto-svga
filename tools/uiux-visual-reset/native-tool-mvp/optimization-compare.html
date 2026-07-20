@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Auto SVGA Optimization Compare Direction</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="asvPreviewDirection" aria-label="Auto SVGA 优化结果对比静态方向稿">
+      <section class="asvPreviewWindow">
+        <section class="asvPreviewCanvas asvCompareCanvas">
+          <div class="asvTrafficLights" aria-hidden="true">
+            <span class="asvTraffic asvTrafficClose"></span>
+            <span class="asvTraffic asvTrafficMin"></span>
+            <span class="asvTraffic asvTrafficMax"></span>
+          </div>
+          <div class="asvCompareArtboards">
+            <div class="asvWolfFrame asvCompareWolf" aria-label="优化前画面">
+              <span class="asvWolfTop"></span>
+              <span class="asvWolfSide asvWolfLeft"></span>
+              <span class="asvWolfSide asvWolfRight"></span>
+              <span class="asvWolfBottom"></span>
+              <span class="asvWolfGem"></span>
+              <span class="asvWolfHead asvWolfHeadLeft"></span>
+              <span class="asvWolfHead asvWolfHeadRight"></span>
+              <span class="asvWolfCenter"></span>
+            </div>
+            <div class="asvWolfFrame asvCompareWolf" aria-label="优化后画面">
+              <span class="asvWolfTop"></span>
+              <span class="asvWolfSide asvWolfLeft"></span>
+              <span class="asvWolfSide asvWolfRight"></span>
+              <span class="asvWolfBottom"></span>
+              <span class="asvWolfGem"></span>
+              <span class="asvWolfHead asvWolfHeadLeft"></span>
+              <span class="asvWolfHead asvWolfHeadRight"></span>
+              <span class="asvWolfCenter"></span>
+            </div>
+          </div>
+          <div class="asvPlayerControls" aria-label="播放控制">
+            <span class="asvControlIcon asvReplayIcon"></span>
+            <span class="asvPlayButton"></span>
+            <span class="asvProgress"><span></span></span>
+            <span class="asvTime">0:00 / 0:02</span>
+            <span class="asvControlIcon asvLoopIcon"></span>
+            <span class="asvControlIcon asvFullscreenIcon"></span>
+          </div>
+        </section>
+        <aside class="asvPreviewSidebar" aria-label="优化结果">
+          <header class="asvSidebarHeader asvSingleHeader">
+            <h1>优化结果对比</h1>
+          </header>
+          <section class="asvCompareInfoGrid">
+            <div>
+              <h2>优化前</h2>
+              <div class="asvCompareMetricCard">
+                <span>文件体积</span><strong>2.4 <em>MiB</em></strong>
+                <span>内存占用</span><strong>20.6 <em>MiB</em></strong>
+                <span>动画时长</span><strong>3 <em>s</em></strong>
+                <span>帧率</span><strong>30 <em>fps</em></strong>
+                <span>画布尺寸</span><strong>300 × 300 <em>px</em></strong>
+              </div>
+            </div>
+            <div>
+              <h2 class="isSuccess">优化后</h2>
+              <div class="asvCompareMetricCard isSuccess">
+                <span>文件体积</span><strong>2.4 <em>MiB</em></strong>
+                <span>内存占用</span><strong>20.6 <em>MiB</em></strong>
+                <span>动画时长</span><strong>3 <em>s</em></strong>
+                <span>帧率</span><strong>30 <em>fps</em></strong>
+                <span>画布尺寸</span><strong>300 × 300 <em>px</em></strong>
+              </div>
+            </div>
+          </section>
+          <div class="asvOptimizationActions">
+            <span class="asvPrimaryWideButton">另存为 SVGA</span>
+            <span class="asvLinkAction">覆盖保存</span>
+            <span class="asvPlainAction">放弃优化</span>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>

@@ -26,6 +26,10 @@ exports/
 # Temporary review artifacts
 review/
 outputs/
+.artifacts/loop-validation/
+.artifacts/loop-handoff/
+.artifacts/loop-budget-check/
+.artifacts/local-stable-app/
 
 # Allow approved fixtures and examples, but not their generated outputs
 !fixtures/

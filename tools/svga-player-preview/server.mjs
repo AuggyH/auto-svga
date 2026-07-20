@@ -158,20 +158,48 @@ export async function scanLatestArtifacts(rootPath = artifactRoot) {
 }
 
 let reportServicePromise;
+let shortTermModelFactoryPromise;
+let shortTermOptimizationWorkflowPromise;
+let shortTermRenameWorkflowPromise;
+let shortTermImageReplacementWorkflowPromise;
+let shortTermImageReplacementPreviewSessionPromise;
 
 async function getAvatarFrameInspectionReportService() {
-  reportServicePromise ??= Promise.all([
-    import("../../dist/workbench/avatar-frame-inspection-report.js"),
-    import("../../dist/workbench/inspection-service.js"),
-    import("../../dist/workbench/svga/index.js")
-  ]).then(([reportModule, inspectionModule, svgaModule]) => {
-    const adapter = new svgaModule.SvgaFormatAdapter(new svgaModule.NodeProtobufSvgaInspector());
-    return new reportModule.AvatarFrameInspectionReportService(
-      new inspectionModule.MotionAssetInspectionService(adapter),
-      new svgaModule.SvgaMotionSpecChecker()
-    );
-  });
+  reportServicePromise ??= import("../../dist/hosts/avatar-frame-inspection.js")
+    .then(({ createAvatarFrameInspectionReportService }) => (
+      createAvatarFrameInspectionReportService()
+    ));
   return reportServicePromise;
+}
+
+async function getShortTermProductModelFactory() {
+  shortTermModelFactoryPromise ??= import("../../dist/workbench/short-term-product-model.js")
+    .then(({ createShortTermProductInspectionModel }) => createShortTermProductInspectionModel);
+  return shortTermModelFactoryPromise;
+}
+
+async function getShortTermOptimizationWorkflow() {
+  shortTermOptimizationWorkflowPromise ??= import("../../dist/workbench/short-term-optimization-workflow.js")
+    .then(({ runShortTermOptimizationWorkflow }) => runShortTermOptimizationWorkflow);
+  return shortTermOptimizationWorkflowPromise;
+}
+
+async function getShortTermRenameWorkflow() {
+  shortTermRenameWorkflowPromise ??= import("../../dist/workbench/short-term-rename-workflow.js")
+    .then(({ runShortTermRenameWorkflow }) => runShortTermRenameWorkflow);
+  return shortTermRenameWorkflowPromise;
+}
+
+async function getShortTermImageReplacementWorkflow() {
+  shortTermImageReplacementWorkflowPromise ??= import("../../dist/workbench/short-term-image-replacement-workflow.js")
+    .then(({ runShortTermImageReplacementWorkflow }) => runShortTermImageReplacementWorkflow);
+  return shortTermImageReplacementWorkflowPromise;
+}
+
+async function getShortTermImageReplacementPreviewSession() {
+  shortTermImageReplacementPreviewSessionPromise ??= import("../../dist/workbench/short-term-image-replacement-preview-session.js")
+    .then((module) => module);
+  return shortTermImageReplacementPreviewSessionPromise;
 }
 
 export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
@@ -194,6 +222,68 @@ export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
   return result.value;
 }
 
+export async function inspectShortTermProductModelBytes(bytes, name = "local.svga") {
+  const report = await inspectAvatarFrameBytes(bytes, name);
+  const createShortTermProductInspectionModel = await getShortTermProductModelFactory();
+  return createShortTermProductInspectionModel(report);
+}
+
+export async function runShortTermOptimizationWorkflowBytes(bytes, name = "local.svga") {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const runShortTermOptimizationWorkflow = await getShortTermOptimizationWorkflow();
+  return runShortTermOptimizationWorkflow(data, { sourceName: name });
+}
+
+export async function runShortTermRenameWorkflowBytes(
+  bytes,
+  fromImageKey,
+  toImageKey,
+  name = "local.svga"
+) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const runShortTermRenameWorkflow = await getShortTermRenameWorkflow();
+  return runShortTermRenameWorkflow(data, fromImageKey, toImageKey, { sourceName: name });
+}
+
+export async function runShortTermImageReplacementWorkflowBytes(
+  bytes,
+  imageKey,
+  pngBytes,
+  name = "local.svga"
+) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const replacementBytes = pngBytes instanceof Uint8Array ? pngBytes : new Uint8Array(pngBytes);
+  const runShortTermImageReplacementWorkflow = await getShortTermImageReplacementWorkflow();
+  return runShortTermImageReplacementWorkflow(data, { imageKey, pngBytes: replacementBytes }, { sourceName: name });
+}
+
+export async function applyShortTermImageReplacementPreviewSessionBytes(
+  bytes,
+  imageKey,
+  pngBytes,
+  name = "local.svga"
+) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const replacementBytes = pngBytes instanceof Uint8Array ? pngBytes : new Uint8Array(pngBytes);
+  const {
+    applyShortTermImageReplacementPreview,
+    createShortTermImageReplacementPreviewSession
+  } = await getShortTermImageReplacementPreviewSession();
+  const session = createShortTermImageReplacementPreviewSession(data, { sourceName: name });
+  return applyShortTermImageReplacementPreview(session, { imageKey, pngBytes: replacementBytes });
+}
+
+export async function resetShortTermImageReplacementPreviewSessionBytes(bytes, name = "local.svga") {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const {
+    createShortTermImageReplacementPreviewSession,
+    resetShortTermImageReplacementPreview
+  } = await getShortTermImageReplacementPreviewSession();
+  return resetShortTermImageReplacementPreview(
+    createShortTermImageReplacementPreviewSession(data, { sourceName: name })
+  );
+}
+
 async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
   const chunks = [];
   let size = 0;
@@ -207,6 +297,30 @@ async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
     chunks.push(chunk);
   }
   return new Uint8Array(Buffer.concat(chunks));
+}
+
+async function readRequestJson(request, maxBytes = 35 * 1024 * 1024) {
+  const bytes = await readRequestBytes(request, maxBytes);
+  try {
+    return JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch {
+    const error = new Error("请求 JSON 无法解析。");
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+function encodeBase64(bytes) {
+  return Buffer.from(bytes).toString("base64");
+}
+
+function decodeBase64(value, label) {
+  if (typeof value !== "string" || value.length === 0) {
+    const error = new Error(`${label} base64 不能为空。`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return new Uint8Array(Buffer.from(value, "base64"));
 }
 
 export function createPreviewServer() {
@@ -226,6 +340,122 @@ export function createPreviewServer() {
         sendJson(response, error?.statusCode ?? 422, {
           error: error instanceof Error ? error.message : String(error),
           ...(Array.isArray(error?.issues) ? { issues: error.issues } : {})
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-inspection-model") {
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        sendJson(response, 200, await inspectShortTermProductModelBytes(bytes, name));
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          ...(Array.isArray(error?.issues) ? { issues: error.issues } : {})
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-optimization-workflow") {
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        const result = await runShortTermOptimizationWorkflowBytes(bytes, name);
+        sendJson(response, 200, {
+          optimizedSvgaBase64: result.optimizedBytes ? encodeBase64(result.optimizedBytes) : null,
+          optimization: result.model
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-key-rename") {
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        const fromImageKey = requestUrl.searchParams.get("from") || "";
+        const toImageKey = requestUrl.searchParams.get("to") || "";
+        const result = await runShortTermRenameWorkflowBytes(bytes, fromImageKey, toImageKey, name);
+        sendJson(response, 200, {
+          renamedSvgaBase64: result.renamedBytes ? encodeBase64(result.renamedBytes) : null,
+          rename: result.model
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-replacement-workflow") {
+      try {
+        const body = await readRequestJson(request);
+        const name = path.basename(typeof body.name === "string" ? body.name : "local.svga");
+        const imageKey = typeof body.imageKey === "string" ? body.imageKey : "";
+        const result = await runShortTermImageReplacementWorkflowBytes(
+          decodeBase64(body.svgaBase64, "svgaBase64"),
+          imageKey,
+          decodeBase64(body.pngBase64, "pngBase64"),
+          name
+        );
+        sendJson(response, 200, {
+          replacedSvgaBase64: result.replacedBytes ? encodeBase64(result.replacedBytes) : null,
+          replacement: result.model
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-replacement-preview-session") {
+      try {
+        const body = await readRequestJson(request);
+        const action = typeof body.action === "string" ? body.action : "apply";
+        const name = path.basename(typeof body.name === "string" ? body.name : "local.svga");
+        const svgaBytes = decodeBase64(body.svgaBase64, "svgaBase64");
+
+        if (action === "reset") {
+          const session = await resetShortTermImageReplacementPreviewSessionBytes(svgaBytes, name);
+          sendJson(response, 200, {
+            accepted: true,
+            previewSvgaBase64: encodeBase64(session.previewBytes),
+            session: session.model
+          });
+          return;
+        }
+
+        if (action !== "apply") {
+          sendJson(response, 400, { error: "action 只支持 apply 或 reset。" });
+          return;
+        }
+
+        const imageKey = typeof body.imageKey === "string" ? body.imageKey : "";
+        const result = await applyShortTermImageReplacementPreviewSessionBytes(
+          svgaBytes,
+          imageKey,
+          decodeBase64(body.pngBase64, "pngBase64"),
+          name
+        );
+        sendJson(response, 200, {
+          accepted: result.accepted,
+          previewSvgaBase64: encodeBase64(result.session.previewBytes),
+          session: result.session.model,
+          replacement: result.workflow
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
         });
       }
       return;

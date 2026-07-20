@@ -1,0 +1,19 @@
+{
+  "packetId": "asv-qa-20260711-001-alpha2-terminal-state-repair",
+  "requirement": "ASV-REQ-20260709-003",
+  "ticket": "ASV-QA-20260711-001",
+  "branch": "codex/0.2-alpha2-intake-terminal-state-repair",
+  "base": "7077c867bb31e3fd72823649b2c6412bb8af6de2",
+  "state": "fix-ready-code-review-required",
+  "containsProductionAssets": false,
+  "containsPackageArchive": false,
+  "foregroundRun": false,
+  "qaRerun": false,
+  "validation": {
+    "build": "pass",
+    "focusedElectron": "pass 6/6",
+    "fullRegression": "pass 524/524",
+    "designSystem": "pass",
+    "diffCheck": "pass"
+  }
+}

@@ -1,26 +1,14 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { createAvatarFrameInspectionReportService } from "../hosts/avatar-frame-inspection.js";
 import type { MotionAssetSource } from "../workbench/contracts.js";
-import {
-  AvatarFrameInspectionReportService,
-  type AvatarFrameInspectionReport
-} from "../workbench/avatar-frame-inspection-report.js";
-import { MotionAssetInspectionService } from "../workbench/inspection-service.js";
-import {
-  NodeProtobufSvgaInspector,
-  SvgaFormatAdapter,
-  SvgaMotionSpecChecker
-} from "../workbench/svga/index.js";
+import type { AvatarFrameInspectionReport } from "../workbench/avatar-frame-inspection-report.js";
 
 export async function inspectAvatarFrameCommand(
   inputPath: string
 ): Promise<AvatarFrameInspectionReport> {
   const source = await fileSource(inputPath);
-  const adapter = new SvgaFormatAdapter(new NodeProtobufSvgaInspector());
-  const reportService = new AvatarFrameInspectionReportService(
-    new MotionAssetInspectionService(adapter),
-    new SvgaMotionSpecChecker()
-  );
+  const reportService = createAvatarFrameInspectionReportService();
   const result = await reportService.inspect(source);
   if (!result.value) {
     throw new Error(result.issues.map(({ message }) => message).join("; "));

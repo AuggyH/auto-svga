@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "reviewerId": "r2",
+  "reviewerRole": "evidence-testing-review",
+  "scope": "Read-only P6 retrospective review of validation reports, machine gates, negative checks, and reviewer evidence.",
+  "result": "postmortem_input_only",
+  "reviewedSources": [
+    "review/P6-1977cbc/validation.json",
+    "review/P6-1977cbc/reviewer-a.json",
+    "review/P6-1977cbc/reviewer-b.json",
+    "review/P6-1977cbc/bundle-privacy-audit.json",
+    ".artifacts/product/P6/p6-parity-report.json",
+    ".artifacts/product/P6/desktop-state-render-proof.json",
+    ".artifacts/product/P6/interaction-parity-report.json",
+    ".artifacts/product/P6/web-baseline/interaction-trace.json",
+    ".artifacts/product/P6/web-baseline/motion-manifest.json",
+    ".artifacts/product/P6/desktop-interaction-trace.json"
+  ],
+  "findings": [
+    {
+      "id": "R2-F001",
+      "severity": "high",
+      "status": "open",
+      "summary": "Machine gates still risk accepting motion parity when Web frames are identical, because reduced-motion evidence can satisfy the current logic.",
+      "affectedRounds": ["R5", "R6"],
+      "evidenceRefs": [
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/web-baseline/motion-manifest.json"
+      ]
+    },
+    {
+      "id": "R2-F002",
+      "severity": "high",
+      "status": "open",
+      "summary": "State and interaction parity checks allow broad aliases or mismatched mode context, which can turn existence of traces into PASS-like evidence.",
+      "affectedRounds": ["R4", "R5", "R6"],
+      "evidenceRefs": [
+        ".artifacts/product/P6/desktop-state-render-proof.json",
+        ".artifacts/product/P6/interaction-parity-report.json"
+      ]
+    },
+    {
+      "id": "R2-F003",
+      "severity": "medium",
+      "status": "open",
+      "summary": "Final packet evidence binds to head 1977cbc, while loop state and history terminal evidence stop earlier, creating traceability drift.",
+      "affectedRounds": ["R6"],
+      "evidenceRefs": [
+        "review/P6-1977cbc/MANIFEST.json",
+        "docs/loop/LOOP_STATE.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
+      ]
+    }
+  ],
+  "recommendations": [
+    "Split evidence states into typed PASS, PARTIAL, BLOCKED, and HUMAN_REQUIRED instead of using generic PASS language.",
+    "Add negative and mutation tests for state, interaction, and motion gates before another full milestone.",
+    "Bind loop terminal state and final review packet to the same fixed head before external review."
+  ]
+}

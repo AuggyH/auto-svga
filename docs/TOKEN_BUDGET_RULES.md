@@ -39,3 +39,21 @@ Agent behavior rules for this repository. Applies to all agents (Codex, Hermes, 
 21. If verification fails, report the exact error — do not guess at success.
 22. For Web UI verification, keep one representative screenshot per meaningful state; do not dump repetitive viewport captures into reviews.
 23. Record unverified accessibility or viewport checks as Partial/Not verified instead of spending tokens restating the requirement.
+
+## Token Accounting And Retrospective
+
+24. Token usage is a cost signal, not the only project metric.
+25. For meaningful tasks, record token usage in the review-file retrospective
+    section and `docs/retrospectives/TASK_RETRO_LEDGER.jsonl` when counts are
+    available.
+26. Use exact Codex session `token_count` values when accessible. If exact
+    values are unavailable, record `unavailable` or `manual-estimate`; do not
+    invent precise counts.
+27. Interpret token cost against value, risk reduction, implementation
+    progress, validation strength, and avoided rework.
+28. When high token cost was avoidable, record the cheaper path in the task
+    retrospective.
+29. When high token cost was justified, record the reason so future reviews do
+    not optimize away necessary discovery.
+30. Read `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md` for relevant
+    project lessons before broad repository scans.

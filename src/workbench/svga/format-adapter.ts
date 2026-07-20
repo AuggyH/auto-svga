@@ -8,13 +8,21 @@ import type {
   WorkbenchOperationContext,
   WorkbenchResult
 } from "../contracts.js";
+import type { EmbeddedImageAlphaAnalyzer } from "../image-alpha-analyzer.js";
+import type { EmbeddedResourceHasher } from "../resource-hasher.js";
+import { isReplaceableImageResource } from "../short-term-product-model.js";
 import { readEmbeddedImageMetadata } from "./image-metadata.js";
+import { classifySvgaResources } from "./resource-classifier.js";
 import type { SvgaBinaryInspector, SvgaMovieInspection } from "./types.js";
 
 export class SvgaFormatAdapter implements FormatAdapter {
   readonly format = "svga" as const;
 
-  constructor(private readonly inspector: SvgaBinaryInspector) {}
+  constructor(
+    private readonly inspector: SvgaBinaryInspector,
+    private readonly alphaAnalyzer?: EmbeddedImageAlphaAnalyzer,
+    private readonly resourceHasher?: EmbeddedResourceHasher
+  ) {}
 
   async probe(source: MotionAssetSource, context?: WorkbenchOperationContext): Promise<FormatProbeResult> {
     try {
@@ -51,7 +59,12 @@ export class SvgaFormatAdapter implements FormatAdapter {
       context?.cancellation?.throwIfCancelled();
 
       return {
-        value: toMotionAssetInfo(source, movie),
+        value: await toMotionAssetInfo(
+          source,
+          movie,
+          this.alphaAnalyzer,
+          this.resourceHasher
+        ),
         issues: []
       };
     } catch (error) {
@@ -66,23 +79,69 @@ export class SvgaFormatAdapter implements FormatAdapter {
   }
 }
 
-function toMotionAssetInfo(source: MotionAssetSource, movie: SvgaMovieInspection): MotionAssetInfo {
+async function toMotionAssetInfo(
+  source: MotionAssetSource,
+  movie: SvgaMovieInspection,
+  alphaAnalyzer?: EmbeddedImageAlphaAnalyzer,
+  resourceHasher?: EmbeddedResourceHasher
+): Promise<MotionAssetInfo> {
   const { params } = movie;
   const durationMs = params.fps > 0 ? (params.frames / params.fps) * 1000 : undefined;
-  const resources: MotionResourceInfo[] = movie.images.map((image) => {
-    const imageMetadata = readEmbeddedImageMetadata(image.bytes);
+  const imagesWithMetadata = movie.images.map((image) => ({
+    ...image,
+    imageMetadata: readEmbeddedImageMetadata(image.bytes)
+  }));
+  const classifications = classifySvgaResources({
+    images: imagesWithMetadata.map(({ imageMetadata, ...image }) => ({
+      ...image,
+      dimensions: imageMetadata.dimensions
+    })),
+    sprites: movie.sprites
+  });
+  const resources: MotionResourceInfo[] = await Promise.all(imagesWithMetadata.map(async (image) => {
+    const classification = classifications.get(image.imageKey);
+    const role = classification?.role ?? "unknown";
+    let alphaBounds;
+    let contentHash;
+    if (alphaAnalyzer) {
+      try {
+        alphaBounds = await alphaAnalyzer.analyze({
+          bytes: image.bytes,
+          format: image.imageMetadata.format,
+          dimensions: image.imageMetadata.dimensions
+        });
+      } catch {
+        alphaBounds = { status: "unknown" as const };
+      }
+    }
+    if (resourceHasher) {
+      try {
+        contentHash = await resourceHasher.hash(image.bytes);
+      } catch {
+        contentHash = undefined;
+      }
+    }
     return {
       id: image.imageKey,
       name: image.imageKey,
       kind: "image",
+      role,
+      replaceable: isReplaceableImageResource({
+        kind: "image",
+        name: image.imageKey,
+        role
+      }),
       sizeBytes: image.bytes.byteLength,
-      dimensions: imageMetadata.dimensions,
+      dimensions: image.imageMetadata.dimensions,
+      alphaBounds,
+      contentHash,
       metadata: {
         imageKey: image.imageKey,
-        imageFormat: imageMetadata.format
+        imageFormat: image.imageMetadata.format,
+        roleEvidence: classification?.evidence ?? ["insufficient_evidence"]
       }
     };
-  });
+  }));
   const layers: MotionLayerInfo[] = movie.sprites.map((sprite) => ({
     id: `sprite_${sprite.index}`,
     name: sprite.imageKey || `sprite_${sprite.index}`,
@@ -92,7 +151,8 @@ function toMotionAssetInfo(source: MotionAssetSource, movie: SvgaMovieInspection
       spriteIndex: sprite.index,
       imageKey: sprite.imageKey,
       matteKey: sprite.matteKey,
-      frameCount: sprite.frameCount
+      frameCount: sprite.frameCount,
+      frameAlphas: sprite.frameAlphas
     }
   }));
 

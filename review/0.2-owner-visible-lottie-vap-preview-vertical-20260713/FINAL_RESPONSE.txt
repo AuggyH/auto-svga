@@ -1,0 +1,27 @@
+Implementation Ready for ASV-REQ-20260709-003 owner-visible Lottie/VAP preview vertical.
+
+Branch: codex/0.2-owner-visible-lottie-vap-preview-vertical-20260713
+Base: b694fa86e7965dac87b8ad3b59da3a292c0117c0
+
+What changed:
+- Formal 0.2 desktop sessions now prepare local Lottie and VAP runtime payloads.
+- Lottie uses bounded JSON reads, deterministic adjacent-image inlining, text/image replacement data, and local lottie-web SVG runtime script serving.
+- VAP uses bounded MP4 reads, embedded or adjacent vapc JSON, local object URL payloads, fusion image/text params, and local video-animation-player runtime script serving.
+- Renderer mounting, cleanup, object URL revocation, generation guards, replacement remount, and reset remount are covered at source/dev runtime-contract level.
+- Formal 0.1 remains SVGA-only.
+
+Validation:
+- Focused Electron/source runtime suites: PASS 8/8.
+- build: PASS.
+- VAP inspection: PASS 14/14.
+- focused workspace/owner-preview/asset qualification: PASS 23/23.
+- test:all: PASS 525/525.
+- design-system: PASS.
+- diff/package-lock/media/VM-smoke-leftover scans: PASS.
+
+Boundary:
+- Incomplete fake-browser VM smoke was removed after repeated browser-environment gaps.
+- Actual browser/foreground visual playback proof is deferred to a rebuilt package candidate and bounded foreground regression.
+- No package, promotion, foreground run, QA acceptance, Product Owner acceptance, product-support claim, real-material visual success, save/export/conversion, or release readiness is claimed.
+
+Next gate: final Code Review for this exact milestone head.

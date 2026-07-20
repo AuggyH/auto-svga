@@ -1,0 +1,55 @@
+{
+  "ticket": "ASV-QA-20260708-002",
+  "status": "fix_ready_callback_evidence",
+  "branch": "agent/codex/short-term-preview-qa-20260708",
+  "baseHead": "c2a6a85039e43c27d091e7d69d4dc9faf98a56e4",
+  "ownerAssetAlias": "owner-lucky-notice-optimized-001",
+  "evidenceKind": "synthetic_slot_fit_regression",
+  "privacy": {
+    "productionSvgaCommitted": false,
+    "ownerReplacementImageCommitted": false,
+    "ownerScreenshotsCommitted": false
+  },
+  "fixAssertions": [
+    {
+      "case": "96x96 original imageKey slot replaced by 512x512 PNG",
+      "expected": "preview/output replacement is normalized to 96x96 before embedding"
+    },
+    {
+      "case": "replacement reset",
+      "expected": "active replacement and persisted output clear, source bytes are restored, and no oversized stale state remains"
+    },
+    {
+      "case": "generic editor compatibility",
+      "expected": "low-level editor still replaces exact PNG bytes for non-short-term callers"
+    }
+  ],
+  "reportedFitPolicy": "resize_to_original_resource_dimensions",
+  "validation": [
+    {
+      "command": "npm run build",
+      "result": "PASS"
+    },
+    {
+      "command": "node --test dist/tests/short-term-product-model.test.js dist/tests/short-term-image-replacement-workflow.test.js dist/tests/short-term-image-replacement-preview-session.test.js dist/tests/svga-image-resource-editor.test.js dist/tests/nq1-r1-hardening.test.js",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run test:all",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run desktop:smoke",
+      "result": "PASS"
+    }
+  ],
+  "qaRerunRequired": [
+    "Open the owner file with the 96 x 96 avatar imageKey.",
+    "Replace it with the owner 512 x 512 PNG.",
+    "Confirm playback remains bounded to the original slot and reset clears the oversized replacement."
+  ],
+  "limitations": [
+    "Exact owner production SVGA and replacement PNG remain local-only.",
+    "The frozen short-term version does not add a user-selectable fit/crop control."
+  ]
+}

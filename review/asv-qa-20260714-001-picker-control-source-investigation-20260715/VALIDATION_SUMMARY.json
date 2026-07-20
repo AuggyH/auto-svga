@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "requirementId": "ASV-REQ-20260709-003",
+  "parentTicketId": "ASV-QA-20260714-001",
+  "branch": "codex/0.2-picker-control-source-investigation-20260715",
+  "baseCommit": "a0958d82330c62d348eb236ea0248c91ce08e583",
+  "status": "implementation-ready-pending-pm-audit-and-code-review-routing",
+  "productDiffSha256": "47341497bab2f8572fa17869f9d12a4e7ba2f75af16befcef1cece69d760b45d",
+  "validation": [
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --test --test-name-pattern \"multi-format native picker is owned|host picker cancellation|macOS multi-format picker\" tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs",
+      "status": "passed",
+      "tests": "3/3"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs",
+      "status": "passed",
+      "tests": "28/28"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed"
+    },
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "tests": "538/538"
+    },
+    {
+      "command": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:design-system-check",
+      "status": "passed"
+    }
+  ],
+  "boundaries": {
+    "electronLaunched": false,
+    "installedAppMutated": false,
+    "foregroundUsed": false,
+    "nativeChooserOpened": false,
+    "ownerMaterialUsed": false,
+    "qaRouted": false,
+    "packagingRouted": false,
+    "productOwnerAcceptanceClaimed": false
+  }
+}

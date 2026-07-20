@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "task": "ASV-QA-20260711-001 alpha2 foreground intake fix",
+  "requirement": "ASV-REQ-20260709-003",
+  "defect": "ASV-QA-20260711-001",
+  "state": "Fix Ready / QA Regression And Packaging Rebuild Required",
+  "branch": "codex/0.2-alpha2-foreground-intake-fix",
+  "sourceFixCommit": "71a8e9f83b5ae10cb60a12822eed09e377e759cd",
+  "baseCommit": "421b083b93f4deacb2cb18c8ad6f7a042990b7f3",
+  "changedFiles": [
+    "tools/electron-prototype/experiments/svga-web/main.cjs",
+    "tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs",
+    "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+    "docs/product/requirements/ASV-REQ-20260709-003.md",
+    "docs/quality/reports/ASV-QA-20260711-001-fix.md",
+    "docs/reviews/2026-07-11-codex-asv-qa-20260711-001-alpha2-foreground-intake-fix.md",
+    "docs/retrospectives/TASK_RETRO_LEDGER.jsonl",
+    "docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md"
+  ],
+  "validation": [
+    {
+      "command": "npm run build",
+      "result": "PASS"
+    },
+    {
+      "command": "node --test --test-name-pattern \"macOS package proof manifest records audit boundaries|0.2 alpha package runtime identity|0.2 multi-format desktop mode|formal 0.1 direct multi-format IPC|formal preload isolates short-term|formal 0.2 multi-format preload\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "result": "PASS 6/6"
+    },
+    {
+      "command": "npm run test:all",
+      "result": "PASS 524/524"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "packagingNeed": "A rebuilt and reinstalled alpha2 repair candidate is required before foreground QA can rerun Lottie/VAP intake.",
+  "nonClaims": [
+    "not QA accepted",
+    "not installed-app modified",
+    "not foreground tested",
+    "not package ready",
+    "not Lottie/VAP product support",
+    "not release ready"
+  ]
+}

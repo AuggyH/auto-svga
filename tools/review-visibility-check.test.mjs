@@ -1,0 +1,196 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import test from "node:test";
+
+import { validateReviewVisibility } from "./review-visibility-check.mjs";
+
+async function withTempDir(callback) {
+  const directory = await mkdtemp(join(tmpdir(), "auto-svga-review-visibility-"));
+  try {
+    return await callback(directory);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function writeJson(filePath, value) {
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function writeZip(folder, name, entries = { "README.txt": "ok\n" }) {
+  const source = join(folder, `${name}-source`);
+  await mkdir(source, { recursive: true });
+  for (const [entryName, content] of Object.entries(entries)) {
+    const filePath = join(source, entryName);
+    await mkdir(dirname(filePath), { recursive: true });
+    await writeFile(filePath, content, "utf8");
+  }
+  const zipPath = join(folder, name);
+  execFileSync("zip", ["-q", "-X", zipPath, "-r", "."], {
+    cwd: source,
+    env: { ...process.env, COPYFILE_DISABLE: "1" }
+  });
+  return zipPath;
+}
+
+async function createWorkerFolder(root) {
+  const folder = join(root, "review/workers/P6/A1-abcdef0");
+  await mkdir(folder, { recursive: true });
+  await writeFile(join(folder, "README.md"), "# A1\n", "utf8");
+  await writeFile(join(folder, "WORKER_HANDOFF.md"), "Worker handoff only.\n", "utf8");
+  await writeJson(join(folder, "worker-result.json"), {
+    baseCommit: "base",
+    headCommit: "head",
+    branch: "agent/codex/p6-a1",
+    workspaceClean: true,
+    changedFiles: [],
+    tests: []
+  });
+  return folder;
+}
+
+async function createTerminalFolder(root, { companionRequired = false, mismatch = false } = {}) {
+  const canonical = join(root, "canonical");
+  const visible = join(root, ["review", "P6-abcdef0"].join("/"));
+  await mkdir(canonical, { recursive: true });
+  await mkdir(visible, { recursive: true });
+
+  const sealedFiles = {
+    "REVIEW_PACKET.md": "# Review\n",
+    "validation.json": "{}\n",
+    "budget-check.json": "{}\n",
+    "reviewer-a.json": "{}\n",
+    "reviewer-b.json": "{}\n",
+    "post-seal-verification.json": "{}\n"
+  };
+  if (companionRequired) sealedFiles["changes.patch"] = "diff --git a/a b/a\n";
+
+  for (const [fileName, content] of Object.entries(sealedFiles)) {
+    await writeFile(join(canonical, fileName), content, "utf8");
+    await writeFile(join(visible, fileName), mismatch && fileName === "REVIEW_PACKET.md" ? "# Changed\n" : content, "utf8");
+  }
+  await writeFile(join(visible, "README.md"), "# Visible\n", "utf8");
+  await writeFile(
+    join(visible, "FINAL_RESPONSE.txt"),
+    [
+      "HUMAN_REQUIRED",
+      "",
+      "[Review Packet](REVIEW_PACKET.md)",
+      "[Owner ZIP](P6-abcdef0-review-upload.zip)",
+      "[App ZIP](Auto-SVGA-macOS-internal-abcdef0.zip)",
+      ...(companionRequired ? ["[Companion Patch](changes.patch)"] : []),
+      ""
+    ].join("\n"),
+    "utf8"
+  );
+  await writeZip(visible, "P6-abcdef0-review-upload.zip");
+  await writeZip(visible, "Auto-SVGA-macOS-internal-abcdef0.zip");
+  await rm(join(visible, "P6-abcdef0-review-upload.zip-source"), { recursive: true, force: true });
+  await rm(join(visible, "Auto-SVGA-macOS-internal-abcdef0.zip-source"), { recursive: true, force: true });
+  await writeJson(join(visible, "MANIFEST.json"), {
+    companionRequired,
+    visibleHandoff: {
+      canonicalPacketRoot: "../../canonical"
+    }
+  });
+  return visible;
+}
+
+test("worker handoff folder passes with worker-only files", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createWorkerFolder(root);
+    const result = await validateReviewVisibility({ mode: "worker", folder });
+
+    assert.equal(result.status, "pass");
+  });
+});
+
+test("worker handoff rejects terminal packet files", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createWorkerFolder(root);
+    await writeFile(join(folder, "REVIEW_PACKET.md"), "# should not be here\n", "utf8");
+    const result = await validateReviewVisibility({ mode: "worker", folder });
+
+    assert.equal(result.status, "fail");
+    assert.equal(result.errors.some((error) => error.includes("must not contain REVIEW_PACKET.md")), true);
+  });
+});
+
+test("terminal owner handoff passes without optional changes.patch", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createTerminalFolder(root);
+    const result = await validateReviewVisibility({ mode: "terminal", folder });
+
+    assert.equal(result.status, "pass");
+  });
+});
+
+test("terminal owner handoff requires companion patch when declared", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createTerminalFolder(root, { companionRequired: true });
+    const result = await validateReviewVisibility({ mode: "terminal", folder });
+
+    assert.equal(result.status, "pass");
+  });
+});
+
+test("terminal owner handoff detects sealed file byte mismatch", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createTerminalFolder(root, { mismatch: true });
+    const result = await validateReviewVisibility({ mode: "terminal", folder });
+
+    assert.equal(result.status, "fail");
+    assert.equal(result.errors.some((error) => error.includes("byte-identical")), true);
+  });
+});
+
+test("visible handoff rejects local absolute paths", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createWorkerFolder(root);
+    const localUsersPath = `/${"Users"}/example/asset.svga`;
+    await writeFile(join(folder, "README.md"), `Path: ${localUsersPath}\n`, "utf8");
+    const result = await validateReviewVisibility({ mode: "worker", folder });
+
+    assert.equal(result.status, "fail");
+    assert.equal(result.errors.some((error) => error.includes("local absolute path")), true);
+  });
+});
+
+test("visible handoff allows escaped regex and ignore patterns in patch files", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createTerminalFolder(root, { companionRequired: true });
+    await writeFile(
+      join(folder, "changes.patch"),
+      [
+        "diff --git a/test.js b/test.js",
+        "+const pattern = /jobs\\\\/[a-zA-Z0-9._-]+$/;",
+        "+const ignore = \"--ignore=^/(tests|scripts|\\\\.artifacts)($|/)\";",
+        "+return value.replace(/[.*+?^${}()|[\\\\]\\\\]/g, \"\\\\$&\");",
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(join(root, "canonical", "changes.patch"), await readFile(join(folder, "changes.patch"), "utf8"), "utf8");
+
+    const result = await validateReviewVisibility({ mode: "terminal", folder });
+
+    assert.equal(result.status, "pass");
+  });
+});
+
+test("visible handoff rejects Windows drive and UNC absolute paths", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createWorkerFolder(root);
+    const separator = "\\";
+    const drivePath = ["C:", separator, "Users", separator, "example", separator, "asset.svga"].join("");
+    const uncPath = [separator, separator, "server", separator, "share"].join("");
+    await writeFile(join(folder, "README.md"), `Paths: ${drivePath} and ${uncPath}\n`, "utf8");
+    const result = await validateReviewVisibility({ mode: "worker", folder });
+
+    assert.equal(result.status, "fail");
+    assert.equal(result.errors.some((error) => error.includes("local absolute path")), true);
+  });
+});

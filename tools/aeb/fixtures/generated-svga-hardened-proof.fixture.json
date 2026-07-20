@@ -1,0 +1,408 @@
+{
+  "schemaVersion": "aeb-generated-svga-hardened-proof-v1",
+  "status": "passed",
+  "bindings": {
+    "runner": {
+      "preSha256": "c141039c380192d4db84485bc462a6b329a7c54d584fbf4509d7dc518e48b1c8",
+      "postSha256": "c141039c380192d4db84485bc462a6b329a7c54d584fbf4509d7dc518e48b1c8"
+    },
+    "harness": {
+      "preSha256": "687544e1c3d97ec08551bc1d12545799712e50d2ef4ccb03d5c91085d8c2e4f6",
+      "postSha256": "687544e1c3d97ec08551bc1d12545799712e50d2ef4ccb03d5c91085d8c2e4f6"
+    },
+    "electron": {
+      "version": "42.4.1",
+      "preSha256": "c0bf182389ea930585e3b0bf5c4f16529461e02bf3be751cb364d0e25f2257e0",
+      "postSha256": "c0bf182389ea930585e3b0bf5c4f16529461e02bf3be751cb364d0e25f2257e0"
+    },
+    "coreProofSha256": "56f813856c672562929ba0a2a762d8951dd5d62296f91e78a7bbfc7e5c06e001"
+  },
+  "execution": {
+    "electronExitStatus": 0,
+    "electronSignal": null,
+    "childPid": 78827,
+    "childPidAbsent": true,
+    "taggedProcessResidueCount": 0,
+    "globalElectronProcessResidueCount": 0,
+    "acceptedStdoutSha256": "c6d4b354308ccfce4b0e2797be27037a06f6caee77e9fbadab618c714d8bc18c",
+    "acceptedStderrBytes": 0
+  },
+  "core": {
+    "schemaVersion": "aeb-generated-svga-hardened-core-v1",
+    "status": "passed",
+    "bindings": {
+      "harness": {
+        "preSha256": "687544e1c3d97ec08551bc1d12545799712e50d2ef4ccb03d5c91085d8c2e4f6",
+        "postSha256": "687544e1c3d97ec08551bc1d12545799712e50d2ef4ccb03d5c91085d8c2e4f6"
+      },
+      "input": {
+        "alias": "AEB-GENERATED-SVGA-057",
+        "preSha256": "375f557a0e242df4dfec59004c0479f7cca205d17694ab96cb148eac41f5d9fd",
+        "postSha256": "375f557a0e242df4dfec59004c0479f7cca205d17694ab96cb148eac41f5d9fd",
+        "sizeBytes": 823
+      },
+      "vendor": {
+        "identity": "svga-web-2.4.4",
+        "originalPreSha256": "6235bc9802e76dd517343123ec730d25e02c4d476b66b81ef26befe7881f3c50",
+        "originalPostSha256": "6235bc9802e76dd517343123ec730d25e02c4d476b66b81ef26befe7881f3c50",
+        "executedCopyPreSha256": "6235bc9802e76dd517343123ec730d25e02c4d476b66b81ef26befe7881f3c50",
+        "executedCopyPostSha256": "6235bc9802e76dd517343123ec730d25e02c4d476b66b81ef26befe7881f3c50"
+      },
+      "sources": {
+        "pre": {
+          "player": {
+            "head": "59f4001230a7f2834f3374034fa1e0cf5da83e14",
+            "trackedClean": true
+          },
+          "aeb": {
+            "head": "dcabbbce9a35dc3dba182da86ae2016950bfb76a",
+            "trackedClean": true
+          },
+          "pm": {
+            "head": "abf59ef372996c3c4064c226341f410058039ac2",
+            "trackedClean": true
+          }
+        },
+        "post": {
+          "player": {
+            "head": "59f4001230a7f2834f3374034fa1e0cf5da83e14",
+            "trackedClean": true
+          },
+          "aeb": {
+            "head": "dcabbbce9a35dc3dba182da86ae2016950bfb76a",
+            "trackedClean": true
+          },
+          "pm": {
+            "head": "abf59ef372996c3c4064c226341f410058039ac2",
+            "trackedClean": true
+          }
+        }
+      },
+      "lineage": {
+        "pre": {
+          "hashes": {
+            "project": "bf3ba0fec9d0284a4f85e9f6ada83f33553974c03404e4655596a587bd078a96",
+            "map": "64393540a756c8eace1c271ba81d2edffc91b23fcfb20ec19435f21a3bc34e75",
+            "asset": "b7970b1a9c9a313e9b9f912411dacfe61d6e196c102918f4c77f49883da06936",
+            "encodeReport": "d97e116b290c575862358202e1c6c41fc7b710a5d43330047128a564bffea679"
+          },
+          "contract": {
+            "projectId": "aeb-panel-runtime-active-comp-wp5am-native-subset",
+            "canvas": {
+              "width": 300,
+              "height": 300
+            },
+            "fps": 24,
+            "durationFrames": 120,
+            "assetSha256": "b7970b1a9c9a313e9b9f912411dacfe61d6e196c102918f4c77f49883da06936",
+            "assetWidth": 120,
+            "assetHeight": 80,
+            "mapProjectId": "aeb-panel-runtime-active-comp-wp5am-native-subset",
+            "mapCanvas": {
+              "width": 300,
+              "height": 300
+            },
+            "mapFps": 24,
+            "mapDurationFrames": 120,
+            "mapSpriteAssetPath": "assets/layer-0001.png",
+            "projectExporterStage": "stub",
+            "encodeReportStatus": "pass",
+            "encodeDecision": "controlled_native_subset_encode_decode_proof_passed_no_playback_or_visual_claim",
+            "binaryEncoded": true,
+            "binarySizeBytes": 823,
+            "binaryFileName": "aeb-panel-runtime-active-comp-wp5am-native-subset.svga",
+            "binaryDecoded": true
+          },
+          "stageTransition": "project-draft-stub_to_wp5ap-encoded",
+          "reconciled": true,
+          "exactHashes": true
+        },
+        "post": {
+          "hashes": {
+            "project": "bf3ba0fec9d0284a4f85e9f6ada83f33553974c03404e4655596a587bd078a96",
+            "map": "64393540a756c8eace1c271ba81d2edffc91b23fcfb20ec19435f21a3bc34e75",
+            "asset": "b7970b1a9c9a313e9b9f912411dacfe61d6e196c102918f4c77f49883da06936",
+            "encodeReport": "d97e116b290c575862358202e1c6c41fc7b710a5d43330047128a564bffea679"
+          },
+          "contract": {
+            "projectId": "aeb-panel-runtime-active-comp-wp5am-native-subset",
+            "canvas": {
+              "width": 300,
+              "height": 300
+            },
+            "fps": 24,
+            "durationFrames": 120,
+            "assetSha256": "b7970b1a9c9a313e9b9f912411dacfe61d6e196c102918f4c77f49883da06936",
+            "assetWidth": 120,
+            "assetHeight": 80,
+            "mapProjectId": "aeb-panel-runtime-active-comp-wp5am-native-subset",
+            "mapCanvas": {
+              "width": 300,
+              "height": 300
+            },
+            "mapFps": 24,
+            "mapDurationFrames": 120,
+            "mapSpriteAssetPath": "assets/layer-0001.png",
+            "projectExporterStage": "stub",
+            "encodeReportStatus": "pass",
+            "encodeDecision": "controlled_native_subset_encode_decode_proof_passed_no_playback_or_visual_claim",
+            "binaryEncoded": true,
+            "binarySizeBytes": 823,
+            "binaryFileName": "aeb-panel-runtime-active-comp-wp5am-native-subset.svga",
+            "binaryDecoded": true
+          },
+          "stageTransition": "project-draft-stub_to_wp5ap-encoded",
+          "reconciled": true,
+          "exactHashes": true
+        }
+      }
+    },
+    "renderer": {
+      "runtime": {
+        "moduleExports": {
+          "Parser": "function",
+          "Player": "function",
+          "fillModeForwards": "forwards"
+        },
+        "capabilities": {
+          "parse": true,
+          "mount": true,
+          "start": true,
+          "pause": true,
+          "playerDestroy": true,
+          "parserDestroy": true,
+          "drawFrame": true
+        }
+      },
+      "video": {
+        "frames": 120,
+        "fps": 24,
+        "imageCount": 1,
+        "spriteCount": 1,
+        "videoSize": {
+          "width": 300,
+          "height": 300
+        }
+      },
+      "mountState": {
+        "playerVideoItemPresent": true,
+        "parserWorkerPresent": true,
+        "canvasWidth": 300,
+        "canvasHeight": 300,
+        "decodedVideoWidth": 300,
+        "decodedVideoHeight": 300
+      },
+      "frame0": {
+        "label": "frame-0",
+        "frame": 0,
+        "sha256": "ee60aed6580f70206cc3555392ac32d8f0af320a21e3fce09ef9b78c31cdfebb",
+        "cropSha256": "797db0768e7197e4048d18ccb4b52804f027279085f98cf96ab54a2ab2dc2dcb",
+        "bounds": {
+          "minX": 90,
+          "minY": 110,
+          "maxX": 209,
+          "maxY": 189,
+          "width": 120,
+          "height": 80
+        },
+        "alphaPixelCount": 9600,
+        "alphaSum": 2448000
+      },
+      "frame119": {
+        "label": "frame-119",
+        "frame": 119,
+        "sha256": "e98faca0b28e4bd7059eb5ce68a7c8c31c91cd633a440d9a3f2f25734e3b1cef",
+        "cropSha256": "797db0768e7197e4048d18ccb4b52804f027279085f98cf96ab54a2ab2dc2dcb",
+        "bounds": {
+          "minX": 110,
+          "minY": 110,
+          "maxX": 229,
+          "maxY": 189,
+          "width": 120,
+          "height": 80
+        },
+        "alphaPixelCount": 9600,
+        "alphaSum": 2448000
+      },
+      "playing1": {
+        "label": "playing-1",
+        "frame": 11,
+        "sha256": "7a12b764a6f8f1cab546924268f6e7d77d06a4307128f75a96c90de1df27ca60",
+        "cropSha256": "c949f43c9336e479da0c9c0bc2a54e15d523f038f34dbdca40693979884891fe",
+        "bounds": {
+          "minX": 92,
+          "minY": 110,
+          "maxX": 211,
+          "maxY": 189,
+          "width": 120,
+          "height": 80
+        },
+        "alphaPixelCount": 9600,
+        "alphaSum": 2444880
+      },
+      "playing2": {
+        "label": "playing-2",
+        "frame": 22,
+        "sha256": "3285488e0bd732d89137f19b58368f8bf85fa58c3351eaeb740b87b0f5471bfc",
+        "cropSha256": "3d7fa292aab01ceca18af8b68bd5b1ec08e787283c4fe81bd4bff6a88c7dc6eb",
+        "bounds": {
+          "minX": 94,
+          "minY": 110,
+          "maxX": 213,
+          "maxY": 189,
+          "width": 120,
+          "height": 80
+        },
+        "alphaPixelCount": 9600,
+        "alphaSum": 2441840
+      },
+      "paused1": {
+        "label": "paused-1",
+        "frame": 22,
+        "sha256": "3285488e0bd732d89137f19b58368f8bf85fa58c3351eaeb740b87b0f5471bfc",
+        "cropSha256": "3d7fa292aab01ceca18af8b68bd5b1ec08e787283c4fe81bd4bff6a88c7dc6eb",
+        "bounds": {
+          "minX": 94,
+          "minY": 110,
+          "maxX": 213,
+          "maxY": 189,
+          "width": 120,
+          "height": 80
+        },
+        "alphaPixelCount": 9600,
+        "alphaSum": 2441840
+      },
+      "paused2": {
+        "label": "paused-2",
+        "frame": 22,
+        "sha256": "3285488e0bd732d89137f19b58368f8bf85fa58c3351eaeb740b87b0f5471bfc",
+        "cropSha256": "3d7fa292aab01ceca18af8b68bd5b1ec08e787283c4fe81bd4bff6a88c7dc6eb",
+        "bounds": {
+          "minX": 94,
+          "minY": 110,
+          "maxX": 213,
+          "maxY": 189,
+          "width": 120,
+          "height": 80
+        },
+        "alphaPixelCount": 9600,
+        "alphaSum": 2441840
+      },
+      "cleanup": {
+        "cleanupBefore": {
+          "playerVideoItemPresent": true,
+          "parserWorkerPresent": true
+        },
+        "playerAfterDestroy": {
+          "videoItemNull": true,
+          "currentFrameZero": true
+        },
+        "parserAfterDestroy": {
+          "workerNull": true
+        }
+      }
+    },
+    "directMotion": {
+      "x": 20,
+      "y": 0
+    },
+    "sessionCleanup": {
+      "listenerRegistered": true,
+      "listenerRemovalCallReturned": true,
+      "listenerObservationCountBeforeRemoval": 2,
+      "listenerObservationCountAfterRemoval": 2,
+      "listenerObservedBeforeRemoval": true,
+      "listenerSilentAfterRemoval": true,
+      "windowExistedBeforeDestroy": true,
+      "windowDestroyed": true,
+      "closeAllConnectionsReturned": true
+    },
+    "externalRequestCount": 0,
+    "gates": {
+      "harnessStable": true,
+      "inputStable": true,
+      "vendorOriginalStable": true,
+      "vendorCopyStable": true,
+      "sourceBindingsStable": true,
+      "lineageStable": true,
+      "stageLineageReconciled": true,
+      "realSvgaWebRuntime": true,
+      "expectedVideoContract": true,
+      "decodedCanvasBound": true,
+      "directFramesDiffer": true,
+      "xMotionTwenty": true,
+      "yStable": true,
+      "alphaStable": true,
+      "cropStable": true,
+      "playbackAdvanced": true,
+      "pausedStable": true,
+      "playerDestroyed": true,
+      "parserDestroyed": true,
+      "listenerDetached": true,
+      "windowDestroyed": true,
+      "noExternalRequests": true,
+      "serializedCoreRedacted": true
+    },
+    "boundaries": {
+      "aeLaunched": false,
+      "foregroundUsed": false,
+      "installedMutation": false,
+      "sourceMutation": false,
+      "externalNetworkUsed": false
+    }
+  },
+  "failureFirst": {
+    "passed": true,
+    "rejectedCount": 8,
+    "cases": [
+      {
+        "issue": "player_cleanup",
+        "rejected": true
+      },
+      {
+        "issue": "parser_cleanup",
+        "rejected": true
+      },
+      {
+        "issue": "decoded_canvas",
+        "rejected": true
+      },
+      {
+        "issue": "listener_cleanup",
+        "rejected": true
+      },
+      {
+        "issue": "vendor_copy_drift",
+        "rejected": true
+      },
+      {
+        "issue": "source_head_drift",
+        "rejected": true
+      },
+      {
+        "issue": "lineage_drift",
+        "rejected": true
+      },
+      {
+        "issue": "serialized_path_redaction",
+        "rejected": true
+      }
+    ]
+  },
+  "gates": {
+    "coreAccepted": true,
+    "scriptsStable": true,
+    "electronRuntimeStable": true,
+    "electronExitedNormally": true,
+    "processCleanupObserved": true,
+    "failureFirstMutationsRejected": true,
+    "serializedProofRedacted": true
+  },
+  "boundaries": {
+    "aeLaunched": false,
+    "foregroundUsed": false,
+    "installedMutation": false,
+    "sourceMutation": false,
+    "externalNetworkUsed": false
+  }
+}

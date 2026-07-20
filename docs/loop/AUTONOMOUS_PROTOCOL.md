@@ -1,0 +1,115 @@
+# Auto SVGA Autonomous Loop Protocol
+
+Date: 2026-06-19
+
+## Purpose
+
+This protocol governs long-running autonomous Auto SVGA tasks. It keeps implementation, validation, review, repair, and handoff tied to a frozen milestone contract.
+
+## Milestone Contract
+
+1. Every product goal is converted into one frozen milestone contract before implementation begins.
+2. The milestone contract records objective, allowed changes, prohibited changes, validation gates, review gates, and stop conditions.
+3. Codex must not change the milestone objective or acceptance criteria after implementation begins.
+4. If the contract must change, stop and enter `HUMAN_REQUIRED`.
+5. `docs/loop/CURRENT_MILESTONE.md` is frozen only for the current milestone.
+6. Starting the next milestone requires archiving the previous contract to `docs/loop/milestones/` and the previous Final Review to `docs/loop/reviews/`.
+7. Each milestone records `milestoneStartCommit`.
+
+## Execution Cycle
+
+Each loop executes:
+
+1. Implement.
+2. Validate.
+3. Review.
+4. Repair.
+
+Rules:
+
+1. Maximum repair rounds come from the frozen milestone contract.
+2. Consecutive rounds with no new evidence come from the frozen milestone
+   contract.
+3. Each round updates `docs/loop/LOOP_STATE.md`.
+4. Each round appends evidence to `docs/loop/LOOP_HISTORY.jsonl`.
+5. Work on one primary failure cause per repair round.
+6. Run the smallest relevant test first, then the full milestone validation.
+7. `tools/loop-budget-check.mjs` must pass before any terminal handoff.
+8. If the budget check fails, continue repair only when the checker says the
+   next repair is allowed; otherwise enter `HUMAN_REQUIRED`.
+9. Repair entries must record `progress: true | false`; budget state is derived
+   from history and cannot be lowered by editing `LOOP_STATE.md`.
+
+## Autonomy
+
+Codex decides ordinary implementation choices without asking the user.
+
+Human input is allowed only for:
+
+1. Product direction.
+2. Visual acceptance.
+3. Security exceptions.
+4. Milestone contract changes.
+5. External permissions.
+6. Irreversible operations.
+7. Unsafe existing user changes.
+
+## Reviewer
+
+1. Reviewer must be independent and read-only.
+2. Reviewer must not modify code, tests, docs, dependencies, or config.
+3. Reviewer checks the current work against the frozen milestone contract.
+4. Reviewer findings are blocking only when they identify a contract violation, weakened validation, hidden failure, scope drift, or unsafe state.
+
+## Prohibited Automation
+
+Codex must not automatically:
+
+1. Push.
+2. Merge.
+3. Release.
+4. Deploy.
+5. Publish packages.
+6. Delete user assets.
+7. Hide required check failures with skips, ignores, broad catches, or fallback success.
+
+## Evidence
+
+Each loop history entry must include:
+
+1. Round number.
+2. Hypothesis.
+3. Files changed.
+4. Commands run.
+5. Results.
+6. New evidence.
+7. Next action.
+
+## Terminal States
+
+Allowed terminal states:
+
+- `PASS`: milestone contract is satisfied and independently reviewed.
+- `HUMAN_REQUIRED`: further progress requires allowed human input.
+
+Do not stop in any other state.
+
+## Terminal Handoff
+
+1. Every terminal state must generate a Review Packet before returning `PASS` or `HUMAN_REQUIRED`.
+2. Review Packet generation must succeed before terminal output.
+3. Chat summaries do not replace Review Packets.
+4. Missing or incomplete packets are blocking failures.
+5. Future reviewers must check handoff completeness.
+6. The final chat response must be the generated `FINAL_RESPONSE.txt` content.
+7. Terminal `LOOP_STATE.md` must set `Next Action: external_review`.
+8. PASS Review Packets must keep `changes.patch` byte-exact with the source
+   Git diff and bind both source and packet diff hashes.
+9. Terminal `LOOP_STATE.md` must have one machine next action only; the human
+   next-action section must not request more implementation, validation,
+   review, candidate generation, or sealing.
+10. Packet output paths must be validated under `.artifacts/loop-handoff`
+    before any recursive remove, copy, mkdir, or latest-pointer update.
+11. `HUMAN_REQUIRED` packets must classify changed file contents before
+    snapshots; files with high-confidence secret content are metadata-only and
+    must not be copied into `files/`.

@@ -109,11 +109,18 @@ Default: 300×300. Source scaling handled by `production-assets.ts`:
 
 ## UI Design System
 
-The Web preview page follows the design system defined in `DESIGN.md` and `docs/decisions/ADR-002-apple-design-translation.md`.
+Current owner-visible UI work follows the product authority and design-system
+documents listed below. The historical Web preview CSS remains engineering
+lineage and rollback context, not the corrected short-term app visual baseline.
 
 Key references:
-- `DESIGN.md` — color tokens, typography, spacing, motion, accessibility, Do/Don't
-- `ADR-002` — DESIGN-apple.md → Auto SVGA translation map (28 adopted, 14 adapted, 20 excluded)
+- `docs/product/PRODUCT_ROADMAP.md` — only project-level PRD authority
+- `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` — corrected short-term
+  macOS-first UI/UX input
+- `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` — token,
+  component, module, page-state, and implementation-trace rules
+- `DESIGN.md` — agent-readable design-system manifest
+- `ADR-002` — historical DESIGN-apple.md -> Auto SVGA translation map
 - `tools/svga-player-preview/styles.css` — CSS custom properties, motion presets, unified dropdown menu, responsive breakpoints
 - `tools/svga-player-preview/server.mjs` — `/api/latest-artifact` endpoint for auto-loading latest export outputs
 
@@ -144,6 +151,90 @@ The proposed multi-format workbench is documented in
 `docs/multiformat-workbench-architecture.md`. Its contracts do not currently
 participate in the production pipeline.
 
+### Inspection primitives before product features
+
+Inspection is a layered foundation, not a collection of page-specific checks:
+
+1. adapters parse source bytes into normalized `MotionAssetInfo`;
+2. resource metadata adds dimensions, alpha bounds, roles, and future decoded
+   memory estimates;
+3. spec profiles and role-aware policies turn facts into deterministic issues;
+4. stable report contracts expose those facts and issues to any host.
+
+Motion Asset Audit, performance diagnosis, format recommendation, optimization
+suggestions, export preflight, batch inspection, legacy cleanup, and
+multi-format comparison must compose these layers. UI components may present
+or filter reports but must not duplicate parsing, measurement, policy, or
+recommendation logic.
+
+Inspection and recommendation evidence must remain local, deterministic, and
+explainable. Approved sources include parsed metadata, dimensions, alpha
+statistics, decoded memory estimates, frame/FPS/duration data, resource counts,
+file size, resource roles, spec thresholds, and the format capability matrix.
+AI or external model inference is not an inspection primitive.
+
+### Format Recommendation Engine MVP boundary
+
+`src/workbench/format-recommendation.ts` defines a host-neutral recommendation
+contract over existing inspection facts. Its input combines `MotionAssetInfo`,
+profile and specification metadata, Motion Asset Audit, memory and sequence
+diagnostics, deterministic frame evidence, optional transparent-padding policy
+output, current format, target usage context, and explicit replacement needs.
+
+The MVP capability matrix describes alpha, replacement, vector, video-like, and
+frame-sequence characteristics for `svga`, `vap`, `lottie`, `webp`, `webm`,
+`apng`, `sprite`, and `unknown`. These entries are product capability facts, not
+claims that parsers, players, converters, or exporters are implemented.
+
+The matrix is published as `capabilityMatrixVersion: 1`. Every format carries
+reviewed evidence metadata and independent implementation maturity markers.
+These layers have different meanings:
+
+1. **Capability** describes what the format can represent in principle.
+2. **Implementation maturity** describes which Auto SVGA parser, player,
+   exporter, or converter paths exist.
+3. **Production support** is an explicit delivery boundary and is never implied
+   by capability knowledge alone.
+
+SVGA is the current bounded implementation baseline. Other listed formats retain
+`production_not_supported` and component-level `*_not_implemented` markers until
+separate implementation and validation tasks provide evidence. Matrix evidence
+uses repository review markers and does not silently upgrade implementation
+maturity.
+
+`src/workbench/format-capability-matrix.ts` validates matrix version, required
+capability fields, evidence, implementation maturity, and explicit production
+support. Version `1` is current and the only supported version. Unknown versions,
+missing structure, or contradictory maturity/production markers are errors.
+Known capability with unavailable implementation is a warning, not a validation
+failure.
+
+Evidence uses a static `reviewEpoch`; stale epochs produce warnings and never
+block TypeScript builds. A stale candidate remains advisory, carries the warning
+into recommendation rationale, and cannot gain production support from capability
+facts alone. Evidence updates must explicitly advance the review marker.
+Implementation maturity changes require implementation evidence, and production
+support changes require a separate review. The validator does not use wall-clock
+time, so offline clients and tests remain deterministic.
+
+Evidence and maturity changes follow
+`docs/format-capability-evidence-review-workflow.md` and its public-safe review
+template. Review epochs advance only through that explicit workflow.
+
+`createFormatRecommendationReport()` is deliberately conservative. It can
+exclude capability mismatches and explain relevant sequence evidence, but it
+does not score or select a best format. Unknown usage, unsupported usage
+profiles, or insufficient audit evidence produce `unknown` or
+`needs_more_data` with no candidates. Candidate reports remain advisory and
+carry rationale, tradeoffs, evidence references, implementation maturity, and
+uncertainty. A capability match with unavailable implementation remains
+`needs_more_data` and explicitly states that it is not a production
+recommendation.
+
+Recommendation logic must remain outside Web UI and host APIs. No conversion,
+export, new-format parser, production gate, AI inference, or network service is
+part of this boundary.
+
 Key boundaries:
 
 - format parsing does not own playback
@@ -171,7 +262,21 @@ The adapter maps:
 - SpriteEntity list → layers with resource references
 - version, image/sprite/audio counts, matte keys → metadata
 
-It is not imported by the CLI, exporter, or Web preview.
+The shared workbench `EmbeddedImageAlphaAnalyzer` boundary may enrich image
+resources with `alphaBounds`. This is an explicit host boundary: the adapter
+passes image bytes, detected format, and dimensions to the injected analyzer,
+while the core contract remains independent of Node, DOM, Canvas, browser, and
+filesystem APIs. Analyzer failures become `unknown` metadata and do not abort
+SVGA parsing.
+
+The avatar-frame host composition injects `FastPngAlphaAnalyzer`. It reads
+dimensions directly from PNG IHDR before decode, enforces compressed input,
+width, height, pixel-count, and decoded-memory limits, then maps RGBA,
+grayscale-alpha, indexed transparency, opaque, and fully transparent resources
+into the shared contract. The checker and Web UI do not decode PNG bytes.
+
+The host composition is used by the additive avatar-frame inspection command
+and the Web report service. It is not used by the exporter or player.
 
 ### Inspection application service
 
@@ -197,6 +302,7 @@ reading or decoding source bytes. The current deterministic checks are:
 - file size
 - canvas dimensions
 - embedded image resource dimensions
+- embedded image transparent padding when `alphaBounds.status` is `known`
 - duration
 - FPS
 - resource count
@@ -206,13 +312,18 @@ stable code, field path, and actual/maximum details. Exact limit values pass.
 The SVGA adapter reads PNG `IHDR` dimensions from embedded image bytes without
 DOM, Canvas, or filesystem access. Avatar-frame resources should remain within
 `300 x 300`. Unknown image dimensions produce a warning and do not make the
-report fail by themselves. Transparent padding, effective pixels, sequence
-consistency, texture memory, and device performance remain outside this slice.
+report fail by themselves. Effective-pixel analysis beyond supplied alpha
+bounds, sequence consistency, texture memory, and device performance remain
+outside this slice.
+Unknown or unsupported alpha bounds produce a non-blocking warning. Fully
+transparent resources are errors. The checker never decodes image bytes.
 
 ### Avatar-frame production specification preset
 
 `avatarFrameProductionSpec` is a host-neutral `MotionSpec` shared from
-`src/workbench/specs/`. Its current confirmed baseline is:
+`src/workbench/specs/`. It is attached to the `production_target` profile,
+which is the default and only profile approved for new deliveries. Its current
+confirmed baseline is:
 
 - maximum canvas: `300 x 300`
 - maximum FPS: `24`
@@ -224,15 +335,222 @@ from two unique 300x300 repository outputs. Both remain listed in
 product policy until a larger delivery sample confirms the limits. See
 `docs/avatar-frame-spec-calibration.md`.
 
+The transparent-padding limit is provisionally `50%` and is also marked for
+product calibration. It only applies when a host supplies known alpha-bound
+metadata; unavailable analysis remains a warning rather than a failed report.
+
+`legacy_compatibility` is a separate non-production profile descriptor for
+future historical-catalog analysis. It has no thresholds and is not selected
+by the default inspection flow. The 21-sample historical distribution does not
+relax `production_target`. See `docs/avatar-frame-spec-profiles.md`.
+
+SVGA embedded image resources may also expose a conservative
+`MotionResourceInfo.role`: `static_image`, `sequence_frame`,
+`baked_sweep_frame`, `mask_or_matte`, or `unknown`. The adapter derives this
+from embedded image keys, dimensions, sprite references, and `matteKey`.
+`metadata.roleEvidence` records the reason. Resource roles are metadata only;
+the current transparent-padding threshold and pass/fail behavior remain
+unchanged.
+
+### Role-aware transparent-padding policy
+
+`evaluateRoleAwareTransparentPadding()` is a host-neutral advisory layer over
+existing resource roles and alpha-bound metadata. It does not decode images,
+change raw `alphaBounds`, or participate in the production specification gate.
+
+Static images retain the provisional `50%` threshold as an explicit diagnostic.
+Sequence frames are evaluated at group level when deterministic grouping is
+available; an individual padded sequence frame never becomes a policy failure.
+Baked sweep frames remain advisory. Mask or matte padding is informational
+unless the resource is fully transparent. Unknown roles remain `unknown` and
+require classification review.
+
+The additive report summary records role, resource or group identity, padding
+ratio, severity, policy code, evidence references, uncertainty, and the
+recommended review. Existing specification issues and `passed` remain
+unchanged while this role-aware policy is calibrated.
+The current 21-sample evidence and coverage limits are recorded in
+`docs/role-aware-transparent-padding-calibration.md`.
+
+### Decoded memory estimation
+
+`estimateDecodedMemory()` is a host-neutral inspection primitive. It consumes
+normalized resource dimensions and estimates RGBA8 decoded and texture memory
+with `width x height x 4 bytes`.
+
+Its additive summary includes per-resource decoded/texture bytes, the complete
+resource total, resources sorted by decoded bytes, the sequence-frame subtotal,
+unknown resource IDs, and an advisory memory risk level. Missing, invalid, or
+unsafe dimensions produce `null` totals and `unknown` risk rather than a guessed
+value. Known resources remain available for largest-resource ranking.
+
+Advisory risk bands are low through `4 MiB`, medium above `4 MiB` through
+`16 MiB`, and high above `16 MiB`. These bands are not a production gate and do
+not change any `MotionSpec` threshold or pass/fail result. The estimate covers
+resource pixel allocation only; it does not claim player peak memory, duplicate
+GPU uploads, frame buffers, decoder workspaces, or platform overhead.
+
+### Role-aware memory diagnostics
+
+`diagnoseMemoryByRole()` consumes the raw `MotionAssetMemoryEstimation` result
+and groups it by `static_image`, `sequence_frame`, `baked_sweep_frame`,
+`mask_or_matte`, and `unknown`. Each role reports resource count, known and
+unknown memory counts, decoded/texture totals, and known resources ranked by
+decoded bytes. A missing role is conservatively grouped as `unknown`.
+
+If any resource in a role lacks a usable memory estimate, that role's complete
+decoded and texture totals are `null`; known resources remain ranked for
+diagnostic use. The sequence-frame role also exposes a direct subtotal for
+future group-level residency analysis. These diagnostics are advisory metadata
+only and do not change specification thresholds, profiles, transparent-padding
+policy, or pass/fail behavior.
+
+### Advisory sequence residency model
+
+`diagnoseSequenceResidency()` consumes normalized resources and the raw memory
+estimate. It only considers `sequence_frame` and `baked_sweep_frame` roles.
+Groups require explicit `metadata.sequenceGroupId`, or at least three resources
+with the same role and dimensions plus a continuous numeric name suffix.
+Resources without enough grouping evidence remain ungrouped.
+
+The diagnostic reports group counts and frame counts, total sequence decoded
+bytes, largest groups, possible residency models, advisory risk, evidence,
+uncertainty, and ungrouped resource IDs. Possible models are
+`all_frames_resident`, `group_resident`, `windowed_or_streaming`,
+`sprite_sheet_candidate`, and `unknown`. They describe plausible review paths,
+not observed player behavior or measured peak memory. Repeated dimensions make
+sprite-sheet packing a candidate; groups with at least eight frames make a
+windowed or streaming review worth considering.
+
+Missing dimensions make sequence totals and risk `unknown`. Explicit group
+metadata can lower grouping uncertainty; inferred numeric groups remain medium
+uncertainty, while missing groups or incomplete memory remain high uncertainty.
+The advisory does not change raw memory facts, specification profiles,
+production gates, transparent-padding policy, or pass/fail behavior.
+Advisory risk is high above `16 MiB`, or above `4 MiB` when sequence resources
+also represent at least half of known decoded resource memory. A smaller
+sequence-dominant asset is medium risk rather than high risk.
+
+### Deterministic sequence-frame evidence
+
+`collectSequenceFrameEvidence()` inspects only `sequence_frame` and
+`baked_sweep_frame` resources. It reports exact duplicate hash groups, fully
+transparent frames, provisional near-empty frames, repeated alpha bounds,
+repeated dimensions, evidence availability, confidence, and uncertainty.
+
+Duplicate evidence requires a stable `ResourceContentHash`. The current Node
+inspection host provides SHA-256 over embedded encoded image bytes through the
+`EmbeddedResourceHasher` boundary. Equal hashes therefore prove byte-identical
+embedded resources; they do not detect visually identical images encoded with
+different compression. Missing hashes produce `insufficient_evidence` or
+`partial`, never a guessed duplicate.
+
+Fully transparent evidence comes directly from `alphaBounds.status`.
+Near-empty is advisory and provisional at a transparent-padding ratio of
+`0.99`; unknown or unsupported alpha bounds are never classified as empty.
+Repeated alpha bounds use exact status and rectangle fields. Repeated dimensions
+only prove equal dimensions and do not imply equal content. These evidence
+fields do not change any production gate, profile, transparent-padding policy,
+or specification pass/fail result.
+
+### Preliminary Motion Asset Audit summary
+
+`createMotionAssetAuditSummary()` is a host-neutral composition helper. It
+consumes existing specification issues, decoded-memory estimates, sequence
+residency diagnostics, and deterministic sequence-frame evidence. It does not
+parse files or recompute those primitives.
+
+The additive summary reports an audit status, primary findings, optimization
+opportunities, risk signals, evidence references, and explicit uncertainty.
+Every finding and opportunity must reference an existing issue, metric,
+resource, hash group, or sequence group. Duplicate-frame and empty-frame
+opportunities require deterministic evidence. FPS and duration review is only
+suggested when the active specification already reports those violations.
+
+`pass`, `advisory`, `needs_review`, and `unknown` are report-level summaries,
+not production gates. Insufficient hashes, unknown dimensions, or uncertain
+sequence grouping remain explicit rather than being guessed. The summary does
+not change specification pass/fail, profile thresholds, transparent-padding
+policy, raw memory facts, or sequence residency diagnostics.
+
+### Motion Asset Audit presentation contract
+
+`createMotionAssetAuditPresentation()` derives a stable, host-neutral,
+read-only presentation model from `MotionAssetAuditSummary`. It does not parse
+assets, inspect resources, recompute metrics, or change audit decisions.
+
+The contract exposes stable status, title, description, and uncertainty keys;
+categorized finding and opportunity cards; and the original evidence
+references. Finding descriptions preserve the audit message. Every opportunity
+uses `actionType: review_only`; the contract cannot request conversion,
+optimization, repair, or any other mutation.
+
+This layer is additive to the avatar-frame inspection report and leaves the raw
+audit summary intact. Web and desktop clients may localize the stable keys, but
+must not recreate audit rules in presentation components.
+
+### Motion Asset Audit localization-key catalog
+
+`motion-asset-audit-localization-keys.ts` is the host-neutral key registry for
+the presentation contract. It owns status, severity, summary, finding,
+opportunity, uncertainty, category, and `review_only` action keys. Dynamic
+finding and opportunity builders keep new issue codes deterministic without
+moving audit decisions into a client.
+
+The catalog includes neutral English fallback labels for current keys. Clients
+may replace those labels with local translations while preserving the keys and
+the original report description. Unknown future codes fall back to the report
+message supplied by the caller. The catalog does not parse assets, calculate
+metrics, change severity, or introduce executable actions.
+
+`motion-asset-audit-localization-bundle.ts` is the shared handoff for Web and
+desktop clients. It provides version-independent locale bundles for `en` and
+`zh-CN`, identifies English as the default locale, and resolves labels in this
+order: requested locale, default English label, caller-provided report message,
+then the stable key. The resolver is host-neutral and never derives audit
+status, severity, findings, opportunities, or evidence.
+
+### Motion Asset Audit report serialization v1
+
+Avatar-frame inspection reports include `contractVersion: 1`. The versioned
+contract covers profile and specification results, decoded and role-aware
+memory summaries, sequence residency, deterministic frame evidence, audit
+summary, read-only presentation data, and localization-key references.
+
+`validateMotionAssetAuditReportV1()`, `parseMotionAssetAuditReportV1()`, and
+`serializeMotionAssetAuditReportV1()` provide a host-neutral compatibility
+boundary. The checked-in representative fixture freezes stable field presence
+and types without snapshotting dynamic metrics, environment paths, timestamps,
+or ordering. Opportunity actions are validated as `review_only`.
+
+Version negotiation is strict: the current version is `1`, and the supported
+version set is `[1]`. Missing, malformed, or unknown major versions are rejected
+before v1 parsing; clients must not silently reinterpret them as v1. Clients may
+show an unsupported-version state without attempting normal report rendering.
+
+V1 may gain optional additive fields only when existing required fields, field
+types, and stable enum meanings remain unchanged. Required fields cannot be
+removed or retyped, and v1 semantics cannot be silently redefined. A future
+breaking change must increment the contract version. V1-to-v2 migration must be
+an explicit, separately tested operation and must never rewrite a user report
+implicitly.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
 SVGA checker, and production preset into a host-neutral structured report:
 
 - asset summary
-- specification ID and pass/fail status
+- specification ID, profile ID, profile label, profile purpose, and pass/fail
+  status
 - structured specification issues
 - calibration notes derived from the preset metadata
+- additive decoded-memory estimation summary
+- additive role-aware memory diagnostics
+- additive advisory sequence residency diagnostics
+- additive deterministic sequence-frame evidence
+- additive preliminary Motion Asset Audit summary
+- additive read-only Motion Asset Audit presentation contract
 
 The Node command `inspect-avatar-frame <file.svga>` owns local file access and
 prints the report as JSON. Existing CLI commands and Web preview behavior are

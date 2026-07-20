@@ -1,0 +1,727 @@
+import { createHash } from "node:crypto";
+import {
+  attachShortTermPersistedOutput,
+  clearShortTermPersistedOutput,
+  completeShortTermLocalOpen,
+  createShortTermLaunchAppState,
+  failShortTermLocalOpen,
+  markShortTermRecentFileMissing as markAppRecentFileMissing,
+  recoverShortTermPlayback,
+  rebaseShortTermSavedCurrentFile,
+  reportShortTermPlaybackFailure,
+  setShortTermAppRecentFiles,
+  startShortTermLocalOpen,
+  type CompleteShortTermLocalOpenInput,
+  type FailShortTermLocalOpenInput,
+  type ShortTermCommandState,
+  type ShortTermAppStateModel,
+  type ShortTermLocalOpenRequest
+} from "./short-term-app-state.js";
+import {
+  createShortTermRecentFilesState,
+  createShortTermRecentFilesViewModel,
+  addShortTermRecentFile,
+  clearShortTermRecentFiles,
+  markShortTermRecentFileMissing,
+  resolveShortTermRecentOpen,
+  type ShortTermRecentFileInput,
+  type ShortTermRecentFilesState,
+  type ShortTermRecentFilesViewModel,
+  type ShortTermRecentOpenResolution,
+  type ShortTermRecentOpenSource
+} from "./short-term-recent-files.js";
+import {
+  startShortTermOptimizationCompareSession,
+  type ShortTermOptimizationCompareSessionResult
+} from "./short-term-optimization-compare-session.js";
+import {
+  startShortTermRenamePreviewSession,
+  type ShortTermRenamePreviewSessionResult
+} from "./short-term-rename-preview-session.js";
+import {
+  applyShortTermImageReplacementPreview,
+  createShortTermImageReplacementPreviewSession,
+  resetShortTermImageReplacementPreview,
+  type ShortTermImageReplacementPreviewSessionState
+} from "./short-term-image-replacement-preview-session.js";
+import {
+  applyShortTermTextPreview,
+  createShortTermTextPreviewSession,
+  resetShortTermTextPreview,
+  type ShortTermRuntimeTextElement,
+  type ShortTermRuntimeTextReplacement,
+  type ShortTermTextPreviewSessionState
+} from "./short-term-text-preview-session.js";
+import {
+  completeShortTermSaveExecution,
+  createShortTermSaveExecutionPlan,
+  failShortTermSaveExecution,
+  type CreateShortTermSaveExecutionPlanOptions,
+  type ShortTermSaveExecutionPlan,
+  type ShortTermSaveExecutionResult
+} from "./short-term-save-execution.js";
+import type { ShortTermPersistedOutputRecord, ShortTermSaveCommand } from "./short-term-save-state.js";
+import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
+import {
+  createShortTermCommandMenuModel,
+  type ShortTermCommandMenuModel
+} from "./short-term-command-menu.js";
+
+export const SHORT_TERM_WORKBENCH_FACADE_SCHEMA_VERSION = 1 as const;
+
+export type ShortTermFacadeWorkflowKind =
+  | "none"
+  | "open"
+  | "recent"
+  | "optimizationCompare"
+  | "renamePreview"
+  | "imageReplacementPreview"
+  | "textPreview"
+  | "playback"
+  | "save";
+
+export interface ShortTermFacadeWorkflowSummary {
+  kind: ShortTermFacadeWorkflowKind;
+  status: string;
+  playerAction?: string;
+  message: string;
+}
+
+export interface ShortTermWorkbenchFacadeModel {
+  schemaVersion: typeof SHORT_TERM_WORKBENCH_FACADE_SCHEMA_VERSION;
+  source: "short-term-workbench-facade";
+  prdIds: readonly string[];
+  appState: ShortTermAppStateModel;
+  commandMenu: ShortTermCommandMenuModel;
+  recentFiles: ShortTermRecentFilesViewModel;
+  currentSourceSha256?: string;
+  activeOutput?: ShortTermPersistedOutputRecord;
+  activeWorkflow: ShortTermFacadeWorkflowSummary;
+}
+
+export interface ShortTermWorkbenchFacadeState {
+  sourceBytes?: Uint8Array;
+  recentState: ShortTermRecentFilesState;
+  imageReplacementSession?: ShortTermImageReplacementPreviewSessionState;
+  textPreviewSession?: ShortTermTextPreviewSessionState;
+  model: ShortTermWorkbenchFacadeModel;
+}
+
+export interface CreateShortTermWorkbenchFacadeOptions {
+  recentFiles?: readonly ShortTermRecentFileInput[];
+}
+
+export interface CompleteShortTermWorkbenchOpenInput extends CompleteShortTermLocalOpenInput {
+  sourceBytes: Uint8Array;
+  localPath?: string;
+}
+
+export interface CompleteShortTermWorkbenchSaveOptions {
+  targetPath?: string;
+  inspection?: ShortTermProductInspectionModel;
+}
+
+export function createShortTermWorkbenchFacade(
+  options: CreateShortTermWorkbenchFacadeOptions = {}
+): ShortTermWorkbenchFacadeState {
+  const recentState = createShortTermRecentFilesState(options.recentFiles ?? []);
+  const recentView = createShortTermRecentFilesViewModel(recentState);
+  const appState = createShortTermLaunchAppState({ recentFiles: recentView.launchRecentFiles });
+  return buildFacadeState({
+    recentState,
+    appState,
+    activeWorkflow: idleWorkflow("等待打开 SVGA。")
+  });
+}
+
+export function startShortTermWorkbenchOpen(
+  state: ShortTermWorkbenchFacadeState,
+  request: ShortTermLocalOpenRequest
+): ShortTermWorkbenchFacadeState {
+  return buildFacadeState({
+    recentState: state.recentState,
+    appState: startShortTermLocalOpen(state.model.appState, request),
+    activeWorkflow: {
+      kind: "open",
+      status: "loading",
+      message: "正在通过统一本地打开流程加载 SVGA。"
+    }
+  });
+}
+
+export function completeShortTermWorkbenchOpen(
+  state: ShortTermWorkbenchFacadeState,
+  input: CompleteShortTermWorkbenchOpenInput
+): ShortTermWorkbenchFacadeState {
+  const completedAppState = completeShortTermLocalOpen(state.model.appState, input);
+  if (completedAppState === state.model.appState) return state;
+
+  const sourceBytes = new Uint8Array(input.sourceBytes);
+  let recentState = state.recentState;
+  if (input.localPath) {
+    recentState = addShortTermRecentFile(recentState, {
+      localPath: input.localPath,
+      displayName: state.model.appState.loading?.displayName,
+      lastOpenedAt: new Date().toISOString()
+    });
+  }
+  const recentView = createShortTermRecentFilesViewModel(recentState);
+  const appState = setShortTermAppRecentFiles(
+    completedAppState,
+    recentView.launchRecentFiles
+  );
+  return buildFacadeState({
+    sourceBytes,
+    recentState,
+    appState,
+    activeWorkflow: {
+      kind: "open",
+      status: appState.state,
+      message: "SVGA 已完成打开并进入短期产品状态。"
+    }
+  });
+}
+
+export function failShortTermWorkbenchOpen(
+  state: ShortTermWorkbenchFacadeState,
+  input: FailShortTermLocalOpenInput
+): ShortTermWorkbenchFacadeState {
+  const appState = failShortTermLocalOpen(state.model.appState, input);
+  if (appState === state.model.appState) return state;
+
+  return buildFacadeState({
+    recentState: state.recentState,
+    appState,
+    activeWorkflow: {
+      kind: "open",
+      status: "failed",
+      message: input.message
+    }
+  });
+}
+
+export function clearShortTermWorkbenchRecentFiles(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const recentState = clearShortTermRecentFiles();
+  const appState = setShortTermAppRecentFiles(state.model.appState, []);
+  return buildFacadeState({
+    sourceBytes: state.sourceBytes,
+    recentState,
+    appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "recent",
+      status: "cleared",
+      message: "最近记录已清除，源文件不会被删除。"
+    }
+  });
+}
+
+export function closeShortTermWorkbenchFile(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const recentView = createShortTermRecentFilesViewModel(state.recentState);
+  return buildFacadeState({
+    recentState: state.recentState,
+    appState: createShortTermLaunchAppState({
+      recentFiles: recentView.launchRecentFiles
+    }),
+    activeWorkflow: idleWorkflow("当前文件已关闭。")
+  });
+}
+
+export function openShortTermWorkbenchRecentFile(
+  state: ShortTermWorkbenchFacadeState,
+  recentFileId: string,
+  source: ShortTermRecentOpenSource,
+  requestId: string
+): { state: ShortTermWorkbenchFacadeState; resolution: ShortTermRecentOpenResolution } {
+  const resolution = resolveShortTermRecentOpen(state.recentState, recentFileId, source, requestId);
+  if (resolution.status === "ready") {
+    return {
+      resolution,
+      state: startShortTermWorkbenchOpen(state, resolution.request)
+    };
+  }
+
+  const recentState = markShortTermRecentFileMissing(state.recentState, recentFileId);
+  const recentView = createShortTermRecentFilesViewModel(recentState, "missing");
+  const appState = markAppRecentFileMissing(
+    setShortTermAppRecentFiles(state.model.appState, recentView.launchRecentFiles),
+    recentFileId,
+    resolution.message
+  );
+  return {
+    resolution,
+    state: buildFacadeState({
+      recentState,
+      appState,
+      activeWorkflow: {
+        kind: "recent",
+        status: "missing",
+        message: resolution.message
+      }
+    })
+  };
+}
+
+export function markShortTermWorkbenchRecentFileMissing(
+  state: ShortTermWorkbenchFacadeState,
+  recentFileId: string,
+  message = "最近文件已不存在或当前无法访问。"
+): ShortTermWorkbenchFacadeState {
+  const recentState = markShortTermRecentFileMissing(state.recentState, recentFileId);
+  const recentView = createShortTermRecentFilesViewModel(recentState, "missing");
+  const appState = markAppRecentFileMissing(
+    setShortTermAppRecentFiles(state.model.appState, recentView.launchRecentFiles),
+    recentFileId,
+    message
+  );
+  return buildFacadeState({
+    recentState,
+    appState,
+    activeWorkflow: {
+      kind: "recent",
+      status: "missing",
+      message
+    }
+  });
+}
+
+export async function runShortTermWorkbenchOptimizationCompare(
+  state: ShortTermWorkbenchFacadeState
+): Promise<{ state: ShortTermWorkbenchFacadeState; session: ShortTermOptimizationCompareSessionResult }> {
+  const sourceBytes = requireSourceBytes(state);
+  const session = await startShortTermOptimizationCompareSession(sourceBytes, {
+    sourceName: state.model.appState.currentFile?.displayName
+  });
+  return {
+    session,
+    state: buildFacadeStateWithOutput(state, {
+      activeWorkflow: {
+        kind: "optimizationCompare",
+        status: session.model.status,
+        playerAction: session.model.playerAction,
+        message: session.model.message
+      },
+      output: session.model.persistedOutput
+    })
+  };
+}
+
+export async function runShortTermWorkbenchRenamePreview(
+  state: ShortTermWorkbenchFacadeState,
+  fromImageKey: string,
+  toImageKey: string
+): Promise<{ state: ShortTermWorkbenchFacadeState; session: ShortTermRenamePreviewSessionResult }> {
+  const sourceBytes = requireSourceBytes(state);
+  const session = await startShortTermRenamePreviewSession(sourceBytes, fromImageKey, toImageKey, {
+    sourceName: state.model.appState.currentFile?.displayName
+  });
+  return {
+    session,
+    state: buildFacadeStateWithOutput(state, {
+      activeWorkflow: {
+        kind: "renamePreview",
+        status: session.model.status,
+        playerAction: session.model.playerAction,
+        message: session.model.message
+      },
+      output: session.model.persistedOutput
+    })
+  };
+}
+
+export function cancelShortTermWorkbenchTransientWorkflow(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const workflow = state.model.activeWorkflow;
+  if (
+    !state.model.activeOutput
+      || (workflow.kind !== "optimizationCompare" && workflow.kind !== "renamePreview")
+  ) {
+    return state;
+  }
+  return buildFacadeStateWithOutput(state, {
+    activeWorkflow: {
+      kind: workflow.kind,
+      status: "cancelled",
+      playerAction: "returnToPreview",
+      message: workflow.kind === "renamePreview"
+        ? "已取消 imageKey 重命名预览，预览回到源文件状态。"
+        : "已取消当前比较预览，预览回到源文件状态。"
+    }
+  });
+}
+
+export async function runShortTermWorkbenchImageReplacementPreview(
+  state: ShortTermWorkbenchFacadeState,
+  imageKey: string,
+  pngBytes: Uint8Array
+): Promise<{ state: ShortTermWorkbenchFacadeState; session: ShortTermImageReplacementPreviewSessionState }> {
+  const sourceBytes = requireSourceBytes(state);
+  const initialSession = state.imageReplacementSession ?? createShortTermImageReplacementPreviewSession(sourceBytes, {
+    sourceName: state.model.appState.currentFile?.displayName
+  });
+  const result = await applyShortTermImageReplacementPreview(initialSession, { imageKey, pngBytes });
+  return {
+    session: result.session,
+    state: buildFacadeStateWithOutput(state, {
+      imageReplacementSession: result.session,
+      activeWorkflow: {
+        kind: "imageReplacementPreview",
+        status: result.session.model.status,
+        playerAction: result.session.model.playerAction,
+        message: result.session.model.lastAction.message
+      },
+      output: result.session.model.persistedOutput
+    })
+  };
+}
+
+export function resetShortTermWorkbenchImageReplacementPreview(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const sourceBytes = requireSourceBytes(state);
+  const session = resetShortTermImageReplacementPreview(
+    state.imageReplacementSession ?? createShortTermImageReplacementPreviewSession(sourceBytes)
+  );
+  return buildFacadeStateWithOutput(state, {
+    imageReplacementSession: session,
+    activeWorkflow: {
+      kind: "imageReplacementPreview",
+      status: session.model.status,
+      playerAction: session.model.playerAction,
+      message: session.model.lastAction.message
+    }
+  });
+}
+
+export function createShortTermWorkbenchTextPreview(
+  state: ShortTermWorkbenchFacadeState,
+  textElements: readonly ShortTermRuntimeTextElement[]
+): ShortTermWorkbenchFacadeState {
+  const sourceBytes = requireSourceBytes(state);
+  const textPreviewSession = createShortTermTextPreviewSession(sourceBytes, {
+    sourceName: state.model.appState.currentFile?.displayName,
+    textElements
+  });
+  return buildFacadeState({
+    sourceBytes: state.sourceBytes,
+    recentState: state.recentState,
+    imageReplacementSession: state.imageReplacementSession,
+    textPreviewSession,
+    appState: state.model.appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "textPreview",
+      status: textPreviewSession.model.status,
+      playerAction: textPreviewSession.model.playerAction,
+      message: textPreviewSession.model.message
+    }
+  });
+}
+
+export function applyShortTermWorkbenchTextPreview(
+  state: ShortTermWorkbenchFacadeState,
+  replacement: ShortTermRuntimeTextReplacement
+): ShortTermWorkbenchFacadeState {
+  const sourceBytes = requireSourceBytes(state);
+  const textPreviewSession = applyShortTermTextPreview(
+    state.textPreviewSession ?? createShortTermTextPreviewSession(sourceBytes),
+    replacement
+  );
+  return buildFacadeState({
+    sourceBytes: state.sourceBytes,
+    recentState: state.recentState,
+    imageReplacementSession: state.imageReplacementSession,
+    textPreviewSession,
+    appState: state.model.appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "textPreview",
+      status: textPreviewSession.model.status,
+      playerAction: textPreviewSession.model.playerAction,
+      message: textPreviewSession.model.message
+    }
+  });
+}
+
+export function resetShortTermWorkbenchTextPreview(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const sourceBytes = requireSourceBytes(state);
+  const textPreviewSession = resetShortTermTextPreview(
+    state.textPreviewSession ?? createShortTermTextPreviewSession(sourceBytes)
+  );
+  return buildFacadeState({
+    sourceBytes: state.sourceBytes,
+    recentState: state.recentState,
+    imageReplacementSession: state.imageReplacementSession,
+    textPreviewSession,
+    appState: state.model.appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "textPreview",
+      status: textPreviewSession.model.status,
+      playerAction: textPreviewSession.model.playerAction,
+      message: textPreviewSession.model.message
+    }
+  });
+}
+
+export function reportShortTermWorkbenchPlaybackFailure(
+  state: ShortTermWorkbenchFacadeState,
+  message: string
+): ShortTermWorkbenchFacadeState {
+  const appState = reportShortTermPlaybackFailure(state.model.appState, { message });
+  if (appState === state.model.appState) return state;
+  return buildFacadeState({
+    ...state,
+    appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "playback",
+      status: appState.state,
+      playerAction: "keepPreview",
+      message
+    }
+  });
+}
+
+export function recoverShortTermWorkbenchPlayback(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  if (state.model.appState.state !== "playbackAbnormal") return state;
+  const appState = recoverShortTermPlayback(state.model.appState);
+  return buildFacadeState({
+    ...state,
+    appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "playback",
+      status: appState.state,
+      playerAction: "replay",
+      message: "播放异常状态已恢复，预览可重新播放。"
+    }
+  });
+}
+
+export function createShortTermWorkbenchSavePlan(
+  state: ShortTermWorkbenchFacadeState,
+  command: ShortTermSaveCommand,
+  options: CreateShortTermSaveExecutionPlanOptions = {}
+): ShortTermSaveExecutionPlan | undefined {
+  const output = state.model.activeOutput;
+  return output ? createShortTermSaveExecutionPlan(output, command, options) : undefined;
+}
+
+export function completeShortTermWorkbenchSave(
+  state: ShortTermWorkbenchFacadeState,
+  plan: ShortTermSaveExecutionPlan,
+  savedBytes: Uint8Array,
+  options: CompleteShortTermWorkbenchSaveOptions = {}
+): { state: ShortTermWorkbenchFacadeState; result: ShortTermSaveExecutionResult } {
+  const output = state.model.activeOutput;
+  const result = output
+    ? completeShortTermSaveExecution(plan, output, savedBytes)
+    : failShortTermSaveExecution(plan, new Error("No active persisted output."));
+  const saveComplete = result.status === "saveComplete";
+  let recentState = state.recentState;
+  if (saveComplete && options.targetPath) {
+    recentState = addShortTermRecentFile(recentState, {
+      localPath: options.targetPath,
+      displayName: result.targetDisplayName,
+      lastOpenedAt: new Date().toISOString()
+    });
+  }
+  const recentView = createShortTermRecentFilesViewModel(recentState);
+  const clearedAppState = saveComplete
+    ? clearShortTermPersistedOutput(state.model.appState)
+    : state.model.appState;
+  const appState = saveComplete
+    ? rebaseShortTermSavedCurrentFile(clearedAppState, {
+      displayName: result.targetDisplayName,
+      inspection: options.inspection,
+      recentFiles: recentView.launchRecentFiles
+    })
+    : clearedAppState;
+  return {
+    result,
+    state: buildFacadeState({
+      ...state,
+      sourceBytes: saveComplete ? savedBytes : state.sourceBytes,
+      recentState,
+      imageReplacementSession: saveComplete ? undefined : state.imageReplacementSession,
+      textPreviewSession: saveComplete ? undefined : state.textPreviewSession,
+      appState,
+      activeOutput: saveComplete ? undefined : output,
+      activeWorkflow: {
+        kind: "save",
+        status: result.status,
+        message: result.message
+      }
+    })
+  };
+}
+
+export function failShortTermWorkbenchSave(
+  state: ShortTermWorkbenchFacadeState,
+  plan: ShortTermSaveExecutionPlan,
+  error: unknown,
+  diagnosticCode?: string
+): { state: ShortTermWorkbenchFacadeState; result: ShortTermSaveExecutionResult } {
+  const output = state.model.activeOutput;
+  const result = failShortTermSaveExecution(plan, error, diagnosticCode);
+  return {
+    result,
+    state: buildFacadeState({
+      ...state,
+      appState: state.model.appState,
+      activeOutput: output,
+      activeWorkflow: {
+        kind: "save",
+        status: result.status,
+        message: result.message
+      }
+    })
+  };
+}
+
+function buildFacadeStateWithOutput(
+  state: ShortTermWorkbenchFacadeState,
+  input: {
+    activeWorkflow: ShortTermFacadeWorkflowSummary;
+    output?: ShortTermPersistedOutputRecord;
+    imageReplacementSession?: ShortTermImageReplacementPreviewSessionState;
+  }
+): ShortTermWorkbenchFacadeState {
+  const activeOutput = input.output;
+  const appState = activeOutput
+    ? attachShortTermPersistedOutput(state.model.appState, activeOutput)
+    : clearShortTermPersistedOutput(state.model.appState);
+  return buildFacadeState({
+    ...state,
+    ...(input.imageReplacementSession ? { imageReplacementSession: input.imageReplacementSession } : {}),
+    appState,
+    activeOutput,
+    activeWorkflow: input.activeWorkflow
+  });
+}
+
+function buildFacadeState(input: {
+  sourceBytes?: Uint8Array;
+  recentState: ShortTermRecentFilesState;
+  imageReplacementSession?: ShortTermImageReplacementPreviewSessionState;
+  textPreviewSession?: ShortTermTextPreviewSessionState;
+  appState: ShortTermAppStateModel;
+  activeOutput?: ShortTermPersistedOutputRecord;
+  activeWorkflow: ShortTermFacadeWorkflowSummary;
+}): ShortTermWorkbenchFacadeState {
+  const recentState = cloneFacadeData(input.recentState);
+  const appState = cloneFacadeData(input.appState);
+  const activeOutput = input.activeOutput ? cloneFacadeData(input.activeOutput) : undefined;
+  const activeWorkflow = cloneFacadeData(input.activeWorkflow);
+  const imageReplacementSession = input.imageReplacementSession ? cloneFacadeData(input.imageReplacementSession) : undefined;
+  const textPreviewSession = input.textPreviewSession ? cloneFacadeData(input.textPreviewSession) : undefined;
+  const recentFiles = createShortTermRecentFilesViewModel(recentState);
+  const sourceBytes = input.sourceBytes ? new Uint8Array(input.sourceBytes) : undefined;
+  const commandAppState = applyFacadeCommandAvailability(appState, {
+    activeOutput,
+    activeWorkflow,
+    imageReplacementSession,
+    textPreviewSession
+  });
+  return {
+    ...(sourceBytes ? { sourceBytes } : {}),
+    recentState,
+    ...(imageReplacementSession ? { imageReplacementSession } : {}),
+    ...(textPreviewSession ? { textPreviewSession } : {}),
+    model: {
+      schemaVersion: SHORT_TERM_WORKBENCH_FACADE_SCHEMA_VERSION,
+      source: "short-term-workbench-facade",
+      prdIds: ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16"],
+      appState: commandAppState,
+      commandMenu: createShortTermCommandMenuModel(commandAppState),
+      recentFiles,
+      ...(sourceBytes ? { currentSourceSha256: sha256(sourceBytes) } : {}),
+      ...(activeOutput ? { activeOutput } : {}),
+      activeWorkflow
+    }
+  };
+}
+
+function applyFacadeCommandAvailability(
+  appState: ShortTermAppStateModel,
+  input: {
+    activeOutput?: ShortTermPersistedOutputRecord;
+    activeWorkflow: ShortTermFacadeWorkflowSummary;
+    imageReplacementSession?: ShortTermImageReplacementPreviewSessionState;
+    textPreviewSession?: ShortTermTextPreviewSessionState;
+  }
+): ShortTermAppStateModel {
+  const imageResetEnabled = input.imageReplacementSession?.model.resetEnabled === true
+    || input.activeOutput?.outputKind === "image_replacement_svga";
+  const textResetEnabled = Boolean(input.textPreviewSession?.model.activeReplacement);
+  const cancelTransientEnabled = Boolean(input.activeOutput)
+    && (
+      input.activeWorkflow.kind === "optimizationCompare"
+        || input.activeWorkflow.kind === "renamePreview"
+    );
+  return {
+    ...appState,
+    commands: appState.commands.map((command) => {
+      if (command.id === "cancelTransientWorkflow") {
+        return withCommandAvailability(command, cancelTransientEnabled, "当前没有可取消的临时操作");
+      }
+      if (command.id === "resetImageReplacement") {
+        return withCommandAvailability(command, imageResetEnabled, "当前没有需要重置的图片替换预览");
+      }
+      if (command.id === "resetTextPreview") {
+        return withCommandAvailability(command, textResetEnabled, "当前没有需要重置的文本预览");
+      }
+      return command;
+    })
+  };
+}
+
+function withCommandAvailability(
+  command: ShortTermCommandState,
+  enabled: boolean,
+  disabledReason: string
+): ShortTermCommandState {
+  const updated: ShortTermCommandState = {
+    ...command,
+    enabled
+  };
+  if (enabled) {
+    delete updated.reason;
+  } else {
+    updated.reason = disabledReason;
+  }
+  return updated;
+}
+
+function cloneFacadeData<T>(value: T): T {
+  return structuredClone(value) as T;
+}
+
+function idleWorkflow(message: string): ShortTermFacadeWorkflowSummary {
+  return {
+    kind: "none",
+    status: "idle",
+    message
+  };
+}
+
+function requireSourceBytes(state: ShortTermWorkbenchFacadeState): Uint8Array {
+  if (!state.sourceBytes) {
+    throw new Error("Short-term workbench facade has no opened source bytes.");
+  }
+  return new Uint8Array(state.sourceBytes);
+}
+
+function sha256(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}

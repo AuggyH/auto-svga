@@ -1,0 +1,430 @@
+{
+  "schemaVersion": 2,
+  "milestoneId": "P6-R1",
+  "p6TerminalHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
+  "postmortemHead": "d430c1937a6deeab3fc358151e24b4699e45f506",
+  "milestoneStartCommit": "d430c1937a6deeab3fc358151e24b4699e45f506",
+  "webSourceOfTruthCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
+  "baselineContractPath": "docs/product/P6_WEB_PARITY_CONTRACT.json",
+  "baselineInventoryPath": "docs/product/P6_WEB_FEATURE_INVENTORY.md",
+  "inventoryFiles": [
+    "docs/product/P6_WEB_FEATURE_INVENTORY.md",
+    "docs/product/P6_WEB_PARITY_CONTRACT.json"
+  ],
+  "hashPolicy": {
+    "webSourceOfTruthHashes": "historicalLineageRequiredInventoryAndRollbackReferenceOnlyAfterOwnerApprovedP6R1WorkbenchRevisions",
+    "milestoneStartReferenceHashes": "recordOnlyMayChangeInsideAuthorizedWorkPackagesWithEvidenceAndFinalHeadBinding",
+    "ownerApprovedBoundedRevision": "onlyApprovedForOwnerVisibleUiUxPolish;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift",
+    "activeP6R1ProductSourceOfTruth": "currentSharedProductWorkbenchFinalHead",
+    "evidenceAndHandoffBinding": "mustBindToCurrentP6R1SharedProductWorkbenchFinalHeadNotOlderWebPreviewCeiling"
+  },
+  "webSourceOfTruthHashes": {
+    "tools/svga-player-preview/index.html": "35c84c6f6f85b67c733e0d3d7cab6537aeb14d15c4f1083562a6e12051ba53ae",
+    "tools/svga-player-preview/styles.css": "06f2870b0f2c7644067e414dab9f596e6e898eb5e522de417f799304e0780f5d",
+    "tools/svga-player-preview/main.js": "bf1246a3184e5be4c8c0a8bc82ed6198b9247827296eca9b394b4f5d03fb2d42",
+    "tools/svga-player-preview/inspection-report-view.mjs": "909ef6cf8358cacf22d50da0cf127cc482532cd7ec31b926c48b9d2ea11afa75",
+    "tools/svga-player-preview/server.mjs": "721ec56fb2f954af3e9d0189c89cd42a750d78cea708daa72df0a948422fc592",
+    "tools/shared/product-tokens.css": "ed41e6eedae532be97912e7ae0783baef8095eb79723f389898f1e27f847ffe5",
+    "docs/product/P6_WEB_PARITY_CONTRACT.json": "b7cd8edaf65fa67a5d72d4da833cc8cd32ffc47fa9558f87157a17f726983b9a",
+    "docs/product/P6_WEB_FEATURE_INVENTORY.md": "cdfa6f4441f98edbf8b42c18576bd6dbce6240b4e25d5d1eac5c36922a7bb726"
+  },
+  "milestoneStartReferenceHashes": {
+    "tools/shared/product-frontend/product-shell.html": "c31f2f82f2ad07c9ce529f3b33cb37205eb23e17bd9a8e35761c5c3a6ea0c7f8",
+    "tools/shared/product-frontend/product-app.mjs": "31a6c08576276fab258f020681c3fbbffddeb32378ff23ab9553862d79251921",
+    "tools/shared/product-frontend/product-styles.css": "5c6be407bc5c147b32d49cf4698549f78f1a2553ab4d61bd22f3c2657181198c",
+    "tools/p6/runtime-scenarios/state-evidence.mjs": "f6aec0893107c3e32f7ed6b297191316be6e033dcfac6e372f7f7fd03c9c8fa6",
+    "tools/p6/runtime-scenarios/strict-evidence.mjs": "c46b617f0c1f00718ba56a27b04826ba504e487f77c83e1631ecc11eff9d4663",
+    "tools/p6/p6-web-baseline-capture.cjs": "8da5031b8ba3be7921b5104935431750ba300ce183339d13d5de324b81fa5a7d",
+    "tools/p6/generate-p6-evidence.mjs": "6e77aa470be5d851db77fcbfcc5cc8244adc67e1658707c81362248bc331e1cc",
+    "tools/p6/visual-system-audit.mjs": "381847cc9d46d9eda0b9f6f3e1adc370d52fa2727c7df450a4daab472c27c9c3",
+    "tools/electron-prototype/experiments/svga-web/main.cjs": "a038fd3d72673af22fb6f09790499d258debd2fb1e794f2d49e71652a55bffac"
+  },
+  "requiredItemIds": {
+    "regions": [
+      "shell",
+      "toolbar",
+      "brand",
+      "modeControl",
+      "actionRow",
+      "workspace",
+      "svgaPanelA",
+      "svgaPanelB",
+      "referencePanel",
+      "playerBarA",
+      "playerBarB",
+      "referencePlayerBar",
+      "syncBar",
+      "infoPanel",
+      "logsPanel",
+      "settingsModal",
+      "assetPreviewModal",
+      "reportGrid",
+      "errorBox",
+      "floatingRoot"
+    ],
+    "features": [
+      "local-svga-file-select",
+      "local-svga-drag-drop",
+      "optional-svga-comparison",
+      "secondary-svga-file-select",
+      "secondary-svga-drag-drop",
+      "reference-media-select",
+      "reference-media-drag-drop",
+      "local-preview-mode",
+      "export-review-mode",
+      "latest-artifact-scan-and-load",
+      "svga-play-pause",
+      "svga-replay",
+      "svga-progress-range",
+      "loop-toggle",
+      "fit-menu-contain",
+      "fit-menu-original-size",
+      "fit-menu-fit-width",
+      "synchronized-review-playback",
+      "synchronized-replay",
+      "inspection-overview",
+      "asset-resource-details",
+      "runtime-logs",
+      "copy-logs",
+      "clear-logs",
+      "settings-modal",
+      "theme-toggle",
+      "reduced-motion-setting",
+      "reduced-blur-setting",
+      "status-announcements",
+      "invalid-error-state",
+      "responsive-narrow-layout",
+      "keyboard-escape-modal-close",
+      "keyboard-space-synchronized-playback-toggle"
+    ],
+    "interactions": [
+      "click-mode-dropdown-trigger-menu-opens",
+      "select-export-review-mode-latest-artifact-loads",
+      "open-info-panel-overview-visible",
+      "switch-info-panel-tab-assets-visible",
+      "switch-diagnostics-to-runtime-logs",
+      "open-settings-modal",
+      "enable-reduce-motion-and-reduce-blur-toggles",
+      "escape-closes-settings-before-side-panel",
+      "space-toggles-synchronized-playback-in-export-review",
+      "enable-local-compare-switch"
+    ],
+    "states": [
+      "local-empty",
+      "loading",
+      "loaded",
+      "playing",
+      "paused",
+      "mode-menu-open",
+      "export-review-loaded",
+      "latest-artifact-loaded",
+      "reference-media-loaded",
+      "info-overview-open",
+      "info-assets-open",
+      "asset-preview-modal-open",
+      "logs-open",
+      "settings-open",
+      "accessibility-toggles-on",
+      "settings-closed-by-escape",
+      "synchronized-playback-toggled-by-space",
+      "local-compare-empty",
+      "local-compare-loaded",
+      "invalid-error-state",
+      "recovered-from-invalid",
+      "responsive-export-review-loaded-at-900-x-720"
+    ],
+    "motions": [
+      "cardEnter",
+      "emptyIconFloat",
+      "fitMenuIn",
+      "sidePanelEnter",
+      "tabIn",
+      "overlayIn",
+      "modalIn",
+      "drawerIn",
+      "dropdownIn"
+    ]
+  },
+  "requiredCounts": {
+    "regions": 20,
+    "features": 33,
+    "interactions": 10,
+    "states": 22,
+    "motions": 9
+  },
+  "snapshotSha256": "e13d3a2e1fbba9709b0dc5039ee6fe3fd23bff814e476a96b2507af5370c837f",
+  "snapshotSha256Algorithm": {
+    "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
+    "version": 1,
+    "omittedTopLevelField": "snapshotSha256",
+    "objectKeyOrder": "recursive_lexicographic",
+    "arrayOrder": "preserve",
+    "encoding": "utf8",
+    "jsonEncoding": "compact_no_trailing_newline",
+    "digest": "sha256_lowercase_hex"
+  },
+  "webSourceOfTruthHashLineage": [
+    {
+      "revisionId": "owner_visible_ui_ux_polish_visual_system_revision_2026_06_27",
+      "authorizedBy": "Product Owner",
+      "authorization": "AUTHORIZE_BOUNDED_WEB_SOURCE_OF_TRUTH_REVISION_FOR_OWNER_VISIBLE_UI_UX_POLISH",
+      "reason": "owner_visible_ui_ux_polish_visual_system_revision",
+      "scope": "bounded_to_current_owner_visible_ui_ux_polish_only",
+      "sourceReviewPacketLabel": "P6-R1 blocked 399b170 review package; retained as owner-provided source context without a local review path",
+      "sourceBlockingHead": "399b170e1556a2926f87c85510bbe21d6f2eb4b8",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "7f92915f7e2899692d53a68d31c98f8a78b536768db153cdf04c12a13ac2899c",
+          "approvedSha256": "a2d526a81595f1b5aa216dbf7967ba2e869e78bf01d3c27fe873ea190f198f11",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        },
+        {
+          "path": "tools/shared/product-tokens.css",
+          "previousSha256": "4567c81242e31e7303e3e0de25bc5f8f00657e3c2322fdf81aec8e42bc4545ef",
+          "approvedSha256": "8c847cd898ec9a466fb8f4e67f3f1ed088111bfa3c7d3535e12fad02db7f723c",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "owner_visible_macos_workbench_foundation_revision_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass",
+      "reason": "owner_visible_macos_workbench_foundation_ia_layout_revision",
+      "scope": "bounded_to_current_owner_visible_macos_workbench_ui_foundation_only",
+      "sourceReviewPacketLabel": "Product Owner decision attached in Codex thread; Figma Make used as IA/design reference only",
+      "sourceBlockingHead": "5ce06e9ab628f59df7df89a8607bba4eb6d0baa1",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "a2d526a81595f1b5aa216dbf7967ba2e869e78bf01d3c27fe873ea190f198f11",
+          "approvedSha256": "ccc4ee7da32c581d803a5be5eded75831868c5112ada2d0262c1e8c666052380",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        },
+        {
+          "path": "tools/shared/product-tokens.css",
+          "previousSha256": "8c847cd898ec9a466fb8f4e67f3f1ed088111bfa3c7d3535e12fad02db7f723c",
+          "approvedSha256": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "nq1_accessibility_contract_label_repair_2026_06_28",
+      "authorizedBy": "A0 within Product Owner authorized macOS workbench foundation repair",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass; NQ1 accessibility contract repair",
+      "reason": "restore_existing_accessibility_source_contract_labels_after_macos_workbench_foundation_layout_revision",
+      "scope": "bounded_to_shell_hash_reference_update_in_web_source_entry;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift",
+      "sourceReviewPacketLabel": "Final validation failure on NQ1 accessibility audit after ddadbe7d039d075261dd3e6f2d6df83b8cffbb92",
+      "sourceBlockingHead": "ddadbe7d039d075261dd3e6f2d6df83b8cffbb92",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "ccc4ee7da32c581d803a5be5eded75831868c5112ada2d0262c1e8c666052380",
+          "approvedSha256": "3d9cac1de134116d273ef45d2b9e44f4db3b7a00542fddb9430582bf04480930",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "owner_visible_real_workbench_layout_repair_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED real workbench layout engine and audit repair",
+      "reason": "owner_visible_real_workbench_layout_engine_revision",
+      "scope": "bounded_to_current_owner_visible_layout_repair;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift",
+      "sourceReviewPacketLabel": "Product Owner decision attached in Codex thread for 798bfa4 responsive layout failures",
+      "sourceBlockingHead": "798bfa45214a2c6734c27cfc94660177c9abbc88",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "3d9cac1de134116d273ef45d2b9e44f4db3b7a00542fddb9430582bf04480930",
+          "approvedSha256": "35c84c6f6f85b67c733e0d3d7cab6537aeb14d15c4f1083562a6e12051ba53ae",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        },
+        {
+          "path": "tools/shared/product-tokens.css",
+          "previousSha256": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
+          "approvedSha256": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
+          "policy": "unchanged_in_this_repair"
+        }
+      ]
+    },
+    {
+      "revisionId": "owner_macos_window_sizing_system_revision_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "Product Owner correction: 900x720 is legacy stress only; define macOS window sizing system with 1440x900 default, 1280x800 comfortable, and 1180x760 supported minimum.",
+      "reason": "owner_visible_macos_window_sizing_system_revision",
+      "scope": "bounded_to_macos_window_sizing_system_and_owner_visible_responsive_validation;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift",
+      "sourceReviewPacketLabel": "Product Owner correction attached in Codex thread after f96eb52 terminal package",
+      "sourceBlockingHead": "f96eb5293a31cba1c07f97663aa7f1c9f6255eda",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "35c84c6f6f85b67c733e0d3d7cab6537aeb14d15c4f1083562a6e12051ba53ae",
+          "approvedSha256": "35c84c6f6f85b67c733e0d3d7cab6537aeb14d15c4f1083562a6e12051ba53ae",
+          "policy": "unchanged_in_this_repair"
+        },
+        {
+          "path": "tools/shared/product-tokens.css",
+          "previousSha256": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
+          "approvedSha256": "ed41e6eedae532be97912e7ae0783baef8095eb79723f389898f1e27f847ffe5",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
+    }
+  ],
+  "milestoneStartReferenceHashLineage": [
+    {
+      "revisionId": "owner_visible_macos_workbench_foundation_reference_update_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass",
+      "reason": "shared_product_frontend_and_evidence_reference_update_for_owner_visible_macos_workbench_foundation",
+      "scope": "bounded_to_current_owner_visible_macos_workbench_ui_foundation_and_validation_evidence_only",
+      "sourceBlockingHead": "5ce06e9ab628f59df7df89a8607bba4eb6d0baa1",
+      "approvedFiles": [
+        {
+          "path": "tools/shared/product-frontend/product-shell.html",
+          "previousSha256": "ebea19a3e15f21e4125f94ecd2de44c5dfc73e30a28f38498995773c6f0c996d",
+          "approvedSha256": "7e3c046f70dd6e43c7606acfdbfec183062f967d0e1e5c7daa0cf56ce811f847",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-app.mjs",
+          "previousSha256": "83c7e49db2c502b10de140fb794c822a0a1691c402508dc7cfc888d5d71bddc1",
+          "approvedSha256": "07cafa23b261f92441369d3e7abaeb8242cb458877081d1ff95e367caf89c00b",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-styles.css",
+          "previousSha256": "a29b62c2cba24b840816d2605468842b4b081c2275f91449928d175d48689677",
+          "approvedSha256": "1ee547a5ad39d59cb4926f6c50b07d902a8202660b5845a4bd454f0fcc1c5e8a",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/p6/runtime-scenarios/state-evidence.mjs",
+          "previousSha256": "0b616cd6c1ca7b7ee87ef61f14cb983ede76a181d546a366d01545f4b83d0812",
+          "approvedSha256": "35bc18c0abe912f6d19606a6728603cc4035639c9a9eb729f7f4605c6bb5781f",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "nq1_accessibility_contract_label_repair_reference_update_2026_06_28",
+      "authorizedBy": "A0 within Product Owner authorized macOS workbench foundation repair",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass; NQ1 accessibility contract repair",
+      "reason": "shared_product_shell_accessibility_label_restore_for_existing_nq1_contract",
+      "scope": "bounded_to_shared_shell_accessible_name_repair_only",
+      "sourceBlockingHead": "ddadbe7d039d075261dd3e6f2d6df83b8cffbb92",
+      "approvedFiles": [
+        {
+          "path": "tools/shared/product-frontend/product-shell.html",
+          "previousSha256": "7e3c046f70dd6e43c7606acfdbfec183062f967d0e1e5c7daa0cf56ce811f847",
+          "approvedSha256": "527139c4fca684eda430111cbe0cff76e8e6c92fa34db2cd605f7e49315a877c",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "owner_visible_real_workbench_layout_reference_update_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED real workbench layout engine and audit repair",
+      "reason": "shared_product_frontend_and_evidence_reference_update_for_real_workbench_layout_repair",
+      "scope": "bounded_to_current_owner_visible_layout_repair_and_validation_evidence_only",
+      "sourceBlockingHead": "798bfa45214a2c6734c27cfc94660177c9abbc88",
+      "approvedFiles": [
+        {
+          "path": "tools/shared/product-frontend/product-shell.html",
+          "previousSha256": "527139c4fca684eda430111cbe0cff76e8e6c92fa34db2cd605f7e49315a877c",
+          "approvedSha256": "c31f2f82f2ad07c9ce529f3b33cb37205eb23e17bd9a8e35761c5c3a6ea0c7f8",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-app.mjs",
+          "previousSha256": "07cafa23b261f92441369d3e7abaeb8242cb458877081d1ff95e367caf89c00b",
+          "approvedSha256": "1a3e7955b8e3c28b8cbebd59360ed5b5a95d6800c0608341d31d046a773eb12e",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-styles.css",
+          "previousSha256": "1ee547a5ad39d59cb4926f6c50b07d902a8202660b5845a4bd454f0fcc1c5e8a",
+          "approvedSha256": "2f3a253a8cb1b8249e9c4db6a3d4d60995f9f675e459142f5381720a2440a0bc",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "owner_macos_window_sizing_system_reference_update_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "Product Owner correction: replace 900x720 canonical target with macOS window sizing classes.",
+      "reason": "shared_frontend_desktop_window_and_evidence_reference_update_for_macos_sizing_system",
+      "scope": "bounded_to_window_sizing_layout_rules_and_validation_evidence_only",
+      "sourceBlockingHead": "f96eb5293a31cba1c07f97663aa7f1c9f6255eda",
+      "approvedFiles": [
+        {
+          "path": "tools/shared/product-frontend/product-app.mjs",
+          "previousSha256": "1a3e7955b8e3c28b8cbebd59360ed5b5a95d6800c0608341d31d046a773eb12e",
+          "approvedSha256": "31a6c08576276fab258f020681c3fbbffddeb32378ff23ab9553862d79251921",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-styles.css",
+          "previousSha256": "2f3a253a8cb1b8249e9c4db6a3d4d60995f9f675e459142f5381720a2440a0bc",
+          "approvedSha256": "5c6be407bc5c147b32d49cf4698549f78f1a2553ab4d61bd22f3c2657181198c",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/p6/runtime-scenarios/state-evidence.mjs",
+          "previousSha256": "35bc18c0abe912f6d19606a6728603cc4035639c9a9eb729f7f4605c6bb5781f",
+          "approvedSha256": "f6aec0893107c3e32f7ed6b297191316be6e033dcfac6e372f7f7fd03c9c8fa6",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/p6/runtime-scenarios/strict-evidence.mjs",
+          "previousSha256": null,
+          "approvedSha256": "c46b617f0c1f00718ba56a27b04826ba504e487f77c83e1631ecc11eff9d4663",
+          "policy": "authorized_reference_hash_record_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/p6/p6-web-baseline-capture.cjs",
+          "previousSha256": null,
+          "approvedSha256": "8da5031b8ba3be7921b5104935431750ba300ce183339d13d5de324b81fa5a7d",
+          "policy": "authorized_reference_hash_record_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/p6/generate-p6-evidence.mjs",
+          "previousSha256": null,
+          "approvedSha256": "6e77aa470be5d851db77fcbfcc5cc8244adc67e1658707c81362248bc331e1cc",
+          "policy": "authorized_reference_hash_record_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/p6/visual-system-audit.mjs",
+          "previousSha256": null,
+          "approvedSha256": "381847cc9d46d9eda0b9f6f3e1adc370d52fa2727c7df450a4daab472c27c9c3",
+          "policy": "authorized_reference_hash_record_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/electron-prototype/experiments/svga-web/main.cjs",
+          "previousSha256": null,
+          "approvedSha256": "a038fd3d72673af22fb6f09790499d258debd2fb1e794f2d49e71652a55bffac",
+          "policy": "authorized_reference_hash_record_inside_p6_r1_goal"
+        }
+      ]
+    }
+  ],
+  "productSourceOfTruthPolicy": {
+    "activeProductSurface": "p6_r1_shared_product_workbench",
+    "activeEvidenceBinding": "final_head_shared_product_workbench",
+    "historicalWebPreviewBaselineRole": "lineage_required_inventory_and_rollback_reference_only",
+    "webPreviewBaselineIsActiveProductCeiling": false,
+    "ownerDecision": "Product Owner clarification: Web Preview is no longer the active P6/P6-R1 baseline because P6-R1 has advanced with owner-authorized improvements.",
+    "policy": "P6-R1 evidence and owner handoff bind to the current shared Product Workbench final head. Historical Web Preview baseline hashes preserve required inventory and approved lineage but must not reverse or block owner-authorized Workbench improvements.",
+    "preservedBoundaries": {
+      "requiredInventoryCountsUnchanged": true,
+      "contractRevision": 3,
+      "repairRound": 0,
+      "phase2Started": false,
+      "noPhase2Authorization": true
+    }
+  }
+}

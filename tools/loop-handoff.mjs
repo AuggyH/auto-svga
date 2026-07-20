@@ -1,0 +1,2330 @@
+#!/usr/bin/env node
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  copyFile,
+  cp,
+  lstat,
+  mkdir,
+  readFile,
+  readlink,
+  rm,
+  stat,
+  symlink,
+  writeFile
+} from "node:fs/promises";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const defaultRepoRoot = path.resolve(scriptDir, "..");
+const packetSchemaVersion = 4;
+const inlineDiffMaxBytes = 1_000_000;
+const inlineDiffMaxLines = 5_000;
+const sensitiveSentinelLabel = "redacted";
+const enumValues = {
+  milestoneOutcome: ["PASS", "HUMAN_REQUIRED"],
+  evidenceCompleteness: ["COMPLETE", "PARTIAL", "PENDING_CANDIDATE_REVIEW"],
+  historicalValidationEvidence: ["PASS", "PARTIAL", "NOT_AVAILABLE"],
+  historicalReviewerEvidence: ["PASS", "PARTIAL", "NOT_AVAILABLE", "PENDING_CANDIDATE_REVIEW"],
+  retrospectiveRevalidation: ["PASS", "PARTIAL", "NOT_APPLICABLE", "NOT_AVAILABLE"],
+  retrospectiveReviewerStatus: ["PASS", "PARTIAL", "NOT_APPLICABLE", "NOT_AVAILABLE"]
+};
+const requiredSections = [
+  "Review Request",
+  "Frozen Milestone Contract",
+  "Implementation Result",
+  "Git State",
+  "Changed Files",
+  "Full Diff",
+  "Changed File Snapshots",
+  "Acceptance Evidence",
+  "Validation Evidence",
+  "Independent Reviewer Reports",
+  "Loop History",
+  "Remaining Risks And Gaps",
+  "Artifact Index",
+  "Human Decision",
+  "Recommended Next Milestone"
+];
+const p6R1ReviewerBRequiredCategories = [
+  "productIdentity",
+  "toolbarAndModes",
+  "localPreview",
+  "exportReview",
+  "comparison",
+  "referenceMedia",
+  "playbackControls",
+  "fitControls",
+  "synchronizedPlayback",
+  "inspectionOverview",
+  "assetDetails",
+  "motionAssetAudit",
+  "runtimeLogs",
+  "settings",
+  "macOSWorkbenchLayoutSystem",
+  "LeftSourceResourcesIA",
+  "RightInspectorActionsIA",
+  "LocalPreviewPrimaryWorkflow",
+  "ResponsiveRuleCoverage",
+  "macosVisualSystem",
+  "macOSAppFoundation",
+  "RoadmapCapacity",
+  "theme",
+  "accessibilitySettings",
+  "emptyState",
+  "loadingState",
+  "invalidState",
+  "responsiveLayout",
+  "interactionParity",
+  "motionParity",
+  "normalMacApp",
+  "bundleCompleteness",
+  "bundlePrivacy"
+];
+
+function parseArgs(argv) {
+  const args = {
+    head: "HEAD",
+    contract: "docs/loop/CURRENT_MILESTONE.md",
+    validation: ".artifacts/loop-validation/latest.json",
+    input: undefined,
+    reviewerA: undefined,
+    reviewerB: undefined,
+    reviewerReport: undefined,
+    decisionFile: undefined,
+    title: undefined,
+    retrospective: false,
+    candidate: false,
+    retrospectivePacket: undefined,
+    repoRoot: defaultRepoRoot
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (!token.startsWith("--")) continue;
+    const key = token.slice(2);
+    if (key === "retrospective" || key === "candidate") {
+      args[key] = true;
+      continue;
+    }
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) {
+      throw new Error(`Missing value for --${key}`);
+    }
+    index += 1;
+    args[key] = value;
+  }
+
+  for (const key of ["status", "milestone", "base"]) {
+    if (!args[key]) throw new Error(`Missing required --${key}`);
+  }
+  args.status = args.status.toUpperCase();
+  if (!["PASS", "HUMAN_REQUIRED"].includes(args.status)) {
+    throw new Error("--status must be PASS or HUMAN_REQUIRED");
+  }
+  args.repoRoot = path.resolve(args.repoRoot);
+  return args;
+}
+
+function git(args, { cwd, allowFailure = false } = {}) {
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    maxBuffer: 50 * 1024 * 1024
+  });
+  if (!allowFailure && result.status !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
+  }
+  return {
+    status: result.status ?? 1,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? ""
+  };
+}
+
+function gitBytes(args, { cwd, allowFailure = false } = {}) {
+  const result = spawnSync("git", args, {
+    cwd,
+    maxBuffer: 50 * 1024 * 1024
+  });
+  if (!allowFailure && result.status !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.stderr?.toString() || result.stdout?.toString()}`);
+  }
+  return {
+    status: result.status ?? 1,
+    stdout: result.stdout ?? Buffer.alloc(0),
+    stderr: result.stderr ?? Buffer.alloc(0)
+  };
+}
+
+function gitLiteral(args, options = {}) {
+  return git(["--literal-pathspecs", ...args], options);
+}
+
+function gitLiteralBytes(args, options = {}) {
+  return gitBytes(["--literal-pathspecs", ...args], options);
+}
+
+function toPosixPath(value) {
+  return value.split(path.sep).join("/");
+}
+
+function resolveRepoPath(repoRoot, value) {
+  if (!value) return undefined;
+  const resolved = path.resolve(repoRoot, value);
+  const relative = path.relative(repoRoot, resolved);
+  if (relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))) {
+    return resolved;
+  }
+  throw new Error(`Path escapes repository root: ${value}`);
+}
+
+function assertInsideDirectory(parent, child, label) {
+  const relative = path.relative(parent, child);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`${label} must stay inside ${parent}`);
+  }
+}
+
+function validateMilestoneId(value) {
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value)) {
+    throw new Error(`Invalid milestoneId: ${value}`);
+  }
+  if (value === "." || value.endsWith(".") || value.includes("..") || /[\\/]/.test(value) || value.includes("\0")) {
+    throw new Error(`Invalid milestoneId: ${value}`);
+  }
+  return value;
+}
+
+function buildPacketPaths({ repoRoot, milestoneId, headShortSha, candidate }) {
+  const safeMilestoneId = validateMilestoneId(milestoneId);
+  const outputRoot = path.resolve(repoRoot, ".artifacts/loop-handoff");
+  const packetRoot = path.resolve(outputRoot, `${safeMilestoneId}-${headShortSha}${candidate ? "-candidate" : ""}`);
+  const latestRoot = path.resolve(outputRoot, "latest");
+  assertInsideDirectory(outputRoot, packetRoot, "packetRoot");
+  assertInsideDirectory(outputRoot, latestRoot, "latestRoot");
+  return { outputRoot, packetRoot, latestRoot, milestoneId: safeMilestoneId };
+}
+
+function compareStrings(left, right) {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+function assertEnumValue(name, value) {
+  const allowed = enumValues[name];
+  if (!allowed?.includes(value)) {
+    throw new Error(`${name} must be one of ${allowed.join(", ")}.`);
+  }
+}
+
+function isExcludedRepoPath(repoPath) {
+  const normalized = repoPath.replaceAll("\\", "/");
+  return normalized === ".git"
+    || normalized.startsWith(".git/")
+    || normalized === "node_modules"
+    || normalized.startsWith("node_modules/")
+    || normalized === ".env"
+    || normalized.startsWith(".env.")
+    || normalized === ".artifacts"
+    || normalized.startsWith(".artifacts/")
+    || normalized.includes("/.runtime/")
+    || normalized.endsWith("/.runtime")
+    || normalized.startsWith(".artifacts/loop-validation/")
+    || normalized.startsWith(".artifacts/loop-handoff/");
+}
+
+function repoPathSegments(repoPath) {
+  return repoPath.replaceAll("\\", "/").split("/").filter(Boolean);
+}
+
+function isProtectedUserAssetPath(repoPath) {
+  const normalized = repoPath.replaceAll("\\", "/").toLowerCase();
+  if (normalized.startsWith("fixtures/") || normalized.startsWith("src/tests/fixtures/")) return false;
+  return /\.(png|jpg|jpeg|gif|webp|webm|mp4|mov|svga|psd|ai|fig|sketch)$/i.test(normalized);
+}
+
+function isSensitiveRepoPath(repoPath) {
+  const normalized = repoPath.replaceAll("\\", "/");
+  const lower = normalized.toLowerCase();
+  const segments = repoPathSegments(lower);
+  if (segments.includes(".git") || segments.includes("node_modules") || segments.includes(".runtime")) return true;
+  if (segments.some((segment) => segment === ".env" || segment.startsWith(".env."))) return true;
+  if (segments.some((segment) => [".npmrc", ".pypirc", ".netrc", "id_rsa", "id_ed25519"].includes(segment))) return true;
+  if (segments.some((segment) => segment.startsWith("credentials") || segment.startsWith("secrets"))) return true;
+  if (/\.(pem|key|p12|pfx)$/i.test(normalized)) return true;
+  return isProtectedUserAssetPath(repoPath);
+}
+
+function parseNameStatusZ(buffer) {
+  const tokens = buffer.toString("utf8").split("\0").filter(Boolean);
+  const entries = [];
+  for (let index = 0; index < tokens.length;) {
+    const status = tokens[index++];
+    if (status.startsWith("R") || status.startsWith("C")) {
+      const oldPath = tokens[index++];
+      const newPath = tokens[index++];
+      entries.push({ status, path: newPath, oldPath });
+      continue;
+    }
+    const filePath = tokens[index++];
+    entries.push({ status, path: filePath });
+  }
+  return entries
+    .filter((entry) => entry.status !== "??")
+    .filter((entry) => entry.path && !isExcludedRepoPath(entry.path));
+}
+
+function parseNameStatus(output) {
+  return output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(/\s+/);
+      const status = parts[0];
+      const filePath = status.startsWith("R") || status.startsWith("C")
+        ? parts[2]
+        : parts[1];
+      return { status, path: filePath };
+    })
+    .filter((entry) => entry.path && !isExcludedRepoPath(entry.path));
+}
+
+function parsePorcelain(output) {
+  return output
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => ({
+      status: line.slice(0, 2).trim() || "modified",
+      path: line.slice(3).trim()
+    }))
+    .filter((entry) => entry.status !== "??")
+    .filter((entry) => entry.path && !isExcludedRepoPath(entry.path));
+}
+
+function parsePorcelainZ(buffer) {
+  const tokens = buffer.toString("utf8").split("\0").filter(Boolean);
+  const entries = [];
+  for (let index = 0; index < tokens.length;) {
+    const token = tokens[index++];
+    const status = token.slice(0, 2).trim() || "modified";
+    const firstPath = token.slice(3);
+    if (status.startsWith("R") || status.startsWith("C")) {
+      const oldPath = tokens[index++];
+      entries.push({ status, path: firstPath, oldPath });
+      continue;
+    }
+    entries.push({ status, path: firstPath });
+  }
+  return entries
+    .filter((entry) => entry.status !== "??")
+    .filter((entry) => entry.path && !isExcludedRepoPath(entry.path));
+}
+
+
+function parseWorkspaceStatus(output) {
+  return output
+    .split("\n")
+    .filter(Boolean)
+    .filter((line) => {
+      const status = line.slice(0, 2).trim() || "modified";
+      const rawPath = line.slice(3).trim();
+      const repoPath = status.startsWith("R") || status.startsWith("C")
+        ? rawPath.split(/\s+/).at(-1)
+        : rawPath;
+      return repoPath && !isExcludedRepoPath(repoPath);
+    });
+}
+
+function listUntrackedFiles(repoRoot) {
+  return gitBytes(["ls-files", "--others", "--exclude-standard", "-z"], { cwd: repoRoot }).stdout
+    .toString("utf8")
+    .split("\0")
+    .filter(Boolean)
+    .filter((repoPath) => !isExcludedRepoPath(repoPath))
+    .map((repoPath) => ({ status: "??", path: repoPath }));
+}
+
+function mergeChangedFiles(committed, worktree) {
+  const byPath = new Map();
+  for (const entry of [...committed, ...worktree]) {
+    byPath.set(entry.path, entry);
+  }
+  return [...byPath.values()].sort((a, b) => compareStrings(a.path, b.path));
+}
+
+async function sha256Bytes(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+async function sha256File(filePath) {
+  return sha256Bytes(await readFile(filePath));
+}
+
+function isTextBuffer(buffer) {
+  if (buffer.length === 0) return true;
+  if (buffer.includes(0)) return false;
+  return true;
+}
+
+async function readPathAtHead(repoRoot, head, repoPath) {
+  const result = gitLiteralBytes(["show", `${head}:./${repoPath}`], { cwd: repoRoot, allowFailure: true });
+  if (result.status !== 0) return undefined;
+  return result.stdout;
+}
+
+async function readPathAtIndex(repoRoot, repoPath) {
+  const result = gitLiteralBytes(["show", `:./${repoPath}`], { cwd: repoRoot, allowFailure: true });
+  if (result.status !== 0) return undefined;
+  return result.stdout;
+}
+
+async function readWorktreeSample(repoRoot, repoPath) {
+  const sourcePath = resolveRepoPath(repoRoot, repoPath);
+  if (!existsSync(sourcePath)) return undefined;
+  const fileStat = await lstat(sourcePath);
+  if (fileStat.isSymbolicLink()) {
+    const target = await readlink(sourcePath);
+    return {
+      bytes: Buffer.from(`symlink:${target}\n`),
+      symlink: true
+    };
+  }
+  if (!fileStat.isFile()) return undefined;
+  return {
+    bytes: await readFile(sourcePath),
+    symlink: false
+  };
+}
+
+async function snapshotBytesForEntry({ repoRoot, status, head, entry }) {
+  if (status === "PASS") {
+    return readPathAtHead(repoRoot, head, entry.path);
+  }
+  const sourcePath = resolveRepoPath(repoRoot, entry.path);
+  if (!existsSync(sourcePath)) return undefined;
+  const fileStat = await lstat(sourcePath);
+  if (fileStat.isSymbolicLink()) {
+    const target = await readlink(sourcePath);
+    return Buffer.from(`symlink:${target}\n`);
+  }
+  if (!fileStat.isFile()) return undefined;
+  return readFile(sourcePath);
+}
+
+function secretMetadata({ entry, sample, finding }) {
+  return {
+    repositoryPath: entry.path,
+    oldPath: entry.oldPath,
+    changeType: entry.status,
+    source: sample.source,
+    sizeBytes: sample.bytes.length,
+    sha256: sha256Buffer(sample.bytes),
+    ruleId: finding.ruleId,
+    lineStart: finding.lineStart,
+    lineEnd: finding.lineEnd,
+    redacted: true
+  };
+}
+
+function scanTextSampleForSecrets(entry, sample) {
+  const text = sample.bytes.toString("utf8");
+  return findHighConfidenceSecrets(text).map((finding) => secretMetadata({ entry, sample, finding }));
+}
+
+async function contentSamplesForEntry({ repoRoot, head, entry }) {
+  const samples = [];
+  const pathStrings = [
+    { source: "path", bytes: Buffer.from(`${entry.path}\n`) },
+    entry.oldPath ? { source: "oldPath", bytes: Buffer.from(`${entry.oldPath}\n`) } : null
+  ].filter(Boolean);
+  samples.push(...pathStrings);
+
+  const headBytes = await readPathAtHead(repoRoot, head, entry.path);
+  if (headBytes) samples.push({ source: "head", bytes: headBytes });
+
+  const indexBytes = await readPathAtIndex(repoRoot, entry.path);
+  if (indexBytes) samples.push({ source: "index", bytes: indexBytes });
+
+  const worktreeSample = await readWorktreeSample(repoRoot, entry.path);
+  if (worktreeSample) {
+    samples.push({
+      source: worktreeSample.symlink ? "symlink" : "worktree",
+      bytes: worktreeSample.bytes,
+      symlink: worktreeSample.symlink
+    });
+  }
+  return samples;
+}
+
+async function classifyChangedFiles({ repoRoot, head, entries }) {
+  const safeEntries = [];
+  const redactedEntries = [];
+  for (const entry of entries) {
+    if (isSensitiveRepoPath(entry.path) || (entry.oldPath && isSensitiveRepoPath(entry.oldPath))) {
+      redactedEntries.push(createRedactedEntry(entry));
+      continue;
+    }
+    const samples = await contentSamplesForEntry({ repoRoot, head, entry });
+    const findings = [];
+    for (const sample of samples) {
+      if (!isTextBuffer(sample.bytes)) {
+        if (entry.status === "??") {
+          redactedEntries.push({
+            repositoryPath: entry.path,
+            oldPath: entry.oldPath,
+            changeType: entry.status,
+            source: sample.source,
+            sizeBytes: sample.bytes.length,
+            sha256: sha256Buffer(sample.bytes),
+            binary: true,
+            redacted: true,
+            reason: "binary_untracked_metadata_only"
+          });
+          findings.push("binary");
+        }
+        continue;
+      }
+      findings.push(...scanTextSampleForSecrets(entry, sample));
+    }
+    if (findings.length) {
+      redactedEntries.push(...findings.filter((finding) => finding !== "binary"));
+      continue;
+    }
+    safeEntries.push(entry);
+  }
+  return {
+    safeEntries,
+    redactedEntries
+  };
+}
+
+async function snapshotChangedFiles({ repoRoot, packetRoot, changedFiles, status, head }) {
+  const snapshots = [];
+  const filesRoot = path.resolve(packetRoot, "files");
+  assertInsideDirectory(packetRoot, filesRoot, "filesRoot");
+  await mkdir(filesRoot, { recursive: true });
+
+  for (const entry of changedFiles) {
+    if (entry.status.startsWith("D")) {
+      snapshots.push({
+        repositoryPath: entry.path,
+        packetPath: null,
+        sha256: null,
+        sizeBytes: 0,
+        changeType: "D",
+        binary: false
+      });
+      continue;
+    }
+
+    const bytes = await snapshotBytesForEntry({ repoRoot, status, head, entry });
+    if (!bytes) continue;
+
+    const binary = !isTextBuffer(bytes);
+    const sha256 = await sha256Bytes(bytes);
+    const sizeBytes = bytes.length;
+    const snapshotPath = path.resolve(filesRoot, ...entry.path.split("/"));
+    assertInsideDirectory(filesRoot, snapshotPath, "snapshotPath");
+    await mkdir(path.dirname(snapshotPath), { recursive: true });
+    if (!binary) {
+      await writeFile(snapshotPath, bytes);
+    }
+
+    snapshots.push({
+      repositoryPath: entry.path,
+      packetPath: binary ? null : toPosixPath(path.relative(packetRoot, snapshotPath)),
+      sha256,
+      sizeBytes,
+      changeType: entry.status[0],
+      binary
+    });
+  }
+
+  return snapshots.sort((a, b) => compareStrings(a.repositoryPath, b.repositoryPath));
+}
+
+async function readOptionalFile(filePath, fallback) {
+  if (!filePath || !existsSync(filePath)) return fallback;
+  return readFile(filePath, "utf8");
+}
+
+async function readJsonFile(filePath) {
+  const text = await readFile(filePath, "utf8");
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Invalid JSON file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function readRequiredHumanDecision(filePath) {
+  if (!filePath || !existsSync(filePath)) {
+    throw new Error("HUMAN_REQUIRED handoff decision file is missing.");
+  }
+  const fileStat = await stat(filePath);
+  if (!fileStat.isFile()) {
+    throw new Error("HUMAN_REQUIRED handoff decision file must be a file.");
+  }
+  const decision = await readJsonFile(filePath);
+  if (decision.schemaVersion !== 1) {
+    throw new Error("HUMAN_REQUIRED decision schemaVersion must be 1.");
+  }
+  if (!decision.question || typeof decision.question !== "string") {
+    throw new Error("HUMAN_REQUIRED decision requires one concrete question.");
+  }
+  if (!Array.isArray(decision.options) || decision.options.length < 2) {
+    throw new Error("HUMAN_REQUIRED decision requires at least two options.");
+  }
+  const optionIds = new Set();
+  for (const option of decision.options) {
+    if (!option.id || !option.label || !option.impact) {
+      throw new Error("Each HUMAN_REQUIRED option requires id, label, and impact.");
+    }
+    optionIds.add(option.id);
+  }
+  if (!optionIds.has(decision.recommendation)) {
+    throw new Error("HUMAN_REQUIRED recommendation must reference an existing option.");
+  }
+  if (!Array.isArray(decision.evidence) || decision.evidence.length === 0) {
+    throw new Error("HUMAN_REQUIRED decision requires evidence.");
+  }
+  if (!decision.safeDefaultWhileWaiting) {
+    throw new Error("HUMAN_REQUIRED decision requires safeDefaultWhileWaiting.");
+  }
+  return decision;
+}
+
+function parseValidationSummary(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      schemaVersion: 1,
+      status: "not_available",
+      steps: [],
+      knownGaps: {},
+      parseError: "validation summary was not parseable"
+    };
+  }
+}
+
+function validateCurrentValidationSummary({ validation, validationExists, headCommit }) {
+  if (!validationExists) {
+    throw new Error("PASS handoff requires validation summary.");
+  }
+  if (validation.schemaVersion !== 2) {
+    throw new Error("Current PASS handoff requires validation schemaVersion 2.");
+  }
+  if (validation.status !== "pass") {
+    throw new Error("Current PASS handoff requires validation status pass.");
+  }
+  if (validation.repositoryHeadCommitAtStart !== headCommit
+    || validation.repositoryHeadCommitAtFinish !== headCommit) {
+    throw new Error("Validation summary is not bound to reviewedHeadCommit.");
+  }
+  if (validation.sourceWorkspaceCleanAtStart !== true
+    || validation.sourceWorkspaceCleanAtFinish !== true) {
+    throw new Error("Validation summary requires clean source workspace at start and finish.");
+  }
+  const steps = Array.isArray(validation.steps) ? validation.steps : [];
+  if (steps.some((step) => step.required && step.status !== "pass")) {
+    throw new Error("Validation summary has a required step that did not pass.");
+  }
+  for (const requiredStep of ["handoff-tests", "reviewer-config-check", "loop-budget-check"]) {
+    const step = steps.find((item) => item.id === requiredStep);
+    if (!step || step.status !== "pass" || step.required !== true) {
+      throw new Error(`Validation summary requires ${requiredStep} to pass.`);
+    }
+  }
+}
+
+function validateBudgetCheckSummary({ budget, budgetExists, milestoneId }) {
+  if (!budgetExists) {
+    throw new Error("PASS handoff requires loop budget check summary.");
+  }
+  if (budget.schemaVersion !== 1) {
+    throw new Error("Loop budget check summary schemaVersion must be 1.");
+  }
+  if (budget.status !== "pass") {
+    throw new Error("PASS handoff requires loop budget check status pass.");
+  }
+  if (budget.milestoneId !== milestoneId) {
+    throw new Error("Loop budget check milestoneId does not match handoff milestone.");
+  }
+  if (budget.budgetStatus !== "within_budget") {
+    throw new Error("PASS handoff requires loop budgetStatus within_budget.");
+  }
+  for (const key of ["maxRepairRounds", "maxConsecutiveNoProgressRounds", "repairRound", "consecutiveNoProgressRounds"]) {
+    if (!Number.isInteger(budget[key])) {
+      throw new Error(`Loop budget check missing integer ${key}.`);
+    }
+  }
+}
+
+function summarizeValidation(validation) {
+  const steps = Array.isArray(validation.steps) ? validation.steps : [];
+  return steps.map((step) => (
+    `- ${step.id}: ${step.status}, exitCode=${step.exitCode}, durationMs=${step.durationMs}`
+  )).join("\n") || "- not_available";
+}
+
+function validationStatusFromFile(validation, validationExists) {
+  if (!validationExists) return "NOT_AVAILABLE";
+  return validation.status === "pass" ? "PASS" : "FAIL";
+}
+
+function isConcreteObservation(value) {
+  return typeof value === "string" && value.trim().length > 8 && !/^\s*pass\s*$/i.test(value);
+}
+
+const p6R1MacosVisualSystemObservationKeys = [
+  "quietChrome",
+  "visualHierarchy",
+  "typography",
+  "spacing",
+  "componentConsistency",
+  "toolbarGrouping",
+  "inspectorClarity",
+  "responsiveBehavior",
+  "copyTone",
+  "keyboardFocusVisualState",
+  "macosFit"
+];
+
+const p6R1MacosAppFoundationObservationKeys = [
+  "sourceDocument",
+  "previewStage",
+  "inspector",
+  "resources",
+  "actionWorkflow",
+  "activityHistory"
+];
+
+const p6R1RoadmapCapacityJudgmentKeys = [
+  "phase2DiagnosticsOptimization",
+  "phase3ReplaceableEditing",
+  "phase4SequenceOptimization",
+  "midTermMultiFormat",
+  "longTermAgentComfyUI",
+  "noClutterDashboard"
+];
+
+const genericMacosVisualSystemObservationPattern = /\b(owner-visible evidence was reviewed|evidence was reviewed|runtime behavior is supported|runtime behavior was reviewed|reviewed against|differences were checked|no unapproved product difference remains|visual artifacts where applicable)\b/i;
+
+function validateReviewerBEvidenceRefs({ categoryId, evidenceRefs, headCommit, fieldName = "evidenceRefs" }) {
+  if (!Array.isArray(evidenceRefs) || evidenceRefs.length === 0) {
+    throw new Error(`Reviewer B P6-R1 category ${categoryId} requires ${fieldName}.`);
+  }
+  for (const [index, evidenceRef] of evidenceRefs.entries()) {
+    if (!evidenceRef || typeof evidenceRef !== "object" || Array.isArray(evidenceRef)) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] must be an object.`);
+    }
+    if (typeof evidenceRef.path !== "string" || evidenceRef.path.length === 0) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] missing path.`);
+    }
+    if (evidenceRef.present === false || evidenceRef.humanReviewRequired === false) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] is not present for review.`);
+    }
+    const evidenceHead = evidenceRef.headCommit ?? evidenceRef.reviewedHeadCommit ?? evidenceRef.finalHeadCommit;
+    if (evidenceHead !== headCommit) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] head mismatch.`);
+    }
+  }
+}
+
+function validateMacosVisualSystemObservations(category, { headCommit }) {
+  const observations = category.macosVisualSystemObservations;
+  if (!observations || typeof observations !== "object" || Array.isArray(observations)) {
+    throw new Error("Reviewer B P6-R1 category macosVisualSystem requires macosVisualSystemObservations.");
+  }
+  for (const key of p6R1MacosVisualSystemObservationKeys) {
+    const item = observations[key];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Reviewer B P6-R1 category macosVisualSystem missing concrete ${key} observation.`);
+    }
+    if (!isConcreteObservation(item.observation) || genericMacosVisualSystemObservationPattern.test(item.observation)) {
+      throw new Error(`Reviewer B P6-R1 category macosVisualSystem ${key} observation is generic.`);
+    }
+    validateReviewerBEvidenceRefs({
+      categoryId: "macosVisualSystem",
+      evidenceRefs: item.evidenceRefs,
+      headCommit,
+      fieldName: `macosVisualSystemObservations.${key}.evidenceRefs`
+    });
+  }
+}
+
+function validateMacosAppFoundationObservations(category, { headCommit }) {
+  const observations = category.foundationRegionObservations;
+  if (!observations || typeof observations !== "object" || Array.isArray(observations)) {
+    throw new Error("Reviewer B P6-R1 category macOSAppFoundation requires foundationRegionObservations.");
+  }
+  for (const key of p6R1MacosAppFoundationObservationKeys) {
+    const item = observations[key];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Reviewer B P6-R1 category macOSAppFoundation missing concrete ${key} observation.`);
+    }
+    if (!isConcreteObservation(item.observation) || genericMacosVisualSystemObservationPattern.test(item.observation)) {
+      throw new Error(`Reviewer B P6-R1 category macOSAppFoundation ${key} observation is generic.`);
+    }
+    validateReviewerBEvidenceRefs({
+      categoryId: "macOSAppFoundation",
+      evidenceRefs: item.evidenceRefs,
+      headCommit,
+      fieldName: `foundationRegionObservations.${key}.evidenceRefs`
+    });
+  }
+}
+
+function validateRoadmapCapacityJudgments(category, { headCommit }) {
+  const judgments = category.roadmapCapacityJudgments;
+  if (!judgments || typeof judgments !== "object" || Array.isArray(judgments)) {
+    throw new Error("Reviewer B P6-R1 category RoadmapCapacity requires roadmapCapacityJudgments.");
+  }
+  for (const key of p6R1RoadmapCapacityJudgmentKeys) {
+    const item = judgments[key];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Reviewer B P6-R1 category RoadmapCapacity missing concrete ${key} judgment.`);
+    }
+    if (!isConcreteObservation(item.judgment) || genericMacosVisualSystemObservationPattern.test(item.judgment)) {
+      throw new Error(`Reviewer B P6-R1 category RoadmapCapacity ${key} judgment is generic.`);
+    }
+    if (item.futureFeatureExposed !== false) {
+      throw new Error(`Reviewer B P6-R1 category RoadmapCapacity ${key} must confirm futureFeatureExposed=false.`);
+    }
+    validateReviewerBEvidenceRefs({
+      categoryId: "RoadmapCapacity",
+      evidenceRefs: item.evidenceRefs,
+      headCommit,
+      fieldName: `roadmapCapacityJudgments.${key}.evidenceRefs`
+    });
+  }
+}
+
+function validateP6R1ReviewerBProductCategories(verdict, { headCommit }) {
+  const categories = verdict.categories ?? verdict.productCategories;
+  if (!Array.isArray(categories)) {
+    throw new Error("Reviewer B P6-R1 verdict requires categories array.");
+  }
+  if (categories.length !== p6R1ReviewerBRequiredCategories.length) {
+    throw new Error(`Reviewer B P6-R1 verdict requires ${p6R1ReviewerBRequiredCategories.length} categories.`);
+  }
+  const byCategory = new Map();
+  for (const category of categories) {
+    if (!category || typeof category !== "object" || Array.isArray(category)) {
+      throw new Error("Reviewer B P6-R1 categories must be structured objects.");
+    }
+    if (typeof category.category !== "string" || category.category.length === 0) {
+      throw new Error("Reviewer B P6-R1 category is missing category id.");
+    }
+    if (byCategory.has(category.category)) {
+      throw new Error(`Reviewer B P6-R1 duplicate category ${category.category}.`);
+    }
+    byCategory.set(category.category, category);
+  }
+  for (const categoryId of p6R1ReviewerBRequiredCategories) {
+    if (!byCategory.has(categoryId)) {
+      throw new Error(`Reviewer B P6-R1 missing category ${categoryId}.`);
+    }
+  }
+  for (const [categoryId, category] of byCategory.entries()) {
+    if (category.verdict !== "PASS") {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} verdict must be PASS.`);
+    }
+    for (const field of ["visualObservation", "runtimeBehaviorObservation", "approvedDifferenceAssessment"]) {
+      if (!isConcreteObservation(category[field])) {
+        throw new Error(`Reviewer B P6-R1 category ${categoryId} missing concrete ${field}.`);
+      }
+    }
+    validateReviewerBEvidenceRefs({
+      categoryId,
+      evidenceRefs: category.evidenceRefs,
+      headCommit
+    });
+    if (categoryId === "macosVisualSystem") {
+      validateMacosVisualSystemObservations(category, { headCommit });
+    }
+    if (categoryId === "macOSAppFoundation") {
+      validateMacosAppFoundationObservations(category, { headCommit });
+    }
+    if (categoryId === "RoadmapCapacity") {
+      validateRoadmapCapacityJudgments(category, { headCommit });
+    }
+  }
+}
+
+async function readReviewerVerdict(filePath, { reviewerId, headCommit, candidateDigest, milestoneId }) {
+  if (!filePath) {
+    throw new Error(`Reviewer ${reviewerId} JSON verdict is missing.`);
+  }
+  const verdict = await readJsonFile(filePath);
+  if (verdict.schemaVersion !== 2) {
+    throw new Error(`Reviewer ${reviewerId} verdict schemaVersion must be 2.`);
+  }
+  if (verdict.reviewerId !== reviewerId) {
+    throw new Error(`Reviewer verdict role mismatch: expected ${reviewerId}.`);
+  }
+  if (!["PASS", "BLOCKING"].includes(verdict.verdict)) {
+    throw new Error(`Reviewer ${reviewerId} verdict must be PASS or BLOCKING.`);
+  }
+  if (verdict.reviewedHeadCommit !== headCommit) {
+    throw new Error(`Reviewer ${reviewerId} reviewedHeadCommit mismatch.`);
+  }
+  if (verdict.candidateDigest !== candidateDigest) {
+    throw new Error(`Reviewer ${reviewerId} candidateDigest mismatch.`);
+  }
+  if (reviewerId === "A" && !verdict.sourceDiffSha256) {
+    throw new Error("Reviewer A verdict requires sourceDiffSha256.");
+  }
+  if (reviewerId === "B" && !verdict.packetDiffSha256) {
+    throw new Error("Reviewer B verdict requires packetDiffSha256.");
+  }
+  if (milestoneId === "P6-R1" && reviewerId === "B") {
+    validateP6R1ReviewerBProductCategories(verdict, { headCommit });
+  }
+  if (verdict.verdict === "PASS") {
+    if (Array.isArray(verdict.conditions) && verdict.conditions.length > 0) {
+      throw new Error(`Reviewer ${reviewerId} PASS verdict cannot include conditions.`);
+    }
+    const findings = Array.isArray(verdict.findings) ? verdict.findings : [];
+    if (findings.some((finding) => finding.severity === "blocking" || finding.blocking === true)) {
+      throw new Error(`Reviewer ${reviewerId} PASS verdict cannot include blocking findings.`);
+    }
+  }
+  return verdict;
+}
+
+function reviewerVerdictMarkdown(verdict) {
+  if (!verdict) return "- not_available";
+  return [
+    "```json",
+    JSON.stringify(verdict, null, 2),
+    "```"
+  ].join("\n");
+}
+
+function patchMetadata(patch) {
+  const text = Buffer.isBuffer(patch) ? patch.toString("utf8") : patch;
+  const sizeBytes = Buffer.isBuffer(patch) ? patch.length : Buffer.byteLength(patch, "utf8");
+  const lineCount = text.length ? text.split("\n").length : 0;
+  const companionRequired = sizeBytes > inlineDiffMaxBytes || lineCount > inlineDiffMaxLines;
+  return {
+    sizeBytes,
+    lineCount,
+    companionRequired,
+    mandatoryCompanions: companionRequired ? ["changes.patch"] : []
+  };
+}
+
+function findHighConfidenceSecrets(text) {
+  const findings = [];
+  const rules = [
+    { id: "private-key-block", pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/g },
+    { id: "aws-access-key-id", pattern: /AKIA[0-9A-Z]{16}/g },
+    { id: "github-token", pattern: /gh[pousr]_[A-Za-z0-9_]{36,}/g },
+    {
+      id: "high-entropy-secret-assignment",
+      pattern: /\b(SECRET|TOKEN|PASSWORD|PASSWD|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)\s*=\s*["']?([A-Za-z0-9/+_=.-]{24,})["']?/gi,
+      entropyGroup: 2
+    }
+  ];
+  for (const rule of rules) {
+    for (const match of text.matchAll(rule.pattern)) {
+      const value = rule.entropyGroup ? match[rule.entropyGroup] : match[0];
+      const line = text.slice(0, match.index).split("\n").length;
+      const distinct = new Set(value).size;
+      if (rule.entropyGroup && distinct < 10) continue;
+      findings.push({ ruleId: rule.id, lineStart: line, lineEnd: line, redacted: true });
+    }
+  }
+  return findings;
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sha256Text(text) {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+function sha256Buffer(buffer) {
+  return createHash("sha256").update(buffer).digest("hex");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function computeCandidateDigest(parts) {
+  return sha256Text(stableJson(parts));
+}
+
+function createRedactedEntry(entry) {
+  return {
+    repositoryPath: entry.path,
+    oldPath: entry.oldPath,
+    changeType: entry.status,
+    redacted: true,
+    reason: isSensitiveRepoPath(entry.path) || (entry.oldPath && isSensitiveRepoPath(entry.oldPath))
+      ? "sensitive_or_protected_path"
+      : sensitiveSentinelLabel
+  };
+}
+
+function splitSafeAndSensitiveEntries(entries) {
+  const safe = [];
+  const sensitive = [];
+  for (const entry of entries) {
+    if (isSensitiveRepoPath(entry.path) || (entry.oldPath && isSensitiveRepoPath(entry.oldPath))) {
+      sensitive.push(entry);
+    } else {
+      safe.push(entry);
+    }
+  }
+  return { safe, sensitive };
+}
+
+function pathspecsForEntries(entries) {
+  const paths = new Set();
+  for (const entry of entries) {
+    if (entry.oldPath) paths.add(entry.oldPath);
+    paths.add(entry.path);
+  }
+  return [...paths].sort(compareStrings);
+}
+
+function diffCheckRecord({ repoRoot, label, args }) {
+  const result = gitLiteral(["diff", "--check", ...args], { cwd: repoRoot, allowFailure: true });
+  return {
+    label,
+    command: `git --literal-pathspecs diff --check ${args.join(" ")}`.trim(),
+    status: result.status === 0 ? "pass" : "fail",
+    exitCode: result.status,
+    output: `${result.stdout}${result.stderr}`.trim()
+  };
+}
+
+function isPlaceholderPurpose(value) {
+  if (!value || typeof value !== "string") return true;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length < 12
+    || normalized === "update"
+    || normalized === "changed file"
+    || normalized === "miscellaneous"
+    || normalized.includes("change for milestone")
+    || normalized.includes("a/m change");
+}
+
+function validateChangedFilePurposes({ changedFiles, changedFilePurposes }) {
+  if (!changedFilePurposes || typeof changedFilePurposes !== "object") {
+    throw new Error("handoff input missing changedFilePurposes.");
+  }
+  for (const entry of changedFiles) {
+    const purpose = changedFilePurposes[entry.path];
+    if (isPlaceholderPurpose(purpose)) {
+      throw new Error(`changed file purpose missing or placeholder for ${entry.path}`);
+    }
+  }
+}
+
+function parseMilestoneContract(contractText) {
+  const idMatch = contractText.match(/^Milestone ID:\s*([A-Za-z0-9-]+)/m);
+  const milestoneId = idMatch?.[1];
+  const criteria = [];
+  const seenCriteria = new Set();
+  const criterionPattern = /^-\s+`([^`]+)`:\s+(.+)$/gm;
+  let match;
+  while ((match = criterionPattern.exec(contractText)) !== null) {
+    seenCriteria.add(match[1]);
+    criteria.push({
+      id: match[1],
+      requirement: match[2].trim(),
+      requirementHash: createHash("sha256").update(match[2].trim()).digest("hex")
+    });
+  }
+  const tableCriterionPattern = /^\|\s*([A-Za-z0-9][A-Za-z0-9._-]+-AC-\d{2})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gm;
+  while ((match = tableCriterionPattern.exec(contractText)) !== null) {
+    if (seenCriteria.has(match[1])) continue;
+    const requirement = `${match[2].trim()}: ${match[3].trim()}`;
+    seenCriteria.add(match[1]);
+    criteria.push({
+      id: match[1],
+      requirement,
+      requirementHash: createHash("sha256").update(requirement).digest("hex")
+    });
+  }
+  return { milestoneId, criteria };
+}
+
+function validateAcceptanceEvidence({ milestoneId, acceptanceEvidence, retrospective, contract }) {
+  if (!Array.isArray(acceptanceEvidence) || acceptanceEvidence.length === 0) {
+    throw new Error("handoff input missing acceptanceEvidence.");
+  }
+  if (!retrospective) {
+    if (contract.milestoneId !== milestoneId) {
+      throw new Error(`Contract milestoneId ${contract.milestoneId} does not exactly match ${milestoneId}.`);
+    }
+    const expectedIds = contract.criteria.map((criterion) => criterion.id).sort();
+    const actualIds = acceptanceEvidence.map((item) => item.criterionId).sort();
+    if (JSON.stringify(expectedIds) !== JSON.stringify(actualIds)) {
+      throw new Error("acceptance evidence IDs must exactly match frozen contract IDs.");
+    }
+  }
+  const criteriaById = new Map(contract.criteria.map((criterion) => [criterion.id, criterion]));
+  for (const item of acceptanceEvidence) {
+    if (!item || typeof item !== "object") {
+      throw new Error("acceptanceEvidence entries must be objects.");
+    }
+    if (!item.criterionId || !item.requirement) {
+      throw new Error("acceptanceEvidence entries require criterionId and requirement.");
+    }
+    if (item.milestoneId && item.milestoneId !== milestoneId) {
+      throw new Error(`acceptance evidence ${item.criterionId} references ${item.milestoneId}, expected ${milestoneId}`);
+    }
+    if (!String(item.criterionId).startsWith(`${milestoneId}-AC-`)) {
+      throw new Error(`acceptance evidence id ${item.criterionId} must be milestone-specific for ${milestoneId}`);
+    }
+    if (!item.evidenceSource || !item.limitation) {
+      throw new Error(`acceptance evidence ${item.criterionId} requires evidenceSource and limitation.`);
+    }
+    if (!retrospective) {
+      const criterion = criteriaById.get(item.criterionId);
+      if (!criterion) {
+        throw new Error(`acceptance evidence ${item.criterionId} is not in frozen contract.`);
+      }
+      if (item.requirementHash !== criterion.requirementHash) {
+        throw new Error(`acceptance evidence ${item.criterionId} requirementHash does not match frozen contract.`);
+      }
+      if (!Array.isArray(item.commands) || !Array.isArray(item.exitCodes) || !Array.isArray(item.evidenceRefs)) {
+        throw new Error(`acceptance evidence ${item.criterionId} requires commands, exitCodes, and evidenceRefs arrays.`);
+      }
+    }
+    const text = JSON.stringify(item);
+    if (retrospective && milestoneId === "M1" && /\bM2\b|loop:handoff|Review Packet/i.test(text)) {
+      throw new Error(`M1 retrospective acceptance evidence ${item.criterionId} contains M2 or handoff-specific evidence.`);
+    }
+  }
+}
+
+async function readHandoffInput({ repoRoot, inputPath, milestoneId, baseCommit, headCommit, title }) {
+  if (!inputPath) {
+    throw new Error("Missing required --input handoff JSON.");
+  }
+  const input = await readJsonFile(resolveRepoPath(repoRoot, inputPath));
+  if (input.milestoneId !== milestoneId) {
+    throw new Error(`handoff input milestoneId ${input.milestoneId} does not match ${milestoneId}`);
+  }
+  if (input.reviewedBaseCommit !== baseCommit) {
+    throw new Error(`handoff input reviewedBaseCommit ${input.reviewedBaseCommit} does not match ${baseCommit}`);
+  }
+  if (input.reviewedHeadCommit !== headCommit) {
+    throw new Error(`handoff input reviewedHeadCommit ${input.reviewedHeadCommit} does not match ${headCommit}`);
+  }
+  for (const key of [
+    "milestoneOutcome",
+    "evidenceCompleteness",
+    "historicalValidationEvidence",
+    "historicalReviewerEvidence",
+    "retrospectiveRevalidation",
+    "retrospectiveReviewerStatus",
+    "implementationSummary",
+    "changedFilePurposes",
+    "acceptanceEvidence",
+    "remainingRisks",
+    "recommendedNextMilestone"
+  ]) {
+    if (input[key] === undefined || input[key] === null) {
+      throw new Error(`handoff input missing ${key}.`);
+    }
+  }
+  if (title && input.milestoneTitle && input.milestoneTitle !== title) {
+    throw new Error(`handoff input milestoneTitle ${input.milestoneTitle} does not match ${title}`);
+  }
+  for (const key of Object.keys(enumValues)) {
+    assertEnumValue(key, input[key]);
+  }
+  return input;
+}
+
+function validateContractForMilestone(contractText, milestoneId) {
+  const contract = parseMilestoneContract(contractText);
+  if (contract.milestoneId && contract.milestoneId !== milestoneId) {
+    throw new Error(`Milestone contract id ${contract.milestoneId} does not match ${milestoneId}.`);
+  }
+  return contract;
+}
+
+async function readLoopHistoryEntries(repoRoot, milestoneId) {
+  const jsonlPath = path.join(repoRoot, "docs/loop/LOOP_HISTORY.jsonl");
+  if (!existsSync(jsonlPath)) return [];
+  const text = await readFile(jsonlPath, "utf8");
+  const entries = [];
+  for (const [lineIndex, line] of text.split("\n").entries()) {
+    if (!line.trim()) continue;
+    try {
+      const item = JSON.parse(line);
+      if (item.milestoneId === milestoneId) entries.push(item);
+    } catch (error) {
+      throw new Error(`Invalid docs/loop/LOOP_HISTORY.jsonl line ${lineIndex + 1}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return entries;
+}
+
+function parseUniqueLoopStateFields(text) {
+  const fields = {};
+  const counts = {};
+  for (const line of text.split("\n")) {
+    const match = line.match(/^-\s+(milestoneId|State|Next Action|repairRound|consecutiveNoProgressRounds|budgetStatus):\s*(.+?)\s*$/);
+    if (!match) continue;
+    const key = match[1];
+    counts[key] = (counts[key] ?? 0) + 1;
+    fields[key] = match[2].trim();
+  }
+  for (const [key, count] of Object.entries(counts)) {
+    if (count !== 1) {
+      throw new Error(`LOOP_STATE.md must contain exactly one machine ${key} field.`);
+    }
+  }
+  for (const key of ["milestoneId", "State", "Next Action"]) {
+    if (!fields[key]) {
+      throw new Error(`LOOP_STATE.md missing machine ${key} field.`);
+    }
+  }
+  return fields;
+}
+
+function validateHumanNextActionSection(text) {
+  const match = text.match(/(?:^|\n)## Next Action\s*\n([\s\S]*?)(?=\n## |\s*$)/);
+  if (!match) return;
+  const normalizedSection = match[1].replace(/\s+/g, " ");
+  const actionableSection = normalizedSection
+    .replace(/\b(do not|don't|must not|no additional|no more)\b[^.]*\./gi, " ")
+    .trim();
+  if (/(generate|create).{0,60}candidate/i.test(actionableSection)
+    || /\brun.{0,60}(validation|validate|review)\b/i.test(actionableSection)
+    || /\b(do|perform|start|execute).{0,60}(implementation|implement|validation|validate|review|repair)\b/i.test(actionableSection)
+    || /\bcollect.{0,60}(review|reviewer)\b/i.test(actionableSection)
+    || /\bseal.{0,60}(packet|handoff)\b/i.test(actionableSection)
+    || /\bcontinue.{0,60}repair\b/i.test(actionableSection)
+    || /\brepair the .*blockers\b/i.test(actionableSection)) {
+    throw new Error("LOOP_STATE.md human Next Action section contradicts terminal external_review state.");
+  }
+}
+
+async function validateTerminalState({ repoRoot, milestoneId, status }) {
+  const stateText = await readOptionalFile(path.join(repoRoot, "docs/loop/LOOP_STATE.md"), "");
+  const expectedState = status === "PASS" ? "terminal_pass" : "terminal_human_required";
+  const expectedNextActions = status === "HUMAN_REQUIRED"
+    ? ["external_review", "product_owner_human_gate"]
+    : ["external_review"];
+  const fields = parseUniqueLoopStateFields(stateText);
+  if (fields.milestoneId !== milestoneId || fields.State !== expectedState) {
+    throw new Error(`LOOP_STATE.md must mark ${milestoneId} as ${expectedState}.`);
+  }
+  if (!expectedNextActions.includes(fields["Next Action"])) {
+    throw new Error(`LOOP_STATE.md terminal next action must be one of ${expectedNextActions.join(", ")}.`);
+  }
+  validateHumanNextActionSection(stateText);
+  const entries = await readLoopHistoryEntries(repoRoot, milestoneId);
+  const last = entries.at(-1);
+  if (!last) {
+    throw new Error(`LOOP_HISTORY.jsonl missing terminal record for ${milestoneId}.`);
+  }
+  if (last.milestoneId !== milestoneId || last.iteration !== "terminal") {
+    throw new Error(`Last LOOP_HISTORY entry for ${milestoneId} must be terminal.`);
+  }
+  if (last.result !== status) {
+    throw new Error(`Last LOOP_HISTORY result ${last.result} does not match ${status}.`);
+  }
+  if (last.progress !== true) {
+    throw new Error("Terminal LOOP_HISTORY entry must record progress=true.");
+  }
+  if (!expectedNextActions.includes(last.nextAction)) {
+    throw new Error(`Terminal LOOP_HISTORY nextAction must be one of ${expectedNextActions.join(", ")}.`);
+  }
+  return { state: expectedState, nextAction: last.nextAction, lastHistory: last };
+}
+
+async function readLoopHistoryForMilestone(repoRoot, milestoneId) {
+  const entries = await readLoopHistoryEntries(repoRoot, milestoneId);
+  if (!entries.length) return `No structured history entries for ${milestoneId}.`;
+  return entries.map((entry) => [
+    `- milestoneId: ${entry.milestoneId}`,
+    `  iteration: ${entry.iteration ?? "not_available"}`,
+    `  phase: ${entry.phase ?? "not_available"}`,
+    `  timestamp: ${entry.timestamp ?? "not_available"}`,
+    `  hypothesis: ${entry.hypothesis ?? "not_available"}`,
+    `  filesChanged: ${(entry.filesChanged ?? []).join(", ") || "none"}`,
+    `  commands: ${(entry.commands ?? []).join("; ") || "none"}`,
+    `  result: ${entry.result ?? "not_available"}`,
+    `  evidence: ${(entry.evidence ?? []).join(", ") || "not_available"}`,
+    `  nextAction: ${entry.nextAction ?? "not_available"}`
+  ].join("\n")).join("\n");
+}
+
+function acceptanceEvidenceMarkdown(evidence) {
+  return evidence.map((item) => [
+    `- criterion id: ${item.criterionId}`,
+    `  requirement: ${item.requirement}`,
+    `  milestoneId: ${item.milestoneId}`,
+    `  historical evidence status: ${item.historicalEvidenceStatus ?? "NOT_AVAILABLE"}`,
+    `  retrospective evidence status: ${item.retrospectiveEvidenceStatus ?? "NOT_AVAILABLE"}`,
+    `  evidence source: ${item.evidenceSource}`,
+    item.requirementHash ? `  requirement hash: ${item.requirementHash}` : null,
+    Array.isArray(item.commands) ? `  commands: ${item.commands.join("; ")}` : null,
+    Array.isArray(item.exitCodes) ? `  exit codes: ${item.exitCodes.join(", ")}` : null,
+    Array.isArray(item.evidenceRefs) ? `  evidence refs: ${item.evidenceRefs.join(", ")}` : null,
+    `  limitation: ${item.limitation}`,
+    item.derivedFromFrozenContract !== undefined
+      ? `  derivedFromFrozenContract: ${Boolean(item.derivedFromFrozenContract)}`
+      : null
+  ].filter(Boolean).join("\n")).join("\n");
+}
+
+function remainingRisksMarkdown(risks) {
+  return Array.isArray(risks) && risks.length
+    ? risks.map((risk) => `- ${risk}`).join("\n")
+    : "- none recorded";
+}
+
+function validationRunsMarkdown(runs) {
+  return Array.isArray(runs) && runs.length
+    ? runs.map((run) => `- ${run.command}: ${run.result}${run.exitCode !== undefined ? `, exitCode=${run.exitCode}` : ""}`).join("\n")
+    : "- See validation.json.";
+}
+
+function validatePacketContent(content) {
+  for (const section of requiredSections) {
+    if (!content.includes(`# ${section}`)) {
+      throw new Error(`REVIEW_PACKET.md missing required section: ${section}`);
+    }
+  }
+}
+
+async function copyLatest({ packetRoot, latestRoot, outputRoot }) {
+  assertInsideDirectory(outputRoot, packetRoot, "packetRoot");
+  assertInsideDirectory(outputRoot, latestRoot, "latestRoot");
+  await rm(latestRoot, { recursive: true, force: true });
+  await mkdir(path.dirname(latestRoot), { recursive: true });
+  try {
+    await symlink(packetRoot, latestRoot, "dir");
+  } catch {
+    await mkdir(latestRoot, { recursive: true });
+    for (const fileName of [
+      "REVIEW_PACKET.md",
+      "MANIFEST.json",
+      "changes.patch",
+	      "validation.json",
+	      "reviewer-a.json",
+	      "reviewer-b.json",
+	      "post-seal-verification.json",
+	      "artifact-index.json",
+	      "FINAL_RESPONSE.txt"
+    ]) {
+      const source = path.join(packetRoot, fileName);
+      if (existsSync(source)) {
+        await copyFile(source, path.join(latestRoot, fileName));
+      }
+    }
+    for (const directoryName of ["files", "decisions"]) {
+      const source = path.join(packetRoot, directoryName);
+      if (existsSync(source)) {
+        await cp(source, path.join(latestRoot, directoryName), { recursive: true, force: true });
+      }
+    }
+  }
+}
+
+async function artifactRecord(packetRoot, relativePath, role, type, generated, humanReviewRequired = false) {
+  const filePath = path.join(packetRoot, relativePath);
+  const fileStat = await stat(filePath);
+  return {
+    path: relativePath,
+    role,
+    type,
+    mime: type,
+    sizeBytes: fileStat.size,
+    sha256: await sha256File(filePath),
+    generated,
+    ownerProvided: !generated,
+    includedInPacket: true,
+    humanReviewRequired
+  };
+}
+
+function parseFinalResponseUploads(text) {
+  const uploadMatch = text.match(/UPLOAD_TO_REVIEW_ASSISTANT:\n([\s\S]*?)\n\nOPTIONAL_REFERENCE:/);
+  if (!uploadMatch) return [];
+  return uploadMatch[1]
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const withoutIndex = line.replace(/^\d+\.\s*/, "");
+      const markdownLink = withoutIndex.match(/^\[[^\]]+\]\((.+)\)$/);
+      return markdownLink ? markdownLink[1] : withoutIndex;
+    });
+}
+
+function extractEmbeddedFullDiff(reviewPacketText) {
+  const marker = "# Full Diff\n\n";
+  const markerIndex = reviewPacketText.indexOf(marker);
+  if (markerIndex < 0) return { status: "missing_section" };
+  const afterMarker = reviewPacketText.slice(markerIndex + marker.length);
+  if (!afterMarker.includes("```diff\n")) return { status: "companion_required" };
+  const start = afterMarker.indexOf("```diff\n") + "```diff\n".length;
+  const afterStart = afterMarker.slice(start);
+  const end = afterStart.indexOf("\n```\n\n# Changed File Snapshots");
+  if (end < 0) return { status: "missing_closing_fence" };
+  return {
+    status: "embedded",
+    bytes: Buffer.from(afterStart.slice(0, end), "utf8")
+  };
+}
+
+function privatePathRules() {
+  const slash = "/";
+  const usersPath = ["", "Users", ""].join(slash);
+  const homePath = ["", "home", ""].join(slash);
+  const windowsUsers = ["[A-Za-z]:", "Users", ""].join("\\\\");
+  return [
+    { ruleId: "macos-user-path", pattern: new RegExp(`${escapeRegExp(usersPath)}[^/\\s"'\\\\\`]+(?:/[^\\s"'\\\\\`]*)?`, "g") },
+    { ruleId: "posix-home-path", pattern: new RegExp(`${escapeRegExp(homePath)}[^/\\s"'\\\\\`]+(?:/[^\\s"'\\\\\`]*)?`, "g") },
+    { ruleId: "windows-user-path", pattern: new RegExp(`${windowsUsers}[^\\\\\\s"'\\\`]+(?:\\\\[^\\s"'\\\`]*)?`, "g") }
+  ];
+}
+
+function findPrivatePathFindings(text) {
+  const findings = [];
+  for (const rule of privatePathRules()) {
+    for (const match of text.matchAll(rule.pattern)) {
+      const line = text.slice(0, match.index).split("\n").length;
+      findings.push({ ruleId: rule.ruleId, lineStart: line, lineEnd: line, redacted: true });
+    }
+  }
+  return findings;
+}
+
+export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, manifest, finalResponseText }) {
+  if (repoRoot) {
+    const outputRoot = path.resolve(repoRoot, ".artifacts/loop-handoff");
+    assertInsideDirectory(outputRoot, path.resolve(packetRoot), "packetRoot");
+    assertInsideDirectory(outputRoot, path.resolve(latestRoot), "latestRoot");
+  }
+  let latestTarget = null;
+  if (existsSync(latestRoot)) {
+    const latestStat = await lstat(latestRoot);
+    latestTarget = latestStat.isSymbolicLink()
+      ? path.resolve(path.dirname(latestRoot), await readlink(latestRoot))
+      : path.resolve(latestRoot);
+  }
+  const uploadFiles = parseFinalResponseUploads(finalResponseText);
+  const reportedUploadFiles = uploadFiles.map((filePath) => {
+    if (!repoRoot) return filePath;
+    const relativePath = path.relative(repoRoot, filePath);
+    return relativePath.startsWith("..") || path.isAbsolute(relativePath)
+      ? toPosixPath(path.basename(filePath))
+      : toPosixPath(relativePath);
+  });
+  const uploadsExist = uploadFiles.every((filePath) => existsSync(filePath));
+  const patchListed = uploadFiles.some((filePath) => filePath.endsWith("changes.patch"));
+  const errors = [];
+  const trackedDiffClean = repoRoot
+    ? git(["diff", "--quiet"], { cwd: repoRoot, allowFailure: true }).status === 0
+    : false;
+  const trackedIndexClean = repoRoot
+    ? git(["diff", "--cached", "--quiet"], { cwd: repoRoot, allowFailure: true }).status === 0
+    : false;
+
+  if (latestTarget && latestTarget !== path.resolve(packetRoot)) {
+    errors.push("latest does not point at packetRoot");
+  }
+  if (!uploadsExist) errors.push("FINAL_RESPONSE upload file missing");
+  if (manifest.milestoneOutcome === "PASS" && (!trackedDiffClean || !trackedIndexClean)) {
+    errors.push("tracked source workspace is not clean");
+  }
+  if (manifest.companionRequired !== patchListed) {
+    errors.push("companionRequired does not match FINAL_RESPONSE upload list");
+  }
+  if (manifest.reviewers.reviewerA?.candidateDigest
+    && manifest.reviewers.reviewerA.candidateDigest !== manifest.candidateDigest) {
+    errors.push("reviewer A candidateDigest mismatch");
+  }
+  if (manifest.reviewers.reviewerB?.candidateDigest
+    && manifest.reviewers.reviewerB.candidateDigest !== manifest.candidateDigest) {
+    errors.push("reviewer B candidateDigest mismatch");
+  }
+  const artifactIndexPath = path.join(packetRoot, "artifact-index.json");
+  const patchPath = path.join(packetRoot, "changes.patch");
+  let checkedArtifactCount = 0;
+  if (manifest.packetStatus !== "COMPLETE") {
+    errors.push("sealed manifest packetStatus must be COMPLETE");
+  }
+  if (manifest.milestoneOutcome === "PASS" && manifest.diffFidelity !== "EXACT") {
+    errors.push("PASS packet diffFidelity must be EXACT");
+  }
+  if (manifest.candidateDigestParts) {
+    const recomputedCandidateDigest = computeCandidateDigest(manifest.candidateDigestParts);
+    if (recomputedCandidateDigest !== manifest.candidateDigest) {
+      errors.push("candidateDigest does not match candidateDigestParts");
+    }
+  } else {
+    errors.push("candidateDigestParts missing");
+  }
+  let regeneratedSourcePatch = null;
+  if (repoRoot && manifest.reviewedBaseCommit && manifest.reviewedHeadCommit && trackedDiffClean && trackedIndexClean) {
+    const pathspecs = Array.isArray(manifest.changedFileIndex)
+      ? pathspecsForEntries(manifest.changedFileIndex)
+      : [];
+    const diffArgs = pathspecs.length
+      ? [`${manifest.reviewedBaseCommit}..${manifest.reviewedHeadCommit}`, "--", ...pathspecs]
+      : [`${manifest.reviewedBaseCommit}..${manifest.reviewedHeadCommit}`];
+    let sourcePatch = gitLiteralBytes(["diff", "--binary", "--no-ext-diff", "--no-textconv", ...diffArgs], { cwd: repoRoot, allowFailure: true });
+    if (sourcePatch.status !== 0) {
+      errors.push("source diff could not be regenerated");
+    } else {
+      if (sourcePatch.stdout.length === 0) {
+        sourcePatch = { ...sourcePatch, stdout: Buffer.from("# No textual diff.\n") };
+      }
+      regeneratedSourcePatch = sourcePatch.stdout;
+      const regeneratedSourceDiffSha256 = sha256Buffer(sourcePatch.stdout);
+      if (regeneratedSourceDiffSha256 !== manifest.sourceDiffSha256) {
+        errors.push("sourceDiffSha256 does not match regenerated source diff");
+      }
+    }
+  }
+  const reviewPacketPath = path.join(packetRoot, "REVIEW_PACKET.md");
+  let packetPatch = null;
+  if (!existsSync(patchPath)) {
+    errors.push("changes.patch missing");
+  } else {
+    packetPatch = await readFile(patchPath);
+    const regeneratedPacketDiffSha256 = sha256Buffer(packetPatch);
+    if (regeneratedPacketDiffSha256 !== manifest.packetDiffSha256) {
+      errors.push("packetDiffSha256 does not match changes.patch");
+    }
+    if (manifest.diffFidelity === "EXACT"
+      && manifest.sourceDiffSha256
+      && manifest.sourceDiffSha256 !== regeneratedPacketDiffSha256) {
+      errors.push("EXACT source diff and packet diff hashes differ");
+    }
+  }
+  if (!existsSync(reviewPacketPath)) {
+    errors.push("REVIEW_PACKET.md missing");
+  } else if (packetPatch && manifest.companionRequired === false) {
+    const embeddedDiff = extractEmbeddedFullDiff(await readFile(reviewPacketPath, "utf8"));
+    if (embeddedDiff.status !== "embedded") {
+      errors.push(`embedded full diff not found: ${embeddedDiff.status}`);
+    } else {
+      const embeddedDiffSha256 = sha256Buffer(embeddedDiff.bytes);
+      if (embeddedDiffSha256 !== manifest.packetDiffSha256) {
+        errors.push("embedded full diff sha256 does not match packetDiffSha256");
+      }
+      if (manifest.diffFidelity === "EXACT" && embeddedDiffSha256 !== manifest.sourceDiffSha256) {
+        errors.push("embedded full diff sha256 does not match sourceDiffSha256");
+      }
+      if (Buffer.compare(embeddedDiff.bytes, packetPatch) !== 0) {
+        errors.push("embedded full diff bytes do not match changes.patch");
+      }
+      if (manifest.diffFidelity === "EXACT" && regeneratedSourcePatch && Buffer.compare(embeddedDiff.bytes, regeneratedSourcePatch) !== 0) {
+        errors.push("embedded full diff bytes do not match regenerated source diff");
+      }
+    }
+  }
+  if (manifest.reviewers.reviewerA?.sourceDiffSha256
+    && manifest.reviewers.reviewerA.sourceDiffSha256 !== manifest.sourceDiffSha256) {
+    errors.push("reviewer A sourceDiffSha256 mismatch");
+  }
+  if (manifest.reviewers.reviewerB?.packetDiffSha256
+    && manifest.reviewers.reviewerB.packetDiffSha256 !== manifest.packetDiffSha256) {
+    errors.push("reviewer B packetDiffSha256 mismatch");
+  }
+  if (!Array.isArray(manifest.artifacts)) {
+    errors.push("manifest artifacts missing or invalid");
+  } else {
+    for (const artifact of manifest.artifacts) {
+      if (!artifact?.path) {
+        errors.push("manifest artifact path missing");
+        continue;
+      }
+      const artifactPath = path.join(packetRoot, artifact.path);
+      if (!existsSync(artifactPath)) {
+        errors.push(`artifact missing: ${artifact.path}`);
+        continue;
+      }
+      const artifactStat = await stat(artifactPath);
+      const artifactHash = await sha256File(artifactPath);
+      checkedArtifactCount += 1;
+      if (artifact.sizeBytes !== artifactStat.size) {
+        errors.push(`artifact size mismatch: ${artifact.path}`);
+      }
+      if (artifact.sha256 !== artifactHash) {
+        errors.push(`artifact sha256 mismatch: ${artifact.path}`);
+      }
+    }
+  }
+  if (!existsSync(artifactIndexPath)) {
+    errors.push("artifact-index.json missing");
+  } else {
+    try {
+      const artifactIndex = JSON.parse(await readFile(artifactIndexPath, "utf8"));
+      const indexedArtifacts = Array.isArray(artifactIndex.artifacts) ? artifactIndex.artifacts : null;
+      if (!indexedArtifacts) {
+        errors.push("artifact-index artifacts missing or invalid");
+      } else if (JSON.stringify(indexedArtifacts) !== JSON.stringify(manifest.artifacts ?? [])) {
+        errors.push("artifact-index does not match manifest artifacts");
+      }
+    } catch {
+      errors.push("artifact-index.json cannot be parsed");
+    }
+  }
+  return {
+    schemaVersion: 1,
+    status: errors.length === 0 ? "pass" : "fail",
+    errors,
+    uploadFiles: reportedUploadFiles,
+    trackedSourceClean: trackedDiffClean && trackedIndexClean,
+    checkedArtifactCount
+  };
+}
+
+function finalResponse({ status, packetRoot, companionRequired, visualArtifacts, optionalReference, humanDecision }) {
+  const uploadLines = [
+    `1. ${path.join(packetRoot, "REVIEW_PACKET.md")}`
+  ];
+  let nextIndex = 2;
+  if (companionRequired) {
+    uploadLines.push(`${nextIndex}. ${path.join(packetRoot, "changes.patch")}`);
+    nextIndex += 1;
+  }
+  const humanVisualArtifacts = Array.isArray(visualArtifacts) ? visualArtifacts.filter((artifact) => artifact.humanReviewRequired) : [];
+  for (const artifact of humanVisualArtifacts) {
+    uploadLines.push(`${nextIndex}. ${artifact.path ?? artifact}`);
+    nextIndex += 1;
+  }
+  const visibleReviewRoot = typeof humanDecision?.visibleReviewRoot === "string"
+    ? humanDecision.visibleReviewRoot
+    : null;
+
+  if (status === "PASS") {
+    return [
+      "PASS",
+      "",
+      "REVIEW_PACKET_READY",
+      "",
+      "UPLOAD_TO_REVIEW_ASSISTANT:",
+      ...uploadLines,
+      "",
+      "OPTIONAL_REFERENCE:",
+      optionalReference ? `- ${optionalReference}` : "- none",
+      "",
+      "VISIBLE_REVIEW_FOLDER:",
+      visibleReviewRoot ? `- ${visibleReviewRoot}` : "- none",
+      "",
+      "Do not upload:",
+      "- MANIFEST.json",
+      "- validation.json",
+      "- reviewer reports",
+      "- files directory",
+      "unless explicitly listed above.",
+      ""
+    ].join("\n");
+  }
+
+  const recommended = humanDecision?.options?.find((option) => option.id === humanDecision.recommendation);
+  return [
+    "HUMAN_REQUIRED",
+    "",
+    "REVIEW_PACKET_READY",
+    "",
+    "UPLOAD_TO_REVIEW_ASSISTANT:",
+    ...uploadLines,
+    "",
+    "OPTIONAL_REFERENCE:",
+    optionalReference ? `- ${optionalReference}` : "- none",
+    "",
+    "VISIBLE_REVIEW_FOLDER:",
+    visibleReviewRoot ? `- ${visibleReviewRoot}` : "- none",
+    "",
+    "Question:",
+    humanDecision?.question ?? "not_available",
+    "",
+    "Recommendation:",
+    recommended
+      ? `${recommended.id}: ${recommended.label}. ${recommended.impact}`
+      : "not_available",
+    "",
+    "Safe default while waiting:",
+    humanDecision?.safeDefaultWhileWaiting ?? "not_available",
+    "",
+    "Do not upload:",
+    "- MANIFEST.json",
+    "- validation.json",
+    "- reviewer reports",
+    "- files directory",
+    "unless explicitly listed above.",
+    ""
+  ].join("\n");
+}
+
+export async function generateHandoffPacket(options) {
+  const repoRoot = path.resolve(options.repoRoot ?? defaultRepoRoot);
+  const status = options.status.toUpperCase();
+  const contractPath = options.contract ?? "docs/loop/CURRENT_MILESTONE.md";
+  const validationPath = options.validation ?? ".artifacts/loop-validation/latest.json";
+  const budgetPath = options.budget ?? ".artifacts/loop-budget-check/latest.json";
+  const headCommit = git(["rev-parse", options.head ?? "HEAD"], { cwd: repoRoot }).stdout.trim();
+  const headShortSha = git(["rev-parse", "--short", headCommit], { cwd: repoRoot }).stdout.trim();
+  const branch = git(["branch", "--show-current"], { cwd: repoRoot }).stdout.trim() || "detached";
+  const baseCommit = git(["rev-parse", options.base], { cwd: repoRoot }).stdout.trim();
+  const generatorCommit = git(["rev-parse", "HEAD"], { cwd: repoRoot }).stdout.trim();
+  const { outputRoot, packetRoot, latestRoot, milestoneId } = buildPacketPaths({
+    repoRoot,
+    milestoneId: options.milestone,
+    headShortSha,
+    candidate: Boolean(options.candidate)
+  });
+  const gitStatus = parseWorkspaceStatus(git(["status", "--short"], { cwd: repoRoot }).stdout);
+  const workspaceClean = gitStatus.length === 0;
+
+  if (status === "PASS" && !workspaceClean) {
+    throw new Error("PASS handoff requires a clean source workspace.");
+  }
+  if (status === "HUMAN_REQUIRED" && !options.decisionFile) {
+    throw new Error("HUMAN_REQUIRED handoff requires --decisionFile.");
+  }
+
+  const input = await readHandoffInput({
+    repoRoot,
+    inputPath: options.input,
+    milestoneId,
+    baseCommit,
+    headCommit,
+    title: options.title
+  });
+  const milestoneTitle = options.title ?? input.milestoneTitle ?? milestoneId;
+  if (input.milestoneOutcome !== status) {
+    throw new Error("CLI status and handoff input milestoneOutcome must match.");
+  }
+  if (Boolean(options.retrospective) === false) {
+    if (input.retrospectiveRevalidation !== "NOT_APPLICABLE"
+      || input.retrospectiveReviewerStatus !== "NOT_APPLICABLE") {
+      throw new Error("Current packets require retrospective fields to be NOT_APPLICABLE.");
+    }
+  }
+  if (Boolean(options.retrospective) && input.evidenceCompleteness === "COMPLETE"
+    && (input.historicalValidationEvidence === "NOT_AVAILABLE" || input.historicalReviewerEvidence === "NOT_AVAILABLE")) {
+    throw new Error("Retrospective packets cannot claim COMPLETE evidence when original evidence is unavailable.");
+  }
+
+  const contractText = await readOptionalFile(resolveRepoPath(repoRoot, contractPath), "not_available");
+  if (contractText === "not_available") {
+    throw new Error(`Milestone contract not_available: ${contractPath}`);
+  }
+  const contract = validateContractForMilestone(contractText, milestoneId);
+
+  const validationSourcePath = resolveRepoPath(repoRoot, validationPath);
+  const validationExists = existsSync(validationSourcePath);
+  const validationText = await readOptionalFile(validationSourcePath, JSON.stringify({
+    schemaVersion: 1,
+    status: "not_available",
+    steps: [],
+    knownGaps: {}
+  }, null, 2));
+  const validation = parseValidationSummary(validationText);
+  const budgetSourcePath = resolveRepoPath(repoRoot, budgetPath);
+  const budgetExists = existsSync(budgetSourcePath);
+  const budgetText = await readOptionalFile(budgetSourcePath, JSON.stringify({
+    schemaVersion: 1,
+    status: "not_available",
+    errors: ["loop budget check summary not available"]
+  }, null, 2));
+  const budget = parseValidationSummary(budgetText);
+
+  if (status === "PASS" && !options.retrospective) {
+    validateCurrentValidationSummary({ validation, validationExists, headCommit });
+    validateBudgetCheckSummary({ budget, budgetExists, milestoneId });
+  }
+
+  let humanDecision = null;
+  let humanDecisionText = "None";
+  let humanDecisionPacketPath = null;
+  if (status === "HUMAN_REQUIRED") {
+    humanDecision = await readRequiredHumanDecision(resolveRepoPath(repoRoot, options.decisionFile));
+    humanDecisionText = [
+      "```json",
+      JSON.stringify(humanDecision, null, 2),
+      "```"
+    ].join("\n");
+    humanDecisionPacketPath = "decisions/human-decision.json";
+  }
+
+  const nameStatus = parseNameStatusZ(gitLiteralBytes(["diff", "--name-status", "--find-renames", "--find-copies", "-z", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout);
+  const dirtyStatus = status === "HUMAN_REQUIRED"
+    ? [
+      ...parsePorcelainZ(gitBytes(["status", "--porcelain=v1", "-z"], { cwd: repoRoot }).stdout),
+      ...listUntrackedFiles(repoRoot)
+    ]
+    : [];
+  const allChangedFiles = mergeChangedFiles(nameStatus, dirtyStatus);
+  const { safeEntries: changedFiles, redactedEntries: redactedFiles } = await classifyChangedFiles({
+    repoRoot,
+    head: headCommit,
+    entries: allChangedFiles
+  });
+  if (status === "PASS" && redactedFiles.length > 0) {
+    const details = redactedFiles
+      .map((entry) => `${entry.repositoryPath}:${entry.lineStart ?? "?"}-${entry.lineEnd ?? "?"}:${entry.ruleId ?? entry.reason ?? "sensitive_path"}`)
+      .join(", ");
+    throw new Error(`PASS handoff refuses sensitive content or protected paths: ${details}`);
+  }
+  validateChangedFilePurposes({ changedFiles, changedFilePurposes: input.changedFilePurposes });
+  validateAcceptanceEvidence({
+    milestoneId,
+    acceptanceEvidence: input.acceptanceEvidence,
+    retrospective: Boolean(options.retrospective),
+    contract
+  });
+
+  let terminalState = null;
+  if (!options.retrospective) {
+    terminalState = await validateTerminalState({ repoRoot, milestoneId, status });
+  }
+
+  await rm(packetRoot, { recursive: true, force: true });
+  await mkdir(packetRoot, { recursive: true });
+  await mkdir(path.resolve(packetRoot, "decisions"), { recursive: true });
+  if (humanDecisionPacketPath) {
+    await writeFile(path.join(packetRoot, humanDecisionPacketPath), `${JSON.stringify(humanDecision, null, 2)}\n`);
+  }
+  await writeFile(path.join(packetRoot, "validation.json"), `${JSON.stringify(validation, null, 2)}\n`);
+  await writeFile(path.join(packetRoot, "budget-check.json"), `${JSON.stringify(budget, null, 2)}\n`);
+
+  const safePathspecs = pathspecsForEntries(changedFiles);
+  const committedDiffArgs = safePathspecs.length
+    ? [`${baseCommit}..${headCommit}`, "--", ...safePathspecs]
+    : [`${baseCommit}..${headCommit}`];
+  const diffStat = gitLiteral(["diff", "--stat", ...committedDiffArgs], { cwd: repoRoot }).stdout.trim() || "No committed diff.";
+  const diffChecks = [
+    diffCheckRecord({ repoRoot, label: "baseRange", args: [`${baseCommit}..${headCommit}`] })
+  ];
+  if (status === "HUMAN_REQUIRED") {
+    diffChecks.push(diffCheckRecord({ repoRoot, label: "worktree", args: [] }));
+    diffChecks.push(diffCheckRecord({ repoRoot, label: "cached", args: ["--cached"] }));
+  }
+  if (status === "PASS" && diffChecks.some((record) => record.status !== "pass")) {
+    throw new Error("PASS handoff requires git diff --check base..head to pass.");
+  }
+  let sourcePatchBuffer = gitLiteralBytes(["diff", "--binary", "--no-ext-diff", "--no-textconv", ...committedDiffArgs], { cwd: repoRoot }).stdout;
+  if (status === "HUMAN_REQUIRED") {
+    const worktreePatch = safePathspecs.length
+      ? gitLiteralBytes(["diff", "--binary", "--no-ext-diff", "--no-textconv", "--", ...safePathspecs], { cwd: repoRoot }).stdout
+      : Buffer.from("# No safe uncommitted tracked paths.\n");
+    if (worktreePatch.length > 0) {
+      sourcePatchBuffer = Buffer.concat([
+        sourcePatchBuffer,
+        Buffer.from("\n\n# Uncommitted tracked changes\n"),
+        worktreePatch
+      ]);
+    }
+    const untracked = dirtyStatus.filter((entry) => entry.status === "??");
+    if (untracked.length) {
+      const untrackedText = [
+        "\n\n# Untracked files are included as snapshots and indexed in MANIFEST.json.",
+        ...untracked
+        .filter((entry) => !isSensitiveRepoPath(entry.path))
+        .map((entry) => `# ${entry.path}`),
+        ""
+      ].join("\n");
+      sourcePatchBuffer = Buffer.concat([sourcePatchBuffer, Buffer.from(untrackedText)]);
+    }
+  }
+  if (sourcePatchBuffer.length === 0) {
+    sourcePatchBuffer = Buffer.from("# No textual diff.\n");
+  }
+  const secretFindings = findHighConfidenceSecrets(sourcePatchBuffer.toString("utf8"));
+  const privatePathFindings = findPrivatePathFindings(sourcePatchBuffer.toString("utf8"));
+  if (privatePathFindings.length > 0) {
+    throw new Error(`handoff refuses private local paths in diff: ${privatePathFindings.map((finding) => finding.ruleId).join(", ")}`);
+  }
+  if (status === "PASS" && secretFindings.length > 0) {
+    throw new Error(`PASS handoff refuses high-confidence secret content in diff: ${secretFindings.map((finding) => finding.ruleId).join(", ")}`);
+  }
+  const hasSensitiveHumanRequiredContent = status === "HUMAN_REQUIRED" && (redactedFiles.length > 0 || secretFindings.length > 0);
+  const packetPatchBuffer = hasSensitiveHumanRequiredContent
+    ? Buffer.from([
+      "# Diff redacted because HUMAN_REQUIRED contains sensitive content.",
+      "# Source diff hash is recorded in MANIFEST.json.",
+      "# Upload this packet for the structured human decision; do not upload source-sensitive content.",
+      ""
+    ].join("\n"))
+    : sourcePatchBuffer;
+  const diffFidelity = Buffer.compare(sourcePatchBuffer, packetPatchBuffer) === 0 ? "EXACT" : "PARTIAL_REDACTED";
+  const sourceDiffSha256 = sha256Buffer(sourcePatchBuffer);
+  const packetDiffSha256 = sha256Buffer(packetPatchBuffer);
+  const patchInfo = patchMetadata(packetPatchBuffer);
+  await writeFile(path.join(packetRoot, "changes.patch"), packetPatchBuffer);
+  if (patchInfo.companionRequired && !existsSync(path.join(packetRoot, "changes.patch"))) {
+    throw new Error("changes.patch is required but was not written.");
+  }
+
+  const snapshots = await snapshotChangedFiles({
+    repoRoot,
+    packetRoot,
+    changedFiles,
+    status,
+    head: headCommit
+  });
+
+  const validationEvidenceStatus = validationStatusFromFile(validation, validationExists);
+  const packetStatus = options.candidate ? "INCOMPLETE" : "COMPLETE";
+  const packetEvidenceCompleteness = options.candidate ? "PARTIAL" : input.evidenceCompleteness;
+  const packetReviewerEvidence = options.candidate ? "PENDING_CANDIDATE_REVIEW" : input.historicalReviewerEvidence;
+  const commitsInRange = git(["log", "--oneline", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout.trim() || "none";
+  const loopHistory = await readLoopHistoryForMilestone(repoRoot, milestoneId);
+  const visualArtifacts = Array.isArray(input.visualArtifacts) ? input.visualArtifacts : [];
+  const optionalReference = options.retrospectivePacket ? resolveRepoPath(repoRoot, options.retrospectivePacket) : null;
+  const reportGeneratedAt = new Date().toISOString();
+  const contractHash = sha256Text(contractText);
+  const validationSha256 = sha256Text(JSON.stringify(validation));
+  const acceptanceEvidenceSha256 = sha256Text(JSON.stringify(input.acceptanceEvidence));
+  const loopStateText = await readOptionalFile(path.join(repoRoot, "docs/loop/LOOP_STATE.md"), "");
+  const loopStateSha256 = sha256Text(loopStateText);
+  const milestoneHistorySha256 = sha256Text(loopHistory);
+  const budgetCheckSha256 = sha256Text(JSON.stringify(budget));
+  const changedFileIndex = changedFiles.map((entry) => ({
+    status: entry.status,
+    path: entry.path,
+    oldPath: entry.oldPath ?? null
+  }));
+  const changedFileIndexSha256 = sha256Text(JSON.stringify(changedFileIndex));
+  const candidateDigest = computeCandidateDigest({
+    reviewedHeadCommit: headCommit,
+    contractSha256: contractHash,
+    sourceDiffSha256,
+    validationSha256,
+    acceptanceEvidenceSha256,
+    loopStateSha256,
+    milestoneHistorySha256,
+    budgetCheckSha256,
+    changedFileIndexSha256
+  });
+
+  const reviewerAPath = options.reviewerA ?? options.reviewerReport;
+  const reviewerBPath = options.reviewerB ?? options.reviewerReport;
+  let reviewerAVerdict = null;
+  let reviewerBVerdict = null;
+  const reviewerVerdictsProvided = Boolean(reviewerAPath || reviewerBPath);
+  const reviewerVerdictsRequired = status === "PASS" || (milestoneId === "P6-R1" && status === "HUMAN_REQUIRED");
+  if ((reviewerVerdictsRequired || reviewerVerdictsProvided) && !options.retrospective && !options.candidate) {
+    reviewerAVerdict = await readReviewerVerdict(
+      reviewerAPath ? resolveRepoPath(repoRoot, reviewerAPath) : undefined,
+      { reviewerId: "A", headCommit, candidateDigest, milestoneId }
+    );
+    reviewerBVerdict = await readReviewerVerdict(
+      reviewerBPath ? resolveRepoPath(repoRoot, reviewerBPath) : undefined,
+      { reviewerId: "B", headCommit, candidateDigest, milestoneId }
+    );
+    if (reviewerAVerdict.sourceDiffSha256 !== sourceDiffSha256) {
+      throw new Error("Reviewer A sourceDiffSha256 mismatch.");
+    }
+    if (reviewerBVerdict.packetDiffSha256 !== packetDiffSha256) {
+      throw new Error("Reviewer B packetDiffSha256 mismatch.");
+    }
+    if (reviewerAVerdict.verdict !== "PASS" || reviewerBVerdict.verdict !== "PASS") {
+      throw new Error(`${status} handoff requires reviewer A and reviewer B structured PASS verdicts when reviewer evidence is required or provided.`);
+    }
+  }
+  if (reviewerAVerdict) {
+    await writeFile(path.join(packetRoot, "reviewer-a.json"), `${JSON.stringify(reviewerAVerdict, null, 2)}\n`);
+  }
+  if (reviewerBVerdict) {
+    await writeFile(path.join(packetRoot, "reviewer-b.json"), `${JSON.stringify(reviewerBVerdict, null, 2)}\n`);
+  }
+
+  const fullDiffSection = patchInfo.companionRequired
+    ? [
+      "Full unified diff exceeds inline packet limits.",
+      "",
+      `- companionRequired: true`,
+      `- mandatory companion: changes.patch`,
+      `- patch size bytes: ${patchInfo.sizeBytes}`,
+      `- patch line count: ${patchInfo.lineCount}`
+    ].join("\n")
+    : [
+      `- companionRequired: false`,
+      `- patch size bytes: ${patchInfo.sizeBytes}`,
+      `- patch line count: ${patchInfo.lineCount}`,
+      "",
+      "```diff",
+      packetPatchBuffer.toString("utf8"),
+      "```"
+    ].join("\n");
+
+  const reviewPacket = [
+    "---",
+    `schemaVersion: ${packetSchemaVersion}`,
+    `packetStatus: ${packetStatus}`,
+    `milestoneOutcome: ${input.milestoneOutcome}`,
+    `evidenceCompleteness: ${packetEvidenceCompleteness}`,
+    `historicalValidationEvidence: ${input.historicalValidationEvidence}`,
+    `historicalReviewerEvidence: ${packetReviewerEvidence}`,
+    `retrospectiveRevalidation: ${input.retrospectiveRevalidation}`,
+    `retrospectiveReviewerStatus: ${input.retrospectiveReviewerStatus}`,
+    `retrospective: ${Boolean(options.retrospective)}`,
+    `milestoneId: ${milestoneId}`,
+    `milestoneTitle: ${milestoneTitle}`,
+    `generatedAt: ${reportGeneratedAt}`,
+    `branch: ${branch}`,
+    `reviewedBaseCommit: ${baseCommit}`,
+    `reviewedHeadCommit: ${headCommit}`,
+    `generatorCommit: ${generatorCommit}`,
+    `repositoryHeadAtGeneration: ${generatorCommit}`,
+    `workspaceCleanAtGeneration: ${workspaceClean}`,
+    `companionRequired: ${patchInfo.companionRequired}`,
+    `mandatoryCompanions: ${JSON.stringify(patchInfo.mandatoryCompanions)}`,
+    `sourceDiffSha256: ${sourceDiffSha256}`,
+    `packetDiffSha256: ${packetDiffSha256}`,
+    `diffFidelity: ${diffFidelity}`,
+    `budgetStatus: ${budget.budgetStatus ?? "not_available"}`,
+    `repairRound: ${budget.repairRound ?? "not_available"}`,
+    `maxRepairRounds: ${budget.maxRepairRounds ?? "not_available"}`,
+    `consecutiveNoProgressRounds: ${budget.consecutiveNoProgressRounds ?? "not_available"}`,
+    `maxConsecutiveNoProgressRounds: ${budget.maxConsecutiveNoProgressRounds ?? "not_available"}`,
+    `candidateDigest: ${candidateDigest}`,
+    "---",
+    "",
+    "# Review Request",
+    "",
+    "Review the packet against the frozen milestone contract. Use REVIEW_PACKET.md as the primary artifact. Upload changes.patch only when companionRequired is true. Do not request MANIFEST.json, validation.json, reviewer reports, or files directory unless this packet explicitly lists them.",
+    "",
+    "# Frozen Milestone Contract",
+    "",
+    contractText,
+    "",
+    "# Implementation Result",
+    "",
+    input.implementationSummary,
+    input.retrospectivePackagingNote ? `\nRetrospective Packaging Note: ${input.retrospectivePackagingNote}` : "",
+    "",
+    "# Git State",
+    "",
+    `- milestone start commit: ${baseCommit}`,
+    `- reviewed head commit: ${headCommit}`,
+    `- generator commit: ${generatorCommit}`,
+    `- repository head at generation: ${generatorCommit}`,
+    `- branch: ${branch}`,
+    "- commits in range:",
+    commitsInRange.split("\n").map((line) => `  - ${line}`).join("\n"),
+    "- git status --short:",
+    gitStatus.length ? gitStatus.map((line) => `  - ${line}`).join("\n") : "  - clean",
+    "- git diff --check records:",
+    diffChecks.map((record) => `  - ${record.label}: ${record.status}, exitCode=${record.exitCode}, command=${record.command}`).join("\n"),
+    `- workspace clean at generation: ${workspaceClean}`,
+    "- ignored runtime artifacts: `.artifacts/loop-validation/`, `.artifacts/loop-handoff/`, Electron `.runtime/` directories are excluded from source status.",
+    `- loop budget status: ${budget.budgetStatus ?? "not_available"}`,
+    `- loop budget repair round: ${budget.repairRound ?? "not_available"} / ${budget.maxRepairRounds ?? "not_available"}`,
+    `- loop budget no-progress round: ${budget.consecutiveNoProgressRounds ?? "not_available"} / ${budget.maxConsecutiveNoProgressRounds ?? "not_available"}`,
+    "",
+    "# Changed Files",
+    "",
+    "## git diff --name-status",
+    "",
+    changedFiles.length ? changedFiles.map((entry) => `- ${entry.status} ${entry.path}`).join("\n") : "- none",
+    redactedFiles.length ? "\nRedacted changed paths:\n" + redactedFiles.map((entry) => `- ${entry.changeType ?? entry.status} ${entry.repositoryPath}: redacted=true, ruleId=${entry.ruleId ?? entry.reason ?? "sensitive_path"}`).join("\n") : "",
+    "",
+    "## git diff --stat",
+    "",
+    "```text",
+    diffStat,
+    "```",
+    "",
+    "## File Purpose Index",
+    "",
+    changedFiles.length ? changedFiles.map((entry) => `- ${entry.path}: ${input.changedFilePurposes[entry.path]}`).join("\n") : "- none",
+    "",
+    "# Full Diff",
+    "",
+    fullDiffSection,
+    "",
+    "# Changed File Snapshots",
+    "",
+    snapshots.length ? snapshots.map((snapshot) => (
+      `- ${snapshot.repositoryPath}: ${snapshot.binary ? "binary indexed only" : snapshot.packetPath}, sha256=${snapshot.sha256}, sizeBytes=${snapshot.sizeBytes}`
+    )).join("\n") : "- none",
+    "",
+    "# Acceptance Evidence",
+    "",
+    acceptanceEvidenceMarkdown(input.acceptanceEvidence),
+    options.candidate
+      ? "\nCandidate phase note: reviewer JSON, seal metadata, latest pointer verification, and post-seal verifier evidence are intentionally pending until the seal phase. Candidate FINAL_RESPONSE.txt is a preview only; the final sealed packet will regenerate it. The candidate digest covers the pre-seal evidence reviewers must bind to."
+      : "",
+    options.retrospective
+      ? "\nRetrospective evidence authority: acceptance entries are derived from the frozen M1 contract and explicitly mark historical validation/reviewer evidence availability. Narrative loop history is not original evidence."
+      : "\nEvidence authority: acceptance entries are provided by the milestone handoff input and backed by validation.json, reviewer-a.json, reviewer-b.json, MANIFEST.json, and current Git state.",
+    "",
+    "# Validation Evidence",
+    "",
+    `- validation status: ${validationEvidenceStatus}`,
+    `- validation schemaVersion: ${validation.schemaVersion ?? "not_available"}`,
+    `- repositoryHeadCommitAtStart: ${validation.repositoryHeadCommitAtStart ?? "not_available"}`,
+    `- repositoryHeadCommitAtFinish: ${validation.repositoryHeadCommitAtFinish ?? "not_available"}`,
+    `- sourceWorkspaceCleanAtStart: ${validation.sourceWorkspaceCleanAtStart ?? "not_available"}`,
+    `- sourceWorkspaceCleanAtFinish: ${validation.sourceWorkspaceCleanAtFinish ?? "not_available"}`,
+    `- evidence completeness: ${packetEvidenceCompleteness}`,
+    "- handoff input validation runs:",
+    validationRunsMarkdown(input.validationRuns),
+    "- validation.json step summary:",
+    summarizeValidation(validation),
+    `- known gaps: ${JSON.stringify(validation.knownGaps ?? {})}`,
+    "",
+    "# Independent Reviewer Reports",
+    "",
+    "## Reviewer A",
+    "",
+    `- status: ${reviewerAVerdict?.verdict ?? (options.candidate ? "PENDING_CANDIDATE_REVIEW" : "NOT_AVAILABLE")}`,
+    "",
+    reviewerVerdictMarkdown(reviewerAVerdict),
+    "",
+    "## Reviewer B",
+    "",
+    `- status: ${reviewerBVerdict?.verdict ?? (options.candidate ? "PENDING_CANDIDATE_REVIEW" : "NOT_AVAILABLE")}`,
+    "",
+    reviewerVerdictMarkdown(reviewerBVerdict),
+    "",
+    "# Loop History",
+    "",
+    loopHistory,
+    "",
+    "# Remaining Risks And Gaps",
+    "",
+    remainingRisksMarkdown(input.remainingRisks),
+    "",
+    "# Artifact Index",
+    "",
+    "See `artifact-index.json` for machine-readable artifact records. The Review Packet is designed to be sufficient without uploading MANIFEST.json, validation.json, reviewer reports, or files directory unless FINAL_RESPONSE.txt explicitly lists a companion.",
+    "",
+    "# Human Decision",
+    "",
+    humanDecisionText,
+    "",
+    "# Recommended Next Milestone",
+    "",
+    input.recommendedNextMilestone,
+    ""
+  ].join("\n");
+
+  validatePacketContent(reviewPacket);
+  await writeFile(path.join(packetRoot, "REVIEW_PACKET.md"), reviewPacket);
+
+  const artifactIndexRecords = [
+    await artifactRecord(packetRoot, "REVIEW_PACKET.md", "review-packet", "text/markdown", true),
+    await artifactRecord(packetRoot, "changes.patch", "diff", "text/x-diff", true),
+    await artifactRecord(packetRoot, "validation.json", "validation-summary", "application/json", false),
+    await artifactRecord(packetRoot, "budget-check.json", "loop-budget-check", "application/json", false)
+  ];
+  if (reviewerAVerdict) {
+    artifactIndexRecords.push(await artifactRecord(packetRoot, "reviewer-a.json", "independent-reviewer-a-verdict", "application/json", false));
+  }
+  if (reviewerBVerdict) {
+    artifactIndexRecords.push(await artifactRecord(packetRoot, "reviewer-b.json", "independent-reviewer-b-verdict", "application/json", false));
+  }
+  if (humanDecisionPacketPath) {
+    artifactIndexRecords.push(await artifactRecord(packetRoot, humanDecisionPacketPath, "human-decision", "text/markdown", false, true));
+  }
+  for (const snapshot of snapshots) {
+    if (snapshot.packetPath) {
+      artifactIndexRecords.push(await artifactRecord(packetRoot, snapshot.packetPath, "changed-file-snapshot", "application/octet-stream", true));
+    }
+  }
+  artifactIndexRecords.sort((a, b) => compareStrings(a.path, b.path));
+
+  const manifest = {
+    schemaVersion: packetSchemaVersion,
+    packetStatus,
+    milestoneOutcome: input.milestoneOutcome,
+    evidenceCompleteness: packetEvidenceCompleteness,
+    historicalValidationEvidence: input.historicalValidationEvidence,
+    historicalReviewerEvidence: packetReviewerEvidence,
+    retrospectiveRevalidation: input.retrospectiveRevalidation,
+    retrospectiveReviewerStatus: input.retrospectiveReviewerStatus,
+    retrospective: Boolean(options.retrospective),
+    reviewedBaseCommit: baseCommit,
+    reviewedHeadCommit: headCommit,
+    generatorCommit,
+    repositoryHeadAtGeneration: generatorCommit,
+    workspaceCleanAtGeneration: workspaceClean,
+    companionRequired: patchInfo.companionRequired,
+    mandatoryCompanions: patchInfo.mandatoryCompanions,
+    sourceDiffSha256,
+    packetDiffSha256,
+    diffFidelity,
+    candidateDigest,
+    candidateDigestParts: {
+      reviewedHeadCommit: headCommit,
+      contractSha256: contractHash,
+      sourceDiffSha256,
+      validationSha256,
+      acceptanceEvidenceSha256,
+      loopStateSha256,
+      milestoneHistorySha256,
+      budgetCheckSha256,
+      changedFileIndexSha256
+    },
+    changedFileIndex,
+    seal: {
+      phase: options.candidate ? "candidate" : "sealed",
+      allowedAdditions: [
+        "reviewer structured verdicts",
+        "seal metadata",
+        "FINAL_RESPONSE.txt"
+      ]
+    },
+    diffChecks,
+    patch: patchInfo,
+    milestone: {
+      id: milestoneId,
+      title: milestoneTitle,
+      baseCommit,
+      headCommit,
+      branch,
+      retrospective: Boolean(options.retrospective)
+    },
+    workspace: {
+      clean: workspaceClean,
+      status: gitStatus
+    },
+    validation: {
+      status: validationEvidenceStatus,
+      summaryPath: "validation.json"
+    },
+    budgetCheck: {
+      status: budget.status ?? "not_available",
+      summaryPath: "budget-check.json",
+      budgetStatus: budget.budgetStatus ?? "not_available",
+      repairRound: budget.repairRound ?? null,
+      maxRepairRounds: budget.maxRepairRounds ?? null,
+      consecutiveNoProgressRounds: budget.consecutiveNoProgressRounds ?? null,
+      maxConsecutiveNoProgressRounds: budget.maxConsecutiveNoProgressRounds ?? null
+    },
+    reviewers: {
+      reviewerA: reviewerAVerdict
+        ? {
+          status: reviewerAVerdict.verdict,
+          verdictPath: "reviewer-a.json",
+          candidateDigest: reviewerAVerdict.candidateDigest,
+          sourceDiffSha256: reviewerAVerdict.sourceDiffSha256
+        }
+        : { status: options.candidate ? "PENDING_CANDIDATE_REVIEW" : "NOT_AVAILABLE" },
+      reviewerB: reviewerBVerdict
+        ? {
+          status: reviewerBVerdict.verdict,
+          verdictPath: "reviewer-b.json",
+          candidateDigest: reviewerBVerdict.candidateDigest,
+          packetDiffSha256: reviewerBVerdict.packetDiffSha256
+        }
+        : { status: options.candidate ? "PENDING_CANDIDATE_REVIEW" : "NOT_AVAILABLE" }
+    },
+    files: snapshots,
+    redactedFiles,
+    artifacts: artifactIndexRecords,
+	    generatedFiles: [
+	      "REVIEW_PACKET.md",
+	      "MANIFEST.json",
+	      "changes.patch",
+	      "validation.json",
+	      "budget-check.json",
+	      reviewerAVerdict ? "reviewer-a.json" : null,
+	      reviewerBVerdict ? "reviewer-b.json" : null,
+	      !options.candidate ? "post-seal-verification.json" : null,
+	      "artifact-index.json",
+	      "FINAL_RESPONSE.txt",
+	      "files/",
+      "decisions/"
+    ].filter(Boolean),
+    selfReferentialFilesExcludedFromHash: [
+      "MANIFEST.json",
+      "artifact-index.json"
+    ],
+    humanDecision: status === "HUMAN_REQUIRED"
+      ? { sourcePath: options.decisionFile, packetPath: humanDecisionPacketPath }
+      : null
+  };
+
+  await writeFile(path.join(packetRoot, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  const response = finalResponse({
+    status,
+    packetRoot,
+    companionRequired: patchInfo.companionRequired,
+    visualArtifacts,
+    optionalReference,
+    humanDecision
+  });
+  await writeFile(path.join(packetRoot, "FINAL_RESPONSE.txt"), response);
+  artifactIndexRecords.push(await artifactRecord(packetRoot, "FINAL_RESPONSE.txt", "final-response", "text/plain", true));
+  artifactIndexRecords.sort((a, b) => compareStrings(a.path, b.path));
+  await writeFile(path.join(packetRoot, "artifact-index.json"), `${JSON.stringify({
+    schemaVersion: packetSchemaVersion,
+    artifacts: artifactIndexRecords
+  }, null, 2)}\n`);
+
+  manifest.files = snapshots;
+  manifest.artifacts = artifactIndexRecords;
+  await writeFile(path.join(packetRoot, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+
+  let sealVerification = {
+    status: "not_run",
+    errors: ["candidate packet is not sealed"]
+  };
+	  if (!options.candidate) {
+	    await copyLatest({ packetRoot, latestRoot, outputRoot });
+	    sealVerification = await verifySealedPacket({
+      repoRoot,
+      packetRoot,
+      latestRoot,
+      manifest,
+      finalResponseText: response
+    });
+	    if (sealVerification.status !== "pass") {
+	      throw new Error(`post-seal verifier failed: ${sealVerification.errors.join("; ")}`);
+	    }
+	    await writeFile(path.join(packetRoot, "post-seal-verification.json"), `${JSON.stringify(sealVerification, null, 2)}\n`);
+	  }
+  manifest.sealVerification = sealVerification;
+  await writeFile(path.join(packetRoot, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  if (!options.candidate) {
+    await copyLatest({ packetRoot, latestRoot, outputRoot });
+  }
+  return { packetRoot, latestRoot, manifest, finalResponse: response };
+}
+
+export async function main(argv = process.argv.slice(2)) {
+  const args = parseArgs(argv);
+  const result = await generateHandoffPacket(args);
+  console.log(`AUTO_SVGA_LOOP_HANDOFF_RESULT=${JSON.stringify({
+    status: args.status,
+    packetRoot: result.packetRoot,
+    latestRoot: result.latestRoot
+  })}`);
+}
+
+const isDirectRun = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

@@ -94,6 +94,11 @@ an interchangeable layer model. Treat its fusion/replacement data as
 format-specific metadata. Do not promise VAP export until an encoder,
 redistribution model, and desktop playback path are approved.
 
+Research note: `docs/research/vap-official-repository-research.md` records the
+2026-07-04 official Tencent VAP repository findings, including the stopped
+upstream maintenance state, `vapc` config model, fusion-mask semantics, 1504
+compatibility limit, and follow-up work package candidates.
+
 #### Lottie
 
 Lottie contains vector, text, shape, mask, expression, and external asset
@@ -282,6 +287,44 @@ Current client blockers:
 4. browser globals and UI logic mixed with playback state.
 5. Node paths used as command inputs rather than host-neutral sources.
 
+### 7.1 Short-term compatibility guardrails
+
+The current owner-visible product remains the short-term macOS SVGA client.
+VAP, Lottie, Windows, and AEB package intake are not short-term visible scope.
+However, the short-term UI/UX rebuild and client implementation should remove
+avoidable coupling that would otherwise multiply later migration cost.
+
+Allowed now, as non-visible infrastructure discipline:
+
+1. Route open, drag, save, overwrite, recent-file, menu, compare, settings,
+   logs, and appearance actions through host command boundaries.
+2. Treat the preview stage as a playback surface driven by a playback model.
+   The SVGA player is the current implementation, not the UI contract.
+3. Render overview facts, asset rows, replaceable rows, thumbnails, metric
+   actions, and empty/error states from normalized inspection and capability
+   models wherever practical.
+4. Keep unsupported-format, parse-failure, playback-failure, dependency-missing,
+   file-unreadable, and capability-unsupported feedback on a shared typed path.
+5. Keep local path display, redaction, recent records, save targets, temporary
+   files, and error details behind host/path helpers that can later support
+   Windows path and permission differences.
+6. Keep command identifiers platform-neutral so macOS menu entries can become
+   Windows menu, toolbar, shortcut, or command-palette entries without changing
+   product logic.
+7. Keep all player/parser dependencies offline-bundled and subject to license,
+   maintenance, bundle-size, codec, and redistribution review before use.
+
+Not allowed now:
+
+- visible VAP, Lottie, Windows, AEB, import-package, or format-selection
+  controls in the short-term app;
+- partial hidden playback paths that accept unsupported formats without product
+  acceptance;
+- inactive future-format placeholders;
+- new dependencies for Lottie, VAP, FFmpeg, video codecs, AI, or external
+  services without a separate approved task;
+- claiming Windows readiness or multi-format support from structural cleanup.
+
 ## 8. Dependency and license review
 
 No dependency is added by this proposal. Candidates require a separate
@@ -304,6 +347,10 @@ Primary references checked on 2026-06-13:
 - <https://github.com/Tencent/vap>
 - <https://github.com/photopea/UPNG.js>
 - <https://ffmpeg.org/legal.html>
+
+Additional VAP-specific research checked on 2026-07-04:
+
+- `docs/research/vap-official-repository-research.md`
 
 FFmpeg is the highest distribution risk. The current MP4 preview command uses
 `libx264`, which the FFmpeg legal checklist identifies as GPL-related. Do not

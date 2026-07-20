@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Auto SVGA Real Sample Audit</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header>
+      <strong>Auto SVGA Real Sample Audit</strong>
+      <span id="runtimeStatus">内部验证中</span>
+    </header>
+    <main>
+      <section class="playerPanel" aria-labelledby="previewTitle">
+        <div class="sectionTitle">
+          <h1 id="previewTitle">真实样本播放验证</h1>
+          <span id="playbackStatus">等待样本</span>
+        </div>
+        <canvas id="svgaWebCanvas" width="300" height="300" aria-label="svga-web audit canvas"></canvas>
+        <div id="legacyPlayer" aria-label="svgaplayerweb audit player"></div>
+      </section>
+      <section class="reportPanel" aria-labelledby="reportTitle">
+        <div class="sectionTitle">
+          <h2 id="reportTitle">检查报告</h2>
+          <span>只读</span>
+        </div>
+        <div id="reportRoot"></div>
+      </section>
+    </main>
+    <script src="/legacy-vendor/pako-2.1.0.min.js"></script>
+    <script src="/legacy-vendor/svgaplayerweb-2.3.1.min.js"></script>
+    <script type="module" src="/audit.js"></script>
+  </body>
+</html>

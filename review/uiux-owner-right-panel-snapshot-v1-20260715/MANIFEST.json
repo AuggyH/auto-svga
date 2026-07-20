@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "requirementId": "ASV-REQ-20260709-003",
+  "finding": "UIUX-MF-SHELL-CR-001",
+  "branch": "codex/uiux-multiformat-r12-conformance-20260715",
+  "baseCommit": "5f9ddff1411b1e4811328bcc7554c38ab026afab",
+  "status": "fix-ready-pending-pm-a0-code-review-routing",
+  "exactHeadBinding": "Fix Ready callback and post-commit source proof",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "da5da9d70063267e6b53184f6c5f174496ffdc64e2361a811023a2622bae27c3"
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sha256": "13458519705c413d45460afb254f68d7d7ae6df1e6a0c541b2aead41765540a7"
+    },
+    {
+      "path": "VALIDATION_SUMMARY.json",
+      "sha256": "1269bc819bfac4237fb863f2b291be86a999a1629a73b43e8068cf0f5a9635c6"
+    },
+    {
+      "path": "docs/reviews/2026-07-15-codex-uiux-owner-right-panel-snapshot-v1.md",
+      "sha256": "9595e20ddae8afa44ac88945a677315f1a4e046baa2ea49c901f1a97f9c87efd"
+    }
+  ],
+  "boundaries": {
+    "productionAssetsIncluded": false,
+    "rawPathsPublished": false,
+    "foregroundUsed": false,
+    "installedAppMutated": false,
+    "packagedOrPromoted": false,
+    "qaRouted": false,
+    "productOwnerAcceptanceClaimed": false,
+    "placementHostEdited": false,
+    "targetResetIntegrationBranch": false
+  }
+}

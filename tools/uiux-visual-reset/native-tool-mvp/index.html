@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Auto SVGA Launch Direction</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="asvLaunchDirection" aria-label="Auto SVGA 启动页静态方向稿">
+      <section class="asvWindow">
+        <div class="asvTrafficLights" aria-hidden="true">
+          <span class="asvTraffic asvTrafficClose"></span>
+          <span class="asvTraffic asvTrafficMin"></span>
+          <span class="asvTraffic asvTrafficMax"></span>
+        </div>
+
+        <div class="asvLaunchAction">
+          <div class="asvDropIcon" aria-hidden="true">
+            <svg viewBox="0 0 28 28">
+              <path d="M14 4v13" />
+              <path d="M9 9l5-5 5 5" />
+              <path d="M7 16v5h14v-5" />
+            </svg>
+          </div>
+          <div class="asvDropText">拖拽文件到此处</div>
+          <div class="asvOpenButton">
+            <svg viewBox="0 0 28 28" aria-hidden="true">
+              <path d="M4.5 9.5h7l2 3h10v9h-19z" />
+              <path d="M4.5 9.5v-3h6.5l2 3" />
+            </svg>
+            <span>打开文件</span>
+          </div>
+        </div>
+
+        <div class="asvRecentGroup" aria-label="最近打开">
+          <div class="asvRecentHeader">
+            <span>最近打开</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 8v11" />
+              <path d="M12 8v11" />
+              <path d="M16 8v11" />
+              <path d="M5 6h14" />
+              <path d="M9 6l1-2h4l1 2" />
+              <path d="M7 6l1 15h8l1-15" />
+            </svg>
+          </div>
+          <div class="asvRecentRows">
+            <div><span>战狼头像框.svga</span><time>4 分钟前</time></div>
+            <div><span>战狼头像框.svga</span><time>4 分钟前</time></div>
+            <div><span>战狼头像框.svga</span><time>4 分钟前</time></div>
+            <div><span>战狼头像框.svga</span><time>4 分钟前</time></div>
+            <div><span>战狼头像框.svga</span><time>4 分钟前</time></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

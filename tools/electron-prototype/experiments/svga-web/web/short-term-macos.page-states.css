@@ -1,0 +1,204 @@
+/* Page-state styles control app-level layout, active views, and environment preferences. */
+
+.macApp {
+  position: relative;
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-width: var(--asv-launch-min-width);
+  min-height: var(--asv-launch-min-height);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.macApp[data-app-state="launch"] {
+  grid-template-rows: 1fr;
+}
+
+.macApp[data-app-state="launch"] .titlebar {
+  min-height: var(--asv-toolbar-height);
+}
+
+.view {
+  grid-row: 2;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.macApp > .saveBanner {
+  grid-row: 1;
+}
+
+.macApp[data-app-state="preview"] .view,
+.macApp[data-app-state="compare"] .view,
+.macApp[data-app-state="edit"] .view,
+.macApp[data-app-state="loading"] .view,
+.macApp[data-app-state="failed"] .view,
+.macApp[data-app-state="unsupported"] .view {
+  grid-row: 2;
+}
+
+.macApp[data-app-state="preview"],
+.macApp[data-app-state="compare"],
+.macApp[data-app-state="edit"],
+.macApp[data-app-state="loading"],
+.macApp[data-app-state="failed"],
+.macApp[data-app-state="unsupported"] {
+  min-width: min(var(--asv-workbench-min-width), 100vw);
+  min-height: min(var(--asv-workbench-min-height), 100vh);
+}
+
+.view[hidden] {
+  display: none !important;
+}
+
+.launchView,
+.stateView {
+  display: grid;
+  place-items: center;
+  padding: var(--asv-space-6);
+  overflow: auto;
+}
+
+.stateView {
+  background: var(--asv-state-canvas-bg);
+  background-size: var(--asv-state-canvas-checker-size) var(--asv-state-canvas-checker-size), auto;
+}
+
+.launchView {
+  grid-row: 1 / -1;
+  place-items: stretch;
+  padding: 0;
+  background: var(--asv-window);
+}
+
+.previewView,
+.workbenchStateView {
+  display: grid;
+  grid-template-columns: minmax(var(--asv-preview-canvas-min-width), 1fr) var(--asv-right-panel-width);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--asv-preview-gap);
+  height: 100%;
+  min-height: 0;
+  padding: var(--asv-preview-gap);
+  background: var(--asv-workbench);
+}
+
+.workbenchStateView {
+  place-items: stretch;
+  overflow: hidden;
+}
+
+.unsupportedDropView {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.compareView {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--asv-right-panel-width);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--asv-preview-gap);
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--asv-preview-gap);
+  background: var(--asv-workbench);
+}
+
+.editView {
+  display: grid;
+  grid-template-columns: var(--asv-left-width) minmax(var(--asv-edit-canvas-min-width), 1fr) minmax(var(--asv-edit-right-panel-min-width), var(--asv-right-panel-width));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--asv-edit-view-gap);
+  height: 100%;
+  min-height: 0;
+  padding: var(--asv-edit-view-padding);
+  background: var(--asv-workbench);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: var(--asv-reduced-motion-duration) !important;
+    transition-duration: var(--asv-reduced-motion-duration) !important;
+  }
+
+  .launchCanvas {
+    animation: none !important;
+    background-position: 0 0, 0 0 !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --asv-color-surface-toolbar: var(--asv-color-surface-panel-strong);
+    --asv-color-surface-panel: var(--asv-color-surface-panel-strong);
+    --asv-color-surface-overlay: var(--asv-color-surface-panel-strong);
+    --asv-effect-titlebar-backdrop-filter: none;
+    --asv-effect-menu-backdrop-filter: none;
+    --asv-effect-drag-overlay-backdrop-filter: none;
+  }
+
+  .titlebar,
+  .contextMenu,
+  .dragDecisionOverlay {
+    backdrop-filter: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  :root {
+    --asv-right-panel-width: 360px;
+    --asv-left-width: var(--asv-left-width-compact);
+  }
+
+  .titlebar {
+    grid-template-columns: var(--asv-window-controls-width) minmax(0, 1fr);
+    gap: var(--asv-space-2);
+  }
+
+  .toolbarCluster {
+    gap: var(--asv-space-1);
+  }
+
+  .previewView,
+  .workbenchStateView,
+  .compareView,
+  .editView {
+    gap: var(--asv-preview-gap);
+    padding: var(--asv-preview-gap);
+  }
+
+  .previewView,
+  .workbenchStateView {
+    grid-template-columns: minmax(var(--asv-preview-canvas-min-width-compact), 1fr) var(--asv-right-panel-width);
+  }
+
+  .compareView {
+    grid-template-columns: minmax(0, 1fr) var(--asv-right-panel-width);
+  }
+}
+
+@media (max-height: 780px) {
+  .previewView,
+  .workbenchStateView,
+  .compareView,
+  .editView {
+    gap: var(--asv-preview-gap);
+    padding: var(--asv-preview-gap);
+  }
+
+  .titlebar {
+    gap: var(--asv-space-1);
+  }
+
+  .sectionHead {
+    align-items: center;
+  }
+
+  canvas {
+    max-width: 100%;
+    max-height: 100%;
+  }
+}

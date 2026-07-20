@@ -1,0 +1,37 @@
+{
+  "packetId": "asv-qa-20260711-001-vap-fusion-pixel-replacement-repair-20260714",
+  "requirement": "ASV-REQ-20260709-003",
+  "qaTicket": "ASV-QA-20260711-001",
+  "branch": "codex/0.2-vap-fusion-pixel-replacement-repair-20260714",
+  "base": "32990e90077ad90d7dd1c21bc4fe527d2dbe80c3",
+  "state": "fix-ready-pending-pm-independent-pre-cr-review",
+  "findings": [
+    "MF-VAP-FUSION-CR-001",
+    "MF-VAP-FUSION-PM-001"
+  ],
+  "selectionAuthority": {
+    "publicIdentity": "resourceId",
+    "canonicalRuntimeKeyRequired": true,
+    "canonicalRuntimeKeyUnique": true,
+    "pickerBindingSnapshotRequired": true,
+    "rendererAliasFallbackAllowed": false,
+    "proofAuthorityScripts": 3,
+    "proofPublicIdFallbackAllowed": false
+  },
+  "preCommitProofSha256": "ffff75db15c8a14b34ecf8c81a730102521c660b05a96445a97d3c69f738f1e7",
+  "files": [
+    "README.md",
+    "REVIEW_PACKET.md",
+    "MANIFEST.json"
+  ],
+  "boundaries": {
+    "installedAppMutated": false,
+    "foregroundUsed": false,
+    "qaRouted": false,
+    "packagingRouted": false,
+    "productionAssetCommitted": false,
+    "saveExportConversionClaimed": false,
+    "productOwnerAcceptanceClaimed": false,
+    "releaseReadinessClaimed": false
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "packet": "asv-req-20260709-003-runtime-failure-recovery-20260716",
+  "baseHead": "0f430fa2b63abe7b9e87a9336a087c4b2533e87f",
+  "branch": "codex/0.2-multiformat-daily-use-stability-20260716",
+  "productDiffSha256": "a7beed276675217274844b4e50d98fba32f8ac94e1a5957ddcf4adcc7ab56675",
+  "members": [
+    {
+      "path": "docs/reviews/2026-07-16-codex-multiformat-runtime-failure-recovery.md",
+      "sha256": "33a0e73ecead890ea7ed2e27bd25c0198696d87dabdbb7da5f20a3f94c39a13d"
+    },
+    {
+      "path": "review/asv-req-20260709-003-runtime-failure-recovery-20260716/README.md",
+      "sha256": "6248ac23ca8d6661bde974e0103128af3c951320738d458f5ce7e035860ff94b"
+    },
+    {
+      "path": "review/asv-req-20260709-003-runtime-failure-recovery-20260716/REVIEW_PACKET.md",
+      "sha256": "0063782eba1217fd62abe4bb526d202df937d2a43dcfbe88719e2c93a7cbf1b0"
+    },
+    {
+      "path": "review/asv-req-20260709-003-runtime-failure-recovery-20260716/VALIDATION_SUMMARY.json",
+      "sha256": "362ff580de27a2959e374acb5a93c28f9f5086eb23c2625bd235a18d6b4e798d"
+    }
+  ],
+  "nonclaims": {
+    "foregroundUsed": false,
+    "electronLaunched": false,
+    "installedAppMutated": false,
+    "qaRouted": false,
+    "packagingRouted": false,
+    "productOwnerAcceptance": false,
+    "releaseReadiness": false
+  }
+}

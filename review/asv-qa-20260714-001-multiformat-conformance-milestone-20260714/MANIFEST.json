@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "requirementId": "ASV-REQ-20260709-003",
+  "parentTicketId": "ASV-QA-20260714-001",
+  "branch": "codex/0.2-multiformat-conformance-milestone-20260714",
+  "baseCommit": "59f4001230a7f2834f3374034fa1e0cf5da83e14",
+  "status": "fix-ready-pending-independent-code-review",
+  "exactHeadBinding": "Fix Ready callback and post-commit proof sourceHead",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "91a818cf9d6efc8c26547d51a8f82f8763b0287d18c3a8bbd585b33a13b965c1"
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sha256": "5554e1c473b2fe076eb0241b7bb52f5857b06c081ee00fbd5af0969cea8f0b8b"
+    },
+    {
+      "path": "FINAL_RESPONSE.txt",
+      "sha256": "beb6713f6fe260629871ad8c350cbed6202ca0422ef70c0cd35b2b7f29603c44"
+    }
+  ],
+  "boundaries": {
+    "productionAssetsIncluded": false,
+    "rawPathsPublished": false,
+    "installedAppMutated": false,
+    "foregroundUsed": false,
+    "qaTicketsClosed": false
+  }
+}

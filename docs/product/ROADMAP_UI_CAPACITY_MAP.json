@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6-R1",
+  "mapId": "ROADMAP_UI_CAPACITY_MAP",
+  "principle": "Future roadmap capabilities must have a stable host region before they become product features. Reserved capacity does not imply implementation.",
+  "capabilities": [
+    {
+      "capability": "current_svga_preview_playback_inspection",
+      "phase": "P6-R1",
+      "hostRegions": ["source_document", "resources", "layers", "preview_stage", "inspector", "activity_history"],
+      "status": "implemented"
+    },
+    {
+      "capability": "asset_classification_sorting_abnormal_image_detection_memory_file_size_perf_safe_optimization_revalidate",
+      "phase": "Phase 2",
+      "hostRegions": ["resources", "inspector", "preview_stage", "activity_history"],
+      "status": "deferred_phase2_foundation_ready"
+    },
+    {
+      "capability": "imageKey_image_text_key_editing_replacement_validation",
+      "phase": "Phase 3",
+      "hostRegions": ["layers", "resources", "inspector", "preview_stage", "action_workflow"],
+      "status": "deferred_phase3_foundation_ready"
+    },
+    {
+      "capability": "sequence_frame_group_detection_alpha_scheduling_before_after_anti_flicker",
+      "phase": "Phase 4",
+      "hostRegions": ["resources", "inspector", "preview_stage", "activity_history"],
+      "status": "deferred_phase4_foundation_ready"
+    },
+    {
+      "capability": "ae_to_auto_svga_production_bridge_package_scan_bake_preview_export",
+      "phase": "AE Production Bridge",
+      "hostRegions": ["source_document", "preview_stage", "inspector", "resources", "action_workflow", "activity_history"],
+      "status": "owner_committed_priority_after_short_term"
+    },
+    {
+      "capability": "mid_term_native_adapter_and_connected_shell_integration",
+      "phase": "Mid-term",
+      "hostRegions": ["source_document", "preview_stage", "inspector", "resources", "action_workflow", "activity_history"],
+      "status": "mid_term_adapter_foundation"
+    },
+    {
+      "capability": "multi_format_workbench",
+      "phase": "Long-term",
+      "hostRegions": ["source_document", "preview_stage", "inspector", "resources"],
+      "status": "long_term_adapter_foundation"
+    },
+    {
+      "capability": "sweep_glow_shiny_ray_blend_particles_template_matching",
+      "phase": "Long-term",
+      "hostRegions": ["inspector", "preview_stage"],
+      "status": "long_term_backlog_or_later_phase"
+    },
+    {
+      "capability": "comfyui_motion_plan_agent_headless_generation",
+      "phase": "Long-term Agent Engine",
+      "hostRegions": ["source_document", "action_workflow", "activity_history"],
+      "status": "deferred_after_ae_bridge_and_explicit_ai_approval"
+    }
+  ],
+  "visibilityRules": [
+    "Do not expose inactive future features as clickable UI in P6-R1.",
+    "Do not reduce Web parity inventory or weaken parity checks.",
+    "Do not start Phase 2, Phase 3, Phase 4, conversion, export workbench, or Agent APIs from this map.",
+    "AE Production Bridge is owner-committed, but visible entry points still require a dedicated implementation lane and must not appear as inactive short-term controls.",
+    "ComfyUI, external AI, multimodal, and agent-driven generation remain lower priority than AE Production Bridge.",
+    "Use this map only to verify that current macOS IA can host future capabilities without becoming an engineering dashboard."
+  ],
+  "productionApproved": false,
+  "phase2Started": false
+}

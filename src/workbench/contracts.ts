@@ -30,14 +30,139 @@ export interface MotionTiming {
   loop?: boolean;
 }
 
+export type ImageAlphaBoundsStatus =
+  | "known"
+  | "fullyTransparent"
+  | "opaqueOnly"
+  | "unknown"
+  | "unsupported";
+
+export interface ImageAlphaBounds {
+  status: ImageAlphaBoundsStatus;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  transparentPaddingRatio?: number;
+}
+
+export interface ResourceContentHash {
+  algorithm: string;
+  value: string;
+  scope: "encoded_bytes" | "decoded_content";
+}
+
+export type MotionResourceRole =
+  | "static_image"
+  | "sequence_frame"
+  | "baked_sweep_frame"
+  | "mask_or_matte"
+  | "unknown";
+
 export interface MotionResourceInfo {
   id: string;
   name: string;
   kind: "image" | "video" | "vector" | "audio" | "font" | "unknown";
+  role?: MotionResourceRole;
   sizeBytes?: number;
   dimensions?: MotionDimensions;
+  alphaBounds?: ImageAlphaBounds;
+  contentHash?: ResourceContentHash;
   replaceable?: boolean;
   metadata?: Readonly<Record<string, unknown>>;
+}
+
+export type MemoryRiskLevel = "low" | "medium" | "high" | "unknown";
+
+export interface MotionResourceMemoryEstimate {
+  resourceId: string;
+  resourceName: string;
+  role?: MotionResourceRole;
+  estimatedDecodedBytes: number | null;
+  estimatedTextureBytes: number | null;
+}
+
+export interface MotionAssetMemoryEstimation {
+  bytesPerPixel: number;
+  resources: readonly MotionResourceMemoryEstimate[];
+  totalEstimatedDecodedResourceBytes: number | null;
+  largestResourcesByDecodedBytes: readonly MotionResourceMemoryEstimate[];
+  sequenceFrameEstimatedDecodedBytes: number | null;
+  unknownResourceIds: readonly string[];
+  memoryRiskLevel: MemoryRiskLevel;
+}
+
+export interface RoleMemoryDiagnostic {
+  role: MotionResourceRole;
+  resourceCount: number;
+  knownMemoryCount: number;
+  unknownMemoryCount: number;
+  totalEstimatedDecodedBytes: number | null;
+  totalEstimatedTextureBytes: number | null;
+  largestResourcesByDecodedBytes: readonly MotionResourceMemoryEstimate[];
+}
+
+export interface RoleAwareMemoryDiagnostics {
+  byRole: Readonly<Record<MotionResourceRole, RoleMemoryDiagnostic>>;
+  sequenceFrameEstimatedDecodedBytes: number | null;
+}
+
+export type SequenceResidencyModel =
+  | "all_frames_resident"
+  | "group_resident"
+  | "windowed_or_streaming"
+  | "sprite_sheet_candidate"
+  | "unknown";
+
+export type SequenceResidencyUncertainty = "low" | "medium" | "high";
+
+export interface SequenceResidencyGroup {
+  groupId: string;
+  role: "sequence_frame" | "baked_sweep_frame";
+  resourceIds: readonly string[];
+  frameCount: number;
+  totalEstimatedDecodedBytes: number | null;
+  evidence: readonly string[];
+  uncertainty: SequenceResidencyUncertainty;
+}
+
+export interface SequenceResidencyDiagnostics {
+  sequenceGroupCount: number;
+  framesPerGroup: readonly { groupId: string; frameCount: number }[];
+  totalSequenceFrameEstimatedDecodedBytes: number | null;
+  largestSequenceGroupsByDecodedBytes: readonly SequenceResidencyGroup[];
+  possibleResidencyModels: readonly SequenceResidencyModel[];
+  advisoryRiskLevel: MemoryRiskLevel;
+  evidence: readonly string[];
+  uncertainty: SequenceResidencyUncertainty;
+  ungroupedResourceIds: readonly string[];
+}
+
+export type EvidenceConfidence = "high" | "medium" | "low" | "unknown";
+export type EvidenceAvailability =
+  | "known"
+  | "partial"
+  | "insufficient_evidence"
+  | "not_applicable";
+
+export interface SequenceFrameEvidenceGroup {
+  key: string;
+  resourceIds: readonly string[];
+}
+
+export interface SequenceFrameEvidence {
+  analyzedResourceCount: number;
+  duplicateEvidenceStatus: EvidenceAvailability;
+  duplicateFrameGroups: readonly SequenceFrameEvidenceGroup[];
+  fullyTransparentFrames: readonly string[];
+  emptyOrNearEmptyFrames: readonly string[];
+  nearEmptyTransparentPaddingRatio: number;
+  repeatedAlphaBoundsGroups: readonly SequenceFrameEvidenceGroup[];
+  repeatedDimensionsGroups: readonly SequenceFrameEvidenceGroup[];
+  missingContentHashResourceIds: readonly string[];
+  missingAlphaBoundsResourceIds: readonly string[];
+  evidenceConfidence: EvidenceConfidence;
+  uncertainty: SequenceResidencyUncertainty;
 }
 
 export interface MotionLayerInfo {
@@ -134,15 +259,24 @@ export interface PlaybackAdapter<TTarget = unknown> {
   createSession(target: TTarget): PlaybackSession;
 }
 
+export interface MotionSpecProfile {
+  id: string;
+  label: string;
+  purpose: string;
+  approvedForNewDelivery: boolean;
+}
+
 export interface MotionSpec {
   id: string;
   label: string;
+  profile?: MotionSpecProfile;
   maxFileSizeBytes?: number;
   maxDimensions?: MotionDimensions;
   maxDurationMs?: number;
   maxFps?: number;
   maxResourceCount?: number;
   maxResourceDimensions?: MotionDimensions;
+  maxTransparentPaddingRatio?: number;
   metadata?: Readonly<Record<string, unknown>>;
 }
 

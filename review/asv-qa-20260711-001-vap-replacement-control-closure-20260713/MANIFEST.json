@@ -1,0 +1,12 @@
+{
+  "requirement": "ASV-REQ-20260709-003",
+  "ticket": "ASV-QA-20260711-001",
+  "branch": "codex/0.2-vap-replacement-control-20260713",
+  "base": "2795dcb786a8579125fc8fdfe92cebeb014d0766",
+  "status": "implementation-ready-pending-code-review",
+  "containsProductionAssets": false,
+  "containsOwnerMaterial": false,
+  "packagePromotion": false,
+  "qaRouted": false,
+  "packagingRouted": false
+}

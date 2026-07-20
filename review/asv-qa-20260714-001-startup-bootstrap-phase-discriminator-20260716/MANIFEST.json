@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "packet": "asv-qa-20260714-001-startup-bootstrap-phase-discriminator-20260716",
+  "generatedAt": "2026-07-15T18:35:09.632Z",
+  "members": [
+    {
+      "name": "README.md",
+      "sizeBytes": 384,
+      "sha256": "f45958b386ab8764249dbc4e0f88d2794666422dc61ea96fcdde57db4a5aead5"
+    },
+    {
+      "name": "REVIEW_PACKET.md",
+      "sizeBytes": 2997,
+      "sha256": "9af6034093e4f65d10970cff401d0e2b2da3b6ee23f8b2f00ad2b06bbc4e8638"
+    },
+    {
+      "name": "VALIDATION_SUMMARY.json",
+      "sizeBytes": 2069,
+      "sha256": "d36470dede66d901982e7b15fb7147466fa43c940de2f08fbabc8af9350cf366"
+    }
+  ]
+}

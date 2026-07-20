@@ -15,6 +15,7 @@ export interface SvgaSpriteInspection {
   imageKey: string;
   matteKey: string;
   frameCount: number;
+  frameAlphas?: readonly number[];
 }
 
 export interface SvgaMovieInspection {

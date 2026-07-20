@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "ticketId": "ASV-QA-20260708-004",
+  "status": "Fix Ready",
+  "branch": "agent/codex/short-term-preview-qa-20260708",
+  "fixCommit": "94424954",
+  "generatedAt": "2026-07-08T18:09:32+08:00",
+  "privacy": {
+    "usesProductionAsset": false,
+    "productionAssetCommitted": false,
+    "rawOwnerAssetAlias": "owner-current-compare-repro-001",
+    "notes": "Callback evidence uses synthetic smoke fixtures and redacted local paths only."
+  },
+  "rootCause": {
+    "summary": "The visible Compare exit button was rendered inside the top draggable titlebar hit area. The menu command exited Compare because it bypassed pointer hit testing.",
+    "fixedBoundary": "Compare right information surface content is inset below the titlebar hit area."
+  },
+  "codeEvidence": {
+    "compareInfoTopInsetUsesToolbarToken": true,
+    "rendererPointerHitProofAdded": true,
+    "mainProcessProofValidationAdded": true,
+    "staticRegressionAssertionsAdded": true
+  },
+  "runtimeEvidence": {
+    "source": ".artifacts/product/short-term/short-term-design-interaction-proof.json",
+    "passed": true,
+    "compareExitButtonPointerPathWorks": true,
+    "compareExitButtonBelowTitlebar": true,
+    "compareExitButtonPointerProof": {
+      "buttonRendered": true,
+      "buttonTop": 66,
+      "titlebarBottom": 46,
+      "hitX": 646,
+      "hitY": 79,
+      "hitTargetTag": "button",
+      "hitTargetAction": "back-preview",
+      "hitTargetIsExitButton": true,
+      "exitedToPreview": true
+    }
+  },
+  "validation": [
+    {
+      "command": "npm run build",
+      "result": "pass"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "result": "pass",
+      "note": "Required normal local permissions because sandboxed run cannot bind 127.0.0.1."
+    },
+    {
+      "command": "npm run desktop:short-term:design-system-check",
+      "result": "pass"
+    },
+    {
+      "command": "npm run desktop:smoke",
+      "result": "pass",
+      "note": "Smoke output reported shortTermDesignInteractionProof=true and passed=true."
+    }
+  ],
+  "ownerLocalStableApp": {
+    "path": "/Users/huangtengxin/Applications/Auto SVGA.app",
+    "knownBaselineCommitBeforeFix": "a23fa0d828fd739b00e8e04d762d4e10f1aeb7af",
+    "containsFixCommit": false,
+    "handoffRequirement": "Release/Packaging or a clean local-stable promotion must refresh the owner-used app before QA regression on the owner baseline."
+  },
+  "qaRegressionRequest": {
+    "rerunOriginalSteps": true,
+    "expectedResult": "After entering Compare mode, a real pointer click on the visible page button exits to Preview; the View menu exit path remains working.",
+    "adjacentChecks": [
+      "Enter Compare from the View menu.",
+      "Click the visible exit button with a real pointer.",
+      "Confirm the app leaves Compare mode.",
+      "Confirm View -> Exit Compare still leaves Compare mode.",
+      "Confirm the button remains visibly below the titlebar hit area at the tested window size."
+    ]
+  }
+}

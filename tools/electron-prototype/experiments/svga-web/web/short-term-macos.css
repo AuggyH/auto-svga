@@ -1,0 +1,23 @@
+/* App base styles stay small; UI structure lives in token, atom, molecule, component, module, and page-state CSS. */
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  min-width: var(--asv-launch-min-width);
+  min-height: var(--asv-launch-min-height);
+  overflow: hidden;
+  background: var(--asv-window);
+  color: var(--asv-text);
+  font-family: var(--asv-font);
+  font-size: var(--asv-type-size-body);
+  line-height: 1.42;
+  letter-spacing: 0;
+  user-select: text;
+}

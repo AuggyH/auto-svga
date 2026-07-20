@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "packetType": "review-packet",
+  "task": "packaging-0.2-alpha1-runtime-proof",
+  "branch": "codex/packaging-0.2-alpha1-runtime-proof-20260711",
+  "baseCommit": "33755c4221365dc924da2cd37b8370f14f147726",
+  "sourceRepairCommit": "530a9d743b5174091588078781ce018941029ea2",
+  "product": {
+    "name": "Auto SVGA",
+    "productVersionLine": "0.2.x",
+    "productVersion": "0.2.0",
+    "productName": "Multi-format Preview MVP",
+    "releaseStage": "alpha.1",
+    "distributionChannel": "internal",
+    "candidateChannel": "local/internal candidate",
+    "bundleShortVersion": "0.2.0-alpha.1",
+    "bundleVersion": "0.2.0-alpha.1",
+    "ownerVisibleLabel": "Auto SVGA 0.2.0-alpha.1 internal candidate"
+  },
+  "changedFiles": [
+    "tools/electron-prototype/experiments/svga-web/packaging/macos/Info.plist",
+    "tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs",
+    "tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs",
+    "tools/electron-prototype/experiments/svga-web/scripts/prepare-runtime.mjs",
+    "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs"
+  ],
+  "approvedRuntimeDependencies": [
+    {
+      "packageName": "lottie-web",
+      "version": "5.13.0"
+    },
+    {
+      "packageName": "video-animation-player",
+      "version": "1.0.5"
+    }
+  ],
+  "validation": {
+    "scriptSyntaxChecks": "PASS",
+    "focusedMacosPackageProofTests": "PASS 8/8",
+    "svgaWebElectronPrototypeSuite": "PASS 59/59",
+    "gitDiffCheck": "PASS",
+    "packageLockScan": "PASS no output",
+    "mediaArchiveGeneratedOutputScan": "PASS no output"
+  },
+  "nonClaims": [
+    "no package candidate archive generated",
+    "no owner-visible app replacement",
+    "no local-stable promotion",
+    "no foreground visual acceptance",
+    "no QA route",
+    "no signing or notarization",
+    "no beta, RC, public release, or distribution readiness",
+    "no Lottie or VAP product support claim",
+    "no Product Owner acceptance"
+  ]
+}

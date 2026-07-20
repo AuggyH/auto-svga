@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "ticketId": "ASV-QA-20260708-006",
+  "status": "Fix Ready",
+  "ownerLane": "Short-term Main Engineer",
+  "branch": "agent/codex/short-term-preview-qa-20260708",
+  "fixImplementationCommit": "5527d0235e707d0cceb7d8ff1705040052c51f40",
+  "fixImplementationTree": "4d5e3810e76b02334b4a24a0b7d5596d17c99496",
+  "generatedAt": "2026-07-08T19:18:08+08:00",
+  "fixReportPath": "docs/quality/reports/ASV-QA-20260708-006-fix.md",
+  "rootCauseSummary": "Launch/workbench sizing was synchronized only on renderer view changes; the Electron main process did not preserve launch dimensions during move, resize, or display-metrics events across runtime-detected displays.",
+  "implementedBehavior": {
+    "preservesLaunchSizeAcrossDisplayMovement": true,
+    "usesRuntimeDisplayWorkArea": true,
+    "hardcodedDisplayRole": false,
+    "hardcodedCoordinateSign": false,
+    "hardcodedDisplayName": false,
+    "explicitLaunchResizeStillUpdatesPreservedSize": true,
+    "workbenchSizingRemainsForLoadedNonLaunchViews": true,
+    "failedEmptyStateUsesLaunchSizing": true
+  },
+  "changedFiles": [
+    "tools/electron-prototype/experiments/svga-web/main.cjs",
+    "tools/electron-prototype/experiments/svga-web/short-term-window-bounds-policy.cjs",
+    "tools/electron-prototype/experiments/svga-web/web/short-term-macos-controller.mjs",
+    "tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs",
+    "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs"
+  ],
+  "validation": [
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/short-term-window-bounds-policy.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs",
+      "status": "passed"
+    },
+    {
+      "command": "npm run desktop:short-term:design-system-check",
+      "status": "passed"
+    },
+    {
+      "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+      "status": "passed",
+      "summary": "34 tests passed, including short-term launch window policy preserves compact bounds across runtime display work areas."
+    },
+    {
+      "command": "npm run desktop:smoke",
+      "status": "passed",
+      "summary": "Product smoke reported passed=true."
+    },
+    {
+      "command": "npm run desktop:p2:normal-proof",
+      "status": "known_limitation_not_used_as_pass_gate",
+      "summary": "Ordinary startup proof launched, but existing aggregate still exited non-zero because auditPanel=false; not a new ASV-QA-20260708-006 regression."
+    }
+  ],
+  "qaRegressionNotes": {
+    "ownerUsedLocalStablePath": "/Users/huangtengxin/Applications/Auto SVGA.app",
+    "ownerUsedLocalStableBuildCommitAtIntake": "667c6f1a23726c6ec5c6ab2258160e507ec9ed44",
+    "localStableRefreshRequiredBeforeQaRegression": true,
+    "refreshRouting": "Release/Packaging Owner",
+    "regressionRequest": "Refresh owner-used local stable app to include fixImplementationCommit or descendant, then manually drag the launch window between runtime-detected displays and verify launch dimensions stay compact unless explicitly resized or a file is opened."
+  },
+  "privacy": {
+    "committedOwnerScreenshots": false,
+    "committedProductionAssets": false,
+    "committedLocalRuntimeOutput": false
+  }
+}

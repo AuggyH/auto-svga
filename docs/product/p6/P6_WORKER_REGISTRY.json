@@ -1,0 +1,818 @@
+{
+  "schemaVersion": 3,
+  "milestoneId": "P6",
+  "integrationCoordinator": "A0",
+  "integrationBranch": "agent/codex/p6-integration",
+  "integrationBaseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
+  "lastIntegratedWorkerCommit": "46076eb3ee3cf9e960e38fd7c97912c20ff1b216",
+  "currentRepairRound": 6,
+  "lifecycleStatus": "terminal_human_required_pending_owner_review",
+  "finalHeadBinding": {
+    "source": "ignored_generated_artifact",
+    "path": ".artifacts/product/P6/worker-registry-final.json",
+    "trackedRegistryDoesNotClaimFinalHead": true,
+    "actualFinalHeadCommitMustEqualGitHead": true
+  },
+  "protocolLoadedAt": "2026-06-22T09:38:22Z",
+  "threadListRefreshedAt": "2026-06-22T13:38:00Z",
+  "registryRefreshedAt": "2026-06-22T17:53:29Z",
+  "registryValidation": {
+    "status": "pass",
+    "checkedAt": "2026-06-22T17:53:29Z",
+    "errors": []
+  },
+  "rules": {
+    "formalWorkersMustBeVisibleProjectWorktreeThreads": true,
+    "subagentsLimitedToReadOnlyAuditAndReview": true,
+    "reuseExistingThreadsBeforeCreatingWorkers": true,
+    "a0OnlyIntegrationCoordinator": true,
+    "workerPassDoesNotImplyMilestonePass": true,
+    "heavyValidationRunsSerially": true,
+    "appDebuggingShouldAvoidForegroundWindows": true
+  },
+  "repair4ExternalReview": {
+    "reviewedHeadCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+    "externalOutcome": "REPAIR_REQUIRED",
+    "productOutcome": "LOCAL_PREVIEW_VISUAL_DIRECTION_ACCEPTED_BUT_FULL_PARITY_NOT_PROVEN"
+  },
+  "repair4TerminalEvidence": {
+    "a0RepairCommit": "bf1d71be6141946fde9908b4479be41bf5a14355",
+    "parityReportPath": ".artifacts/product/P6/p6-parity-report.json",
+    "parityStatus": "HUMAN_REQUIRED",
+    "passingSections": [
+      "browserRegression",
+      "desktopRuntimeProof",
+      "securityAudit",
+      "accessibilityReport",
+      "artifactIndex"
+    ],
+    "nonPassingSections": [
+      "visualParity",
+      "featureParity",
+      "interactionParity",
+      "stateParity",
+      "motionParity"
+    ],
+    "phase2Status": "NOT_STARTED"
+  },
+  "repair5ExternalReview": {
+    "reviewedHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+    "externalOutcome": "REPAIR_REQUIRED",
+    "productOutcome": "HONEST_PARITY_REPORT_AVAILABLE_BUT_FULL_PARITY_INCOMPLETE"
+  },
+  "repair5Entry": {
+    "enteredAt": "2026-06-22T13:38:00Z",
+    "startHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+    "budgetCheck": {
+      "status": "pass",
+      "nextRepairAllowed": true,
+      "nextRepairRound": 5,
+      "budgetStatus": "within_budget"
+    },
+    "phase2Status": "NOT_STARTED",
+    "terminalHandoffReadyReason": "false until all required parity items pass, all Worker contributions are integrated or retired, final validation passes twice, Reviewer A/B pass, bundle gates pass, and final handoff artifacts are regenerated from the final source head"
+  },
+  "repair5BlockingMatrix": {
+    "reviewedReportPath": ".artifacts/product/P6/p6-parity-report.json",
+    "reviewedReportHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+    "status": "superseded_by_repair_5_terminal_evidence",
+    "currentRequiredFailures": {},
+    "historicalRequiredFailureCategories": [
+      "visualParity",
+      "featureParity",
+      "interactionParity",
+      "stateParity",
+      "motionParity",
+      "runtimeAndAccessibility"
+    ]
+  },
+  "repair5Workers": [
+    {
+      "workerId": "A1",
+      "waveId": "P6-R5",
+      "role": "Runtime Inventory Accuracy",
+      "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a1-runtime-inventory",
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "dfb8e7c290135637eb91e7a2eda17189733c5f26",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T14:18:00Z",
+      "ownedPaths": [
+        "docs/product/P6_WEB_PRODUCT_BASELINE.md",
+        "docs/product/P6_WEB_FEATURE_INVENTORY.md",
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        "dedicated Web inventory scripts and tests"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": [
+        "A2 may resume formal product-state implementation from A1-integrated head 748c599800d0d5e79c89afaeb366ef387fe20840."
+      ],
+      "integrationCommit": "748c599800d0d5e79c89afaeb366ef387fe20840",
+      "tests": [
+        "npm run build && node --test dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD",
+        "node tools/multi-worker-protocol-check.mjs"
+      ],
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A1-R5.md"
+    },
+    {
+      "workerId": "A2",
+      "waveId": "P6-R5",
+      "role": "Shared Product States And Parity Behavior",
+      "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a2-product-states",
+      "baseCommit": "748c599800d0d5e79c89afaeb366ef387fe20840",
+      "headCommit": "beb9dd19c0c1988e6599dc36b4d09b972f85fdda",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T14:22:27Z",
+      "ownedPaths": [
+        "tools/shared/product-frontend/",
+        "shared product shell/state/motion tests"
+      ],
+      "dependencies": [
+        "A1"
+      ],
+      "requestedIntegrationChanges": [
+        "A4 and A0 should consume expanded __autoSvgaDesktopStateProbe fields for Repair 5 rendered-state evidence.",
+        "Remaining Electron host/runtime proof gaps stay with A3 and A0."
+      ],
+      "integrationCommit": "7b4a9af380b3c6c7810aca15b2b81c51bf757420",
+      "tests": [
+        "node --test tools/shared/product-frontend/source-sharing.test.mjs",
+        "node --check tools/shared/product-frontend/product-app.mjs",
+        "node --test tools/svga-player-preview/inspection-report-view.test.mjs tools/svga-player-preview/server-inspection-report.test.mjs",
+        "npm run build && node --test dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ],
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A2-R5.md"
+    },
+    {
+      "workerId": "A3",
+      "waveId": "P6-R5",
+      "role": "Electron Host And Normal App Runtime",
+      "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a3-host-app-runtime",
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "1c4d40d9999cd893953659ad5bcfbf79de346fc6",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T14:23:54Z",
+      "ownedPaths": [
+        "Electron main process",
+        "Electron preload",
+        "ElectronHostAdapter",
+        "host-only IPC tests",
+        "Desktop latest-artifact, file, menu, and drop host integration"
+      ],
+      "dependencies": [
+        "A2"
+      ],
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "a345d9b53b08c2d942c0014809569863626f1d65",
+      "tests": [
+        "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ],
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A3-R5.md"
+    },
+    {
+      "workerId": "A4",
+      "waveId": "P6-R5",
+      "role": "Runtime Scenarios Motion And Parity Evidence",
+      "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a4-scenarios-motion-parity",
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "ffc8a616e4ab3ead0132154f0ef3d9c09468775b",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T14:26:11Z",
+      "ownedPaths": [
+        "tools/p6/generate-p6-evidence.mjs",
+        "runtime scenario runner",
+        "parity generator",
+        "screenshot and motion capture helpers",
+        "parity mutation tests",
+        "multi-worker protocol checker",
+        "visible-review protocol checker"
+      ],
+      "dependencies": [
+        "A1",
+        "A2",
+        "A3"
+      ],
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "cf634adf9a4933524a59051ea281638e5d3d543d",
+      "tests": [
+        "node --check tools/p6/generate-p6-evidence.mjs",
+        "node --check tools/p6/parity-runner.mjs",
+        "node --check tools/p6/runtime-scenarios/contract.mjs",
+        "node --check tools/p6/runtime-scenarios/state-evidence.mjs",
+        "node --check tools/p6/p6-web-baseline-capture.cjs",
+        "node --test tools/p6/parity-mutation-tests.mjs",
+        "npm run build && node --test dist/tests/p6-parity-report-contract.test.js dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ],
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A4-R5.md"
+    },
+    {
+      "workerId": "A5",
+      "waveId": "P6-R5",
+      "role": "Final App And Portable Owner Handoff",
+      "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a5-final-packaging",
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "0ead09b2537b761bb7d5d62e9aaf54d80dbfa756",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T14:27:53Z",
+      "ownedPaths": [
+        "macOS package scripts",
+        "plist and bundle templates",
+        "normal packaged-App proof",
+        "App ZIP generation",
+        "P6 portable review ZIP generation",
+        "root manifest generation",
+        "bundle privacy audit",
+        "visible review mirror generation"
+      ],
+      "dependencies": [
+        "A2",
+        "A3",
+        "A4"
+      ],
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "023c12be89138bea8f85fca00dfc6dd2244ca31d",
+      "tests": [
+        "node --check tools/p6/build-p6-owner-handoff.mjs",
+        "node --test tools/p6-owner-handoff-package.test.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ],
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A5-R5.md"
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "criterionId": "P6-AC-01",
+      "implementationOwner": "A0",
+      "evidenceOwner": "A0",
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-02",
+      "implementationOwner": "A1",
+      "evidenceOwner": "A1",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-03",
+      "implementationOwner": "A2",
+      "evidenceOwner": "A4",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-04",
+      "implementationOwner": "A2",
+      "evidenceOwner": "A4",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-05",
+      "implementationOwner": "A2",
+      "evidenceOwner": "A4",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-06",
+      "implementationOwner": "A2",
+      "evidenceOwner": "A4",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-07",
+      "implementationOwner": "A3",
+      "evidenceOwner": "A4",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-08",
+      "implementationOwner": "A2",
+      "evidenceOwner": "A4",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-09",
+      "implementationOwner": "A0",
+      "evidenceOwner": "A4",
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-10",
+      "implementationOwner": "A2",
+      "evidenceOwner": "A0",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-11",
+      "implementationOwner": "A3",
+      "evidenceOwner": "A3",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-12",
+      "implementationOwner": "A3",
+      "evidenceOwner": "A5",
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-13",
+      "implementationOwner": "A3",
+      "evidenceOwner": "A0",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-14",
+      "implementationOwner": "A5",
+      "evidenceOwner": "A5",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-15",
+      "implementationOwner": "A0",
+      "evidenceOwner": "A0",
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-16",
+      "implementationOwner": "A2",
+      "evidenceOwner": "A0",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-17",
+      "implementationOwner": "Reviewer A/B",
+      "evidenceOwner": "A0",
+      "integrationVerifier": [
+        "A0"
+      ]
+    },
+    {
+      "criterionId": "P6-AC-18",
+      "implementationOwner": "All workers",
+      "evidenceOwner": "A0",
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
+    }
+  ],
+  "workers": [
+    {
+      "workerId": "A1",
+      "waveId": "P6-R4",
+      "role": "Web Inventory And Contract",
+      "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
+      "workerType": "visible_project_worktree",
+      "lifecycleStatus": "integrated",
+      "branch": "agent/codex/p6-r4-a1-inventory",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
+      "headCommit": "d09a4721de347cd17baf470c51753cb6ff279179",
+      "integrationCommit": "d09a4721de347cd17baf470c51753cb6ff279179",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A1-R4.md",
+      "contextPacketPath": "docs/product/p6/worker-context/A1.md",
+      "ownedPaths": [
+        "docs/product/P6_WEB_PRODUCT_BASELINE.md",
+        "docs/product/P6_WEB_FEATURE_INVENTORY.md",
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        "tools/p6/web-baseline-inventory.mjs",
+        "src/tests/p6-web-baseline.test.ts"
+      ],
+      "readOnlyPaths": [
+        "tools/svga-player-preview/",
+        "tools/shared/product-frontend/",
+        "docs/loop/CURRENT_MILESTONE.md"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": [
+        "Resume A2 from A1-integrated head d09a4721de347cd17baf470c51753cb6ff279179."
+      ],
+      "lastVerifiedAt": "2026-06-22T09:58:00Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a1-web-baseline",
+        "headCommit": "1b64e739ee013b34089151913d7c7db7a322efd8"
+      }
+    },
+    {
+      "workerId": "A2",
+      "waveId": "P6-R4",
+      "role": "Shared Product Shell",
+      "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
+      "workerType": "visible_project_worktree",
+      "lifecycleStatus": "integrated",
+      "branch": "agent/codex/p6-r4-a2-shared-shell",
+      "baseCommit": "238874ff7ab14fc4ef91fce0ed180e65516e7511",
+      "headCommit": "720091557736ed275b00e00ba1597b336af5a0dc",
+      "integrationCommit": "184dda7b351b78d49125ed0a006a4a2d70d4b234",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A2-R4.md",
+      "contextPacketPath": "docs/product/p6/worker-context/A2.md",
+      "ownedPaths": [
+        "tools/shared/product-frontend/",
+        "tools/svga-player-preview/main.js",
+        "tools/svga-player-preview/styles.css",
+        "tools/svga-player-preview/inspection-report-view.mjs",
+        "tools/shared/product-frontend/source-sharing.test.mjs"
+      ],
+      "readOnlyPaths": [
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        "tools/electron-prototype/experiments/svga-web/"
+      ],
+      "dependencies": [
+        "A1"
+      ],
+      "requestedIntegrationChanges": [
+        "A3/A0 should update the Electron default wrapper to mount tools/shared/product-frontend/product-shell.html through the shared loader instead of keeping a copied full DOM.",
+        "A4/A0 parity evidence can use the expanded state probe fields for loading phases and invalid stale-state clearing."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:22:37Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a2-shared-frontend",
+        "headCommit": "23ee8ef1c715f4229d0f551e47ee8d13402a35da"
+      }
+    },
+    {
+      "workerId": "A3",
+      "waveId": "P6-R4",
+      "role": "Electron Host",
+      "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
+      "workerType": "visible_project_worktree",
+      "lifecycleStatus": "integrated",
+      "branch": "agent/codex/p6-r4-a3-electron-host",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
+      "headCommit": "7ff38b111a2232641917e358670e919dd3688537",
+      "integrationCommit": "240fe9826658c6bcb549079eb03883b0ddaab2cb",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A3-R4.md",
+      "contextPacketPath": "docs/product/p6/worker-context/A3.md",
+      "ownedPaths": [
+        "tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+        "tools/electron-prototype/experiments/svga-web/main.cjs",
+        "tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "tools/electron-prototype/experiments/svga-web/server.mjs",
+        "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs"
+      ],
+      "readOnlyPaths": [
+        "tools/shared/product-frontend/",
+        "tools/electron-prototype/experiments/svga-web/web/"
+      ],
+      "dependencies": [
+        "A2"
+      ],
+      "requestedIntegrationChanges": [
+        "A0 applied integration repair dc2783aaf579ffa0a23015e5de8c4048a12f59c9 so the Electron default wrapper mounts the canonical shared product shell."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:26:59Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-r2-a3-electron-host",
+        "headCommit": "dfe78be2c7b7a62186ff1a8b3d462a9ddf1f0b65"
+      }
+    },
+    {
+      "workerId": "A4",
+      "waveId": "P6-R4",
+      "role": "Parity Runtime",
+      "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
+      "workerType": "visible_project_worktree",
+      "lifecycleStatus": "integrated",
+      "branch": "agent/codex/p6-r4-a4-parity-runtime",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
+      "headCommit": "d1731875db641600afffec30735585c0b577960e",
+      "integrationCommit": "9f7ec1aff405f39085ea599da8499eb8e5572150",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A4-R4.md",
+      "contextPacketPath": "docs/product/p6/worker-context/A4.md",
+      "ownedPaths": [
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/runtime-scenarios/",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6/parity-mutation-tests.mjs",
+        "tools/multi-worker-protocol-check.mjs",
+        "tools/review-visibility-check.mjs",
+        "src/workbench/p6-parity-report-contract.ts",
+        "src/tests/p6-parity-report-contract.test.ts"
+      ],
+      "readOnlyPaths": [
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        "tools/shared/product-frontend/",
+        "tools/electron-prototype/experiments/svga-web/"
+      ],
+      "dependencies": [
+        "A1",
+        "A2",
+        "A3"
+      ],
+      "requestedIntegrationChanges": [
+        "A0 repaired NQ1 shared-shell accessibility audit at 5c495bb01e42e26faf1c37ec9a196ec7476fcbe3."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:34:13Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a4-parity-tests",
+        "headCommit": "31caf46094f4c75c61dff49a2b93bac98e144321"
+      }
+    },
+    {
+      "workerId": "A5",
+      "waveId": "P6-R4",
+      "role": "Packaging And Portable Handoff",
+      "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
+      "workerType": "visible_project_worktree",
+      "lifecycleStatus": "integrated",
+      "branch": "agent/codex/p6-r4-a5-package",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
+      "headCommit": "cd4940f421f8944bde70671f844657f74e69a8d7",
+      "integrationCommit": "784047245635efdc505820d75dd1bcbbff6e1231",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A5-R4.md",
+      "contextPacketPath": "docs/product/p6/worker-context/A5.md",
+      "ownedPaths": [
+        "tools/electron-prototype/experiments/svga-web/packaging/macos/",
+        "tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs",
+        "tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs",
+        "tools/p6/build-p6-owner-handoff.mjs",
+        "docs/internal-electron-trial-package.md"
+      ],
+      "readOnlyPaths": [
+        "tools/electron-prototype/experiments/svga-web/main.cjs",
+        "tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "tools/shared/product-frontend/"
+      ],
+      "dependencies": [
+        "A2",
+        "A3",
+        "A4"
+      ],
+      "requestedIntegrationChanges": [
+        "A0 repaired the package proof source audit at 13cf35703ba8e5fe38b225ee067c4d577b99026b so it checks the current parity-runner item-specific evidence helpers."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:42:22Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a5-macos-package",
+        "headCommit": "a61ecef1a379e3a203073c23fef54d926fde35f1"
+      }
+    }
+  ],
+  "repair5TerminalEvidence": {
+    "sourceHeadCommit": "14285c289aafa8124881e2066844552b2d2929bf",
+    "parityReportPath": ".artifacts/product/P6/p6-parity-report.json",
+    "parityStatus": "pass",
+    "nonPassEvidenceCount": 0,
+    "artifactCount": 219,
+    "loopValidationPasses": 2,
+    "phase2Status": "NOT_STARTED",
+    "ownerAcceptanceRequired": true,
+    "macOSApp": {
+      "productionApproved": false,
+      "archiveSha256": "d1581bf38bbdba76f7dbcb975e2af034dd3006fa30bc958e39367ed62fab9d3b",
+      "archiveSizeBytes": 118652279,
+      "unsigned": true,
+      "unnotarized": true,
+      "internalOnly": true
+    }
+  },
+  "repair6ExternalReview": {
+    "reviewedHeadCommit": "f1ecd57320fc82b83119bd822653057904158b6a",
+    "externalOutcome": "REPAIR_REQUIRED",
+    "productOutcome": "PRODUCT_SURFACE_ADVANCED_BUT_PARITY_EVIDENCE_AND_NORMAL_APP_PROOF_INVALID",
+    "currentRepairRound": 5,
+    "nextRepairRound": 6,
+    "maxRepairRounds": 6
+  },
+  "repair6Entry": {
+    "enteredAt": "2026-06-22T17:18:45Z",
+    "startHeadCommit": "f1ecd57320fc82b83119bd822653057904158b6a",
+    "budgetCheck": {
+      "status": "pass",
+      "nextRepairAllowed": true,
+      "nextRepairRound": 6,
+      "budgetStatus": "within_budget"
+    },
+    "phase2Status": "NOT_STARTED",
+    "repair7Allowed": false
+  },
+  "repair6Workers": [
+    {
+      "workerId": "A1",
+      "waveId": "P6-R6",
+      "role": "Required Inventory And Scenario Coverage",
+      "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r6-a1-required-inventory",
+      "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
+      "headCommit": "c7c0f1f8beccfbd492a4e850c96641ad83a06f6e",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:37:45Z",
+      "ownedPaths": [
+        "docs/product/P6_WEB_PRODUCT_BASELINE.md",
+        "docs/product/P6_WEB_FEATURE_INVENTORY.md",
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        "tools/p6 inventory and scenario discovery helpers",
+        "inventory contract tests"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": [
+        "A0 should regenerate Web baseline artifacts on the final integration head.",
+        "A2 may resume formal implementation from A1-integrated head 78bdcf0c1a04c795e4594d1fc33ccfdb3149e1eb.",
+        "A4 should consume the stricter state union and required screenshot artifact coverage."
+      ],
+      "integrationCommit": "78bdcf0c1a04c795e4594d1fc33ccfdb3149e1eb",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A1-R6.md",
+      "tests": [
+        "node -e \"JSON.parse(require('fs').readFileSync('docs/product/P6_WEB_PARITY_CONTRACT.json','utf8')); console.log('contract json ok')\"",
+        "node --check tools/p6/p6-web-baseline-capture.cjs",
+        "node --check tools/p6/runtime-scenarios/contract.mjs",
+        "npm run build && node --test dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ]
+    },
+    {
+      "workerId": "A2",
+      "waveId": "P6-R6",
+      "role": "Shared Product State And UI Behavior",
+      "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r6-a2-product-behavior",
+      "baseCommit": "1d5cc416d5793b58748aae2ef5a9b54314eda19d",
+      "headCommit": "01f6d9584359aa59611b97e2f84fb977046f78f4",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:46:58Z",
+      "ownedPaths": [
+        "tools/shared/product-frontend/",
+        "tools/svga-player-preview shared product entry points",
+        "shared frontend tests"
+      ],
+      "dependencies": [
+        "A1"
+      ],
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "63f79c9fa99c571640812e1eca61f86deee08445",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A2-R6.md",
+      "tests": [
+        "node --test tools/shared/product-frontend/source-sharing.test.mjs",
+        "node --check tools/shared/product-frontend/product-app.mjs",
+        "node --test tools/svga-player-preview/inspection-report-view.test.mjs tools/svga-player-preview/server-inspection-report.test.mjs",
+        "npm run build && node --test dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ]
+    },
+    {
+      "workerId": "A3",
+      "waveId": "P6-R6",
+      "role": "Electron Host And Visible Normal App",
+      "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r6-a3-visible-normal-app",
+      "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
+      "headCommit": "3e56733a9f5bdc3c246ad58cc1afecc765ac6bd1",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:49:54Z",
+      "ownedPaths": [
+        "tools/electron-prototype/experiments/svga-web/main.cjs",
+        "tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+        "Electron host proof and normal App scripts/tests"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "6851d352df312dc4ae97f381429a1a79102e4612",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A3-R6.md",
+      "tests": [
+        "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ]
+    },
+    {
+      "workerId": "A4",
+      "waveId": "P6-R6",
+      "role": "Scenario Runner, Parity And Motion",
+      "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r6-a4-strict-parity-motion",
+      "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
+      "headCommit": "52ed98df94f869a811aac2a4a120a7b8bcadb67f",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:51:41Z",
+      "ownedPaths": [
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6/runtime-scenarios/",
+        "tools/p6/parity-mutation-tests.mjs",
+        "P6 parity contract tests"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "156df0f67b7b309dc30b6c7cda6d5ba566ea4754",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A4-R6.md",
+      "tests": [
+        "node --check tools/p6/generate-p6-evidence.mjs",
+        "node --check tools/p6/p6-web-baseline-capture.cjs",
+        "node --check tools/p6/parity-runner.mjs",
+        "node --check tools/p6/runtime-scenarios/contract.mjs",
+        "node --check tools/p6/runtime-scenarios/state-evidence.mjs",
+        "node --check tools/p6/runtime-scenarios/strict-evidence.mjs",
+        "node --test tools/p6/parity-mutation-tests.mjs",
+        "npm run build && node --test dist/tests/p6-parity-report-contract.test.js dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ]
+    },
+    {
+      "workerId": "A5",
+      "waveId": "P6-R6",
+      "role": "App And Owner Handoff",
+      "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r6-a5-final-package-handoff",
+      "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
+      "headCommit": "46076eb3ee3cf9e960e38fd7c97912c20ff1b216",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:53:29Z",
+      "ownedPaths": [
+        "tools/p6/build-p6-owner-handoff.mjs",
+        "tools/electron-prototype/experiments/svga-web packaging scripts",
+        "P6 owner handoff tests and package/privacy checks"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "7deb84e8d8d3e45487c4daafdf56aa23f96fe617",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A5-R6.md",
+      "tests": [
+        "node --check tools/p6/build-p6-owner-handoff.mjs",
+        "node --check tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs",
+        "node --test tools/p6-owner-handoff-package.test.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ]
+    }
+  ]
+}
