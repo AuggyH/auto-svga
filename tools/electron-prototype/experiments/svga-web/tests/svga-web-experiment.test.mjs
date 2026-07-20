@@ -8434,6 +8434,23 @@ test("multi-format runtime self-test writes bootstrap diagnostics before Electro
   assert.doesNotMatch(proofSource, /\/Users\/huangtengxin/u);
 });
 
+test("multi-format runtime self-test mirrors accepted-open commit and fails closed", () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-multiformat-runtime-selftest.cjs"),
+    "utf8"
+  );
+  assert.match(proofSource, /commitMultiFormatOpen: "svga-web-experiment:commit-multiformat-open"/u);
+  assert.match(proofSource, /ipcMain\.handle\(IPC_CHANNELS\.commitMultiFormatOpen/u);
+  assert.match(proofSource, /pendingRecentSourceIds\.has\(sourceId\)/u);
+  assert.match(proofSource, /const activeSource = previewSession\.activeSourceId === sourceId/u);
+  assert.match(proofSource, /!validSourceId \|\| !pendingSource \|\| !activeSource/u);
+  assert.match(proofSource, /async function proveRejectedOpenPreservesActive/u);
+  assert.match(proofSource, /action\?\.begun !== true \|\| action\?\.completed !== true/u);
+  assert.match(proofSource, /afterSourceId !== beforeSourceId/u);
+  assert.match(proofSource, /main\(\)\.catch\(async \(error\) => \{\s*process\.exitCode = 1;/u);
+  assert.match(proofSource, /app\.exit\(process\.exitCode \?\? 0\)/u);
+});
+
 test("multi-format runtime self-test uses the owner replacement path for each format", () => {
   const proofSource = readFileSync(
     path.join(experimentRoot, "scripts/run-multiformat-runtime-selftest.cjs"),
