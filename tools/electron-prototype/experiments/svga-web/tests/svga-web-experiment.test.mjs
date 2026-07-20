@@ -259,6 +259,168 @@ test("short-term playback failure preserves the inspected workspace while parse 
   assert.equal(parsePlaybackFailure, undefined);
 });
 
+test("short-term failed Save and stale SVGA inspection preserve the current document authority", async () => {
+  const { loadShortTermOpenedSource } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-file-surface.mjs")).href);
+  const { saveShortTermActiveOutput } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-save-surface.mjs")).href);
+  const sourceBytes = Uint8Array.from([1, 2, 3]);
+  const previewBytes = Uint8Array.from([4, 5, 6]);
+  const activeOutput = {
+    kind: "replacement",
+    bytes: previewBytes,
+    suggestedName: "dirty.svga"
+  };
+  const state = {
+    sourceBytes,
+    previewBytes,
+    sourceId: "source:dirty",
+    displayName: "dirty.svga",
+    model: { status: "ready", replaceableElements: { images: [], texts: [] } },
+    activeOutput,
+    mode: "edit",
+    saveStatus: "idle"
+  };
+
+  await assert.rejects(saveShortTermActiveOutput({
+    bridge: {
+      async saveShortTermSvgaOutput() {
+        return { status: "saved", sourceId: "source:saved", fileName: "saved.svga" };
+      }
+    },
+    command: "saveAs",
+    state,
+    async inspectShortTerm() {
+      return { status: "ready", replaceableElements: { images: [], texts: [] } };
+    },
+    clearTransientOutput() {
+      state.activeOutput = undefined;
+    },
+    renderPreviewModel() {},
+    renderCommandState() {},
+    async mountPrimaryPlayback() {
+      throw new Error("mount failed after host save");
+    },
+    async refreshRecentFiles() {},
+    showSaveBanner() {}
+  }), /mount failed after host save/u);
+  assert.equal(state.sourceBytes, sourceBytes);
+  assert.equal(state.previewBytes, previewBytes);
+  assert.equal(state.sourceId, "source:dirty");
+  assert.equal(state.displayName, "dirty.svga");
+  assert.equal(state.activeOutput, activeOutput);
+  assert.equal(state.mode, "edit");
+  assert.equal(state.saveStatus, "failed");
+
+  let resolveInspection;
+  let authorityCurrent = true;
+  const staleState = {
+    sourceBytes: Uint8Array.from([7]),
+    previewBytes: Uint8Array.from([7]),
+    sourceId: "source:svga-a",
+    displayName: "a.svga",
+    textPreviewValues: { title: "old" }
+  };
+  const pendingLoad = loadShortTermOpenedSource({
+    nodes: {
+      errorMessage: { textContent: "" },
+      loadingMessage: { textContent: "" },
+      playbackErrorRecovery: { hidden: true },
+      runtimeTextOverlay: { hidden: true, textContent: "" }
+    },
+    state: staleState,
+    bytes: Uint8Array.from([8]),
+    displayName: "pending.svga",
+    sourceId: "source:pending",
+    clearTransientOutput() {},
+    setView(view) { staleState.view = view; },
+    inspectShortTerm() {
+      return new Promise((resolve) => { resolveInspection = resolve; });
+    },
+    renderPreviewModel() {},
+    async mountPrimaryPlayback() {},
+    stopAllPlayback() {},
+    showFailure(error) { throw error; },
+    showPlaybackFailure(error) { throw error; },
+    authorityIsCurrent() { return authorityCurrent; }
+  });
+  const lottieModel = { detectedFormat: "lottie", status: "playing" };
+  authorityCurrent = false;
+  staleState.model = lottieModel;
+  staleState.sourceBytes = undefined;
+  staleState.previewBytes = undefined;
+  staleState.sourceId = "source:lottie-b";
+  staleState.displayName = "b.json";
+  staleState.textPreviewValues = {};
+  resolveInspection({ status: "ready", replaceableElements: { images: [], texts: [] } });
+  await pendingLoad;
+  assert.equal(staleState.model, lottieModel);
+  assert.equal(staleState.sourceId, "source:lottie-b");
+  assert.equal(staleState.displayName, "b.json");
+  assert.deepEqual(staleState.textPreviewValues, {});
+
+  let resolveSave;
+  let markSaveStarted;
+  const saveStarted = new Promise((resolve) => { markSaveStarted = resolve; });
+  authorityCurrent = true;
+  const staleSaveState = {
+    sourceBytes: Uint8Array.from([9]),
+    previewBytes: Uint8Array.from([10]),
+    sourceId: "source:svga-save-a",
+    displayName: "save-a.svga",
+    model: { status: "ready", detectedFormat: "svga" },
+    activeOutput: {
+      kind: "replacement",
+      bytes: Uint8Array.from([11]),
+      suggestedName: "save-a-replaced.svga"
+    },
+    mode: "edit",
+    saveStatus: "idle"
+  };
+  const pendingSave = saveShortTermActiveOutput({
+    bridge: {
+      saveShortTermSvgaOutput() {
+        markSaveStarted();
+        return new Promise((resolve) => { resolveSave = resolve; });
+      }
+    },
+    command: "saveAs",
+    state: staleSaveState,
+    async inspectShortTerm() {
+      throw new Error("stale Save must not inspect output after source transition");
+    },
+    clearTransientOutput() {
+      throw new Error("stale Save must not clear the newer source state");
+    },
+    renderPreviewModel() {},
+    renderCommandState() {},
+    async mountPrimaryPlayback() {
+      throw new Error("stale Save must not remount after source transition");
+    },
+    async refreshRecentFiles() {
+      throw new Error("stale Save must not publish Recent after source transition");
+    },
+    showSaveBanner() {},
+    authorityIsCurrent() { return authorityCurrent; }
+  });
+  await saveStarted;
+  authorityCurrent = false;
+  staleSaveState.sourceBytes = undefined;
+  staleSaveState.previewBytes = undefined;
+  staleSaveState.sourceId = "source:vap-save-b";
+  staleSaveState.displayName = "save-b.mp4";
+  staleSaveState.model = { status: "playing", detectedFormat: "vap" };
+  staleSaveState.activeOutput = undefined;
+  staleSaveState.mode = "preview";
+  staleSaveState.saveStatus = "idle";
+  resolveSave({ status: "saved", sourceId: "source:stale-saved", fileName: "stale.svga" });
+  assert.equal(await pendingSave, undefined);
+  assert.equal(staleSaveState.sourceId, "source:vap-save-b");
+  assert.equal(staleSaveState.displayName, "save-b.mp4");
+  assert.equal(staleSaveState.model.detectedFormat, "vap");
+  assert.equal(staleSaveState.activeOutput, undefined);
+  assert.equal(staleSaveState.mode, "preview");
+  assert.equal(staleSaveState.saveStatus, "idle");
+});
+
 test("short-term thumbnail renderer follows frozen image sequence and audio variants", async () => {
   const { renderThumbnailHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-thumbnail-renderers.mjs")).href);
   const imageDataUrl = "data:image/png;base64,AA==";
@@ -4048,7 +4210,28 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   assert.match(appOpenFileSource, /enqueueMultiFormatOpenFileEvent\(filePath, sourceId\)/);
 
   assert.match(main, /pendingMultiFormatOpenFileEvents/);
+  const enqueueStart = main.indexOf("function enqueueMultiFormatOpenFileEvent");
+  const flushStart = main.indexOf("async function flushPendingMultiFormatOpenFileEvents", enqueueStart);
+  const enqueueSource = main.slice(enqueueStart, flushStart);
+  assert.match(enqueueSource, /pendingMultiFormatOpenFileEvents\.some\(\(item\) => item\.sourceId === sourceId\)/u);
+  assert.match(enqueueSource, /phase: "open_file_duplicate_suppressed"/u);
+  const enqueueContext = {
+    isMultiFormatDesktopProduct: true,
+    pendingMultiFormatOpenFileEvents: [],
+    multiFormatOpenFileEventSequence: 0,
+    productMilestoneId: "0.2-multiformat-preview",
+    multiFormatDesktopRendererReady: false,
+    traceSourceId: () => "unused",
+    flushPendingMultiFormatOpenFileEvents: () => Promise.resolve(),
+    multiFormatTrace: { records: [], record(value) { this.records.push(value); } }
+  };
+  vm.runInNewContext(`${enqueueSource}; globalThis.enqueue = enqueueMultiFormatOpenFileEvent;`, enqueueContext);
+  enqueueContext.enqueue("/private/tmp/same.svga", "same-sha-bound-source");
+  enqueueContext.enqueue("/private/tmp/same.svga", "same-sha-bound-source");
+  assert.equal(enqueueContext.pendingMultiFormatOpenFileEvents.length, 1);
+  assert.equal(enqueueContext.multiFormatTrace.records.filter(({ phase }) => phase === "open_file_duplicate_suppressed").length, 1);
   assert.match(main, /openMultiFormatFilePath\(item\.filePath, "fileOpenEvent"\)/);
+  assert.match(main, /authorizeHostFileOpen/);
   assert.match(main, /beginHostFileOpen/);
   assert.match(main, /completeHostFileOpen/);
   assert.match(main, /failHostFileOpen/);
@@ -4080,14 +4263,26 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
     "installed file-open events must not open a second dialog"
   );
 
+  assert.match(actionBridge, /authorizeHostFileOpen/);
   assert.match(actionBridge, /beginHostFileOpen/);
   assert.match(actionBridge, /completeHostFileOpen/);
   assert.match(actionBridge, /failHostFileOpen/);
+  assert.match(controller, /function authorizeHostFileOpen/);
   assert.match(controller, /function beginHostFileOpen/);
   assert.match(controller, /function completeHostFileOpen/);
   assert.match(controller, /function failHostFileOpen/);
   assert.match(controller, /resolveMultiFormatOpenOutcome\(Promise\.resolve\(payload\?\.result\)/);
   assert.match(controller, /isActiveRequest\(hostFileOpenRequest\)/);
+  const dispatchSource = main.slice(main.indexOf("async function dispatchMultiFormatOpenFileEvent"), main.indexOf("function traceSourceId"));
+  assert.ok(
+    dispatchSource.indexOf('"authorizeHostFileOpen"') < dispatchSource.indexOf('openMultiFormatFilePath(item.filePath, "fileOpenEvent")'),
+    "installed file-open must obtain renderer discard authority before the host reads or mutates source state"
+  );
+  assert.match(
+    dispatchSource,
+    /const failed = await invokeMultiFormatRendererAction\(window, "failHostFileOpen",[\s\S]*?if \(!failed\) throw error;[\s\S]*?return;/u,
+    "a renderer-confirmed terminal failure must consume the file event instead of retrying the same failed source"
+  );
   assert.ok(
     app.indexOf("controller.initialize();") < app.indexOf("await bridge?.notifyMultiFormatRendererReady?.();"),
     "renderer action bridge must initialize visible state before notifying main to flush launch-time file-open events"
@@ -4201,15 +4396,15 @@ test("0.2 accepted-open authority excludes terminal failures and playback-blocke
     assert.equal(rejected.svgaSource, undefined);
     assert.equal(sourceStore.has(accepted.sourceId), true, "Recent may retain the prior accepted source path");
 
-    const staleRuntime = await session.prepareRuntimePreview({
+    const retainedRuntime = await session.prepareRuntimePreview({
       sourceId: accepted.sourceId,
       format: "lottie",
-      requestId: `${accepted.model.requestId}:stale-after-failure`,
+      requestId: `${accepted.model.requestId}:retained-after-failure`,
       replacements: accepted.model.replacement
     });
-    assert.equal(staleRuntime.status, "failed");
-    assert.equal(staleRuntime.pathRedacted, true);
-    assert.equal(staleRuntime.issue.code, "missing_resource");
+    assert.equal(retainedRuntime.status, "prepared");
+    assert.equal(retainedRuntime.pathRedacted, true);
+    assert.equal(sourceStore.get(accepted.sourceId), validPath);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
@@ -4463,7 +4658,8 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.equal(lottieReplacementRuntime.status, "prepared");
     assert.equal(lottieReplacementRuntime.animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
     assert.doesNotMatch(JSON.stringify(lottieReplacementRuntime), /\/Users|auto-svga-terminal-session/i);
-    assert.equal(sourceStore.size, 2);
+    assert.equal(sourceStore.size, 1, "only the active canonical source may retain host runtime authority");
+    assert.equal(sourceStore.has(lottie.sourceId), true);
 
     const vap = await openFromPicker(vapPath, "vap");
     assert.equal(vap.status, "opened");
@@ -4544,7 +4740,8 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
     assert.equal(vapFusionRuntime.vapConfig.src[1].srcType, "txt");
     assert.deepEqual(vapFusionRuntime.vapConfig.frame[0].obj[0].frame, [10, 20, 120, 120]);
     assert.doesNotMatch(JSON.stringify(vapFusionRuntime), /\/Users|auto-svga-terminal-session/i);
-    assert.equal(sourceStore.size, 5);
+    assert.equal(sourceStore.size, 1);
+    assert.equal(sourceStore.has(vapFusion.sourceId), true);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
@@ -6118,7 +6315,7 @@ test("0.2 owner failure rendering trusts only reviewed codes and never raw host 
   }
 });
 
-test("0.2 composed open cancellation preserves active authority while accepted failure revokes every format", async () => {
+test("0.2 composed open cancellation and failure preserve active authority for every format", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
 
@@ -6227,36 +6424,28 @@ test("0.2 composed open cancellation preserves active authority while accepted f
         path: "layers.0.xp"
       };
       await controller.handlers.openFromHostDialog();
-      assert.equal(state.view, "failed", `${format} failure must enter failed view`);
+      assert.equal(state.view, "preview", `${format} failure must keep the active preview visible`);
       assert.equal(nodes.errorMessage.textContent, "无法打开文件选择器，源文件没有被修改。");
       assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|expression/i);
-      assert.equal(nodes.playbackProgress.attributes["aria-valuenow"], "0", `${format} failure must reset progress a11y`);
-      assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "0%", `${format} failure must reset progress token`);
-      assert.equal(nodes.playbackProgress.children[0].style.width, "0%", `${format} failure must reset progress bar`);
-      assert.equal(nodes.playbackTime.textContent, "0:00 / 0:00", `${format} failure must reset playback time`);
-      assert.equal(nodes.playbackMeta.textContent, "", `${format} failure must clear playback meta copy`);
-      assert.equal(nodes.playbackMeta.dataset.status, undefined, `${format} failure must clear playback meta status`);
-      assert.equal(nodes.playbackMeta.dataset.format, undefined, `${format} failure must clear playback meta format`);
-      assert.equal(state.model, undefined, `${format} failure must clear model`);
-      assert.equal(state.sourceBytes, undefined, `${format} failure must clear source bytes`);
-      assert.equal(state.previewBytes, undefined, `${format} failure must clear preview bytes`);
-      assert.equal(state.sourceId, "", `${format} failure must clear source id`);
-      assert.equal(state.displayName, "", `${format} failure must clear display name`);
-      assert.equal(state.selectedImageKey, "", `${format} failure must clear image selection`);
-      assert.equal(state.selectedTextKey, "", `${format} failure must clear text selection`);
-      assert.deepEqual(state.textPreviewValues, {}, `${format} failure must clear text replacements`);
-      assert.deepEqual(disposeCalls.at(-1), { action: "dispose" }, `${format} failure must dispose host preview`);
+      assert.equal(nodes.playbackProgress.attributes["aria-valuenow"], "64", `${format} failure must preserve progress a11y`);
+      assert.equal(nodes.playbackProgress.style["--asv-playback-progress"], "64%", `${format} failure must preserve progress token`);
+      assert.equal(nodes.playbackProgress.children[0].style.width, "64%", `${format} failure must preserve progress bar`);
+      assert.equal(nodes.playbackTime.textContent, "0:32 / 0:50", `${format} failure must preserve playback time`);
+      assert.equal(nodes.playbackMeta.textContent, "VAP · 120 x 80 · 0:50 · 播放中", `${format} failure must preserve playback meta copy`);
+      assert.equal(nodes.playbackMeta.dataset.status, "playing", `${format} failure must preserve playback meta status`);
+      assert.equal(nodes.playbackMeta.dataset.format, "vap", `${format} failure must preserve playback meta format`);
+      assert.equal(state.model, activeModel, `${format} failure must preserve model`);
+      assert.equal(state.sourceId, activeSourceId, `${format} failure must preserve source id`);
+      assert.equal(state.selectedImageKey, activeImageKey, `${format} failure must preserve image selection`);
+      assert.equal(state.selectedTextKey, activeTextKey, `${format} failure must preserve text selection`);
+      assert.equal(disposeCalls.length, 0, `${format} failure must not dispose the active host preview`);
 
-      const terminalMenu = menuStates.at(-1);
-      assert.equal(terminalMenu.hasFile, false, `${format} failure must disable file commands`);
-      for (const key of ["canPlay", "canReplay", "canLoop", "canReplaceImage", "canResetImageReplacement", "canEditText", "canResetText"]) {
-        assert.equal(terminalMenu[key], false, `${format} failure must disable ${key}`);
-      }
-      assert.equal(controller.handlers.saveActiveOutput(), undefined, `${format} failure must disable SVGA delegation`);
-      assert.equal(legacyCalls.filter(([name]) => name === "save").length, 0, `${format} failure must not reach stale save`);
-      if (format === "svga") {
-        assert.equal(legacyCalls.filter(([name]) => name === "deactivate").length, 1);
-      }
+      if (format === "svga") assert.equal(controller.handlers.saveActiveOutput(), "stale-save");
+      assert.equal(
+        legacyCalls.filter(([name]) => name === "deactivate").length,
+        0,
+        `${format} failure must not deactivate the active SVGA authority`
+      );
     }
   } finally {
     globalThis.document = originalDocument;
@@ -6747,8 +6936,10 @@ test("0.2 playback meta uses closed renderer-owned status and format semantics",
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "playback-meta-unknown" }), true);
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "playback-meta-unknown", result: unknownResult }), true);
 
-    assert.equal(state.view, "failed");
-    assert.equal(state.sourceId, "");
+    assert.equal(state.view, "preview");
+    assert.equal(state.sourceId, "source:playback-meta");
+    assert.equal(nodes.playbackMeta.dataset.status, "playing");
+    assert.equal(nodes.playbackMeta.dataset.format, "vap");
     assert.notEqual(nodes.playbackMeta.dataset.status, "hostInternalPhase123");
     assert.notEqual(nodes.playbackMeta.dataset.format, "internalRuntimeFormat");
     assert.doesNotMatch(

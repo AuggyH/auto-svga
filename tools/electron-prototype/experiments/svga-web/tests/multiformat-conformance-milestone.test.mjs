@@ -192,6 +192,17 @@ test("accepted-open status gates Recent and unifies terminal model failures", as
   });
 });
 
+test("normal multi-format launches keep one persistent Recent authority while proof runs stay isolated", () => {
+  const mainSource = source("main.cjs");
+  const recentPathSource = extractFunctionSource(mainSource, "function shortTermRecentStorePath");
+  assert.match(recentPathSource, /ownerPersistentUserDataRoot/u);
+  assert.doesNotMatch(recentPathSource, /app\.getPath\(["']userData["']\)/u);
+  assert.match(
+    mainSource,
+    /if \(!usesShortTermPreviewShell \|\| smokeMode \|\| auditMode \|\| normalProofMode\) \{[\s\S]*?app\.setPath\("userData", path\.join\(sessionRoot, "user-data"\)\)/u
+  );
+});
+
 test("formal 0.2 Compare B reuses the owner-bound picker and remains SVGA-only", () => {
   const mainSource = source("main.cjs");
   const openSvgaSource = extractFunctionSource(mainSource, "async function openSvgaFile");

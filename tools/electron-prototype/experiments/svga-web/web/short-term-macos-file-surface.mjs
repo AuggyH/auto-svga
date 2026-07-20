@@ -112,7 +112,8 @@ export async function loadShortTermOpenedSource({
   mountPrimaryPlayback,
   stopAllPlayback,
   showFailure,
-  showPlaybackFailure
+  showPlaybackFailure,
+  authorityIsCurrent = () => true
 }) {
   prepareShortTermSourceLoad({
     nodes,
@@ -125,6 +126,7 @@ export async function loadShortTermOpenedSource({
   });
   try {
     const model = await inspectShortTerm(bytes, state.displayName);
+    if (!authorityIsCurrent()) return;
     state.model = model;
     state.selectedImageKey = model.replaceableElements.images[0]?.imageKey || "";
     state.selectedTextKey = model.replaceableElements.texts[0]?.textKey || "";
@@ -133,13 +135,16 @@ export async function loadShortTermOpenedSource({
     setView("preview");
     moveViewTransitionFocus(focusContext, nodes.previewStagePanel);
   } catch (error) {
+    if (!authorityIsCurrent()) return;
     clearShortTermCurrentFile({ state, stopAllPlayback });
     showFailure(error);
     return;
   }
   try {
     await mountPrimaryPlayback(state.previewBytes);
+    if (!authorityIsCurrent()) stopAllPlayback();
   } catch (error) {
+    if (!authorityIsCurrent()) return;
     stopAllPlayback();
     showPlaybackFailure(error);
   }
@@ -211,6 +216,7 @@ export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
   state.textPreview = "";
   state.textPreviewValues = {};
   state.activeOutput = undefined;
+  state.saveStatus = "idle";
   state.cleanSaveAsVisible = false;
 }
 

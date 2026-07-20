@@ -88,26 +88,26 @@ class MultiFormatDesktopPreviewSession {
     }
     let sourceBinding;
     let model;
+    let stagedSession;
     try {
       sourceBinding = this.rememberSource(normalizedPath, requestId);
       this.pendingOpenSourceBinding = sourceBinding;
+      stagedSession = await this.createSession(sourceBinding);
       model = await this.openWithTerminalDeadline(
-        (async () => {
-          const session = await this.ensureSession();
-          return session.openLocalCandidate({
-            gate: MULTIFORMAT_DESKTOP_GATE,
-            requestId,
-            source: ownerOpenSource(source),
-            localPath: normalizedPath,
-            displayName
-          });
-        })(),
+        stagedSession.openLocalCandidate({
+          gate: MULTIFORMAT_DESKTOP_GATE,
+          requestId,
+          source: ownerOpenSource(source),
+          localPath: normalizedPath,
+          displayName
+        }),
         {
           requestId,
           source,
           displayName,
           localPath: normalizedPath
-        }
+        },
+        () => stagedSession?.dispose?.()
       );
     } catch (error) {
       model = createOpenFailureModel({
@@ -129,9 +129,24 @@ class MultiFormatDesktopPreviewSession {
       && model?.requestId === requestId
       && sourceBinding
       && isAcceptedMultiFormatOpenModel(model);
-    if (!acceptedOpen) {
+    if (acceptedOpen) {
+      const previousSessionPromise = this.sessionPromise;
+      const previousBinding = this.activeSourceBinding;
+      this.sessionPromise = Promise.resolve(stagedSession);
+      this.activeSourceId = sourceBinding.sourceId;
+      this.activeSourceBinding = sourceBinding;
+      this.svgaReplacementPreview = undefined;
+      if (previousBinding && previousBinding !== sourceBinding) this.discardSourceBinding(previousBinding);
+      if (previousSessionPromise) {
+        previousSessionPromise.then((previousSession) => {
+          if (previousSession !== stagedSession) previousSession?.dispose?.();
+        }).catch(() => {});
+      }
+    } else {
+      try {
+        stagedSession?.dispose?.();
+      } catch {}
       this.discardSourceBinding(sourceBinding);
-      if (currentOpen) this.revokeActiveSourceAuthority();
     }
     return this.publicResult(
       model,
@@ -305,9 +320,9 @@ class MultiFormatDesktopPreviewSession {
     return this.sessionPromise;
   }
 
-  async createSession() {
+  async createSession(sourceBinding) {
     const modules = await this.loadModules();
-    const host = this.createHost();
+    const host = this.createHost(sourceBinding);
     return modules.createOwnerVisibleMultiFormatPreviewCandidate({
       host,
       lottieTarget: { container: { role: "desktop-source-contract-lottie-target" } },
@@ -534,11 +549,13 @@ class MultiFormatDesktopPreviewSession {
     }
   }
 
-  async openWithTerminalDeadline(openPromise, context) {
+  async openWithTerminalDeadline(openPromise, context, onTimeout) {
     let timeout;
     const timeoutPromise = new Promise((resolve) => {
       timeout = setTimeout(() => {
-        this.disposePendingSession();
+        try {
+          onTimeout?.();
+        } catch {}
         resolve(createOpenFailureModel({
           ...context,
           reason: "desktop_open_deadline_exceeded",
@@ -811,12 +828,12 @@ class MultiFormatDesktopPreviewSession {
     return this.modulesPromise;
   }
 
-  createHost() {
+  createHost(sessionSourceBinding) {
     const owner = this;
     return {
       async statLocalFile(localPath) {
         const filePath = normalizeLocalPath(localPath);
-        owner.assertCurrentBoundSource(filePath);
+        owner.assertBoundSource(filePath, sessionSourceBinding);
         const stat = statSync(filePath);
         if (!stat.isFile()) throw new Error("Local motion source is not a file.");
         return {
@@ -827,7 +844,7 @@ class MultiFormatDesktopPreviewSession {
       },
       async readLocalFileRange(localPath, offset, length) {
         const filePath = normalizeLocalPath(localPath);
-        owner.assertCurrentBoundSource(filePath);
+        owner.assertBoundSource(filePath, sessionSourceBinding);
         const safeOffset = Math.max(0, Math.trunc(Number(offset) || 0));
         const safeLength = Math.max(0, Math.min(Math.trunc(Number(length) || 0), MULTIFORMAT_MAX_RANGE_BYTES));
         const buffer = Buffer.alloc(safeLength);
@@ -841,7 +858,7 @@ class MultiFormatDesktopPreviewSession {
       },
       async readLocalFile(input) {
         const filePath = normalizeLocalPath(input?.localPath);
-        owner.assertCurrentBoundSource(filePath);
+        owner.assertBoundSource(filePath, sessionSourceBinding);
         const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, MULTIFORMAT_MAX_DROPPED_BYTES));
         const stat = statSync(filePath);
         if (!stat.isFile()) throw new Error("Local motion source is not a file.");
@@ -857,7 +874,7 @@ class MultiFormatDesktopPreviewSession {
       async readAdjacentResource(input) {
         const sourcePath = normalizeLocalPath(input?.sourceLocalPath);
         const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, 5 * 1024 * 1024));
-        const sourceBinding = owner.boundSourceForLocalPath(sourcePath);
+        const sourceBinding = owner.boundSourceForLocalPath(sourcePath, sessionSourceBinding);
         if (!sourceBinding) throw new Error("Adjacent resource source is not the active opened candidate.");
         const relativePath = normalizeRuntimeRelativePath(String(input?.relativePath ?? ""));
         const existingBinding = sourceBinding.adjacentResources.get(relativePath);
@@ -877,12 +894,13 @@ class MultiFormatDesktopPreviewSession {
       async readAdjacentVapcJson(input) {
         const sourcePath = normalizeLocalPath(input?.localPath);
         const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, MULTIFORMAT_MAX_RANGE_BYTES));
-        const sourceBinding = owner.boundSourceForLocalPath(sourcePath);
+        const sourceBinding = owner.boundSourceForLocalPath(sourcePath, sessionSourceBinding);
         if (!sourceBinding) throw new Error("Adjacent VAP config source is not the active opened candidate.");
         return readAdjacentVapcJsonForFile(sourcePath, maxBytes, sourceBinding.adjacentVapc);
       },
       async createLocalObjectUrl(input) {
         const filePath = normalizeLocalPath(input?.localPath);
+        owner.assertBoundSource(filePath, sessionSourceBinding);
         if (!existsSync(filePath)) throw new Error("Local VAP source is unavailable.");
         owner.lifecycle.objectUrlsCreated += 1;
         const token = createHash("sha256")
@@ -940,14 +958,14 @@ class MultiFormatDesktopPreviewSession {
     };
   }
 
-  boundSourceForLocalPath(filePath) {
+  boundSourceForLocalPath(filePath, sessionSourceBinding) {
     const normalizedPath = normalizeLocalPath(filePath);
-    const candidates = [this.pendingOpenSourceBinding, this.activeSourceBinding].filter(Boolean);
+    const candidates = [sessionSourceBinding, this.pendingOpenSourceBinding, this.activeSourceBinding].filter(Boolean);
     return candidates.find((binding) => binding.filePath === normalizedPath);
   }
 
-  assertCurrentBoundSource(filePath) {
-    const binding = this.boundSourceForLocalPath(filePath);
+  assertBoundSource(filePath, sessionSourceBinding) {
+    const binding = this.boundSourceForLocalPath(filePath, sessionSourceBinding);
     if (!binding) throw new Error("Local motion source is not bound to the current open generation.");
     verifySourceBinding(binding, MULTIFORMAT_MAX_DROPPED_BYTES);
     return binding;

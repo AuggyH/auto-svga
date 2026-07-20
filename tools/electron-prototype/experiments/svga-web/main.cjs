@@ -497,7 +497,7 @@ if (productSmokeMode && productMilestoneId === "P5") {
 
 mkdirSync(sessionRoot, { recursive: true });
 if (productSmokeMode || normalProofMode || normalVisibleStartupMode) mkdirSync(productArtifactRoot, { recursive: true });
-if (!isShortTermProduct || smokeMode || auditMode || normalProofMode) {
+if (!usesShortTermPreviewShell || smokeMode || auditMode || normalProofMode) {
   app.setPath("userData", path.join(sessionRoot, "user-data"));
   app.setPath("sessionData", path.join(sessionRoot, "session-data"));
 }
@@ -3762,7 +3762,7 @@ function rememberSourceFile(filePath) {
 }
 
 function shortTermRecentStorePath() {
-  return path.join(app.getPath("userData"), "short-term-recent-svga-files.json");
+  return path.join(ownerPersistentUserDataRoot, "short-term-recent-svga-files.json");
 }
 
 function shortTermRecentId(filePath) {
@@ -5782,6 +5782,17 @@ function readMultiFormatReplacementImageFile(filePath) {
 
 function enqueueMultiFormatOpenFileEvent(filePath, sourceId = traceSourceId(filePath)) {
   if (!isMultiFormatDesktopProduct || typeof filePath !== "string" || filePath.length === 0) return;
+  if (pendingMultiFormatOpenFileEvents.some((item) => item.sourceId === sourceId)) {
+    multiFormatTrace.record({
+      phase: "open_file_duplicate_suppressed",
+      sourceId,
+      productMilestoneId,
+      formalRuntimeMode: isMultiFormatDesktopProduct,
+      queueDepth: pendingMultiFormatOpenFileEvents.length,
+      bridgeReady: multiFormatDesktopRendererReady
+    });
+    return;
+  }
   multiFormatOpenFileEventSequence += 1;
   const eventId = `fileOpenEvent:${multiFormatOpenFileEventSequence}`;
   pendingMultiFormatOpenFileEvents.push({ eventId, filePath, sourceId });
@@ -5861,6 +5872,20 @@ async function dispatchMultiFormatOpenFileEvent(window, item) {
     queueDepth: pendingMultiFormatOpenFileEvents.length,
     bridgeReady: multiFormatDesktopRendererReady
   });
+  const authorized = await invokeMultiFormatRendererDecision(window, "authorizeHostFileOpen", {
+    eventId: item.eventId
+  });
+  multiFormatTrace.record({
+    phase: "renderer_authorization_result",
+    eventId: item.eventId,
+    sourceId: item.sourceId,
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady,
+    actionAccepted: authorized
+  });
+  if (!authorized) return;
   const begun = await invokeMultiFormatRendererAction(window, "beginHostFileOpen", {
     eventId: item.eventId
   });
@@ -5892,11 +5917,12 @@ async function dispatchMultiFormatOpenFileEvent(window, item) {
       issueCode: firstMultiFormatIssueCode(result?.model)
     });
   } catch (error) {
-    await invokeMultiFormatRendererAction(window, "failHostFileOpen", {
+    const failed = await invokeMultiFormatRendererAction(window, "failHostFileOpen", {
       eventId: item.eventId,
       message: "无法打开系统传入的本地文件，源文件没有被修改。"
     });
-    throw error;
+    if (!failed) throw error;
+    return;
   }
   const completed = await invokeMultiFormatRendererAction(window, "completeHostFileOpen", {
     eventId: item.eventId,
@@ -5937,6 +5963,19 @@ async function invokeMultiFormatRendererAction(window, name, payload) {
       const action = window.__autoSvgaShortTermActions?.[${actionName}];
       if (typeof action !== "function") return false;
       return Promise.resolve(action(${actionPayload})).then(() => true);
+    })()
+  `);
+}
+
+async function invokeMultiFormatRendererDecision(window, name, payload) {
+  if (!isMultiFormatDesktopProduct || !window || window.isDestroyed()) return false;
+  const actionName = JSON.stringify(name);
+  const actionPayload = JSON.stringify(payload ?? {});
+  return window.webContents.executeJavaScript(`
+    (() => {
+      const action = window.__autoSvgaShortTermActions?.[${actionName}];
+      if (typeof action !== "function") return false;
+      return Promise.resolve(action(${actionPayload})).then((accepted) => accepted === true);
     })()
   `);
 }

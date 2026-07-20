@@ -120,6 +120,30 @@ import { syncShortTermWindowMode } from "./short-term-macos-host-client.mjs";
 
 export function createShortTermAppController({ bridge, nodes, state }) {
   let playbackProgressFrame = 0;
+  let sourceAuthorityEpoch = 0;
+
+  function beginSourceAuthority() {
+    const epoch = ++sourceAuthorityEpoch;
+    return () => epoch === sourceAuthorityEpoch;
+  }
+
+  function currentSourceAuthority() {
+    const epoch = sourceAuthorityEpoch;
+    const sourceId = state.sourceId || "";
+    const sourceBytes = state.sourceBytes;
+    return () => epoch === sourceAuthorityEpoch
+      && sourceId === (state.sourceId || "")
+      && sourceBytes === state.sourceBytes;
+  }
+
+  async function mountPrimaryWithAuthority(bytes, authorityIsCurrent, options = {}) {
+    const playback = await mountPlayback("primary", nodes.primaryCanvas, bytes, options);
+    if (!authorityIsCurrent()) {
+      stopPlayback("primary");
+      return undefined;
+    }
+    return playback;
+  }
 
   function renderPlaybackProgress() {
     renderShortTermPlaybackProgress(nodes, state.primaryPlayback);
@@ -284,6 +308,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function loadOpenedSource({ bytes, displayName, sourceId, startPlayback = true }, options = {}) {
+    const authorityIsCurrent = beginSourceAuthority();
     hideShortTermCanvasToast(nodes);
     if (options.preserveComparePeer !== true) state.compareBSource = undefined;
     return loadShortTermOpenedSource({
@@ -296,10 +321,11 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       setView,
       inspectShortTerm,
       renderPreviewModel,
-      mountPrimaryPlayback: (nextBytes) => mountPlayback("primary", nodes.primaryCanvas, nextBytes, { start: startPlayback }),
+      mountPrimaryPlayback: (nextBytes) => mountPrimaryWithAuthority(nextBytes, authorityIsCurrent, { start: startPlayback }),
       stopAllPlayback,
       showFailure,
-      showPlaybackFailure
+      showPlaybackFailure,
+      authorityIsCurrent
     });
   }
 
@@ -374,6 +400,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function runOptimization() {
+    const authorityIsCurrent = currentSourceAuthority();
     return runShortTermOptimizationWorkflow({
       bridge,
       nodes,
@@ -385,8 +412,16 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       setActiveOutput,
       setCompareSlot,
       renderCompareInfo,
-      mountPlayback,
-      showOperationFailure
+      mountPlayback: async (key, canvas, bytes, options) => {
+        const playback = await mountPlayback(key, canvas, bytes, options);
+        if (!authorityIsCurrent()) {
+          stopPlayback(key);
+          return undefined;
+        }
+        return playback;
+      },
+      showOperationFailure,
+      authorityIsCurrent
     });
   }
 
@@ -401,6 +436,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function confirmInlineRename() {
+    const authorityIsCurrent = currentSourceAuthority();
     return confirmShortTermInlineRename({
       bridge,
       nodes,
@@ -408,13 +444,15 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       inspectShortTerm,
       setActiveOutput,
       renderPreviewModel,
-      mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes),
+      mountPrimaryPlayback: (bytes) => mountPrimaryWithAuthority(bytes, authorityIsCurrent),
       showSaveBanner,
-      showOperationFailure
+      showOperationFailure,
+      authorityIsCurrent
     });
   }
 
   async function createSaveProofOutput(suffix) {
+    const authorityIsCurrent = currentSourceAuthority();
     return createShortTermSaveProofOutput({
       state,
       suffix,
@@ -422,8 +460,9 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       inspectShortTerm,
       setActiveOutput,
       renderPreviewModel,
-      mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes),
-      showSaveBanner
+      mountPrimaryPlayback: (bytes) => mountPrimaryWithAuthority(bytes, authorityIsCurrent),
+      showSaveBanner,
+      authorityIsCurrent
     });
   }
 
@@ -440,6 +479,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function applyReplacementFile(file) {
+    const authorityIsCurrent = currentSourceAuthority();
     return applyShortTermReplacementFile({
       bridge,
       file,
@@ -448,19 +488,22 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       inspectShortTerm,
       setActiveOutput,
       renderPreviewModel,
-      mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes),
+      mountPrimaryPlayback: (bytes) => mountPrimaryWithAuthority(bytes, authorityIsCurrent),
       showSaveBanner,
-      showOperationFailure
+      showOperationFailure,
+      authorityIsCurrent
     });
   }
 
   async function resetImageReplacement() {
+    const authorityIsCurrent = currentSourceAuthority();
     return resetShortTermImageReplacement({
       state,
       inspectShortTerm,
       clearTransientOutput,
       renderPreviewModel,
-      mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes)
+      mountPrimaryPlayback: (bytes) => mountPrimaryWithAuthority(bytes, authorityIsCurrent),
+      authorityIsCurrent
     });
   }
 
@@ -494,6 +537,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function saveActiveOutput(command) {
+    const authorityIsCurrent = currentSourceAuthority();
     return saveShortTermActiveOutput({
       bridge,
       command,
@@ -502,9 +546,10 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       clearTransientOutput,
       renderPreviewModel,
       renderCommandState,
-      mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes),
+      mountPrimaryPlayback: (bytes) => mountPrimaryWithAuthority(bytes, authorityIsCurrent),
       refreshRecentFiles,
-      showSaveBanner
+      showSaveBanner,
+      authorityIsCurrent
     });
   }
 
@@ -532,6 +577,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   function deactivateForMultiFormat() {
+    sourceAuthorityEpoch += 1;
     resetShortTermLaunchSurface({
       nodes,
       state,

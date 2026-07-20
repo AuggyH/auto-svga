@@ -93,7 +93,8 @@ export async function runShortTermOptimizationWorkflow({
   setCompareSlot,
   renderCompareInfo,
   mountPlayback,
-  showOperationFailure
+  showOperationFailure,
+  authorityIsCurrent = () => true
 }) {
   if (!state.sourceBytes) return;
   if (!(await confirmDiscardUnsavedOutput("执行安全优化会放弃当前未保存的 SVGA 输出。"))) return;
@@ -115,6 +116,7 @@ export async function runShortTermOptimizationWorkflow({
       name: state.displayName,
       reportToken: bridge?.reportToken
     });
+    if (!authorityIsCurrent()) return;
     const optimizedBytes = result.optimizedSvgaBase64 ? fromBase64(result.optimizedSvgaBase64) : undefined;
     if (!optimizedBytes?.byteLength || result.optimization?.status !== "optimized") {
       finishRunning();
@@ -143,6 +145,7 @@ export async function runShortTermOptimizationWorkflow({
       mountPlayback
     });
   } catch (error) {
+    if (!authorityIsCurrent()) return;
     finishRunning();
     showOperationFailure("优化未完成。", error);
   }

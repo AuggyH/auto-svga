@@ -127,7 +127,8 @@ export async function confirmShortTermInlineRename({
   renderPreviewModel,
   mountPrimaryPlayback,
   showSaveBanner,
-  showOperationFailure
+  showOperationFailure,
+  authorityIsCurrent = () => true
 }) {
   if (!state.sourceBytes || !state.renameImageKey) return;
   const fromImageKey = state.renameImageKey;
@@ -146,13 +147,16 @@ export async function confirmShortTermInlineRename({
       toImageKey,
       reportToken: bridge?.reportToken
     });
+    if (!authorityIsCurrent()) return;
     const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
     if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
       showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", "源文件没有被修改。");
       return;
     }
+    const model = await inspectShortTerm(renamedBytes, state.displayName);
+    if (!authorityIsCurrent()) return;
     state.previewBytes = renamedBytes;
-    state.model = await inspectShortTerm(renamedBytes, state.displayName);
+    state.model = model;
     state.selectedImageKey = toImageKey;
     state.renameImageKey = "";
     setActiveOutput({
@@ -166,6 +170,7 @@ export async function confirmShortTermInlineRename({
     renderPreviewModel();
     await mountPrimaryPlayback(state.previewBytes);
   } catch (error) {
+    if (!authorityIsCurrent()) return;
     showOperationFailure("重命名未完成。", error);
   }
 }
@@ -196,7 +201,8 @@ export async function applyShortTermReplacementFile({
   renderPreviewModel,
   mountPrimaryPlayback,
   showSaveBanner,
-  showOperationFailure
+  showOperationFailure,
+  authorityIsCurrent = () => true
 }) {
   if (!file || !state.sourceBytes || !state.selectedImageKey) return;
   if (!(await confirmDiscardUnsavedOutput("替换图片会放弃当前未保存的 SVGA 输出。"))) return;
@@ -208,17 +214,21 @@ export async function applyShortTermReplacementFile({
       svgaBase64: toBase64(state.sourceBytes),
       pngBase64: toBase64(new Uint8Array(await file.arrayBuffer()))
     };
+    if (!authorityIsCurrent()) return;
     const replaced = await replaceShortTermImageAsset({
       payload,
       reportToken: bridge?.reportToken
     });
+    if (!authorityIsCurrent()) return;
     const replacedBytes = replaced.replacedSvgaBase64 ? fromBase64(replaced.replacedSvgaBase64) : undefined;
     if (!replacedBytes?.byteLength || replaced.replacement?.status !== "replaced") {
       showSaveBanner(replaced.replacement?.resultTitle || "替换未完成。", "源文件没有被修改。");
       return;
     }
+    const model = await inspectShortTerm(replacedBytes, state.displayName);
+    if (!authorityIsCurrent()) return;
     state.previewBytes = replacedBytes;
-    state.model = await inspectShortTerm(replacedBytes, state.displayName);
+    state.model = model;
     setActiveOutput({
       kind: "replacement",
       bytes: replacedBytes,
@@ -229,6 +239,7 @@ export async function applyShortTermReplacementFile({
     renderPreviewModel();
     await mountPrimaryPlayback(state.previewBytes);
   } catch (error) {
+    if (!authorityIsCurrent()) return;
     showOperationFailure("替换未完成。", error);
   }
 }
@@ -238,11 +249,15 @@ export async function resetShortTermImageReplacement({
   inspectShortTerm,
   clearTransientOutput,
   renderPreviewModel,
-  mountPrimaryPlayback
+  mountPrimaryPlayback,
+  authorityIsCurrent = () => true
 }) {
   if (!state.sourceBytes || state.activeOutput?.kind !== "replacement") return;
-  state.previewBytes = new Uint8Array(state.sourceBytes);
-  state.model = await inspectShortTerm(state.sourceBytes, state.displayName);
+  const previewBytes = new Uint8Array(state.sourceBytes);
+  const model = await inspectShortTerm(state.sourceBytes, state.displayName);
+  if (!authorityIsCurrent()) return;
+  state.previewBytes = previewBytes;
+  state.model = model;
   clearTransientOutput();
   renderPreviewModel();
   await mountPrimaryPlayback(state.previewBytes);

@@ -20,7 +20,8 @@ export async function createShortTermSaveProofOutput({
   setActiveOutput,
   renderPreviewModel,
   mountPrimaryPlayback,
-  showSaveBanner
+  showSaveBanner,
+  authorityIsCurrent = () => true
 }) {
   if (!state.sourceBytes) throw new Error("保存证明需要先打开 SVGA。");
   const fromImageKey = saveProofSourceImageKey({
@@ -37,12 +38,15 @@ export async function createShortTermSaveProofOutput({
     toImageKey,
     reportToken
   });
+  if (!authorityIsCurrent()) return undefined;
   const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
   if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
     throw new Error(renamed.rename?.diagnostic?.message || "保存证明输出生成失败。");
   }
+  const model = await inspectShortTerm(renamedBytes, state.displayName);
+  if (!authorityIsCurrent()) return undefined;
   state.previewBytes = renamedBytes;
-  state.model = await inspectShortTerm(renamedBytes, state.displayName);
+  state.model = model;
   state.selectedImageKey = toImageKey;
   setActiveOutput({
     kind: "rename",
@@ -75,7 +79,8 @@ export async function saveShortTermActiveOutput({
   renderCommandState,
   mountPrimaryPlayback,
   refreshRecentFiles,
-  showSaveBanner
+  showSaveBanner,
+  authorityIsCurrent = () => true
 }) {
   if (!state.activeOutput?.bytes?.byteLength || !bridge?.saveShortTermSvgaOutput) return undefined;
   if (state.activeOutput.kind === "optimization" && !canSaveOptimizationResult(state.activeOutput.details)) {
@@ -94,6 +99,7 @@ export async function saveShortTermActiveOutput({
     const outputKind = state.activeOutput.kind;
     const outputBytes = new Uint8Array(state.activeOutput.bytes);
     const expectedSha256 = await sha256Hex(outputBytes);
+    if (!authorityIsCurrent()) return undefined;
     const result = await bridge.saveShortTermSvgaOutput({
       command,
       sourceId: state.sourceId,
@@ -101,6 +107,7 @@ export async function saveShortTermActiveOutput({
       bytesBase64: toBase64(outputBytes),
       expectedSha256
     });
+    if (!authorityIsCurrent()) return undefined;
     if (!result || result.status === "cancelled") {
       state.saveStatus = "idle";
       renderCommandState();
@@ -108,6 +115,9 @@ export async function saveShortTermActiveOutput({
       return result;
     }
     const savedModel = await inspectShortTerm(outputBytes, result.fileName || state.displayName);
+    if (!authorityIsCurrent()) return undefined;
+    await mountPrimaryPlayback(outputBytes);
+    if (!authorityIsCurrent()) return undefined;
     state.sourceBytes = outputBytes;
     state.previewBytes = new Uint8Array(outputBytes);
     state.sourceId = result.sourceId || state.sourceId;
@@ -116,7 +126,6 @@ export async function saveShortTermActiveOutput({
     state.cleanSaveAsVisible = outputKind !== "optimization" && command === "saveAs";
     state.model = savedModel;
     renderPreviewModel();
-    await mountPrimaryPlayback(state.previewBytes);
     renderCommandState();
     showSaveBanner("已保存", "");
     await refreshRecentFiles();
@@ -126,6 +135,7 @@ export async function saveShortTermActiveOutput({
       expectedSha256
     };
   } catch (error) {
+    if (!authorityIsCurrent()) return undefined;
     state.saveStatus = "failed";
     renderCommandState();
     showSaveBanner("保存失败，请重试", "");

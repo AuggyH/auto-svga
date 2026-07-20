@@ -162,6 +162,11 @@ export function createMultiFormatDesktopPreviewController({
     await applyOpenOutcome(outcome);
   }
 
+  async function authorizeHostFileOpen(payload = {}) {
+    if (typeof payload?.eventId !== "string" || payload.eventId.length === 0) return false;
+    return confirmSvgaSourceReplacement("打开系统文件会放弃当前未保存的 SVGA 输出。");
+  }
+
   function beginHostFileOpen(payload = {}) {
     if (typeof payload?.eventId !== "string" || payload.eventId.length === 0) return false;
     hostFileOpenEventId = payload.eventId;
@@ -175,10 +180,6 @@ export function createMultiFormatDesktopPreviewController({
       deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS
     });
     if (!hostFileOpenIsActive(payload)) return false;
-    if (!(await confirmSvgaSourceReplacement("打开系统文件会放弃当前未保存的 SVGA 输出。"))) {
-      clearHostFileOpenRequest();
-      return false;
-    }
     clearHostFileOpenRequest();
     await applyOpenOutcome(outcome);
     return true;
@@ -623,6 +624,7 @@ export function createMultiFormatDesktopPreviewController({
     applyTabState("overview");
     clearRuntimeReplacementAuthorityForAcceptedOpen();
     applyHostResult(result);
+    await svgaController?.handlers?.refreshRecentFiles?.();
   }
 
   function clearRuntimeReplacementAuthorityForAcceptedOpen() {
@@ -638,7 +640,6 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function setLoading(copy) {
-    revokeActiveDocumentAuthority({ disposeHost: false });
     renderLoadingMessage(nodes, copy);
     setView("loading");
   }
@@ -1943,6 +1944,11 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function showOpenFailure(error) {
+    if (state.model && state.sourceId) {
+      renderFailureMessage(nodes, ownerFailureCopy(error));
+      setView("preview");
+      return;
+    }
     revokeActiveDocumentAuthority();
     renderFailureMessage(nodes, ownerFailureCopy(error));
     setView("failed");
@@ -2025,6 +2031,7 @@ export function createMultiFormatDesktopPreviewController({
 
   const handlers = {
     openFromHostDialog,
+    authorizeHostFileOpen,
     beginHostFileOpen,
     completeHostFileOpen,
     failHostFileOpen,

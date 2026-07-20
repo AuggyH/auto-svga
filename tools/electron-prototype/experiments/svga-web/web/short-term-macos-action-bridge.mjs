@@ -47,6 +47,7 @@ export function installShortTermActionBridge({
     },
     copyStateSummary: () => bridge?.writeClipboardText?.(handlers.currentStateSummary())
   };
+  if (typeof handlers.authorizeHostFileOpen === "function") actions.authorizeHostFileOpen = handlers.authorizeHostFileOpen;
   if (typeof handlers.beginHostFileOpen === "function") actions.beginHostFileOpen = handlers.beginHostFileOpen;
   if (typeof handlers.completeHostFileOpen === "function") actions.completeHostFileOpen = handlers.completeHostFileOpen;
   if (typeof handlers.failHostFileOpen === "function") actions.failHostFileOpen = handlers.failHostFileOpen;
