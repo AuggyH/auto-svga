@@ -734,7 +734,7 @@
   --asv-component-canvas-checker-pattern: conic-gradient(var(--asv-color-canvas-checker) 25%, transparent 0 50%, var(--asv-color-canvas-checker) 0 75%, transparent 0);
   --asv-component-settings-sheet-width: 360px;
   --asv-component-settings-sheet-min-height: 300px;
-  --asv-component-settings-sheet-border: 1px solid color-mix(in srgb, var(--asv-base-neutral-0) 90%, transparent);
+  --asv-component-settings-sheet-border: 1px solid transparent;
   --asv-component-settings-sheet-radius: var(--asv-base-radius-24);
   --asv-component-settings-sheet-background: var(--asv-color-surface-panel-chrome);
   --asv-component-settings-sheet-shadow: var(--asv-shadow-floating);

@@ -562,6 +562,8 @@ test("settings sheet follows the frozen appearance hierarchy", async () => {
   assert.equal((settings.match(/class="settingsChoice"/gu) || []).length, 3);
 
   assert.match(tokens, /--asv-component-settings-sheet-min-height:\s*300px/u);
+  assert.match(tokens, /--asv-component-settings-sheet-border:\s*1px solid transparent/u);
+  assert.doesNotMatch(tokens, /--asv-component-settings-sheet-border:[^;]*--asv-base-neutral-0/u);
   assert.match(tokens, /--asv-component-settings-sheet-radius:\s*var\(--asv-base-radius-24\)/u);
   assert.match(tokens, /--asv-component-settings-divider-width:\s*1px/u);
   assert.match(tokens, /--asv-component-settings-title-icon-size:\s*20px/u);
@@ -580,6 +582,7 @@ test("settings sheet follows the frozen appearance hierarchy", async () => {
   assert.match(components, /\.settingsGroup\s*\{[^}]*padding-block:\s*var\(--asv-settings-appearance-block-padding-block\)/su);
   assert.match(components, /\.settingsChoice\s*\{[^}]*min-height:\s*var\(--asv-settings-choice-height\)[^}]*font-weight:\s*var\(--asv-settings-choice-label-weight\)/su);
   assert.match(components, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*border-radius:\s*var\(--asv-settings-choice-selected-radius\)[^}]*color:\s*var\(--asv-settings-choice-selected-color\)/su);
+  assert.match(components, /\.settingsChoice:has\(input:focus-visible\)\s*\{[^}]*box-shadow:\s*var\(--asv-focus-inset\)/su);
 });
 
 test("launch recent module remains present for unavailable, empty, and non-empty states", () => {
