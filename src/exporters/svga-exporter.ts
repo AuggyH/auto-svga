@@ -568,8 +568,7 @@ function buildAuthorityResourceMap(
   const projectAssetsByPath = new Map(project.assets.map((asset) => [asset.path, asset]));
   const projectAssetsById = new Map(project.assets.map((asset) => [asset.id, asset]));
   if (
-    uniquePaths.length !== project.assets.length
-    || projectAssetsByPath.size !== project.assets.length
+    projectAssetsByPath.size !== project.assets.length
     || projectAssetsById.size !== project.assets.length
     || resources.length !== uniquePaths.length
   ) {
@@ -625,7 +624,6 @@ function validateProjectMapResourceJoin(
   if (projectAssetsByPath.size !== authority.project.assets.length) return false;
   const orderedSprites = [...authority.svgaMap.sprites].sort(compareSpriteStack);
   const uniquePaths = [...new Set(orderedSprites.map((sprite) => sprite.exportAssetPath))];
-  if (uniquePaths.length !== authority.project.assets.length) return false;
   const images = decodedObject.images ?? {};
   if (Object.keys(images).length !== uniquePaths.length) return false;
   for (const [index, assetPath] of uniquePaths.entries()) {

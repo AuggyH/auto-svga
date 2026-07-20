@@ -62,6 +62,7 @@ const IPC_CHANNELS = Object.freeze({
   getRecentSvgaFiles: "svga-web-experiment:get-recent-svga-files",
   openRecentSvgaFile: "svga-web-experiment:open-recent-svga-file",
   clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
+  commitMultiFormatOpen: "svga-web-experiment:commit-multiformat-open",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   updateShortTermMenuState: "svga-web-experiment:update-short-term-menu-state",
   setShortTermWindowMode: "svga-web-experiment:set-short-term-window-mode"
@@ -79,6 +80,8 @@ const externalRequests = [];
 const consoleMessages = [];
 const ipcEvents = [];
 const generatedArtifacts = {};
+const pendingRecentSourceIds = new Set();
+const committedRecentSourceIds = new Set();
 let server;
 let windowRef;
 
@@ -87,6 +90,7 @@ app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.setPath("userData", userDataRoot);
 
 main().catch(async (error) => {
+  process.exitCode = 1;
   writeBootstrapPhase("main_failed", { error: error instanceof Error ? error.message : String(error) });
   await writeProof({
     status: "failed",
@@ -103,7 +107,6 @@ main().catch(async (error) => {
     boundaries: proofBoundaries()
   }).catch(() => {});
   await cleanup().catch(() => {});
-  process.exitCode = 1;
 });
 
 async function main() {
@@ -422,20 +425,68 @@ async function proveTypedFailureRows() {
   const malformedPath = path.join(proofRoot, "malformed-motion.json");
   writeFileSync(malformedPath, "{\"v\":", { mode: 0o600 });
 
-  await openFileInProduct(missingLottiePath, "TASK-LOTTIE-MISSING");
-  const missing = await waitForPage("missing Lottie typed failure", (snapshot) =>
-    snapshot.modelFormat === "lottie"
-      && snapshot.runtimeMountState !== "loaded"
-      && snapshot.issueCodes.some((issue) => issue.code === "missing_resource")
+  const missing = await proveRejectedOpenPreservesActive(
+    missingLottiePath,
+    "TASK-LOTTIE-MISSING",
+    ["missing_resource"]
   );
-  await openFileInProduct(malformedPath, "TASK-MALFORMED-JSON");
-  const malformed = await waitForPage("malformed JSON typed failure", (snapshot) =>
-    (snapshot.modelStatus === "failed" || snapshot.modelStatus === "playbackBlocked")
-      && snapshot.issueCodes.some((issue) => ["invalid_file", "parse_precondition", "open_failed"].includes(issue.code))
+  const malformed = await proveRejectedOpenPreservesActive(
+    malformedPath,
+    "TASK-MALFORMED-JSON",
+    ["invalid_file", "parse_precondition", "open_failed"]
   );
   return {
-    missingLottie: compactSnapshot(missing),
-    malformed: compactSnapshot(malformed)
+    missingLottie: missing,
+    malformed
+  };
+}
+
+async function proveRejectedOpenPreservesActive(filePath, label, expectedIssueCodes) {
+  const before = await pageSnapshot();
+  const openResult = await previewSession.openLocalFilePath(filePath, "fileOpenEvent");
+  const issueCodes = openResult?.model?.rightPanel?.issues?.map((issue) => issue.code) ?? [];
+  if (!expectedIssueCodes.some((code) => issueCodes.includes(code))) {
+    throw new Error(`${label} did not return a typed failure: ${JSON.stringify(issueCodes)}`);
+  }
+  const eventId = `${label.toLowerCase().replace(/[^a-z0-9]+/gu, "-")}-open`;
+  const action = await runInPage(`${label} reject host open`, `
+    (async () => {
+      const eventId = ${JSON.stringify(eventId)};
+      const result = ${JSON.stringify(openResult)};
+      const begun = window.__autoSvgaShortTermActions.beginHostFileOpen({ eventId });
+      const completed = await window.__autoSvgaShortTermActions.completeHostFileOpen({ eventId, result });
+      return { begun, completed };
+    })()
+  `);
+  if (action?.begun !== true || action?.completed !== true) {
+    throw new Error(`${label} did not preserve the active source after rejection: ${JSON.stringify({
+      action,
+      resultStatus: openResult?.model?.status,
+      resultFormat: openResult?.model?.detectedFormat,
+      sourceIdHash: hashId(openResult?.sourceId),
+      issueCodes
+    })}`);
+  }
+  const after = await pageSnapshot();
+  const beforeSourceId = before?.hostModel?.sourceId ?? "";
+  const afterSourceId = after?.hostModel?.sourceId ?? "";
+  if (
+    !beforeSourceId
+    || afterSourceId !== beforeSourceId
+    || after.modelFormat !== before.modelFormat
+    || after.modelStatus !== before.modelStatus
+    || after.runtimeMountState !== before.runtimeMountState
+    || after.runtimeFormat !== before.runtimeFormat
+  ) {
+    throw new Error(`${label} changed active source or runtime after rejection.`);
+  }
+  return {
+    resultStatus: openResult?.model?.status,
+    issueCodes,
+    controller: action,
+    sourceIdHash: hashId(beforeSourceId),
+    before: compactSnapshot(before),
+    after: compactSnapshot(after)
   };
 }
 
@@ -456,6 +507,9 @@ async function proveNarrowWindowReachability() {
 
 async function openFileInProduct(filePath, label) {
   const openResult = await previewSession.openLocalFilePath(filePath, "fileOpenEvent");
+  if (typeof openResult?.sourceId === "string") {
+    pendingRecentSourceIds.add(openResult.sourceId);
+  }
   const eventId = `${label.toLowerCase().replace(/[^a-z0-9]+/gu, "-")}-open`;
   const action = await runInPage(`${label} complete host open`, `
     (async () => {
@@ -480,6 +534,28 @@ function installIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.getRecentSvgaFiles, async () => []);
   ipcMain.handle(IPC_CHANNELS.openRecentSvgaFile, async () => ({ status: "missing", pathRedacted: true }));
   ipcMain.handle(IPC_CHANNELS.clearRecentSvgaFiles, async () => ({ status: "cleared", count: 0 }));
+  ipcMain.handle(IPC_CHANNELS.commitMultiFormatOpen, async (_event, input) => {
+    const sourceId = typeof input?.sourceId === "string" ? input.sourceId : "";
+    const validSourceId = /^[a-f0-9]{24}$/iu.test(sourceId);
+    const pendingSource = pendingRecentSourceIds.has(sourceId);
+    const activeSource = previewSession.activeSourceId === sourceId;
+    ipcEvents.push({
+      phase: "commit_open",
+      sourceIdHash: hashId(sourceId),
+      validSourceId,
+      pendingSource,
+      activeSource
+    });
+    if (committedRecentSourceIds.has(sourceId)) {
+      return { status: "committed", sourceId, recorded: false, pathRedacted: true };
+    }
+    if (!validSourceId || !pendingSource || !activeSource) {
+      return { status: "failed", code: "open_failed", pathRedacted: true };
+    }
+    pendingRecentSourceIds.delete(sourceId);
+    committedRecentSourceIds.add(sourceId);
+    return { status: "committed", sourceId, recorded: true, pathRedacted: true };
+  });
   ipcMain.handle(IPC_CHANNELS.openDroppedMultiFormatFile, async (_event, input) => previewSession.openDroppedFile(input));
   ipcMain.handle(IPC_CHANNELS.prepareMultiFormatRuntimePreview, async (_event, input) => {
     ipcEvents.push({ phase: "prepare_runtime_preview", format: input?.format, sourceIdHash: hashId(input?.sourceId), replacementCount: input?.replacements?.active?.length ?? 0 });
@@ -1497,7 +1573,7 @@ async function cleanup() {
   try { windowRef?.destroy(); } catch {}
   try { await server?.close?.(); } catch {}
   try { await previewSession.control({ action: "dispose" }); } catch {}
-  try { app.quit(); } catch {}
+  try { app.exit(process.exitCode ?? 0); } catch {}
 }
 
 async function gitHead() {
