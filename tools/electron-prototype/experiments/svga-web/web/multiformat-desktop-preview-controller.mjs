@@ -1276,8 +1276,7 @@ export function createMultiFormatDesktopPreviewController({
     };
     const currentTimeMs = Number(model.canvas?.playback?.currentTimeMs) || 0;
     syncVapRuntimePlayback(activeRuntimePreview, model, {
-      forceSeek: currentTimeMs > 0,
-      deferPlaybackUntilReady: true
+      forceSeek: currentTimeMs > 0
     });
     mount.dataset.runtimePreviewState = "loaded";
     mount.dataset.runtimeFormat = "vap";
@@ -1353,14 +1352,23 @@ export function createMultiFormatDesktopPreviewController({
       player.setTime?.(currentTimeMs / 1000);
       active.currentTimeMs = currentTimeMs;
     }
-    if (options.deferPlaybackUntilReady && active.runtimeReady !== true && model.status !== "playing") return;
+    if (active.runtimeReady !== true) {
+      active.playbackStatus = "starting";
+      return;
+    }
     if (model.status === "playing") {
-      if (options.forcePlayback || active.playbackStatus !== "playing") invokeVapRuntimePlay(player, active);
+      if (options.forcePlayback || active.playbackStatus !== "playing") {
+        player.cancelRequestAnimation?.();
+        invokeVapRuntimePlay(player, active);
+      }
       active.playbackStatus = "playing";
       return;
     }
     if (model.status === "paused" || model.status === "previewReady") {
-      if (options.forcePlayback || active.playbackStatus !== model.status) player.pause?.();
+      if (options.forcePlayback || active.playbackStatus !== model.status) {
+        player.pause?.();
+        player.cancelRequestAnimation?.();
+      }
       active.playbackStatus = model.status;
     }
   }
@@ -1543,9 +1551,13 @@ export function createMultiFormatDesktopPreviewController({
     const syncDesiredPlayback = (event) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
       if (activeRuntimePreview?.player !== player) return;
-      if (event?.type === "playing") activeRuntimePreview.runtimeReady = true;
       fitVapRuntimeCanvas(mount);
-      syncVapRuntimePlayback(activeRuntimePreview, state.model ?? {}, { forcePlayback: true });
+      if (event?.type !== "playing") return;
+      activeRuntimePreview.runtimeReady = true;
+      activeRuntimePreview.playbackStatus = "playing";
+      if (activeRuntimePreview.desiredStatus !== "playing") {
+        syncVapRuntimePlayback(activeRuntimePreview, state.model ?? {}, { forcePlayback: true });
+      }
     };
     const bindVideo = () => {
       const candidate = player?.video;
@@ -1563,7 +1575,6 @@ export function createMultiFormatDesktopPreviewController({
         video.addEventListener(eventName, syncDesiredPlayback);
       });
       if (Number(video.readyState) >= 2) syncDesiredPlayback({ type: "readyState" });
-      else syncVapRuntimePlayback(activeRuntimePreview, state.model ?? {}, { forcePlayback: true });
       return true;
     };
     const discoverRuntimeChildren = () => {

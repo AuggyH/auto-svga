@@ -6773,6 +6773,8 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
   const vapPlayers = [];
   let vapDrawFrameCalls = 0;
   let vapCancelFrameCalls = 0;
+  let vapRenderDriverStarts = 0;
+  let vapMeaningfulPixelCount = 0;
   const objectUrls = [];
   globalThis.document = documentRef;
   globalThis.lottie = {
@@ -6794,19 +6796,33 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     },
     default(options) {
       vapCalls.push(options);
+      const videoListeners = new Map();
       const player = {
         video: {
           currentTime: 0,
           duration: 1,
           readyState: 4,
           paused: false,
-          addEventListener() {},
-          removeEventListener() {},
+          addEventListener(name, listener) {
+            const listeners = videoListeners.get(name) ?? [];
+            listeners.push(listener);
+            videoListeners.set(name, listeners);
+          },
+          removeEventListener(name, listener) {
+            const listeners = videoListeners.get(name) ?? [];
+            videoListeners.set(name, listeners.filter((candidate) => candidate !== listener));
+          },
           setAttribute() {}
         },
         on() { return this; },
-        play() { return this; },
-        pause() {},
+        play() {
+          vapRenderDriverStarts += 1;
+          this.video.paused = false;
+          return this;
+        },
+        pause() {
+          this.video.paused = true;
+        },
         destroy() {},
         drawFrame() {
           vapDrawFrameCalls += 1;
@@ -6816,6 +6832,11 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
         },
         setTime(seconds) {
           this.seconds = seconds;
+        },
+        startConstructorRenderDriver() {
+          vapRenderDriverStarts += 1;
+          vapMeaningfulPixelCount = 64;
+          for (const listener of videoListeners.get("playing") ?? []) listener({ type: "playing" });
         }
       };
       vapPlayers.push(player);
@@ -6833,6 +6854,13 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
 
   try {
     const bridge = createMultiFormatRuntimeMountTestBridge();
+    bridge.controlMultiFormatPreview = ({ action }) => {
+      const result = createRuntimeMountOpenResult("vap");
+      result.model.status = action === "pause" ? "paused" : "playing";
+      result.model.canvas.status = result.model.status;
+      result.model.canvas.playback.status = result.model.status;
+      return Promise.resolve(result);
+    };
     const state = {
       view: "launch",
       mode: "preview",
@@ -6952,9 +6980,13 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
 
     bridge.markOpened("vap");
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "vap-open" }), true);
+    const vapOpenResult = createRuntimeMountOpenResult("vap");
+    vapOpenResult.model.status = "playing";
+    vapOpenResult.model.canvas.status = "playing";
+    vapOpenResult.model.canvas.playback.status = "playing";
     assert.equal(await controller.handlers.completeHostFileOpen({
       eventId: "vap-open",
-      result: createRuntimeMountOpenResult("vap")
+      result: vapOpenResult
     }), true);
     await flushRuntimeMountPromises();
 
@@ -6965,13 +6997,22 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(vapCalls[0].src, "blob:test-1");
     assert.equal(objectUrls.length, 1);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    assert.equal(vapRenderDriverStarts, 0, "the controller must not race the constructor-owned VAP startup driver");
+    vapPlayers[0].startConstructorRenderDriver();
+    assert.equal(vapRenderDriverStarts, 1, "VAP playing must retain exactly one render driver");
+    assert.ok(vapMeaningfulPixelCount > 0, "the constructor-owned VAP driver must publish meaningful pixels");
     assert.equal(vapDrawFrameCalls, 0, "progress rendering must not start a second VAP frame callback chain");
     assert.deepEqual(controller.handlers.refreshRuntimePreviewFrame(), { drawn: false, reason: "playback_active" });
     assert.equal(vapDrawFrameCalls, 0);
-    vapPlayers[0].video.paused = true;
+    await controller.handlers.togglePrimaryPlayback();
+    assert.equal(vapRenderDriverStarts, 1, "pausing must not start another VAP render driver");
+    assert.equal(vapCancelFrameCalls, 1, "pausing must cancel the active VAP render driver");
     assert.equal(controller.handlers.refreshRuntimePreviewFrame().drawn, true);
     assert.equal(vapDrawFrameCalls, 1);
-    assert.equal(vapCancelFrameCalls, 1);
+    assert.equal(vapCancelFrameCalls, 2, "the paused single-frame sample must cancel its callback");
+    await controller.handlers.togglePrimaryPlayback();
+    assert.equal(vapRenderDriverStarts, 2, "resuming must start exactly one replacement VAP render driver");
+    assert.equal(vapCancelFrameCalls, 3, "resuming must clear any prior callback before starting its driver");
 
     const unrelatedFocus = new FakeDomElement("button");
     unrelatedFocus.ownerDocument = documentRef;
@@ -7874,6 +7915,10 @@ test("0.2 installed file-open keeps source identity through renderer playback an
       const video = new FakeDomElement("video");
       vapVideos.push(video);
       options.container?.appendChild?.(video);
+      queueMicrotask(() => {
+        runtimeEvents.push("vap:play");
+        video.dispatchEvent("playing");
+      });
       return {
         video,
         on() { return this; },
@@ -8025,7 +8070,11 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     const vapPreviewPlayCount = runtimeEvents.filter((event) => event === "vap:play").length;
     vapVideos.at(-1)?.dispatchEvent("canplay");
     await flushRuntimeMountPromises();
-    assert.equal(runtimeEvents.filter((event) => event === "vap:play").length > vapPreviewPlayCount, true);
+    assert.equal(
+      runtimeEvents.filter((event) => event === "vap:play").length,
+      vapPreviewPlayCount,
+      "canplay must not create a second VAP render driver"
+    );
     const vapOpenCallCount = vapCalls.length;
     await controller.handlers.togglePrimaryPlayback();
     await flushRuntimeMountPromises();
