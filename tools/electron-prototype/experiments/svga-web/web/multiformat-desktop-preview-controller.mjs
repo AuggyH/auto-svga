@@ -1548,11 +1548,17 @@ export function createMultiFormatDesktopPreviewController({
     let discoveryTimer;
     let resizeObserver;
     let discoveryAttempts = 0;
+    let readinessHandoffComplete = false;
     const syncDesiredPlayback = (event) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
       if (activeRuntimePreview?.player !== player) return;
       fitVapRuntimeCanvas(mount);
       if (event?.type !== "playing") return;
+      if (!readinessHandoffComplete) {
+        player.cancelRequestAnimation?.();
+        player.drawFrame?.(null, null);
+        readinessHandoffComplete = true;
+      }
       activeRuntimePreview.runtimeReady = true;
       activeRuntimePreview.playbackStatus = "playing";
       if (activeRuntimePreview.desiredStatus !== "playing") {

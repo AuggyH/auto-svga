@@ -6774,6 +6774,8 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
   let vapDrawFrameCalls = 0;
   let vapCancelFrameCalls = 0;
   let vapRenderDriverStarts = 0;
+  let vapActiveRenderDrivers = 0;
+  let vapMaxActiveRenderDrivers = 0;
   let vapMeaningfulPixelCount = 0;
   const objectUrls = [];
   globalThis.document = documentRef;
@@ -6797,6 +6799,11 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     default(options) {
       vapCalls.push(options);
       const videoListeners = new Map();
+      const scheduleRenderDriver = () => {
+        vapRenderDriverStarts += 1;
+        vapActiveRenderDrivers += 1;
+        vapMaxActiveRenderDrivers = Math.max(vapMaxActiveRenderDrivers, vapActiveRenderDrivers);
+      };
       const player = {
         video: {
           currentTime: 0,
@@ -6816,7 +6823,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
         },
         on() { return this; },
         play() {
-          vapRenderDriverStarts += 1;
+          scheduleRenderDriver();
           this.video.paused = false;
           return this;
         },
@@ -6826,17 +6833,22 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
         destroy() {},
         drawFrame() {
           vapDrawFrameCalls += 1;
+          vapMeaningfulPixelCount = 64;
+          scheduleRenderDriver();
         },
         cancelRequestAnimation() {
           vapCancelFrameCalls += 1;
+          vapActiveRenderDrivers = Math.max(0, vapActiveRenderDrivers - 1);
         },
         setTime(seconds) {
           this.seconds = seconds;
         },
-        startConstructorRenderDriver() {
-          vapRenderDriverStarts += 1;
-          vapMeaningfulPixelCount = 64;
+        emitPlaying() {
           for (const listener of videoListeners.get("playing") ?? []) listener({ type: "playing" });
+        },
+        startConstructorRenderDriver() {
+          scheduleRenderDriver();
+          this.emitPlaying();
         }
       };
       vapPlayers.push(player);
@@ -6999,20 +7011,31 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     assert.equal(vapRenderDriverStarts, 0, "the controller must not race the constructor-owned VAP startup driver");
     vapPlayers[0].startConstructorRenderDriver();
-    assert.equal(vapRenderDriverStarts, 1, "VAP playing must retain exactly one render driver");
-    assert.ok(vapMeaningfulPixelCount > 0, "the constructor-owned VAP driver must publish meaningful pixels");
-    assert.equal(vapDrawFrameCalls, 0, "progress rendering must not start a second VAP frame callback chain");
-    assert.deepEqual(controller.handlers.refreshRuntimePreviewFrame(), { drawn: false, reason: "playback_active" });
-    assert.equal(vapDrawFrameCalls, 0);
-    await controller.handlers.togglePrimaryPlayback();
-    assert.equal(vapRenderDriverStarts, 1, "pausing must not start another VAP render driver");
-    assert.equal(vapCancelFrameCalls, 1, "pausing must cancel the active VAP render driver");
-    assert.equal(controller.handlers.refreshRuntimePreviewFrame().drawn, true);
+    assert.equal(vapRenderDriverStarts, 2, "VAP readiness must replace the constructor callback with one drawn callback chain");
+    assert.equal(vapCancelFrameCalls, 1, "VAP readiness must cancel the constructor callback before drawing");
+    assert.equal(vapDrawFrameCalls, 1, "VAP readiness must synchronously publish its first decoded frame");
+    assert.ok(vapMeaningfulPixelCount > 0, "the readiness handoff must publish meaningful pixels");
+    assert.equal(vapActiveRenderDrivers, 1, "VAP readiness must leave exactly one active callback chain");
+    assert.equal(vapMaxActiveRenderDrivers, 1, "VAP readiness must never overlap callback chains");
+    vapPlayers[0].emitPlaying();
+    assert.equal(vapRenderDriverStarts, 2, "later playing events must not replace the active callback chain again");
+    assert.equal(vapCancelFrameCalls, 1);
     assert.equal(vapDrawFrameCalls, 1);
-    assert.equal(vapCancelFrameCalls, 2, "the paused single-frame sample must cancel its callback");
+    assert.deepEqual(controller.handlers.refreshRuntimePreviewFrame(), { drawn: false, reason: "playback_active" });
+    assert.equal(vapDrawFrameCalls, 1);
     await controller.handlers.togglePrimaryPlayback();
-    assert.equal(vapRenderDriverStarts, 2, "resuming must start exactly one replacement VAP render driver");
-    assert.equal(vapCancelFrameCalls, 3, "resuming must clear any prior callback before starting its driver");
+    assert.equal(vapRenderDriverStarts, 2, "pausing must not start another VAP render driver");
+    assert.equal(vapCancelFrameCalls, 2, "pausing must cancel the active VAP render driver");
+    assert.equal(vapActiveRenderDrivers, 0);
+    assert.equal(controller.handlers.refreshRuntimePreviewFrame().drawn, true);
+    assert.equal(vapDrawFrameCalls, 2);
+    assert.equal(vapCancelFrameCalls, 3, "the paused single-frame sample must cancel its callback");
+    assert.equal(vapActiveRenderDrivers, 0);
+    await controller.handlers.togglePrimaryPlayback();
+    assert.equal(vapRenderDriverStarts, 4, "resuming must start exactly one replacement VAP render driver");
+    assert.equal(vapCancelFrameCalls, 4, "resuming must clear any prior callback before starting its driver");
+    assert.equal(vapActiveRenderDrivers, 1);
+    assert.equal(vapMaxActiveRenderDrivers, 1);
 
     const unrelatedFocus = new FakeDomElement("button");
     unrelatedFocus.ownerDocument = documentRef;
