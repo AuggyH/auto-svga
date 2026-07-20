@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     name: validate
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
     timeout-minutes: 20
     steps:
       - name: Check out source
@@ -44,8 +44,9 @@ jobs:
 
       - name: Install preview runtime dependency
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            brew install ffmpeg
+          fi
 
       - name: Reject newly tracked production asset formats
         if: github.event_name == 'pull_request'
