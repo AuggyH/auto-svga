@@ -3502,9 +3502,11 @@ test("formal 0.2 multi-format preload preserves the SVGA host workflow beside th
   assert.equal(typeof api.getRecentSvgaFiles, "function");
   assert.equal(typeof api.openRecentSvgaFile, "function");
   assert.equal(typeof api.clearRecentSvgaFiles, "function");
+  assert.equal(typeof api.commitMultiFormatOpen, "function");
   assert.equal(exposed.autoSvgaPrototype, undefined);
 
   api.openMultiFormatFile();
+  api.commitMultiFormatOpen({ sourceId: "0123456789abcdef01234567" });
   api.openDroppedMultiFormatFile({ path: "/private/tmp/fixture.json" });
   api.prepareMultiFormatRuntimePreview({ sourceId: "0123456789abcdef01234567", format: "lottie" });
   api.controlMultiFormatPreview({ action: "play" });
@@ -3519,6 +3521,7 @@ test("formal 0.2 multi-format preload preserves the SVGA host workflow beside th
 
   assert.deepEqual(invocations.map(({ channel }) => channel), [
     "svga-web-experiment:open-multiformat-file",
+    "svga-web-experiment:commit-multiformat-open",
     "svga-web-experiment:open-dropped-multiformat-file",
     "svga-web-experiment:prepare-multiformat-runtime-preview",
     "svga-web-experiment:control-multiformat-preview",
@@ -4282,6 +4285,16 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
     dispatchSource,
     /const failed = await invokeMultiFormatRendererAction\(window, "failHostFileOpen",[\s\S]*?if \(!failed\) throw error;[\s\S]*?return;/u,
     "a renderer-confirmed terminal failure must consume the file event instead of retrying the same failed source"
+  );
+  assert.match(
+    dispatchSource,
+    /const completed = await invokeMultiFormatRendererDecision\(window, "completeHostFileOpen"/u,
+    "Recent authority requires the renderer terminal action to return an explicit accepted receipt"
+  );
+  assert.doesNotMatch(
+    dispatchSource,
+    /rememberShortTermRecentFile/u,
+    "host file-event staging must not publish Recent before renderer acceptance"
   );
   assert.ok(
     app.indexOf("controller.initialize();") < app.indexOf("await bridge?.notifyMultiFormatRendererReady?.();"),

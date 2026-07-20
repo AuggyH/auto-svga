@@ -610,6 +610,7 @@ export function createMultiFormatDesktopPreviewController({
         openedFromHost: true,
         startPlayback: result.model.status === "playing"
       });
+      await commitAcceptedOpen(result);
       await svgaController.handlers.refreshRecentFiles?.();
       return;
     }
@@ -624,7 +625,16 @@ export function createMultiFormatDesktopPreviewController({
     applyTabState("overview");
     clearRuntimeReplacementAuthorityForAcceptedOpen();
     applyHostResult(result);
+    await commitAcceptedOpen(result);
     await svgaController?.handlers?.refreshRecentFiles?.();
+  }
+
+  async function commitAcceptedOpen(result) {
+    if (typeof bridge.commitMultiFormatOpen !== "function") return;
+    const receipt = await bridge.commitMultiFormatOpen({ sourceId: result?.sourceId || "" });
+    if (receipt?.status !== "committed" || receipt?.sourceId !== result?.sourceId) {
+      throw new Error("Accepted open did not retain current host source authority.");
+    }
   }
 
   function clearRuntimeReplacementAuthorityForAcceptedOpen() {

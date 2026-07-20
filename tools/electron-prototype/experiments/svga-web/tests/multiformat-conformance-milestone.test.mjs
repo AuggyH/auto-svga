@@ -153,7 +153,12 @@ test("accepted-open status gates Recent and unifies terminal model failures", as
   const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
   const openPathSource = extractFunctionSource(mainSource, "async function openMultiFormatFilePath");
 
+  assert.doesNotMatch(openPathSource, /rememberShortTermRecentFile/u);
   assert.match(openPathSource, /isAcceptedMultiFormatOpenModel\(result\?\.model\)/u);
+  assert.match(openPathSource, /pendingMultiFormatRecentCommits\.set\(result\.sourceId, filePath\)/u);
+  assert.match(mainSource, /function commitMultiFormatOpen/u);
+  assert.match(mainSource, /session\.activeSourceId !== sourceId/u);
+  assert.match(controllerSource, /commitMultiFormatOpen/u);
   assert.doesNotMatch(openPathSource, /model\?\.status\s*!==\s*["']failed["']/u);
   assert.match(controllerSource, /isAcceptedMultiFormatOpenModel\((?:result\.model|model)\)/u);
 
@@ -470,7 +475,12 @@ test("host-opened SVGA delegates established save, optimize, and rename workflow
     }
   };
   const controller = createMultiFormatDesktopPreviewController({
-    bridge: {},
+    bridge: {
+      async commitMultiFormatOpen(input) {
+        calls.push(["commit", input]);
+        return { status: "committed", sourceId: input.sourceId, pathRedacted: true };
+      }
+    },
     nodes: {},
     state: { view: "launch" },
     svgaController
@@ -496,10 +506,76 @@ test("host-opened SVGA delegates established save, optimize, and rename workflow
   assert.equal(controller.handlers.saveActiveOutput(), "saved");
   assert.equal(controller.handlers.runOptimization(), "optimized");
   assert.equal(controller.handlers.renameSelectedImageKey(), "renamed");
-  assert.deepEqual(calls.map(([name]) => name), ["load", "refresh", "save", "optimize", "rename"]);
+  assert.deepEqual(calls.map(([name]) => name), ["load", "commit", "refresh", "save", "optimize", "rename"]);
   assert.equal(calls[0][1].sourceId, "sha256:svga-source");
   assert.deepEqual(Array.from(calls[0][1].bytes), [1, 2, 3]);
   assert.equal(calls[0][1].startPlayback, true);
+  assert.deepEqual(calls[1][1], { sourceId: "sha256:svga-source" });
+});
+
+test("file-event Recent authority commits only after the active renderer terminal acceptance", async () => {
+  const commits = [];
+  const controller = createMultiFormatDesktopPreviewController({
+    bridge: {
+      async commitMultiFormatOpen(input) {
+        commits.push(input);
+        return { status: "committed", sourceId: input.sourceId, pathRedacted: true };
+      }
+    },
+    nodes: {},
+    state: { view: "launch" },
+    svgaController: {
+      handlers: {
+        async loadOpenedSource() {},
+        async refreshRecentFiles() {}
+      }
+    }
+  });
+  const result = {
+    sourceId: "sha256:warm-open",
+    model: { detectedFormat: "svga", displayName: "warm.svga", status: "playing" },
+    svgaSource: { displayName: "warm.svga", bytes: Uint8Array.from([1, 2, 3]) }
+  };
+
+  assert.equal(controller.handlers.beginHostFileOpen({ eventId: "stale-event" }), true);
+  assert.equal(controller.handlers.beginHostFileOpen({ eventId: "active-event" }), true);
+  assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "stale-event", result }), false);
+  assert.deepEqual(commits, []);
+
+  assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "active-event", result }), true);
+  assert.deepEqual(commits, [{ sourceId: "sha256:warm-open" }]);
+});
+
+test("host Recent commit is source-bound and exactly once", () => {
+  const mainSource = source("main.cjs");
+  const commitSource = extractFunctionSource(mainSource, "function commitMultiFormatOpen");
+  const sourceId = "a".repeat(24);
+  const staleSourceId = "b".repeat(24);
+  const filePath = "/private/tmp/accepted.svga";
+  const remembered = [];
+  const context = {
+    pendingMultiFormatRecentCommits: new Map([[sourceId, filePath], [staleSourceId, "/private/tmp/stale.svga"]]),
+    committedMultiFormatRecentSourceIds: new Set(),
+    sourceFilePaths: new Map([[sourceId, filePath], [staleSourceId, "/private/tmp/stale.svga"]]),
+    getMultiFormatDesktopSession() {
+      return { activeSourceId: sourceId };
+    },
+    rememberShortTermRecentFile(value) {
+      remembered.push(value);
+    }
+  };
+  vm.runInNewContext(`${commitSource}; globalThis.commitOpen = commitMultiFormatOpen;`, context);
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.commitOpen({ sourceId }))),
+    { status: "committed", sourceId, recorded: true, pathRedacted: true }
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.commitOpen({ sourceId }))),
+    { status: "committed", sourceId, recorded: false, pathRedacted: true }
+  );
+  assert.equal(context.commitOpen({ sourceId: staleSourceId }).status, "failed");
+  assert.deepEqual(remembered, [filePath]);
 });
 
 test("drag intake keeps host path authority and does not serialize renderer bytes", () => {

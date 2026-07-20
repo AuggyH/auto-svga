@@ -361,6 +361,8 @@ const multiFormatTrace = createMultiFormatOpenRuntimeTrace({
 });
 const sourceFilePaths = new Map();
 const referenceFileIds = new Set();
+const pendingMultiFormatRecentCommits = new Map();
+const committedMultiFormatRecentSourceIds = new Set();
 let multiFormatDesktopSession;
 let multiFormatDesktopRendererReady = false;
 let multiFormatOpenFileEventSequence = 0;
@@ -5563,9 +5565,34 @@ function getMultiFormatDesktopSession() {
 }
 
 async function openMultiFormatFilePath(filePath, source = "fileButton") {
+  pendingMultiFormatRecentCommits.clear();
   const result = await getMultiFormatDesktopSession().openLocalFilePath(filePath, source);
-  if (result?.sourceId && isAcceptedMultiFormatOpenModel(result?.model)) rememberShortTermRecentFile(filePath);
+  if (result?.sourceId && isAcceptedMultiFormatOpenModel(result?.model)) {
+    pendingMultiFormatRecentCommits.set(result.sourceId, filePath);
+  }
   return result;
+}
+
+function commitMultiFormatOpen(input) {
+  const sourceId = typeof input?.sourceId === "string" ? input.sourceId : "";
+  if (!/^[a-f0-9]{24}$/iu.test(sourceId)) {
+    return { status: "failed", code: "open_failed", pathRedacted: true };
+  }
+  if (committedMultiFormatRecentSourceIds.has(sourceId)) {
+    return { status: "committed", sourceId, recorded: false, pathRedacted: true };
+  }
+  const session = getMultiFormatDesktopSession();
+  const filePath = pendingMultiFormatRecentCommits.get(sourceId);
+  if (!filePath || session.activeSourceId !== sourceId || sourceFilePaths.get(sourceId) !== filePath) {
+    return { status: "failed", code: "open_failed", pathRedacted: true };
+  }
+  pendingMultiFormatRecentCommits.delete(sourceId);
+  rememberShortTermRecentFile(filePath);
+  committedMultiFormatRecentSourceIds.add(sourceId);
+  while (committedMultiFormatRecentSourceIds.size > 40) {
+    committedMultiFormatRecentSourceIds.delete(committedMultiFormatRecentSourceIds.values().next().value);
+  }
+  return { status: "committed", sourceId, recorded: true, pathRedacted: true };
 }
 
 async function openMultiFormatFile() {
@@ -5924,7 +5951,7 @@ async function dispatchMultiFormatOpenFileEvent(window, item) {
     if (!failed) throw error;
     return;
   }
-  const completed = await invokeMultiFormatRendererAction(window, "completeHostFileOpen", {
+  const completed = await invokeMultiFormatRendererDecision(window, "completeHostFileOpen", {
     eventId: item.eventId,
     result
   });
@@ -7420,6 +7447,12 @@ async function createExperimentWindow() {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     assertMultiFormatDesktopProduct();
     return openMultiFormatFile();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.commitMultiFormatOpen, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
+    return commitMultiFormatOpen(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.openDroppedMultiFormatFile, async (event, input) => {
