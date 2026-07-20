@@ -8223,7 +8223,8 @@ test("multi-format runtime self-test uses the owner replacement path for each fo
   assert.match(proofSource, /backgroundThrottling:\s*false/u);
   assert.match(proofSource, /markupSha256/u);
   assert.match(proofSource, /webgl-backing-store/u);
-  assert.match(proofSource, /refreshRuntimePreviewFrame/u);
+  const webglCaptureSource = extractFunctionSource(proofSource, "async function captureWebglBackingPixels");
+  assert.doesNotMatch(webglCaptureSource, /refreshRuntimePreviewFrame|drawFrame/u);
   const bridgeSource = readFileSync(
     path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"),
     "utf8"
@@ -8237,6 +8238,63 @@ test("multi-format runtime self-test uses the owner replacement path for each fo
   assert.match(proofSource, /actions\.updateTextPreview\(/u);
   assert.match(proofSource, /actions\.resetTextPreview\(/u);
   assert.match(proofSource, /snapshot\.summaryText\?\.includes\("未保存输出："\)/u);
+});
+
+test("multi-format runtime self-test waits for a delayed first presented frame without driving VAP", async () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-multiformat-runtime-selftest.cjs"),
+    "utf8"
+  );
+  const exerciseSource = extractFunctionSource(proofSource, "async function exerciseFormatFlow");
+  const meaningfulSource = extractFunctionSource(proofSource, "function isMeaningfulPixels");
+  const waitSource = extractFunctionSource(proofSource, "async function waitForMeaningfulFormatPixels");
+  assert.match(exerciseSource, /await waitForMeaningfulFormatPixels\(input\.format/u);
+
+  let clockMs = 0;
+  let captureCount = 0;
+  let snapshotCount = 0;
+  const context = {
+    captureFormatPixels: async () => {
+      captureCount += 1;
+      return captureCount < 3
+        ? { width: 120, height: 80, nonWhite: 0, nonTransparent: 0, sha256: `blank-${captureCount}` }
+        : { width: 120, height: 80, nonWhite: 64, nonTransparent: 64, sha256: "presented-frame" };
+    },
+    pageSnapshot: async () => ({ sample: ++snapshotCount }),
+    delay: async (milliseconds) => { clockMs += milliseconds; },
+    Date: { now: () => clockMs }
+  };
+  const result = await vm.runInNewContext(`
+    (async () => {
+      ${meaningfulSource}
+      ${waitSource}
+      return waitForMeaningfulFormatPixels("vap", { timeoutMs: 500, intervalMs: 40 });
+    })()
+  `, context);
+  assert.equal(result.attempts, 3);
+  assert.equal(result.pixels.sha256, "presented-frame");
+  assert.equal(result.snapshot.sample, 1);
+  assert.equal(snapshotCount, 1, "the product snapshot is captured only after pixels become meaningful");
+  assert.equal(clockMs, 80);
+
+  clockMs = 0;
+  await assert.rejects(
+    vm.runInNewContext(`
+      (async () => {
+        ${meaningfulSource}
+        ${waitSource}
+        return waitForMeaningfulFormatPixels("vap", {
+          timeoutMs: 100,
+          intervalMs: 40,
+          capture: async () => ({ width: 120, height: 80, nonWhite: 0, nonTransparent: 0 }),
+          snapshot: async () => ({ sample: "blank" }),
+          wait: async (milliseconds) => { clockMs += milliseconds; },
+          now: () => clockMs
+        });
+      })()
+    `, { clockMs }),
+    /first meaningful pixels timed out/u
+  );
 });
 
 test("multi-format runtime self-test proves target Reset sibling isolation and source immutability", () => {

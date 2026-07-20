@@ -244,7 +244,7 @@ async function main() {
 
 async function exerciseFormatFlow(input) {
   const open = await openFileInProduct(input.path, input.alias);
-  const playing = await waitForPage(`${input.alias} autoplay`, (snapshot) =>
+  await waitForPage(`${input.alias} autoplay`, (snapshot) =>
     snapshot.modelFormat === input.format
       && snapshot.modelStatus === "playing"
       && snapshot.runtimeMountState === "loaded"
@@ -252,7 +252,12 @@ async function exerciseFormatFlow(input) {
       && rendererReady(input.format, snapshot)
       && !placeholderVisible(snapshot)
   );
-  const firstPixels = await captureFormatPixels(input.format);
+  const firstPresented = await waitForMeaningfulFormatPixels(input.format);
+  const playing = firstPresented.snapshot;
+  const firstPixels = firstPresented.pixels;
+  if (playing.modelFormat !== input.format || playing.modelStatus !== "playing" || !rendererReady(input.format, playing)) {
+    throw new Error(`${input.alias} left playing state before its first presented frame.`);
+  }
   await delay(450);
   const playingLater = await pageSnapshot();
   const secondPixels = await captureFormatPixels(input.format);
@@ -691,6 +696,45 @@ async function captureFormatPixels(format) {
   return captureWebglBackingPixels("#multiFormatRuntimeMount canvas");
 }
 
+function isMeaningfulPixels(pixels) {
+  return Boolean(
+    pixels
+      && pixels.width > 1
+      && pixels.height > 1
+      && pixels.nonWhite > 10
+      && pixels.nonTransparent > 10
+  );
+}
+
+async function waitForMeaningfulFormatPixels(format, options) {
+  options = options ?? {};
+  const timeoutMs = Math.max(1, Number(options.timeoutMs) || 5_000);
+  const intervalMs = Math.max(1, Number(options.intervalMs) || 50);
+  const capture = options.capture ?? captureFormatPixels;
+  const snapshot = options.snapshot ?? pageSnapshot;
+  const wait = options.wait ?? delay;
+  const now = options.now ?? Date.now;
+  const startedAt = now();
+  let attempts = 0;
+  let lastPixels;
+  while (now() - startedAt <= timeoutMs) {
+    lastPixels = await capture(format);
+    attempts += 1;
+    if (isMeaningfulPixels(lastPixels)) {
+      return {
+        pixels: lastPixels,
+        snapshot: await snapshot(),
+        attempts,
+        waitedMs: Math.max(0, now() - startedAt)
+      };
+    }
+    const remainingMs = timeoutMs - (now() - startedAt);
+    if (remainingMs <= 0) break;
+    await wait(Math.min(intervalMs, remainingMs));
+  }
+  throw new Error(`${format} first meaningful pixels timed out: ${JSON.stringify({ attempts, lastPixels })}`);
+}
+
 async function captureCanvasBackingPixels(selector) {
   const pixels = await runInPage("canvas backing pixels", `
     (() => {
@@ -744,7 +788,6 @@ async function captureWebglBackingPixels(selector) {
         }
       });
       if (!canvas) return undefined;
-      const refreshResult = window.__autoSvgaShortTermActions?.refreshRuntimePreviewFrame?.();
       const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
       if (!gl) return undefined;
       const width = Number(gl.drawingBufferWidth) || Number(canvas.width) || 0;
@@ -779,7 +822,6 @@ async function captureWebglBackingPixels(selector) {
         backingHeight: Number(canvas.height) || 0,
         nonWhite,
         nonTransparent,
-        refreshResult,
         dataBase64: btoa(binary)
       };
     })()
@@ -797,7 +839,6 @@ async function captureWebglBackingPixels(selector) {
     backingHeight: Number(pixels.backingHeight) || 0,
     nonWhite: Number(pixels.nonWhite) || 0,
     nonTransparent: Number(pixels.nonTransparent) || 0,
-    refreshResult: pixels.refreshResult,
     sha256: createHash("sha256").update(bytes).digest("hex")
   };
 }
