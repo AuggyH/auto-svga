@@ -55,6 +55,10 @@ import {
   NodeAebRetainedBakeCombinedSourceFlow
 } from "../hosts/aeb-retained-bake-combined-source-flow.js";
 import {
+  NodeAebRetainedBakeFullCompositionPublisher,
+  aebRetainedBakeFullCompositionFileName
+} from "../hosts/aeb-retained-bake-full-composition-publisher.js";
+import {
   NodeAebRetainedBakeCombinedHostSession
 } from "../hosts/aeb-retained-bake-combined-host-session.js";
 import {
@@ -645,6 +649,62 @@ test("combined retained Bake source flow validates classification through F1 and
   assert.equal(report.fragment.standardsValidSvgaFragment, true);
   assert.equal(report.fragment.nativeMergeRequired, true);
   assert.equal(report.fragment.fullCompositionEncoded, false);
+  const fullComposition = (report as unknown as {
+    fullComposition?: {
+      standardsValidSvga: boolean;
+      nativeMergeCompleted: boolean;
+      fullCompositionEncoded: boolean;
+      sourceLayerOrder: readonly string[];
+      preservedNativePayloadHashes: readonly string[];
+      preservedReplaceableElementIds: readonly string[];
+      sourceTimebase: { startFrame: number; endFrameExclusive: number; fps: number };
+    };
+  }).fullComposition;
+  assert.ok(fullComposition, "mixed retained Bake flow must publish a full-composition output after the fragment boundary");
+  assert.equal(fullComposition.standardsValidSvga, true);
+  assert.equal(fullComposition.nativeMergeCompleted, true);
+  assert.equal(fullComposition.fullCompositionEncoded, true);
+  assert.deepEqual(fullComposition.sourceLayerOrder, ["layer-native-title", "layer-bake-glow"]);
+  assert.deepEqual(report.fullComposition.sourceLayerAuthority, [{
+    layerId: "layer-native-title",
+    plannerOutcome: "native",
+    stackIndex: 0,
+    activeRange: { startFrame: 10, endFrameExclusive: 11 }
+  }, {
+    layerId: "layer-bake-glow",
+    plannerOutcome: "bake_required",
+    stackIndex: 1,
+    activeRange: { startFrame: 10, endFrameExclusive: 11 }
+  }]);
+  assert.equal(fullComposition.preservedNativePayloadHashes.length, 1);
+  assert.deepEqual(fullComposition.preservedReplaceableElementIds, ["owner-title-slot"]);
+  assert.deepEqual(fullComposition.sourceTimebase, { startFrame: 10, endFrameExclusive: 11, fps: 1 });
+  assert.equal(report.fullComposition.validation.previewOrSaveAuthorized, false);
+  const fullCompositionBytes = await readFile(path.join(
+    fixture.taskRoot,
+    report.fullComposition.output.relativePath
+  ));
+  assert.equal(fixture.hasher.hash(fullCompositionBytes).value, report.fullComposition.output.contentHash);
+  const schema = await loadAebReviewedSvgaSchemaAuthority();
+  const decoded = schema.reopenMovieEntity.toObject(
+    schema.reopenMovieEntity.decode(inflateSync(fullCompositionBytes)),
+    { bytes: Buffer, arrays: true, objects: true }
+  ) as {
+    params?: { frames?: number };
+    images?: Record<string, Buffer>;
+    sprites?: Array<{ imageKey?: string; frames?: Array<{
+      alpha?: number;
+      transform?: { a?: number; b?: number; c?: number; d?: number; tx?: number; ty?: number };
+    }> }>;
+  };
+  assert.equal(decoded.params?.frames, 1);
+  assert.deepEqual(Object.keys(decoded.images ?? {}).sort(), ["img_0", "img_1"]);
+  assert.equal(decoded.sprites?.length, 2);
+  assert.equal(decoded.sprites?.[0]?.imageKey, "img_0");
+  assert.equal(decoded.sprites?.[0]?.frames?.[0]?.alpha, Math.fround(0.6));
+  assert.notEqual(decoded.sprites?.[0]?.frames?.[0]?.transform?.tx, 0);
+  assert.equal(decoded.sprites?.[1]?.imageKey, "img_1");
+  assert.equal(decoded.sprites?.[1]?.frames?.[0]?.alpha, 1);
   assert.equal(report.authority.actualBakeAuthorityMinted, false);
   assert.equal(report.authority.runtimeProved, false);
   assert.equal(report.authority.realPreviewValidated, false);
@@ -653,6 +713,148 @@ test("combined retained Bake source flow validates classification through F1 and
   assert.deepEqual(await readFile(fixture.packagePath), sourcePackageBefore);
   assert.ok((await readFile(successorPath)).byteLength > 0);
   assert.equal(await flow.verify(report), true);
+  await writeR1B04EvidenceIfRequested({
+    report,
+    sourceIr: fixture.ir,
+    sourceProjectBefore,
+    sourceProjectAfter: await readFile(fixture.projectPath),
+    sourcePackageBefore,
+    sourcePackageAfter: await readFile(fixture.packagePath),
+    successorBytes: await readFile(successorPath),
+    fragmentBytes: await readFile(path.join(fixture.taskRoot, report.fragment.relativePath)),
+    fullCompositionBytes
+  });
+});
+
+test("retained Bake full-composition authority rejects stack, timebase, payload, resource, and identity drift", async (t) => {
+  await t.test("native-payload-hash-drift", async (t) => {
+    const { fixture, execution } = await createRetainedExecutionFixture(t, "exec-full-native-payload-hash");
+    const sourceIr = structuredClone(fixture.ir);
+    sourceIr.layers[0]!.nativePayload!.payloadHash = "0".repeat(64);
+    await assertBakeError(
+      () => new NodeAebRetainedBakeCombinedSourceFlow(fixture.authority).run({
+        execution,
+        sourceIr,
+        successorFileName: "full-native-payload-hash.json",
+        hasher: fixture.hasher
+      }),
+      "SOURCE_IR_NATIVE_PAYLOAD_HASH_INVALID"
+    );
+  });
+
+  await t.test("duplicate-stack-index", async (t) => {
+    const { fixture, execution } = await createRetainedExecutionFixture(t, "exec-full-duplicate-stack");
+    const sourceIr = structuredClone(fixture.ir);
+    sourceIr.layers[1]!.stackIndex = sourceIr.layers[0]!.stackIndex;
+    await assertBakeError(
+      () => new NodeAebRetainedBakeCombinedSourceFlow(fixture.authority).run({
+        execution,
+        sourceIr,
+        successorFileName: "full-duplicate-stack.json",
+        hasher: fixture.hasher
+      }),
+      "AE_RETAINED_FULL_COMPOSITION_INPUT_INVALID"
+    );
+  });
+
+  await t.test("layer-timebase-drift", async (t) => {
+    const { fixture, execution } = await createRetainedExecutionFixture(t, "exec-full-timebase-drift");
+    const sourceIr = structuredClone(fixture.ir);
+    sourceIr.layers[1]!.activeRange = { startFrame: 10, endFrameExclusive: 12 };
+    await assertBakeError(
+      () => new NodeAebRetainedBakeCombinedSourceFlow(fixture.authority).run({
+        execution,
+        sourceIr,
+        successorFileName: "full-timebase-drift.json",
+        hasher: fixture.hasher
+      }),
+      "AE_RETAINED_FULL_COMPOSITION_INPUT_INVALID"
+    );
+  });
+
+  await t.test("native-resource-hash-drift", async (t) => {
+    const { fixture, execution } = await createRetainedExecutionFixture(t, "exec-full-resource-hash-drift");
+    const sourceIr = structuredClone(fixture.ir);
+    sourceIr.resources[0]!.contentHash.value = "f".repeat(64);
+    await assertBakeError(
+      () => new NodeAebRetainedBakeCombinedSourceFlow(fixture.authority).run({
+        execution,
+        sourceIr,
+        successorFileName: "full-resource-hash-drift.json",
+        hasher: fixture.hasher
+      }),
+      "AE_RETAINED_NATIVE_RESOURCE_MISMATCH"
+    );
+  });
+
+  await t.test("same-byte-full-output-replacement", async (t) => {
+    const { fixture, execution } = await createRetainedExecutionFixture(t, "exec-full-output-replacement");
+    const flow = new NodeAebRetainedBakeCombinedSourceFlow(fixture.authority);
+    const report = await flow.run({
+      execution,
+      sourceIr: fixture.ir,
+      successorFileName: "full-output-replacement.json",
+      hasher: fixture.hasher
+    });
+    const outputPath = path.join(fixture.taskRoot, report.fullComposition.output.relativePath);
+    const replacementPath = `${outputPath}.replaced`;
+    const bytes = await readFile(outputPath);
+    await rename(outputPath, replacementPath);
+    await writeFile(outputPath, bytes, { mode: 0o600 });
+    assert.equal(await flow.verify(report), false);
+  });
+
+  await t.test("preexisting-full-output", async (t) => {
+    const { fixture, input } = await createRetainedChainFixture(t, "exec-full-output-collision");
+    const chainReceipt = await createAebRetainedBakeAuthorityChain(input);
+    const outputName = aebRetainedBakeFullCompositionFileName(chainReceipt.chainHash);
+    const collisionBytes = Buffer.from("unowned-full-composition-collision");
+    await writeFile(path.join(fixture.taskRoot, outputName), collisionBytes, { flag: "wx", mode: 0o600 });
+
+    await assertBakeError(
+      () => new NodeAebRetainedBakeFullCompositionPublisher(fixture.authority).publish({
+        chainReceipt,
+        chainInput: input,
+        sourceIr: fixture.ir
+      }),
+      "AE_RETAINED_FULL_COMPOSITION_OUTPUT_EXISTS"
+    );
+    assert.deepEqual(await readFile(path.join(fixture.taskRoot, outputName)), collisionBytes);
+    assert.equal((await taskNames(fixture)).some((name) => name.endsWith(".tmp")), false);
+  });
+
+  await t.test("same-byte-native-resource-replacement", async (t) => {
+    let taskRoot = "";
+    let replaced = false;
+    const fixture = await createFixture(t, {
+      executionId: "exec-full-native-resource-replacement",
+      retainedSlice: true,
+      authorityHooks: {
+        async afterFileRead(relativePath) {
+          if (relativePath !== "assets/native-title.png" || replaced) return;
+          replaced = true;
+          const resourcePath = path.join(taskRoot, relativePath);
+          const displacedPath = `${resourcePath}.displaced`;
+          const bytes = await readFile(resourcePath);
+          await rename(resourcePath, displacedPath);
+          await writeFile(resourcePath, bytes, { mode: 0o600 });
+        }
+      }
+    });
+    taskRoot = fixture.taskRoot;
+    const execution = await createRetainedExecutionFromFixture(fixture);
+    await assertBakeError(
+      () => new NodeAebRetainedBakeCombinedSourceFlow(fixture.authority).run({
+        execution,
+        sourceIr: fixture.ir,
+        successorFileName: "full-native-resource-replacement.json",
+        hasher: fixture.hasher
+      }),
+      "AE_RETAINED_NATIVE_RESOURCE_PATH_SWAP_DETECTED"
+    );
+    assert.equal((await taskNames(fixture)).includes("full-native-resource-replacement.json"), false);
+    assert.equal((await taskNames(fixture)).some((name) => name.endsWith(".svga")), false);
+  });
 });
 
 test("combined retained Bake host session prepares exact main-lane inputs and completes the source-owned chain", async (t) => {
@@ -684,6 +886,7 @@ test("combined retained Bake host session prepares exact main-lane inputs and co
   assert.equal(prepared.runtimeHost.executableSha256, fixture.plan.host.executableHash);
   assert.equal(prepared.runtimeHost.executablePath.endsWith("/Contents/MacOS/After Effects"), true);
   assert.equal(prepared.expectedOutput.alphaMode, "straight");
+  assert.equal(prepared.expectedOutput.fullCompositionRequired, true);
   assert.equal(prepared.expectedOutput.frames.length, 1);
   assert.equal(prepared.expectedOutput.frames[0]?.frameIndex, 10);
   assert.equal(JSON.stringify(prepared).includes(fixture.taskBase), false);
@@ -699,14 +902,24 @@ test("combined retained Bake host session prepares exact main-lane inputs and co
   assert.equal(report.package.f1ReinsertionValidated, true);
   assert.equal(report.fragment.standardsValidSvgaFragment, true);
   assert.equal(report.fragment.nativeMergeRequired, true);
+  assert.equal(report.fullComposition.fullCompositionEncoded, true);
+  assert.equal(report.fullComposition.validation.previewOrSaveAuthorized, false);
   assert.equal(report.authority.actualBakeAuthorityMinted, false);
   assert.equal(report.authority.runtimeProved, false);
   assert.deepEqual(await readFile(fixture.projectPath), sourceProjectBefore);
   assert.deepEqual(await readFile(fixture.packagePath), sourcePackageBefore);
   const successorBytes = await readFile(path.join(fixture.taskRoot, report.package.successorPackageRelativePath));
   const fragmentBytes = await readFile(path.join(fixture.taskRoot, report.fragment.relativePath));
+  const fullCompositionBytes = await readFile(path.join(
+    fixture.taskRoot,
+    report.fullComposition.output.relativePath
+  ));
   assert.equal(fixture.hasher.hash(successorBytes).value, report.package.successorPackageContentHash);
   assert.equal(fixture.hasher.hash(fragmentBytes).value, report.fragment.contentHash);
+  assert.equal(
+    fixture.hasher.hash(fullCompositionBytes).value,
+    report.fullComposition.output.contentHash
+  );
   assert.equal(await session.verifyPrepared(prepared), false);
   await assertBakeError(
     () => session.runSourceValidation(prepared, execution),
@@ -759,6 +972,10 @@ test("retained Bake panel host preserves the exact canonical root and publishes 
   assert.equal(result.package.f1ReinsertionValidated, true);
   assert.equal(result.fragment.standardsValidSvgaFragment, true);
   assert.equal(result.fragment.nativeMergeRequired, true);
+  assert.equal(result.fullComposition.standardsValidSvga, true);
+  assert.equal(result.fullComposition.nativeMergeCompleted, true);
+  assert.equal(result.fullComposition.fullCompositionEncoded, true);
+  assert.equal(result.fullComposition.previewOrSaveAuthorized, false);
   assert.equal(result.authorityClaims.actualAeBakeAuthorityMinted, false);
   assert.equal(result.authorityClaims.previewOrSaveAuthorized, false);
   assert.equal(await host.verifySourceValidationResult(result), true);
@@ -871,6 +1088,7 @@ test("retained Bake panel host emits one normalized blocked result with zero gen
     actualAeBakeAuthorityMinted: false,
     packageOutputAuthorityMinted: false,
     standardsValidSvgaFragmentAuthorityMinted: false,
+    fullCompositionOutputAuthorityMinted: false,
     previewOrSaveAuthorized: false
   });
   assert.deepEqual(await readdir(fixture.taskRoot), namesBefore);
@@ -2294,6 +2512,10 @@ async function createFixture(
   await writeFile(executablePath, executableBytes, { mode: 0o700 });
   await writeFile(scriptExecutablePath, scriptExecutableBytes, { mode: 0o700 });
   await writeFile(outsideFramePath, deterministicFrame(10));
+  const nativeResourceBytes = deterministicFrame(77);
+  const nativeResourceHash = hasher.hash(nativeResourceBytes).value;
+  await mkdir(path.join(taskRoot, "assets"));
+  await writeFile(path.join(taskRoot, "assets/native-title.png"), nativeResourceBytes, { mode: 0o600 });
 
   const job: AebBakeJob = {
     schemaVersion: "aeb-bake-job-v1",
@@ -2407,6 +2629,16 @@ async function createFixture(
     }
   }, hasher);
   const authority = new NodeAebTaskRootAuthority({ approvedTaskBase: taskBase, taskId, hooks: options.authorityHooks });
+  const nativePayloadWithoutHash = {
+    schemaVersion: "aeb-native-layer-payload-v1" as const,
+    resourceId: "resource-native-title",
+    imageKey: "aeb_native_title",
+    width: 4,
+    height: 4,
+    anchor: { x: 1, y: 2 },
+    transform: { x: 3, y: 2, scaleX: 1.25, scaleY: 0.75, rotation: 15, opacity: 0.8 },
+    keyframes: [{ frame: 10, x: 2.5, opacity: 0.6 }]
+  };
   const ir: AebFormatNeutralIr = {
     schemaVersion: "aeb-format-neutral-ir-v1",
     packageId: job.packageId,
@@ -2418,19 +2650,27 @@ async function createFixture(
         sourceId: "source-native-title",
         plannerOutcome: "native",
         replaceableElementIds: ["owner-title-slot"],
-        nativePayloadRef: "native-payload-title"
+        nativePayloadRef: "native-payload-title",
+        stackIndex: 0,
+        activeRange: { ...job.timeRange },
+        nativePayload: {
+          ...nativePayloadWithoutHash,
+          payloadHash: await hashCanonical(hasher, nativePayloadWithoutHash)
+        }
       },
       {
         layerId: "layer-bake-glow",
         sourceId: job.target.sourceId,
         plannerOutcome: "bake_required",
-        replaceableElementIds: []
+        replaceableElementIds: [],
+        stackIndex: 1,
+        activeRange: { ...job.timeRange }
       }
     ],
     resources: [{
       resourceId: "resource-native-title",
       relativePath: "assets/native-title.png",
-      contentHash: { algorithm: "sha256", value: "e".repeat(64), scope: "encoded_bytes" },
+      contentHash: { algorithm: "sha256", value: nativeResourceHash, scope: "encoded_bytes" },
       ownerLayerId: "layer-native-title"
     }]
   };
@@ -2903,6 +3143,104 @@ function deterministicFrame(frameIndex: number): Buffer {
   const image = createTransparentImage(4, 4);
   setPixel(image, frameIndex % 4, 1, [frameIndex, 120, 240, 180]);
   return encodeRgbaPng(image);
+}
+
+async function writeR1B04EvidenceIfRequested(input: {
+  report: Awaited<ReturnType<NodeAebRetainedBakeCombinedSourceFlow["run"]>>;
+  sourceIr: AebFormatNeutralIr;
+  sourceProjectBefore: Buffer;
+  sourceProjectAfter: Buffer;
+  sourcePackageBefore: Buffer;
+  sourcePackageAfter: Buffer;
+  successorBytes: Buffer;
+  fragmentBytes: Buffer;
+  fullCompositionBytes: Buffer;
+}): Promise<void> {
+  const requestedRoot = process.env.AUTO_SVGA_AEB_R1_B04_EVIDENCE_ROOT;
+  if (!requestedRoot) return;
+  const sourceHead = process.env.AUTO_SVGA_AEB_R1_B04_SOURCE_HEAD;
+  if (!/^[a-f0-9]{40}$/u.test(sourceHead ?? "")) {
+    throw new Error("R1-B04 evidence publication requires the exact committed source head.");
+  }
+  const allowedRoot = path.resolve(".artifacts");
+  const evidenceRoot = path.resolve(requestedRoot);
+  if (evidenceRoot !== allowedRoot && !evidenceRoot.startsWith(`${allowedRoot}${path.sep}`)) {
+    throw new Error("R1-B04 evidence root must remain inside the ignored worktree artifact boundary.");
+  }
+  await mkdir(evidenceRoot, { mode: 0o700 });
+  const files = [
+    ["finalized-retained-package.json", input.successorBytes],
+    ["retained-bake-fragment.svga", input.fragmentBytes],
+    ["retained-mixed-full-composition.svga", input.fullCompositionBytes],
+    ["retained-source-ir.json", Buffer.from(`${JSON.stringify(input.sourceIr, null, 2)}\n`)],
+    ["retained-combined-source-report.json", Buffer.from(`${JSON.stringify(input.report, null, 2)}\n`)]
+  ] as const;
+  for (const [name, bytes] of files) {
+    await writeFile(path.join(evidenceRoot, name), bytes, { flag: "wx", mode: 0o600 });
+  }
+  const manifest = {
+    schemaVersion: "auto-svga-r1-b04-aeb-source-evidence-v1",
+    status: "source_validated_multi_join_pending",
+    sourceHead,
+    issues: ["R1-ISS-004", "R1-ISS-020"],
+    aepHandoff: {
+      directTest: "installed client gives a canonical AEB handoff for AEP before finalized native package Preview and Save",
+      outcome: "aepHandoff",
+      sourceAuthority: false,
+      recentAuthority: false,
+      previewAuthority: false,
+      saveAuthority: false
+    },
+    classification: input.report.classification,
+    finalizedPackageIdentity: {
+      manifestId: input.report.manifestId,
+      packageBundleId: input.report.packageBundleId,
+      chainHash: input.report.chainHash,
+      relativePath: input.report.package.successorPackageRelativePath,
+      contentHash: input.report.package.successorPackageContentHash,
+      physicalSuccessorReopened: input.report.package.physicalSuccessorReopened,
+      f1ReinsertionValidated: input.report.package.f1ReinsertionValidated
+    },
+    sourceImmutability: {
+      project: {
+        beforeSha256: hasherSha(input.sourceProjectBefore),
+        afterSha256: hasherSha(input.sourceProjectAfter),
+        unchanged: input.sourceProjectBefore.equals(input.sourceProjectAfter)
+      },
+      package: {
+        beforeSha256: hasherSha(input.sourcePackageBefore),
+        afterSha256: hasherSha(input.sourcePackageAfter),
+        unchanged: input.sourcePackageBefore.equals(input.sourcePackageAfter)
+      }
+    },
+    materials: Object.fromEntries(files.map(([name, bytes]) => [name, {
+      bytes: bytes.byteLength,
+      sha256: hasherSha(bytes)
+    }])),
+    fullComposition: {
+      relativePath: input.report.fullComposition.output.relativePath,
+      contentHash: input.report.fullComposition.output.contentHash,
+      encodedBytes: input.report.fullComposition.output.encodedBytes,
+      identityDigest: input.report.fullComposition.output.identityDigest,
+      sourceLayerOrder: input.report.fullComposition.sourceLayerOrder,
+      sourceLayerAuthority: input.report.fullComposition.sourceLayerAuthority,
+      sourceTimebase: input.report.fullComposition.sourceTimebase,
+      preservedNativePayloadHashes: input.report.fullComposition.preservedNativePayloadHashes,
+      preservedReplaceableElementIds: input.report.fullComposition.preservedReplaceableElementIds,
+      generatedNativeAuthorityValid: input.report.fullComposition.validation.generatedNativeAuthorityValid,
+      canonicalWireEncoding: input.report.fullComposition.validation.canonicalWireEncoding,
+      previewOrSaveAuthorized: input.report.fullComposition.validation.previewOrSaveAuthorized
+    }
+  };
+  await writeFile(
+    path.join(evidenceRoot, "EVIDENCE.json"),
+    Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`),
+    { flag: "wx", mode: 0o600 }
+  );
+}
+
+function hasherSha(bytes: Uint8Array): string {
+  return new Sha256ResourceHasher().hash(bytes).value;
 }
 
 class OutputMutatingHasher {

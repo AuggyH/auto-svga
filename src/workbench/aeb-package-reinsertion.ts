@@ -2,10 +2,12 @@ import type { ResourceContentHash } from "./contracts.js";
 import type { EmbeddedResourceHasher } from "./resource-hasher.js";
 import {
   AEB_FORMAT_NEUTRAL_IR_SCHEMA_VERSION,
+  AEB_NATIVE_LAYER_PAYLOAD_SCHEMA_VERSION,
   AEB_REINSERTED_PACKAGE_SCHEMA_VERSION,
   type AebFormatNeutralIr,
   type AebBakeExecutionAuthority,
   type AebFormatNeutralIrLayer,
+  type AebNativeLayerPayload,
   type AebPackagePublicationRollbackAuthority,
   type AebPackagePublicationRollbackReceipt,
   type AebPublishedSuccessorPackage,
@@ -27,6 +29,7 @@ export async function reinsertAebBakePackage(
     fail("MANIFEST_INTEGRITY_INVALID", "AEB Bake manifest hash binding is invalid before package reinsertion.");
   }
   validateSourceIr(sourceIr, manifest);
+  await validateNativePayloadHashes(sourceIr.layers, hasher);
 
   const targetLayerIds = new Set(manifest.reinsertion.replaceBakedLayerIds);
   const preservedNativeLayers = sourceIr.layers
@@ -123,6 +126,7 @@ export async function verifyAebReinsertedPackageIntegrity(
   });
   return packageBundleId === await hashCanonical(hasher, packageWithoutId)
     && bundle.bakedSequences[0]?.sequenceId === `baked_sequence_${sequenceIdentity.slice(0, 24)}`
+    && await nativePayloadHashesValid(bundle.preservedNativeLayers, hasher)
     && await verifyAebBakeManifestIntegrity(bundle.bakeManifest, hasher, executionAuthority);
 }
 
@@ -273,7 +277,8 @@ function isReinsertedPackageSemanticallyValid(bundle: AebReinsertedPackage): boo
         && isIdentifier(layer.sourceId)
         && isStrictlySorted(layer.replaceableElementIds)
         && layer.replaceableElementIds.every(isIdentifier)
-        && (layer.nativePayloadRef === undefined || isRelativePath(layer.nativePayloadRef)))
+        && (layer.nativePayloadRef === undefined || isRelativePath(layer.nativePayloadRef))
+        && isOptionalLayerCompositionAuthorityValid(layer))
       && bundle.bakedSequences.length === 1
       && /^baked_sequence_[a-f0-9]{24}$/.test(sequence.sequenceId)
       && sameStringArray(sequence.replacesLayerIds, targetIds)
@@ -342,6 +347,7 @@ function validateSourceIr(sourceIr: AebFormatNeutralIr, manifest: AebBakeManifes
     || sourceIr.layers.some((layer) => plannerDecisions.get(layer.layerId) !== layer.plannerOutcome)
     || sourceIr.layers.some((layer) => !isIdentifier(layer.layerId) || !isIdentifier(layer.sourceId))
     || sourceIr.layers.some((layer) => layer.nativePayloadRef !== undefined && !isRelativePath(layer.nativePayloadRef))
+    || sourceIr.layers.some((layer) => !isOptionalLayerCompositionAuthorityValid(layer))
     || replaceableIds.some((elementId) => !isIdentifier(elementId))
     || new Set(replaceableIds).size !== replaceableIds.length) {
     fail("SOURCE_IR_PLANNER_MISMATCH", "Format-neutral AEB IR layers do not exactly match the planner join.");
@@ -359,8 +365,71 @@ function validateSourceIr(sourceIr: AebFormatNeutralIr, manifest: AebBakeManifes
 function copyLayer(layer: AebFormatNeutralIrLayer): AebFormatNeutralIrLayer {
   return {
     ...layer,
-    replaceableElementIds: [...layer.replaceableElementIds].sort(compareCodeUnits)
+    replaceableElementIds: [...layer.replaceableElementIds].sort(compareCodeUnits),
+    activeRange: layer.activeRange ? { ...layer.activeRange } : undefined,
+    nativePayload: layer.nativePayload ? {
+      ...layer.nativePayload,
+      anchor: { ...layer.nativePayload.anchor },
+      transform: { ...layer.nativePayload.transform },
+      keyframes: layer.nativePayload.keyframes.map((keyframe) => ({ ...keyframe }))
+    } : undefined
   };
+}
+
+async function validateNativePayloadHashes(
+  layers: readonly AebFormatNeutralIrLayer[],
+  hasher: EmbeddedResourceHasher
+): Promise<void> {
+  if (!await nativePayloadHashesValid(layers, hasher)) {
+    fail("SOURCE_IR_NATIVE_PAYLOAD_HASH_INVALID", "Format-neutral AEB IR native payload hashes are invalid.");
+  }
+}
+
+async function nativePayloadHashesValid(
+  layers: readonly AebFormatNeutralIrLayer[],
+  hasher: EmbeddedResourceHasher
+): Promise<boolean> {
+  for (const layer of layers) {
+    if (!layer.nativePayload) continue;
+    const { payloadHash, ...payloadWithoutHash } = layer.nativePayload;
+    if (payloadHash !== await hashCanonical(hasher, payloadWithoutHash)) return false;
+  }
+  return true;
+}
+
+function isOptionalLayerCompositionAuthorityValid(layer: AebFormatNeutralIrLayer): boolean {
+  if (layer.stackIndex !== undefined && !Number.isSafeInteger(layer.stackIndex)) return false;
+  if (layer.activeRange !== undefined
+    && (!isNonNegativeSafeInteger(layer.activeRange.startFrame)
+      || !isPositiveSafeInteger(layer.activeRange.endFrameExclusive)
+      || layer.activeRange.startFrame >= layer.activeRange.endFrameExclusive)) return false;
+  if (layer.nativePayload === undefined) return true;
+  return layer.plannerOutcome === "native" && isNativePayloadValid(layer.nativePayload);
+}
+
+function isNativePayloadValid(payload: AebNativeLayerPayload): boolean {
+  const transform = payload.transform;
+  return payload.schemaVersion === AEB_NATIVE_LAYER_PAYLOAD_SCHEMA_VERSION
+    && isIdentifier(payload.resourceId)
+    && isIdentifier(payload.imageKey)
+    && isPositiveSafeInteger(payload.width)
+    && isPositiveSafeInteger(payload.height)
+    && isFiniteNumber(payload.anchor.x)
+    && isFiniteNumber(payload.anchor.y)
+    && isFiniteNumber(transform.x)
+    && isFiniteNumber(transform.y)
+    && isFiniteNumber(transform.scaleX)
+    && isFiniteNumber(transform.scaleY)
+    && isFiniteNumber(transform.rotation)
+    && isFiniteNumber(transform.opacity)
+    && Array.isArray(payload.keyframes)
+    && payload.keyframes.every((keyframe) => isRecord(keyframe)
+      && isNonNegativeSafeInteger(keyframe.frame)
+      && ["x", "y", "scaleX", "scaleY", "rotation", "opacity"].every((field) => {
+        const value = keyframe[field as keyof typeof keyframe];
+        return value === undefined || isFiniteNumber(value);
+      }))
+    && isSha256(payload.payloadHash);
 }
 
 async function hashCanonical(hasher: EmbeddedResourceHasher, value: unknown): Promise<string> {
@@ -433,4 +502,12 @@ function isIdentifier(value: unknown): value is string {
 
 function isPositiveSafeInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && Number(value) > 0;
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && Number(value) >= 0;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }

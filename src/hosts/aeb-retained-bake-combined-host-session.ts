@@ -32,7 +32,7 @@ import {
 import { Sha256ResourceHasher } from "./sha256-resource-hasher.js";
 
 export const AEB_RETAINED_BAKE_COMBINED_HOST_INPUT_SCHEMA_VERSION =
-  "aeb-retained-bake-combined-host-input-v1" as const;
+  "aeb-retained-bake-combined-host-input-v2" as const;
 
 export interface PrepareAebRetainedBakeCombinedHostInput {
   plan: AebAeBakeExecutionPlan;
@@ -72,6 +72,7 @@ export interface AebRetainedBakeCombinedHostInput {
     alphaMode: "straight";
     standardsValidSvgaFragmentRequired: true;
     nativeMergeRequired: true;
+    fullCompositionRequired: true;
   };
   authorityClaims: {
     preparedOnly: true;
@@ -174,7 +175,8 @@ export class NodeAebRetainedBakeCombinedHostSession {
         fps: 1,
         alphaMode: "straight",
         standardsValidSvgaFragmentRequired: true,
-        nativeMergeRequired: true
+        nativeMergeRequired: true,
+        fullCompositionRequired: true
       },
       authorityClaims: {
         preparedOnly: true,

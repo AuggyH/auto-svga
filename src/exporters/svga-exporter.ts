@@ -314,7 +314,7 @@ async function loadImages(
   };
 }
 
-function buildGeneratedNativeMoviePayload(
+export function buildGeneratedNativeMoviePayload(
   project: AvatarFrameProject,
   svgaMap: SvgaMap,
   resources: SvgaGeneratedNativeAuthorityResource[]

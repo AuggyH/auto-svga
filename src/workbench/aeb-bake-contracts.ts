@@ -5,6 +5,7 @@ export const AEB_BAKE_PLANNER_JOIN_SCHEMA_VERSION = "aeb-bake-planner-join-v1" a
 export const AEB_BAKE_TASK_RECEIPT_SCHEMA_VERSION = "aeb-bake-task-receipt-v1" as const;
 export const AEB_BAKE_MANIFEST_SCHEMA_VERSION = "aeb-bake-manifest-v1" as const;
 export const AEB_FORMAT_NEUTRAL_IR_SCHEMA_VERSION = "aeb-format-neutral-ir-v1" as const;
+export const AEB_NATIVE_LAYER_PAYLOAD_SCHEMA_VERSION = "aeb-native-layer-payload-v1" as const;
 export const AEB_REINSERTED_PACKAGE_SCHEMA_VERSION = "aeb-reinserted-package-v1" as const;
 export const AEB_BAKE_EXECUTION_RECEIPT_SCHEMA_VERSION = "aeb-bake-execution-receipt-v1" as const;
 export const AEB_PHYSICAL_SUCCESSOR_SCHEMA_VERSION = "aeb-physical-successor-package-v1" as const;
@@ -253,6 +254,36 @@ export interface AebFormatNeutralIrLayer {
   plannerOutcome: AebBakePlannerOutcome;
   replaceableElementIds: readonly string[];
   nativePayloadRef?: string;
+  stackIndex?: number;
+  activeRange?: AebBakeJob["timeRange"];
+  nativePayload?: AebNativeLayerPayload;
+}
+
+export interface AebNativeLayerPayload {
+  schemaVersion: typeof AEB_NATIVE_LAYER_PAYLOAD_SCHEMA_VERSION;
+  resourceId: string;
+  imageKey: string;
+  width: number;
+  height: number;
+  anchor: { x: number; y: number };
+  transform: {
+    x: number;
+    y: number;
+    scaleX: number;
+    scaleY: number;
+    rotation: number;
+    opacity: number;
+  };
+  keyframes: readonly {
+    frame: number;
+    x?: number;
+    y?: number;
+    scaleX?: number;
+    scaleY?: number;
+    rotation?: number;
+    opacity?: number;
+  }[];
+  payloadHash: string;
 }
 
 export interface AebFormatNeutralIrResource {
