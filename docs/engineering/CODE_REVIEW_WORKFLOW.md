@@ -80,15 +80,15 @@ Packaging`, or `Advisory Findings`.
 
 An implementation owner requesting review must provide:
 
-- requirement or QA ticket ID, when applicable;
+- GitHub PR URL;
+- requirement or defect Issue, when applicable;
 - product version/channel/build identity, when applicable;
-- branch and head commit;
-- changed-file summary;
-- review file under `docs/reviews/`;
+- branch and exact head commit;
+- concise scope and changed-area summary;
 - tests/validation run and skipped checks;
 - risk areas touched;
 - known limitations and rollback path;
-- evidence that production assets were not committed;
+- confirmation that production assets and sensitive paths were not committed;
 - whether the owner-visible local stable app was changed.
 
 If these are missing, Code Review may return `Blocked` instead of reviewing a
@@ -96,11 +96,7 @@ guess.
 
 ## Review Output
 
-Code Review findings should be written as a review note under:
-
-```text
-docs/reviews/YYYY-MM-DD-codex-code-review-<topic>.md
-```
+Code Review findings should be written as GitHub PR review comments by default.
 
 Findings must be concise and actionable:
 
@@ -111,10 +107,9 @@ Findings must be concise and actionable:
 - expected fix or evidence;
 - owner responsible.
 
-For broad code-health audits, write a structured report instead of inline
-findings only. The report should identify hotspots, recurring risks, missing
-tests, and recommended work packages without mixing them into unrelated
-feature branches.
+For broad code-health audits or milestone decisions, a structured report under
+`docs/reviews/` is optional. It should identify hotspots, recurring risks,
+missing tests, and recommended work packages without duplicating the PR.
 
 ## Interaction With QA
 
@@ -125,7 +120,7 @@ QA and Code Review are separate gates.
 - High-risk implementation handoffs should normally flow:
 
 ```text
-Implementation Ready -> Code Review -> QA Acceptance -> Packaging / Owner-visible promotion
+Self-tested PR -> CI and Code Review -> merged candidate -> QA Acceptance -> Packaging / Owner-visible promotion
 ```
 
 For urgent defects, QA may start reproduction while Code Review is pending, but

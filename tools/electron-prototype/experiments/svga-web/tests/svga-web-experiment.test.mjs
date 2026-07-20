@@ -34,6 +34,7 @@ import {
   productVersionLine,
   releaseStage,
   requiredPackagedRuntimeEntries,
+  scanPrivacyText,
   validateProof,
   windowPlacementPackagedSourceAuthorities,
   windowPlacementPackagedSourceFiles
@@ -2300,6 +2301,17 @@ test("macOS internal package avoids unsupported Finder .svga document associatio
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-jit/);
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-unsigned-executable-memory/);
   assert.match(entitlements, /com\.apple\.security\.cs\.disable-library-validation/);
+});
+
+test("macOS privacy audit distinguishes generic runner names from identity leaks", () => {
+  assert.deepEqual(
+    scanPrivacyText("web/short-term-macos-app.mjs", 'import "./short-term-macos-smoke-runner.mjs";', "runner").findings,
+    []
+  );
+  assert.match(
+    scanPrivacyText("web/example.mjs", "const owner = 'runner@example.com';", "runner").findings.join("\n"),
+    /contains local username/
+  );
 });
 
 test("macOS package proof manifest records audit boundaries without final App acceptance", async () => {

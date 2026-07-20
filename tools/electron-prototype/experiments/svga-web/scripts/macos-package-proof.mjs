@@ -886,7 +886,7 @@ async function runPrivacyAudit(plist) {
   for (const relativePath of sourceAuditFiles) {
     const absolutePath = path.join(experimentRoot, relativePath);
     const text = await readFile(absolutePath, "utf8");
-    scans.push(scanText(relativePath, text, username));
+    scans.push(scanPrivacyText(relativePath, text, username));
   }
   const proofTargetPaths = [
     path.relative(repoRoot, plistPath),
@@ -905,7 +905,7 @@ async function runPrivacyAudit(plist) {
   };
 }
 
-function scanText(relativePath, text, username) {
+export function scanPrivacyText(relativePath, text, username) {
   const findings = [];
   const slash = "/";
   const repoPathLiterals = [
@@ -917,7 +917,12 @@ function scanText(relativePath, text, username) {
   for (const literal of repoPathLiterals) {
     if (literal && text.includes(literal)) findings.push(`${relativePath}: contains local absolute path literal`);
   }
-  if (username && text.includes(username)) findings.push(`${relativePath}: contains local username`);
+  const usernameIdentityLiterals = username
+    ? [`/Users/${username}`, `/home/${username}`, `${username}@`]
+    : [];
+  if (usernameIdentityLiterals.some((literal) => text.includes(literal))) {
+    findings.push(`${relativePath}: contains local username`);
+  }
   if (/(cdn\.jsdelivr|unpkg\.com|https?:\/\/)/i.test(stripAllowedLocalUrls(stripPlistDoctype(text, relativePath)))) {
     findings.push(`${relativePath}: contains public network URL or CDN dependency`);
   }

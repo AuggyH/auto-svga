@@ -151,21 +151,23 @@ Playback verification:
 ## Git Collaboration Rules
 
 1. `main` branch represents stable, runnable state. Never force-push to main.
-2. Each task starts from latest `main` and creates an agent branch.
-3. Branch naming:
-   - `agent/codex/<task-name>` — Codex agent work
-   - `agent/hermes/<task-name>` — Hermes agent work
-   - `fix/<issue-name>` — bug fixes
-   - `review/<review-name>` — review/handoff branches
-4. Each branch focuses on one task. No mixed-scope branches.
-5. After development, run full verification (build + test + pipeline).
-6. Produce a review file in `docs/reviews/` before merging.
-7. Merge to main only after review passes. Use `--no-ff` or squash merge.
-8. If a merge causes issues, fix via `revert` or a new `fix/` branch — never force-push.
-9. Never delete untracked files or generated output without confirmed understanding.
-10. Update `docs/CHANGELOG.md` and `docs/CURRENT_STATUS.md` after each merge to main.
-11. Tag stable baselines after major milestone merges.
-12. Commit authors: use agent name for traceability. Set per-repo:
+2. Start each task from latest `main` on one focused branch. Use `codex/<task-name>`
+   for Codex work and an equivalent owner prefix for other agents.
+3. Open a GitHub PR using `.github/pull_request_template.md`. The PR is the
+   default review, handoff, validation, risk, and rollback record.
+4. Run risk-proportional self-tests before requesting review. Required GitHub
+   Actions checks must pass before merge.
+5. Use independent review for high-risk changes when a real reviewer is
+   available. Do not create synthetic approvals, duplicate review branches, or
+   repository review files merely to simulate separation of duties.
+6. Merge with a merge commit or squash merge. If a merge causes issues, use
+   `revert` or a new repair PR; never force-push.
+7. Never delete untracked files or generated output without confirmed
+   understanding.
+8. Update roadmap, status, changelog, release, or decision docs only when the
+   corresponding durable truth changes, not after every merge.
+9. Tag stable baselines only after a meaningful milestone gate.
+10. Commit authors: use agent name for traceability. Set per-repo:
     - Hermes: `git config user.name "Hermes"` / `user.email "hermes-agent@local"`
     - Codex: `git config user.name "Codex"` / `user.email "codex-agent@local"`
 
@@ -184,8 +186,9 @@ represented in source, PRD, review notes, or the promotion manifest, stop and
 route a baseline-drift question to Product Manager / Release before replacing
 the app.
 
-After a meaningful desktop-client, host, packaging, or owner-visible UI change
-is completed and committed, refresh that local entry with:
+Promote a merged exact candidate only when the current milestone explicitly
+requires a local-channel refresh and its required gates pass. Ordinary PRs must
+not replace the owner local stable app. Use:
 
 ```bash
 npm run svga-workbench:v1:promote-local-stable
@@ -322,59 +325,55 @@ When a new agent takes over this repo:
 
 ## Autonomous Loop Protocol
 
-For long-running autonomous tasks, follow `docs/loop/AUTONOMOUS_PROTOCOL.md`.
-Create a frozen milestone contract before implementation, execute
-Implement -> Validate -> Review -> Repair, and do not push, merge, release, or
-deploy automatically.
+Use `docs/loop/AUTONOMOUS_PROTOCOL.md` only when the Product Owner explicitly
+starts or resumes a named autonomous milestone. Normal PR work does not require
+a frozen milestone contract, handoff packet, reviewer JSON, or loop ledger.
 
 For historical or explicitly resumed SVGA Workbench v1 autonomous branches,
 also follow `docs/autonomous/AUTONOMOUS_EXECUTION_RULES.md`. Do not treat those
 branches as the current short-term macOS client baseline unless the Product
 Owner explicitly asks to resume that lane.
 
-Before returning `PASS` or `HUMAN_REQUIRED`, run the repository handoff command
-successfully and return the generated `FINAL_RESPONSE.txt` verbatim. Never
-substitute a chat summary for the review packet.
-
-Review Packet v4 requires byte-exact `PASS` diffs, source/packet diff hash
-binding, loop budget evidence, structured reviewer JSON v2, and terminal
-`Next Action: external_review`.
-Loop budget counts must be derived from `LOOP_HISTORY.jsonl`, and
-`HUMAN_REQUIRED` snapshots must never include high-confidence secret content.
+When an autonomous milestone is explicitly active, follow its packet and
+terminal-response contract. Do not apply those mechanics to ordinary fixes,
+PRs, CI, QA Issues, or weekly retrospectives.
 
 ## Repair Health Rules
 
-- Every external review must update the active Finding Ledger.
-- The same finding in two consecutive review rounds requires a root-cause
-  review before another repair.
-- The same finding in three review rounds pauses implementation and requires a
-  retrospective.
-- Exhausted repair budget requires a postmortem before a successor repair
-  milestone.
-- A required machine-gate failure forbids an owner-acceptance Human Gate.
-- Every vertical work package has one Lead Implementation Owner, a separate
-  Evidence Owner, and an A0 or independent Integration Verifier.
-- A repair contract must state its root-cause hypothesis, why the prior fix
-  failed, a failure-first test, success stop condition, and failure stop
-  condition.
+- The same observable symptom twice requires a discriminating experiment
+  before another repair attempt.
+- Keep one accountable implementation owner and one PR per root cause. Add an
+  independent reviewer or evidence owner only when risk justifies it.
+- A required machine-gate failure blocks downstream acceptance for that exact
+  candidate.
+- Use a root-cause review or postmortem only for repeated systemic failure,
+  exhausted bounded repair attempts, data loss, security incidents, or a false
+  acceptance that escaped an existing gate.
+- Do not create a Finding Ledger, repair contract, or retrospective merely to
+  document an ordinary failed test and fix.
 
 See `docs/engineering/REPAIR_HEALTH_PROTOCOL.md`.
 
 ## Multi-Worker Coordination
 
-- Formal implementation workers must be visible project Worktree threads.
-- Subagents are limited to short-lived read-only audit and review.
+- Default to at most three active execution roles: implementation, integration,
+  and QA/CR. Independent read-only investigation may temporarily expand total
+  concurrency to five.
+- One implementation task owns one milestone or PR, then emits a compact
+  handoff and ends. Do not keep permanent product-line workers alive for
+  historical context alone.
+- A PM/integration task keeps decisions, blockers, candidate identity, and the
+  next gate. It does not mirror microtask callbacks or duplicate PR/Issue state.
+- Only one implementation owner may modify the same product vertical at a time.
+  Use subagents for independent read-only exploration, tests, and log analysis.
 - Foreground desktop or system-UI work must follow
   `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md`; each worker must
   distinguish owner local stable app, its own development instance, any other
   process's foreground client, Finder/Open dialog state, After Effects windows,
   browser windows, and clipboard-changing operations.
-- Before coordinating or resuming a multi-worker milestone, A0 must read the
-  protocol, coordination doc, and registry; list visible project threads;
-  refresh the registry; and validate it.
-- List and reuse existing project threads before creating workers.
-- A0 is the only integration coordinator and global lifecycle writer.
-- Worker PASS does not imply milestone PASS.
+- Before starting workers, close or archive inactive historical workers and
+  confirm the exact shared candidate and worktree boundary.
+- Worker test success does not imply candidate QA or milestone acceptance.
 - Shared-port servers, package promotion, owner local stable replacement,
   active foreground input, Finder/Open dialog automation, After Effects UI
   automation, and clipboard-changing operations run serially. Isolated visible
@@ -383,25 +382,18 @@ See `docs/engineering/REPAIR_HEALTH_PROTOCOL.md`.
 
 ## Project QA And Defect Workflow
 
-Confirmed Product Owner feature requests, optimization requests, interaction
-changes, and production-workflow improvements must not stop after PRD updates.
-After PM evaluation, feasibility review, Product Owner confirmation, and PRD or
-product-brief promotion, create an `ASV-REQ-YYYYMMDD-###` ticket under
-`docs/product/requirements/`, route it to one accountable implementation owner,
-and require an implementation-ready handoff to QA. Use `ASV-QA` tickets only
-for bugs, regressions, acceptance failures, or QA findings linked back to the
-requirement.
+Confirmed Product Owner requirements must not stop after PRD updates. Route a
+focused change to one accountable owner and one PR. Create a GitHub Issue only
+when cross-PR tracking, backlog state, or a real defect needs it.
 
 Real-use bugs, regressions, and acceptance failures must follow
 `docs/quality/PROJECT_TEST_ENGINEER_WORKFLOW.md`.
 
 - The Test Engineer lane owns intake, reproduction evidence, routing,
   regression, and closure.
-- Implementation owners own fixes in their lane and return `Fix Ready`; they do
-  not close QA tickets directly.
-- Every tracked issue uses one ticket under `docs/quality/tickets/` and related
-  reports under `docs/quality/reports/`.
-- Chat handoff is transport only. Link the ticket and reports instead of
+- Implementation owners link a self-tested fixing PR; QA closes the Issue after
+  regression on the merged exact candidate.
+- Chat handoff is transport only. Link the Issue and PR instead of
   pasting long reproduction logs.
 - QA routing does not automatically authorize interrupting the responsible
   owner or jumping the queue. Tickets must carry priority, importance, source,
@@ -429,7 +421,7 @@ security/privacy, or production-asset handling.
 High-risk handoff should normally flow:
 
 ```text
-Implementation Ready -> Code Review -> QA Acceptance -> Packaging / Owner-visible promotion
+Self-tested PR -> CI and Code Review -> merged candidate -> QA Acceptance -> Packaging / Owner-visible promotion
 ```
 
 Code Review approval does not mean product acceptance or QA pass. QA pass does
@@ -487,21 +479,16 @@ long logs, full diffs, or production assets into retrospective docs.
 
 ## Review Process
 
-1. Each task outputs a review file in `docs/reviews/`:
-   - Filename: `YYYY-MM-DD-agent-task-name.md`
-   - Template: `docs/REVIEW_TEMPLATE.md`
-2. Review must include: summary, git state, changed files, requirement checks, verification, risks, next steps, project retrospective, and token usage.
-3. Do NOT include: full diffs, full logs, project background repetition.
-4. Review is for the next agent — write only what they need to continue.
-5. Every completed task must also expose owner-visible review material under
-   `review/<task-or-milestone>-<head-short-sha>/`.
-6. The final response must include clickable Markdown links to the visible
-   review folder, `REVIEW_PACKET.md`, the upload ZIP, product artifacts such as
-   an App ZIP when present, and required companions such as `changes.patch`.
-7. Hidden `.artifacts` paths alone are not an acceptable owner handoff. See
-   `docs/engineering/REVIEW_PACKET_VISIBILITY_PROTOCOL.md`.
-8. `changes.patch` is not a default attachment. Terminal handoff includes it
-   only when `companionRequired=true`; do not create an empty patch.
+1. Use the GitHub PR as the default review record. Keep the description concise:
+   goal, scope/non-goals, risk, validation, candidate identity, acceptance
+   boundary, and rollback.
+2. Put actionable findings in GitHub review comments. Do not paste full diffs,
+   full logs, raw chat, or repeated project background.
+3. Create `docs/reviews/` or `review/` artifacts only for a meaningful product
+   checkpoint, release/package evidence, broad audit, or an explicitly requested
+   durable handoff. Ordinary fixes and internal repairs do not require them.
+4. Never create permit, packet, callback, or ledger documents solely to move a
+   normal PR between implementation, review, and QA.
 
 ## Current Template List
 
