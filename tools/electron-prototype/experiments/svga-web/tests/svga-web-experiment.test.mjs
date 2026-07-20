@@ -6120,6 +6120,9 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
   const documentRef = createMultiFormatControllerTestDocument(nodes);
   const lottieCalls = [];
   const vapCalls = [];
+  const vapPlayers = [];
+  let vapDrawFrameCalls = 0;
+  let vapCancelFrameCalls = 0;
   const objectUrls = [];
   globalThis.document = documentRef;
   globalThis.lottie = {
@@ -6141,15 +6144,32 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     },
     default(options) {
       vapCalls.push(options);
-      return {
+      const player = {
+        video: {
+          currentTime: 0,
+          duration: 1,
+          readyState: 4,
+          paused: false,
+          addEventListener() {},
+          removeEventListener() {},
+          setAttribute() {}
+        },
         on() { return this; },
         play() { return this; },
         pause() {},
         destroy() {},
+        drawFrame() {
+          vapDrawFrameCalls += 1;
+        },
+        cancelRequestAnimation() {
+          vapCancelFrameCalls += 1;
+        },
         setTime(seconds) {
           this.seconds = seconds;
         }
       };
+      vapPlayers.push(player);
+      return player;
     }
   };
   globalThis.URL = {
@@ -6295,6 +6315,13 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(vapCalls[0].src, "blob:test-1");
     assert.equal(objectUrls.length, 1);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    assert.equal(vapDrawFrameCalls, 0, "progress rendering must not start a second VAP frame callback chain");
+    assert.deepEqual(controller.handlers.refreshRuntimePreviewFrame(), { drawn: false, reason: "playback_active" });
+    assert.equal(vapDrawFrameCalls, 0);
+    vapPlayers[0].video.paused = true;
+    assert.equal(controller.handlers.refreshRuntimePreviewFrame().drawn, true);
+    assert.equal(vapDrawFrameCalls, 1);
+    assert.equal(vapCancelFrameCalls, 1);
 
     const unrelatedFocus = new FakeDomElement("button");
     unrelatedFocus.ownerDocument = documentRef;
@@ -6323,6 +6350,110 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
     assert.equal(bridge.menuStates.at(-1).canResetText, false);
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    globalThis.Vap = originalVap;
+    globalThis.URL = originalUrl;
+  }
+});
+
+test("0.2 active Lottie and VAP unsupported drops preserve source and runtime authority", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const originalVap = globalThis.Vap;
+  const originalUrl = globalThis.URL;
+  globalThis.lottie = {
+    loadAnimation() {
+      return { play() {}, pause() {}, destroy() {}, goToAndStop() {}, currentFrame: 2 };
+    }
+  };
+  globalThis.Vap = {
+    canWebGL() { return true; },
+    default() {
+      return {
+        video: {
+          currentTime: 0.25,
+          duration: 1,
+          readyState: 4,
+          paused: false,
+          addEventListener() {},
+          removeEventListener() {},
+          setAttribute() {}
+        },
+        on() { return this; },
+        play() { return this; },
+        pause() {},
+        cancelRequestAnimation() {},
+        destroy() {},
+        setTime() {}
+      };
+    }
+  };
+  globalThis.URL = {
+    createObjectURL() { return "blob:unsupported-drop"; },
+    revokeObjectURL() {}
+  };
+
+  try {
+    for (const format of ["lottie", "vap"]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      nodes.canvasToast = new FakeDomElement("p");
+      const documentRef = createMultiFormatControllerTestDocument(nodes);
+      globalThis.document = documentRef;
+      const bridge = createMultiFormatRuntimeMountTestBridge();
+      const controlInputs = [];
+      bridge.controlMultiFormatPreview = (input) => {
+        controlInputs.push(input);
+        return Promise.resolve(createRuntimeMountOpenResult(format, { sourceId: `${format}:active-source` }));
+      };
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+      controller.initialize();
+      bridge.markOpened(format);
+      const opened = createRuntimeMountOpenResult(format, { sourceId: `${format}:active-source` });
+      opened.model.status = "playing";
+      opened.model.canvas.playback.status = "playing";
+      assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${format}:open` }), true);
+      assert.equal(await controller.handlers.completeHostFileOpen({
+        eventId: `${format}:open`,
+        result: opened
+      }), true);
+      await flushRuntimeMountPromises();
+
+      const activeModel = state.model;
+      const activeMount = nodes.runtimeMount;
+      const activeFactRows = [...nodes.factGrid.children];
+      const prepareCount = bridge.prepareInputs.length;
+      await controller.handlers.dropCanvasFile({
+        clientY: 80,
+        dataTransfer: { files: [{ name: "unsupported.gif", type: "image/gif" }] }
+      }, {
+        getBoundingClientRect() { return { top: 0, height: 100 }; }
+      }, new FakeDomElement("div"));
+
+      assert.equal(state.sourceId, `${format}:active-source`);
+      assert.equal(state.model, activeModel);
+      assert.equal(state.view, "preview");
+      assert.equal(state.mode, "preview");
+      assert.equal(state.model.status, "playing");
+      assert.equal(nodes.runtimeMount, activeMount);
+      assert.deepEqual(nodes.factGrid.children, activeFactRows);
+      assert.equal(bridge.prepareInputs.length, prepareCount);
+      assert.deepEqual(controlInputs, []);
+      assert.equal(nodes.canvasToast.hidden, false);
+      assert.equal(nodes.canvasToast.textContent, "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。");
+
+      await controller.handlers.closeFile();
+    }
   } finally {
     globalThis.document = originalDocument;
     globalThis.lottie = originalLottie;

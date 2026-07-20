@@ -7,6 +7,7 @@ import {
 import { closeOpenDialog } from "./short-term-macos-dialog-model.mjs";
 import {
   hideShortTermDragDecisionOverlays,
+  showShortTermCanvasToast,
   showShortTermDragDecisionOverlay
 } from "./short-term-macos-drag-decision-surface.mjs";
 import { createReplaceableEmptyStatus } from "./short-term-macos-inline-status-renderers.mjs";
@@ -230,6 +231,11 @@ export function createMultiFormatDesktopPreviewController({
       return svgaController.handlers.dropCanvasFile?.(event, target, overlay);
     }
     if (!decision.supported) {
+      if (state.model && state.sourceId && (activeFormat === "lottie" || activeFormat === "vap")) {
+        showShortTermCanvasToast(nodes, ownerFailureCopy({ code: "unsupported_file_type" }));
+        renderCommandState();
+        return;
+      }
       await closeFile({ nextView: "unsupported" });
       renderCommandState();
       return;
@@ -1402,7 +1408,6 @@ export function createMultiFormatDesktopPreviewController({
         mount.dataset.runtimePlaybackFrames = String(view.frames ?? 0);
       }
     } else if (active.format === "vap") {
-      drawVapRuntimeFrame(active);
       const video = active.player?.video;
       const durationMs = Number(state.model?.canvas?.playback?.durationMs) || (Number(video?.duration) > 0 ? Number(video.duration) * 1000 : 0);
       const currentMs = Number(video?.currentTime) > 0 ? Number(video.currentTime) * 1000 : Number(state.model?.canvas?.playback?.currentTimeMs) || 0;
@@ -1460,6 +1465,13 @@ export function createMultiFormatDesktopPreviewController({
     const player = active?.player;
     if (!player || typeof player.drawFrame !== "function") {
       return { drawn: false, reason: "missing_draw_frame" };
+    }
+    const video = player.video;
+    if (!video || Number(video.readyState) < 2) {
+      return { drawn: false, reason: "video_not_ready" };
+    }
+    if (video.paused !== true) {
+      return { drawn: false, reason: "playback_active" };
     }
     try {
       player.drawFrame(null, null);
