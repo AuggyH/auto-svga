@@ -6326,6 +6326,15 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
   const aepPath = path.join(root, "task-owned.aep");
   const originalDocument = globalThis.document;
   const nodes = createMultiFormatControllerTestNodes();
+  const previewView = new FakeDomElement("section");
+  const activeOpenButton = new FakeDomElement("button");
+  const failureRecoveryButton = new FakeDomElement("button");
+  previewView.dataset.view = "preview";
+  nodes.failureView.dataset.view = "failed";
+  previewView.replaceChildren(activeOpenButton);
+  nodes.failureView.replaceChildren(failureRecoveryButton);
+  nodes.app.replaceChildren(previewView, nodes.failureView);
+  nodes.failureRecoveryButton = failureRecoveryButton;
   const menus = [];
   try {
     await writeFile(previousPath, JSON.stringify({
@@ -6363,16 +6372,35 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
       sourceId: previous.sourceId
     };
     globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    for (const node of [nodes.app, previewView, activeOpenButton, nodes.failureView, failureRecoveryButton]) {
+      node.ownerDocument = globalThis.document;
+    }
+    activeOpenButton.focus();
     const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
     controller.initialize();
 
     await controller.handlers.openFromHostDialog();
 
-    assert.equal(state.view, "preview");
+    assert.equal(state.view, "failed");
     assert.equal(state.sourceId, "");
     assert.equal(state.model.status, "handoffRequired");
     assert.equal(state.model.rightPanel.issues[0].code, "aeb.aep_handoff_required");
     assert.match(state.model.rightPanel.issues[0].message, /After Effects 26\.3/);
+    assert.equal(nodes.failureTitle.textContent, "需要 AEB 交接");
+    assert.equal(
+      nodes.errorMessage.textContent,
+      "请在 After Effects 26.3 中使用 Auto SVGA AEB Dev 26.3 处理任务副本，再打开 finalized AEB package。"
+    );
+    assert.equal(nodes.failurePanelTitle.textContent, "AEP 交接");
+    assert.equal(
+      nodes.failurePanelMessage.textContent,
+      "原 AEP 保持只读；完成 AEB 处理后，请打开 ae-export-package.finalized.json。"
+    );
+    assert.equal(nodes.failureView.dataset.pageState, "AEP handoff required");
+    assert.equal(nodes.failurePanel.dataset.panelState, "handoff");
+    assert.equal(nodes.failureStage.attributes["aria-label"], "需要 AEB 交接");
+    assert.equal(nodes.failurePanel.attributes["aria-label"], "AEP 交接信息");
+    assert.equal(globalThis.document.activeElement, failureRecoveryButton);
     assert.equal(sourceStore.has(previous.sourceId), false);
     assert.equal(menus.at(-1).canPlay, false);
     assert.equal(menus.at(-1).canSaveAs, false);
@@ -6381,6 +6409,15 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
     assert.equal(summary.format, "aep");
     assert.equal(summary.saveExportSupported, false);
     assert.doesNotMatch(JSON.stringify(summary), /\/private\/tmp|auto-svga-aep-renderer-handoff/u);
+
+    controller.handlers.showFailure({ code: "invalid_file" });
+    assert.equal(nodes.failureTitle.textContent, "文件加载失败");
+    assert.equal(nodes.failurePanelTitle.textContent, "加载失败");
+    assert.equal(nodes.failurePanelMessage.textContent, "源文件没有被修改。");
+    assert.equal(nodes.failureView.dataset.pageState, "Load failed");
+    assert.equal(nodes.failurePanel.dataset.panelState, "failed");
+    assert.equal(nodes.failureStage.attributes["aria-label"], "文件加载失败");
+    assert.equal(nodes.failurePanel.attributes["aria-label"], "加载失败信息");
   } finally {
     globalThis.document = originalDocument;
     await rm(root, { recursive: true, force: true });
@@ -12812,7 +12849,13 @@ function createMultiFormatControllerTestNodes() {
   return {
     app: new FakeDomElement("main"),
     loadingMessage: new FakeDomElement("p"),
+    failureView: new FakeDomElement("section"),
+    failureStage: new FakeDomElement("section"),
+    failureTitle: new FakeDomElement("h1"),
     errorMessage: new FakeDomElement("p"),
+    failurePanel: new FakeDomElement("aside"),
+    failurePanelTitle: new FakeDomElement("h1"),
+    failurePanelMessage: new FakeDomElement("p"),
     fileIdentity: new FakeDomElement("div"),
     playbackMeta: new FakeDomElement("span"),
     factGrid: new FakeDomElement("div"),

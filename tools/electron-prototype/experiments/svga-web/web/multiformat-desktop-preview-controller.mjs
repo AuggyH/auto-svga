@@ -17,6 +17,8 @@ import {
   openShortTermSettings
 } from "./short-term-macos-settings-surface.mjs";
 import {
+  captureViewTransitionFocus,
+  moveViewTransitionFocus,
   renderFailureMessage,
   renderFileHeader,
   renderLoadingMessage
@@ -40,6 +42,14 @@ import {
 
 export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 const genericOwnerFailureCopy = "操作未能完成，源文件没有被修改。";
+const reviewedAepHandoffPresentation = Object.freeze({
+  title: "需要 AEB 交接",
+  message: "请在 After Effects 26.3 中使用 Auto SVGA AEB Dev 26.3 处理任务副本，再打开 finalized AEB package。",
+  panelTitle: "AEP 交接",
+  panelMessage: "原 AEP 保持只读；完成 AEB 处理后，请打开 ae-export-package.finalized.json。",
+  pageState: "AEP handoff required",
+  panelState: "handoff"
+});
 const reviewedOwnerFailureCopyByCode = Object.freeze({
   unsupported_file_type: "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。",
   file_picker_failed: "无法打开文件选择器，源文件没有被修改。",
@@ -609,11 +619,14 @@ export function createMultiFormatDesktopPreviewController({
     state.displayName = model.displayName || state.displayName || "";
     selectDefaultTargets(model);
     renderModel(normalizedResult, options);
+    if (options.renderAepHandoffGuidance === true) {
+      renderFailureMessage(nodes, reviewedAepHandoffPresentation.message, reviewedAepHandoffPresentation);
+    }
     if (options.keepView && state.view === "preview") {
       renderCommandState();
       return;
     }
-    setView(model.status === "failed" ? "failed" : "preview");
+    setView(options.renderAepHandoffGuidance === true || model.status === "failed" ? "failed" : "preview");
   }
 
   async function applyOpenedHostResult(result, options = {}) {
@@ -690,8 +703,13 @@ export function createMultiFormatDesktopPreviewController({
       return true;
     }
     if (outcome.kind === "aepHandoff") {
+      const focusContext = captureViewTransitionFocus(nodes);
       revokeActiveDocumentAuthority();
-      applyHostResult(outcome.result, { replaceSourceAuthority: true });
+      applyHostResult(outcome.result, {
+        replaceSourceAuthority: true,
+        renderAepHandoffGuidance: true
+      });
+      moveViewTransitionFocus(focusContext, nodes.failureRecoveryButton);
       return true;
     }
     return applyOpenedHostResult(outcome.result, options);
