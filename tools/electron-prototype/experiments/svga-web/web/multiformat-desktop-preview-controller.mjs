@@ -442,7 +442,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function resetImageReplacement(imageKey = state.selectedImageKey) {
-    if (svgaWorkflowActive()) return svgaController.handlers.resetImageReplacement?.();
+    if (svgaWorkflowActive()) return svgaController.handlers.resetImageReplacement?.(imageKey);
     if (!imageKey) return;
     state.selectedImageKey = imageKey;
     const result = await bridge.resetMultiFormatReplacement({
@@ -596,7 +596,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function resetRuntimeText(textKey = state.selectedTextKey) {
-    if (svgaWorkflowActive()) return svgaController.handlers.resetRuntimeText?.();
+    if (svgaWorkflowActive()) return svgaController.handlers.resetRuntimeText?.(textKey);
     if (!textKey) return;
     const textTarget = (projectMultiFormatRightPanel(state.model).textTargets ?? [])
       .find((target) => target.textKey === textKey);
