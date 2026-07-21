@@ -425,12 +425,14 @@ async function proveTypedFailureRows() {
   const malformedPath = path.join(proofRoot, "malformed-motion.json");
   writeFileSync(malformedPath, "{\"v\":", { mode: 0o600 });
 
-  const missing = await proveRejectedOpenPreservesActive(
+  await openFileInProduct(generatedArtifacts.lottieA.path, "TASK-FAILURE-BASE-MISSING");
+  const missing = await proveRejectedOpenRevokesActive(
     missingLottiePath,
     "TASK-LOTTIE-MISSING",
     ["missing_resource"]
   );
-  const malformed = await proveRejectedOpenPreservesActive(
+  await openFileInProduct(generatedArtifacts.vapA.path, "TASK-FAILURE-BASE-MALFORMED");
+  const malformed = await proveRejectedOpenRevokesActive(
     malformedPath,
     "TASK-MALFORMED-JSON",
     ["invalid_file", "parse_precondition", "open_failed"]
@@ -441,7 +443,7 @@ async function proveTypedFailureRows() {
   };
 }
 
-async function proveRejectedOpenPreservesActive(filePath, label, expectedIssueCodes) {
+async function proveRejectedOpenRevokesActive(filePath, label, expectedIssueCodes) {
   const before = await pageSnapshot();
   const openResult = await previewSession.openLocalFilePath(filePath, "fileOpenEvent");
   const issueCodes = openResult?.model?.rightPanel?.issues?.map((issue) => issue.code) ?? [];
@@ -459,7 +461,7 @@ async function proveRejectedOpenPreservesActive(filePath, label, expectedIssueCo
     })()
   `);
   if (action?.begun !== true || action?.completed !== true) {
-    throw new Error(`${label} did not preserve the active source after rejection: ${JSON.stringify({
+    throw new Error(`${label} did not render the terminal rejected-open state: ${JSON.stringify({
       action,
       resultStatus: openResult?.model?.status,
       resultFormat: openResult?.model?.detectedFormat,
@@ -472,19 +474,21 @@ async function proveRejectedOpenPreservesActive(filePath, label, expectedIssueCo
   const afterSourceId = after?.hostModel?.sourceId ?? "";
   if (
     !beforeSourceId
-    || afterSourceId !== beforeSourceId
-    || after.modelFormat !== before.modelFormat
-    || after.modelStatus !== before.modelStatus
-    || after.runtimeMountState !== before.runtimeMountState
-    || after.runtimeFormat !== before.runtimeFormat
+    || openResult?.sourceId
+    || afterSourceId
+    || after.runtimeMountState === "loaded"
+    || after.runtimeFormat
+    || after.replacementDirty
+    || after.textInputs.length > 0
+    || after.imageRows.length > 0
   ) {
-    throw new Error(`${label} changed active source or runtime after rejection.`);
+    throw new Error(`${label} retained stale active source or runtime after rejection.`);
   }
   return {
     resultStatus: openResult?.model?.status,
     issueCodes,
     controller: action,
-    sourceIdHash: hashId(beforeSourceId),
+    revokedSourceIdHash: hashId(beforeSourceId),
     before: compactSnapshot(before),
     after: compactSnapshot(after)
   };

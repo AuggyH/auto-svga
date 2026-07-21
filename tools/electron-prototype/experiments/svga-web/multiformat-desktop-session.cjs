@@ -72,10 +72,25 @@ class MultiFormatDesktopPreviewSession {
 
   async openLocalFilePath(filePath, source) {
     const normalizedPath = normalizeLocalPath(filePath);
-    validateSupportedPath(normalizedPath);
     const requestId = this.nextRequestId(source);
     this.latestOpenRequestId = requestId;
     const displayName = path.basename(normalizedPath);
+    try {
+      validateSupportedPath(normalizedPath);
+    } catch (error) {
+      this.disposePendingSession();
+      this.clearActiveSourceAuthority();
+      return this.publicResult(createOpenFailureModel({
+        requestId,
+        source,
+        displayName,
+        localPath: normalizedPath,
+        code: "unsupported_file_type",
+        reason: "unsupported_file_type",
+        message: "The selected local candidate uses an unsupported file type.",
+        cause: error
+      }), "", "", { inheritActiveSource: false });
+    }
     if (isAepPath(normalizedPath)) {
       validateAepHandoffSource(normalizedPath);
       this.disposePendingSession();
@@ -147,6 +162,10 @@ class MultiFormatDesktopPreviewSession {
         stagedSession?.dispose?.();
       } catch {}
       this.discardSourceBinding(sourceBinding);
+      if (currentOpen) {
+        this.disposePendingSession();
+        this.clearActiveSourceAuthority();
+      }
     }
     return this.publicResult(
       model,
@@ -227,9 +246,13 @@ class MultiFormatDesktopPreviewSession {
         return this.publicResult(session.seek(Number(input.timeMs) || 0));
       case "loop":
         return this.publicResult(session.setLoop(input.loop !== false));
-      case "dispose":
+      case "dispose": {
         this.svgaReplacementPreview = undefined;
-        return this.publicResult(session.dispose());
+        const model = session.dispose();
+        this.sessionPromise = undefined;
+        this.clearActiveSourceAuthority();
+        return this.publicResult(model, "", "", { inheritActiveSource: false });
+      }
       case "model":
       default:
         return this.publicResult(session.getModel());
@@ -1917,7 +1940,7 @@ function createOpenFailureModel(input) {
   const detectedFormat = formatFromPath(input.localPath);
   const displayName = safeDisplayName(input.displayName);
   const issue = {
-    code: "playback_failure",
+    code: input.code || "playback_failure",
     severity: "error",
     message: input.message,
     path: displayName,
