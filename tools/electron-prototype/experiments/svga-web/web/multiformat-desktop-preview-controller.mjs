@@ -2029,6 +2029,7 @@ export function createMultiFormatDesktopPreviewController({
     state.selectedTextKey = "";
     state.assetFilter = "all";
     state.renameImageKey = "";
+    state.renameSession = undefined;
     state.textPreview = "";
     state.textPreviewValues = {};
     state.activeOutput = undefined;
