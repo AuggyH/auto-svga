@@ -5,7 +5,9 @@
 - Product scope authority: `docs/product/PRODUCT_ROADMAP.md`, planned `0.2.x` Multi-format Preview MVP.
 - Requirement authority: `docs/product/requirements/ASV-REQ-20260709-003.md`.
 - UI behavior constraints: `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md`, `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`, and `DESIGN.md`.
-- Baseline audited here: exact source `7cba862ed25986a0a50970222077dc5820e5f0aa` plus its capability-matrix successor.
+- Current recovery baseline: main source after PR #4, plus bounded Round 1 repair
+  pull requests. Exact candidate identity comes from the merged PR and must be
+  rebound before every installed or foreground matrix.
 - This file inventories implementation and evidence. It does not expand product scope or replace QA tickets.
 
 Status vocabulary:
@@ -33,7 +35,7 @@ not satisfy real playback or replacement evidence.
 | Basic facts, timing, dimensions, and warnings | implemented; validated | implemented; validated | implemented; validated | Capability-specific projection is source-tested. VAP dimensions over `1504` remain playable with one truthful Canvas warning. |
 | Asset and element inventory | imageKey/resources implemented; validated | image and text candidates implemented; validated | fusion image/text candidates implemented; validated | Missing and nonreplaceable categories stay explicit instead of manufacturing targets. |
 | Image runtime replacement | implemented; validated | implemented; validated | implemented; validated; direct real-runtime pixel evidence retained | Runtime-only. Lottie/VAP source bytes are never saved or exported. |
-| Text runtime replacement | not applicable | implemented; validated at model/renderer-payload boundary | implemented; validated with direct real-runtime pixels | Direct installed text-replacement acceptance remains incomplete for both formats. |
+| Text runtime replacement | not applicable | implemented; validated in focused package foreground regression | implemented; validated in focused package foreground regression and direct real-runtime pixels | Full installed matrix acceptance remains incomplete for both formats. |
 | Target-scoped Reset with sibling isolation | implemented through existing SVGA controller | implemented in this successor; validated | implemented in this successor; validated with direct real-runtime pixels | Resetting one image/text target preserves sibling replacements and dirty state; last-target reset restores source. Installed QA remains pending. |
 | Replacement authority and stale protection | implemented; validated | implemented; validated | implemented; validated | Active sourceId, public selection identity, canonical runtime key, generation, and returned binding must agree before renderer state changes. |
 | Typed malformed, missing-resource, unsupported, and recovery states | implemented; validated | implemented; validated | implemented; validated | Invalid Lottie resources/expressions and malformed VAP config fail without a false playback state. Current installed recovery matrix remains pending. |
@@ -47,17 +49,12 @@ not satisfy real playback or replacement evidence.
 
 ## Current Highest-value Gap
 
-The audited positive-flow gap was target-scoped replacement isolation. The UI
-offered per-row Reset, but the host/session reset contract discarded the
-selected target and cleared the whole Lottie or VAP replacement context. This
-successor makes `sourceId + public target + kind` mandatory, resolves one
-canonical runtime key, removes only that active record, remounts with remaining
-runtime values, and restores the source only after the final active target is
-reset.
-
-The next product gate after source review is a rebuilt installed matrix. It
-must begin with the frozen native-picker landing, then exercise the downstream
-flows without inferring acceptance from this source inventory.
+Target-scoped replacement isolation and focused runtime text entry are closed
+at source/package-regression level. The remaining product gate is integration
+and a complete Round 2 matrix on one exact successor candidate. It must start
+with native Open, then cover Recent, real playback, replacement/Reset, Compare,
+failure recovery, UI/UX, AEB handoff, FBP client rows, source immutability,
+network silence, and cleanup without transferring Round 1 acceptance.
 
 ## Protected Boundaries
 

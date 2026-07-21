@@ -11,6 +11,14 @@ import {
   optimizationResultTone
 } from "./short-term-macos-optimization-model.mjs";
 
+export function hasShortTermComparePrimarySource(state) {
+  return Boolean(state?.sourceBytes?.byteLength);
+}
+
+export function canEnterShortTermGeneralCompare(state) {
+  return state?.view === "preview" && hasShortTermComparePrimarySource(state);
+}
+
 export function renderCompareInfoHtml(title, model, displayName, actions = []) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
   if (!model) {

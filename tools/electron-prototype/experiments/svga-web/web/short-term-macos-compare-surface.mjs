@@ -1,6 +1,8 @@
 import {
+  canEnterShortTermGeneralCompare,
   compareSlotView,
   generalCompareTraceView,
+  hasShortTermComparePrimarySource,
   optimizationCompareTraceView,
   renderGeneralComparePanelHtml,
   renderCompareInfoHtml,
@@ -68,12 +70,20 @@ export async function enterShortTermGeneralCompare({
   clearCanvas
 }) {
   const focusContext = captureViewTransitionFocus(nodes);
+  if (!hasShortTermComparePrimarySource(state)) {
+    if (state.view !== "launch") {
+      setView("launch");
+      moveViewTransitionFocus(focusContext, nodes.launchOpenButton);
+    }
+    return false;
+  }
+  if (!canEnterShortTermGeneralCompare(state)) return false;
   setView("compare");
   renderShortTermGeneralCompareTrace(nodes);
   renderShortTermCompareSlot({
     nodes,
     slot: "A",
-    title: state.sourceBytes ? state.displayName || "A 文件" : "未打开文件",
+    title: state.displayName || "A 文件",
     model: state.model
   });
   renderShortTermCompareSlot({
@@ -91,20 +101,14 @@ export async function enterShortTermGeneralCompare({
   });
   moveViewTransitionFocus(
     focusContext,
-    !state.sourceBytes
-      ? nodes.compareOpenAButton
-      : state.compareBSource?.bytes?.byteLength
-        ? nodes.compareStage
-        : nodes.compareOpenBButton
+    state.compareBSource?.bytes?.byteLength
+      ? nodes.compareStage
+      : nodes.compareOpenBButton
   );
-  if (state.sourceBytes) {
-    await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes, {
-      loop: state.comparePlaybackLooping !== false
-    });
-    markShortTermCompareSlotLoaded({ nodes, slot: "A" });
-  } else {
-    clearCanvas(nodes.compareCanvasA);
-  }
+  await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes, {
+    loop: state.comparePlaybackLooping !== false
+  });
+  markShortTermCompareSlotLoaded({ nodes, slot: "A" });
   if (state.compareBSource?.bytes?.byteLength) {
     await mountPlayback("compareB", nodes.compareCanvasB, state.compareBSource.bytes, {
       start: state.compareAPlayback?.playing !== false,
@@ -114,6 +118,7 @@ export async function enterShortTermGeneralCompare({
   } else {
     clearCanvas(nodes.compareCanvasB);
   }
+  return true;
 }
 
 export async function openShortTermCompareAFromHost({
@@ -123,6 +128,7 @@ export async function openShortTermCompareAFromHost({
   enterGeneralCompare,
   refreshRecentFiles
 }) {
+  if (state.view !== "compare" || !hasShortTermComparePrimarySource(state)) return false;
   if (!bridge?.openSvgaFile) return false;
   const opened = await bridge.openSvgaFile();
   if (!opened || opened.status === "cancelled") return false;
@@ -148,6 +154,7 @@ export async function openShortTermCompareBFromHost({
   mountPlayback,
   refreshRecentFiles
 }) {
+  if (!hasShortTermComparePrimarySource(state) || !["preview", "compare"].includes(state.view)) return false;
   if (!bridge?.openSvgaFile) return;
   applyCompareSlotView(nodes, "B", {
     title: "选择 B 文件",
@@ -215,6 +222,7 @@ export async function loadShortTermCompareAFromDroppedFile({
   loadOpenedSource,
   enterGeneralCompare
 }) {
+  if (state.view !== "compare" || !hasShortTermComparePrimarySource(state)) return false;
   if (!file) return false;
   await loadOpenedSource({
     bytes: new Uint8Array(await file.arrayBuffer()),
@@ -236,6 +244,7 @@ export async function loadShortTermCompareBFromDroppedFile({
   inspectShortTerm,
   mountPlayback
 }) {
+  if (!hasShortTermComparePrimarySource(state) || !["preview", "compare"].includes(state.view)) return false;
   if (!file) return;
   if (state.view !== "compare") await enterGeneralCompare();
   const bytes = new Uint8Array(await file.arrayBuffer());

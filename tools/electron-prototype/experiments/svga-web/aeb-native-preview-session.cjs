@@ -539,7 +539,7 @@ class AebNativePreviewSession {
           }))
         }
       );
-      const structureInvalid = independentValidation.structureContractVersion !== "svga_generated_native_frame_v1"
+      const structureInvalid = independentValidation.structureContractVersion !== "svga_generated_native_frame_v2"
         || independentValidation.authorityContractVersion !== "aeb_generated_native_output_authority_v1"
         || independentValidation.generatedNativeStructureValid !== true
         || independentValidation.generatedNativeVocabularyValid !== true

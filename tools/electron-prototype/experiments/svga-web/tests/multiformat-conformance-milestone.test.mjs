@@ -774,12 +774,19 @@ test("multi-format mode availability and drag overlay expose the capability stat
   const originalDocument = globalThis.document;
   globalThis.document = { querySelectorAll: () => buttons };
   try {
+    applyModeButtons("preview", { previewEnabled: false, editEnabled: false });
+    assert.equal(buttons[0].disabled, true);
+    assert.equal(buttons[0]["aria-disabled"], "true");
+    assert.equal(buttons[0].title, "请先打开文件");
+
     applyModeButtons("preview", { editEnabled: false, editReason: "当前格式仅支持预览" });
   } finally {
     globalThis.document = originalDocument;
   }
   assert.equal(buttons[0].disabled, false);
   assert.equal(buttons[0]["aria-pressed"], "true");
+  assert.equal(buttons[0]["aria-disabled"], "false");
+  assert.equal(buttons[0].title, "");
   assert.equal(buttons[1].disabled, true);
   assert.equal(buttons[1]["aria-disabled"], "true");
   assert.equal(buttons[1].title, "当前格式仅支持预览");

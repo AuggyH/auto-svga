@@ -373,6 +373,7 @@ async function main() {
     : "";
   const appEntry = await readFile(path.join(webRoot, "short-term-macos-app.mjs"), "utf8");
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
+  const overviewModel = await readFile(path.join(webRoot, "short-term-macos-overview-model.mjs"), "utf8");
   const overviewRenderer = await readFile(path.join(webRoot, "short-term-macos-overview-renderers.mjs"), "utf8");
   const optimizationRenderer = await readFile(path.join(webRoot, "short-term-macos-optimization-renderers.mjs"), "utf8");
   const feedbackModel = await readFile(path.join(webRoot, "short-term-macos-feedback-model.mjs"), "utf8");
@@ -381,6 +382,9 @@ async function main() {
   const recentFilesModel = await readFile(path.join(webRoot, "short-term-macos-recent-files-model.mjs"), "utf8");
   const renderModel = await readFile(path.join(webRoot, "short-term-macos-render-model.mjs"), "utf8");
   const compareModel = await readFile(path.join(webRoot, "short-term-macos-compare-model.mjs"), "utf8");
+  const compareSurface = await readFile(path.join(webRoot, "short-term-macos-compare-surface.mjs"), "utf8");
+  const commandState = await readFile(path.join(webRoot, "short-term-macos-command-state.mjs"), "utf8");
+  const actionBridge = await readFile(path.join(webRoot, "short-term-macos-action-bridge.mjs"), "utf8");
   const dragDecisionSurface = await readFile(path.join(webRoot, "short-term-macos-drag-decision-surface.mjs"), "utf8");
   const multiFormatController = await readFile(path.join(webRoot, "multiformat-desktop-preview-controller.mjs"), "utf8");
   const multiFormatConformance = await readFile(path.join(webRoot, "multiformat-product-conformance.mjs"), "utf8");
@@ -710,6 +714,10 @@ async function main() {
   record("right-surface-asset-row-copy-stays-figma-scoped", !/次引用/.test(overviewRenderer), {
     disallowedCopy: "次引用"
   });
+  record("no-audio-overview-uses-one-normalized-zero-count-source",
+    /export function normalizedOverviewAssets\(model\)/.test(overviewModel)
+      && /audioGroup\?\.status === "empty"/.test(overviewModel)
+      && /const assets = normalizedOverviewAssets\(model\)/.test(overviewModel));
   record("scrollable-surfaces-do-not-force-visible-scrollbar-gutter", !/scrollbar-gutter:\s*stable/.test(baseCss + atoms + molecules + components + modules + pageStatesCss));
   record("scrollable-surfaces-use-tokenized-hidden-scrollbar-contract", /--asv-component-scrollable-surface-scrollbar-size:\s*0px/.test(tokens)
     && /--asv-scrollable-surface-scrollbar-size:\s*var\(--asv-component-scrollable-surface-scrollbar-size\)/.test(tokens)
@@ -810,6 +818,10 @@ async function main() {
     && /--asv-component-compare-empty-prompt-width:\s*var\(--asv-component-launch-content-width\)/.test(tokens)
     && /\.compareEmptyPrompt\s*\{[\s\S]*gap: var\(--asv-compare-empty-prompt-gap\)[\s\S]*width: min\(var\(--asv-compare-empty-prompt-width\), 100%\)/.test(modules)
     && /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareEmptyPrompt\s*\{[\s\S]*display: none/.test(modules));
+  record("compare-entry-requires-loaded-preview-source", /const canCompare = hasFile[\s\S]*input\.view === "preview"[\s\S]*input\.view === "compare"/.test(commandState)
+    && /canEnterShortTermGeneralCompare\(state\)/.test(compareSurface)
+    && /toggleCompare: \(\) => \{/.test(actionBridge)
+    && /if \(!canEnterShortTermGeneralCompare\(state\)\) return false/.test(actionBridge));
   record("compare-right-panel-slots-use-open-or-replace-action-contract", /function renderComparePairSlotHtml\(slot, model, displayName\)/.test(compareModel)
     && /const openAction = slot === "A" \? "open-compare-a" : "open-compare-b"/.test(compareModel)
     && /const actionCopy = model \? "替换" : "打开"/.test(compareModel)
@@ -906,7 +918,8 @@ async function main() {
     && /--asv-compare-mode-header-divider:\s*var\(--asv-component-compare-mode-header-divider\)/.test(tokens)
     && /--asv-component-dialog-backdrop-background:/.test(tokens)
     && /--asv-component-settings-sheet-min-height:\s*300px/.test(tokens)
-    && /--asv-component-settings-sheet-border:\s*1px solid/.test(tokens)
+    && /--asv-component-settings-sheet-border:\s*1px solid transparent/.test(tokens)
+    && !/--asv-component-settings-sheet-border:[^;]*--asv-base-neutral-0/.test(tokens)
     && /--asv-component-settings-sheet-radius:\s*var\(--asv-base-radius-24\)/.test(tokens)
     && /--asv-component-settings-sheet-background:/.test(tokens)
     && /--asv-component-settings-sheet-shadow:/.test(tokens)
@@ -954,6 +967,7 @@ async function main() {
     && /\.settingsHeader h2\s*\{[\s\S]*min-height: var\(--asv-settings-title-row-height\)/.test(components)
     && /\.settingsDialog \.dialogActions button\s*\{[\s\S]*min-height: var\(--asv-settings-action-height\)/.test(components)
     && /\.settingsChoice:has\(input:checked\)\s*\{[\s\S]*border-radius: var\(--asv-settings-choice-selected-radius\)[\s\S]*color: var\(--asv-settings-choice-selected-color\)/.test(components)
+    && /\.settingsChoice:has\(input:focus-visible\)\s*\{[\s\S]*box-shadow: var\(--asv-focus-inset\)/.test(components)
     && /\.settingsGroup\s*\{[\s\S]*gap: var\(--asv-settings-appearance-block-gap\)[\s\S]*min-height: var\(--asv-settings-appearance-block-height\)[\s\S]*padding-block: var\(--asv-settings-appearance-block-padding-block\)/.test(components)
     && /\.settingsChoice\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*grid-template-rows: auto auto/.test(components)
     && /const rows = renderCompareMetricColumns\(aModel, bModel\)/.test(compareModel)

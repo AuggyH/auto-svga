@@ -83,7 +83,7 @@ states is incomplete.
 | Runtime image replacement | Preview mode remains active; replacement and reset affect playback preview without switching to Edit mode. |
 | Runtime text replacement | Inline text input for supported text fields; realtime preview and Reset; no claim of byte persistence. |
 | Edit mode | Left layer list, center canvas, right operation area empty/reserved without inactive controls. |
-| General compare mode | No persistent main-surface entry; entered by macOS menu or drag-decision overlay. Empty state keeps disabled playback controls. Loaded state shows two canvases and one comparison-focused right panel. |
+| General compare mode | No persistent main-surface entry; entered from an already loaded Preview source by macOS menu or drag-decision overlay. Compare A is the active primary source; the loaded state shows two canvases and one comparison-focused right panel. |
 | Optimization compare mode | Before/after previews, optimization result card, before/after metrics, Save As SVGA, Overwrite Save, and Abandon Optimization. |
 | Save validating | In-progress save state with disabled duplicate save actions and no success claim before validation. |
 | Save complete | Saved feedback, clean dirty state, reopened or validated output status. |
@@ -197,7 +197,7 @@ The UI/UX owner may refine labels, but the design must cover the action groups.
 | Auto SVGA | About, Settings, Services, Hide, Quit. |
 | File | Open SVGA, Close File, Recent submenu with up to ten recent SVGA records and clear-history action, Save As when contextually enabled, Overwrite Save for optimization result output. |
 | Edit | Standard text operations where applicable; Rename imageKey; cancel active rename/edit state. |
-| View | Preview Mode, Edit Mode, Enter/Exit Compare, Appearance/Theme entry. If no file is open, Enter Compare starts a two-file selection flow. |
+| View | Preview Mode, Edit Mode, Enter/Exit Compare, Appearance/Theme entry. Enter Compare is disabled when no Preview source is loaded. |
 | Playback | Play/Pause, Replay, Loop if supported. |
 | Resource | Rename imageKey, Replace Preview Image, Reset Preview Replacement. |
 | Optimize | Check Optimization, Run Optimization, Show Optimization Comparison when output exists. |
@@ -435,8 +435,9 @@ Optimization:
 Compare and drag/drop:
 
 - General compare has no persistent main-surface entry.
-- Compare is entered from the macOS menu or from drag-decision overlays.
-- If no file is open, the menu command enters a two-file selection flow.
+- Compare is entered only from an already loaded Preview source through the
+  macOS menu or drag-decision overlays. Launch and File do not expose an empty
+  Compare entry; Compare A is always the active primary source.
 - Compare empty state keeps bottom playback controls visible but disabled.
 - Loaded compare shows two canvases and one right comparison panel focused on
   differences.

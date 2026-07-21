@@ -1,4 +1,8 @@
 import { closeOpenDialog } from "./short-term-macos-dialog-model.mjs";
+import {
+  canEnterShortTermGeneralCompare,
+  hasShortTermComparePrimarySource
+} from "./short-term-macos-compare-model.mjs";
 
 export function installShortTermActionBridge({
   windowRef = window,
@@ -29,13 +33,20 @@ export function installShortTermActionBridge({
     setAppearance: handlers.setAppearance,
     runOptimization: handlers.runOptimization,
     showOptimizationComparison: handlers.showOptimizationComparison,
-    openCompareB: handlers.openCompareBFromHost,
+    openCompareB: () => {
+      if (!hasShortTermComparePrimarySource(state) || !["preview", "compare"].includes(state.view)) return false;
+      return handlers.openCompareBFromHost();
+    },
     playPause: handlers.togglePrimaryPlayback,
     replay: handlers.replayPrimary,
     toggleLoop: handlers.togglePrimaryPlaybackLoop,
     previewMode: () => handlers.setMode("preview"),
     editMode: () => handlers.setMode("edit"),
-    toggleCompare: () => (state.view === "compare" ? handlers.setMode("preview") : handlers.enterGeneralCompare()),
+    toggleCompare: () => {
+      if (state.view === "compare") return handlers.setMode("preview");
+      if (!canEnterShortTermGeneralCompare(state)) return false;
+      return handlers.enterGeneralCompare();
+    },
     overviewTab: () => handlers.openTab("overview"),
     optimizationTab: () => handlers.openTab("optimization"),
     replaceableTab: () => handlers.openTab("replaceable"),

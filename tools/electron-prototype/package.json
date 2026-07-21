@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "fast-png": "8.0.0",
-    "protobufjs": "8.6.4"
+    "protobufjs": "8.6.6"
   },
   "devDependencies": {
     "@electron/packager": "20.0.1",

@@ -8,16 +8,28 @@ const ASSET_FILTERS = [
   { id: "audio", label: "音频" }
 ];
 
-export function assetFilterTabsView(assets = []) {
+export function assetFilterTabsView(assets = [], audioCount) {
   const counts = new Map(ASSET_FILTERS.map((filter) => [filter.id, 0]));
   counts.set("all", assets.length);
   for (const asset of assets) {
     if (counts.has(asset.kind)) counts.set(asset.kind, (counts.get(asset.kind) ?? 0) + 1);
   }
+  if (Number.isSafeInteger(audioCount) && audioCount >= 0) counts.set("audio", audioCount);
   return ASSET_FILTERS.map((filter) => ({
     ...filter,
     count: counts.get(filter.id) ?? 0
   }));
+}
+
+export function normalizedOverviewAssets(model) {
+  const assets = Array.isArray(model?.assets) ? model.assets : [];
+  const audioGroup = model?.overview?.audioGroup;
+  const audioCount = audioGroup?.status === "empty"
+    ? 0
+    : Number.isSafeInteger(audioGroup?.count)
+      ? Math.max(0, audioGroup.count)
+      : assets.filter((asset) => asset?.kind === "audio").length;
+  return audioCount === 0 ? assets.filter((asset) => asset?.kind !== "audio") : assets;
 }
 
 export function assetFilterTabCopy(tab) {
@@ -65,13 +77,16 @@ export function filteredAssetsForTab(assets = [], filter = "all") {
 
 export function overviewTabView(model) {
   const overviewFacts = model?.overview?.facts ?? [];
-  const assets = Array.isArray(model?.assets) ? model.assets : [];
+  const assets = normalizedOverviewAssets(model);
+  const audioCount = model?.overview?.audioGroup?.status === "empty"
+    ? 0
+    : model?.overview?.audioGroup?.count;
   const factGroups = overviewFactGroups(model);
   return {
     facts: factGroups.summary,
     moreInfoFacts: factGroups.moreInfo,
     assets,
-    assetTabs: assetFilterTabsView(assets),
+    assetTabs: assetFilterTabsView(assets, audioCount),
     playbackMeta: overviewFacts
       .filter((fact) => PLAYBACK_META_FACT_IDS.has(fact.id))
       .map((fact) => fact.value)
