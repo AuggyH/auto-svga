@@ -281,7 +281,8 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
     saveStatus: "idle"
   };
 
-  await assert.rejects(saveShortTermActiveOutput({
+  const failureBanners = [];
+  const failedSaveResult = await saveShortTermActiveOutput({
     bridge: {
       async saveShortTermSvgaOutput() {
         return { status: "saved", sourceId: "source:saved", fileName: "saved.svga" };
@@ -301,8 +302,11 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
       throw new Error("mount failed after host save");
     },
     async refreshRecentFiles() {},
-    showSaveBanner() {}
-  }), /mount failed after host save/u);
+    showSaveBanner(title, message) {
+      failureBanners.push({ title, message });
+    }
+  });
+  assert.deepEqual(failedSaveResult, { status: "failed" });
   assert.equal(state.sourceBytes, sourceBytes);
   assert.equal(state.previewBytes, previewBytes);
   assert.equal(state.sourceId, "source:dirty");
@@ -310,6 +314,57 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
   assert.equal(state.activeOutput, activeOutput);
   assert.equal(state.mode, "edit");
   assert.equal(state.saveStatus, "failed");
+  assert.deepEqual(failureBanners.at(-1), { title: "保存失败，请重试", message: "" });
+
+  const committedBytes = Uint8Array.from([12, 13, 14]);
+  const committedOutput = {
+    kind: "replacement",
+    bytes: committedBytes,
+    suggestedName: "committed.svga"
+  };
+  const committedState = {
+    sourceBytes,
+    previewBytes,
+    sourceId: "source:before-save",
+    displayName: "before-save.svga",
+    model: { status: "ready", replaceableElements: { images: [], texts: [] } },
+    activeOutput: committedOutput,
+    mode: "edit",
+    saveStatus: "idle"
+  };
+  const committedBanners = [];
+  const committedResult = await saveShortTermActiveOutput({
+    bridge: {
+      async saveShortTermSvgaOutput() {
+        return { status: "saved", sourceId: "source:committed", fileName: "committed.svga" };
+      }
+    },
+    command: "saveAs",
+    state: committedState,
+    async inspectShortTerm() {
+      return { status: "ready", replaceableElements: { images: [], texts: [] } };
+    },
+    clearTransientOutput() {
+      committedState.activeOutput = undefined;
+      committedState.saveStatus = "idle";
+    },
+    renderPreviewModel() {},
+    renderCommandState() {},
+    async mountPrimaryPlayback() {},
+    async refreshRecentFiles() {
+      throw new Error("recent refresh failed after committed Save");
+    },
+    showSaveBanner(title, message) {
+      committedBanners.push({ title, message });
+    }
+  });
+  assert.equal(committedResult.status, "saved");
+  assert.equal(committedState.sourceId, "source:committed");
+  assert.deepEqual(committedState.sourceBytes, committedBytes);
+  assert.equal(committedState.activeOutput, undefined);
+  assert.equal(committedState.saveStatus, "idle");
+  assert.deepEqual(committedBanners.at(-1), { title: "已保存", message: "" });
+  assert.equal(committedBanners.some(({ title }) => title === "保存失败，请重试"), false);
 
   let resolveInspection;
   let authorityCurrent = true;
@@ -6378,6 +6433,7 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
     activeOpenButton.focus();
     const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
     controller.initialize();
+    globalThis.document.activeElement = globalThis.document.body;
 
     await controller.handlers.openFromHostDialog();
 
@@ -11559,9 +11615,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /ordinaryImagesNotDuplicatedInReplaceables/);
   assert.match(shortTermSmokeProofModel, /ordinaryImageThumbnailVisible/);
   assert.match(shortTermController, /function createSaveFailureProofOutput/);
-  assert.match(shortTermSaveSurface, /const savedModel = await inspectShortTerm\(outputBytes/);
+  assert.match(shortTermSaveSurface, /savedModel = await inspectShortTerm\(outputBytes/);
   assert.ok(
-    shortTermSaveSurface.indexOf("const savedModel = await inspectShortTerm(outputBytes") < shortTermSaveSurface.indexOf("state.sourceBytes = outputBytes"),
+    shortTermSaveSurface.indexOf("savedModel = await inspectShortTerm(outputBytes") < shortTermSaveSurface.indexOf("state.sourceBytes = outputBytes"),
     "saved output must reopen before becoming the current source bytes"
   );
   assert.match(shortTermSmokeRunner, /playerLifecycleOk/);
