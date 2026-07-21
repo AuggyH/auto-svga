@@ -375,11 +375,19 @@ test("encoded budget, cancel, timeout, and phase faults leave zero partial autho
   await t.test("mid-render cancel", async (t) => {
     const fixture = await createFixture(t, { executionId: "exec-mid-cancel", timeoutMs: 2_000 });
     const controller = new AbortController();
-    const cancelTimer = setTimeout(() => controller.abort(), 15);
+    const runner: AebAeSyntheticProcessRunner = {
+      async run(request) {
+        controller.abort();
+        if (!request.signal.aborted) {
+          await new Promise<void>((resolve) => request.signal.addEventListener("abort", () => resolve(), { once: true }));
+        }
+        return { started: true, exitCode: null, signal: "SIGTERM", forcedTermination: false };
+      }
+    };
     await assert.rejects(
       () => new NodeAebBoundedAeBakeExecutor(fixture.authority, fixture.hasher).execute(
         fixture.plan,
-        hostFor(fixture, new DeterministicAerenderRunner("hang", fixture.outsideFramePath)),
+        hostFor(fixture, runner),
         { signal: controller.signal }
       ),
       (error: unknown) => {
@@ -388,7 +396,6 @@ test("encoded budget, cancel, timeout, and phase faults leave zero partial autho
         return true;
       }
     );
-    clearTimeout(cancelTimer);
     await assertNoExecutionResidue(fixture);
   });
 

@@ -109,7 +109,7 @@ export interface AebReviewedSvgaSchemaProbeResult extends AebReviewedSvgaSchemaB
 
 export async function loadAebReviewedSvgaSchemaAuthority(): Promise<AebReviewedSvgaSchemaAuthority> {
   const bytes = await readPinnedReviewedProto(reviewedProtoPath);
-  const encoderRoot = protobuf.parse(bytes.toString("utf8")).root;
+  const encoderRoot = protobuf.parse(bytes.toString("utf8")).root.resolveAll();
   const reopenRoot = createReviewedDescriptorRoot();
   const encoderMovieEntity = encoderRoot.lookupType("com.opensource.svga.MovieEntity");
   const reopenMovieEntity = reopenRoot.lookupType("com.opensource.svga.MovieEntity");

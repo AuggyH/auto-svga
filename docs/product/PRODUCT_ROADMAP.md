@@ -230,6 +230,10 @@ input, not acceptance of a successor candidate. Current repair and validation
 state lives in GitHub pull requests and Issues; raw owner materials and private
 matrix evidence remain outside Git.
 
+The reviewed Round 1 source repairs are integrated. GitHub Issue #6 owns the
+Round 2 exact-candidate matrix and is the only active cross-lane execution
+entry; it does not imply foreground, QA, package, or Owner acceptance.
+
 ## Owner Correction: Short-term Scope
 
 Date: 2026-07-01
