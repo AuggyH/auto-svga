@@ -127,7 +127,7 @@ test("multi-format owner copy hides host and runtime implementation language", (
   assert.doesNotMatch(controllerSource, /仅包含自动命名资源/u);
   assert.match(inlineStatusSource, /未发现可替换元素/u);
   assert.doesNotMatch(inlineStatusSource, /仅包含自动命名资源|不满足可替换元素命名规则/u);
-  assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount, hasReplacementPreview\)/u);
+  assert.match(controllerSource, /replaceableElementSummaryCopy\(totalCount\)/u);
   assert.match(controllerSource, /\.launchPrompt p"\)\?\.replaceChildren\("拖拽文件到此处"\)/u);
   assert.doesNotMatch(controllerSource, /拖拽 SVGA \/ Lottie JSON \/ VAP MP4 到此处/u);
   assert.match(controllerSource, /renderFailureMessage\(nodes, ownerFailureCopy\(error\)\)/u);
@@ -176,7 +176,8 @@ test("accepted-open status gates Recent and unifies terminal model failures", as
     kind: "failure",
     code: "missing_resource",
     message: "预览所需资源缺失，源文件没有被修改。",
-    pathRedacted: true
+    pathRedacted: true,
+    revokeActiveAuthority: true
   });
 
   const invalid = normalizeMultiFormatOpenOutcome({
@@ -193,7 +194,8 @@ test("accepted-open status gates Recent and unifies terminal model failures", as
     kind: "failure",
     code: "invalid_file",
     message: "文件内容不完整或格式异常，无法预览。",
-    pathRedacted: true
+    pathRedacted: true,
+    revokeActiveAuthority: true
   });
 });
 
@@ -248,8 +250,8 @@ test("macOS multi-format picker uses the active BrowserWindow with no extension 
   });
   assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.svga", () => ({ isFile: () => false })), {
     status: "failed",
-    code: "file_picker_failed",
-    message: "无法打开文件选择器，源文件没有被修改。",
+    code: "open_failed",
+    message: "无法打开本地文件，源文件没有被修改。",
     pathRedacted: true
   });
 
@@ -364,7 +366,7 @@ test("host picker returns cancel, selected formats, and redacted invalid input w
   }), { status: "cancelled" });
 });
 
-test("unsupported picker selection stays typed and mutation-free through the renderer contract", async () => {
+test("unsupported picker selection stays typed and revokes stale renderer authority", async () => {
   const authority = { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 };
   const hostResult = await chooseMultiFormatLocalFile({
     platform: "darwin",
@@ -379,7 +381,8 @@ test("unsupported picker selection stays typed and mutation-free through the ren
     kind: "failure",
     code: "unsupported_file_type",
     message: "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。",
-    pathRedacted: true
+    pathRedacted: true,
+    revokeActiveAuthority: true
   });
   assert.deepEqual(authority, { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 });
   assert.doesNotMatch(JSON.stringify({ hostResult, rendererResult }), /Users\/alice|Secret Project/u);
@@ -402,6 +405,34 @@ test("unsupported picker selection stays typed and mutation-free through the ren
   assert.equal(untrustedResult.code, undefined);
   assert.equal(untrustedResult.message, "操作未能完成，源文件没有被修改。");
   assert.doesNotMatch(JSON.stringify(untrustedResult), /Users\/alice|Secret Project/u);
+});
+
+test("selected unavailable picker path revokes stale renderer authority", async () => {
+  const hostResult = await chooseMultiFormatLocalFile({
+    platform: "darwin",
+    readStats() {
+      throw new Error("Selected file vanished at /Users/alice/Secret Project/input.svga");
+    },
+    async showOpenDialog() {
+      return { canceled: false, filePaths: ["/Users/alice/Secret Project/input.svga"] };
+    }
+  });
+  const rendererResult = await resolveMultiFormatChooserOutcome(hostResult);
+
+  assert.deepEqual(hostResult, {
+    status: "failed",
+    code: "open_failed",
+    message: "无法打开本地文件，源文件没有被修改。",
+    pathRedacted: true
+  });
+  assert.deepEqual(rendererResult, {
+    kind: "failure",
+    code: "open_failed",
+    message: "无法打开本地文件，源文件没有被修改。",
+    pathRedacted: true,
+    revokeActiveAuthority: true
+  });
+  assert.doesNotMatch(JSON.stringify({ hostResult, rendererResult }), /Users\/alice|Secret Project/u);
 });
 
 test("picker exception stays typed and mutation-free through the renderer contract", async () => {

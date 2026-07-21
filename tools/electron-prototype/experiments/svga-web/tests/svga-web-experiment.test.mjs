@@ -4527,7 +4527,7 @@ test("0.2 multi-format desktop session rejects unsupported drops before source r
   }
 });
 
-test("0.2 accepted-open authority excludes terminal failures and playback-blocked inputs", async () => {
+test("0.2 failed newer open revokes prior active source authority", async () => {
   assert.equal(isAcceptedMultiFormatOpenModel({ status: "previewReady" }), true);
   assert.equal(isAcceptedMultiFormatOpenModel({ status: "playing" }), true);
   assert.equal(isAcceptedMultiFormatOpenModel({ status: "paused" }), true);
@@ -4566,17 +4566,27 @@ test("0.2 accepted-open authority excludes terminal failures and playback-blocke
     assert.equal(isAcceptedMultiFormatOpenModel(rejected.model), false);
     assert.equal(rejected.sourceId, "");
     assert.equal(rejected.svgaSource, undefined);
-    assert.equal(sourceStore.has(accepted.sourceId), true, "Recent may retain the prior accepted source path");
+    assert.equal(session.activeSourceId, "");
+    assert.equal(sourceStore.has(accepted.sourceId), false);
 
-    const retainedRuntime = await session.prepareRuntimePreview({
+    const revokedRuntime = await session.prepareRuntimePreview({
       sourceId: accepted.sourceId,
       format: "lottie",
-      requestId: `${accepted.model.requestId}:retained-after-failure`,
+      requestId: `${accepted.model.requestId}:revoked-after-failure`,
       replacements: accepted.model.replacement
     });
-    assert.equal(retainedRuntime.status, "prepared");
-    assert.equal(retainedRuntime.pathRedacted, true);
-    assert.equal(sourceStore.get(accepted.sourceId), validPath);
+    assert.equal(revokedRuntime.status, "failed");
+    assert.equal(revokedRuntime.issue.code, "missing_resource");
+    assert.equal(revokedRuntime.pathRedacted, true);
+
+    const reopened = await session.openLocalFilePath(validPath, "fileButton");
+    assert.match(reopened.sourceId, /^[a-f0-9]{24}$/u);
+    const unsupported = await session.openLocalFilePath(path.join(sessionRoot, "unsupported.txt"), "fileButton");
+    assert.equal(unsupported.model.status, "failed");
+    assert.equal(unsupported.model.rightPanel.issues[0].code, "unsupported_file_type");
+    assert.equal(unsupported.sourceId, "");
+    assert.equal(session.activeSourceId, "");
+    assert.equal(sourceStore.has(reopened.sourceId), false);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
@@ -6223,11 +6233,15 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
   });
   assert.deepEqual(unknownFailure, {
     kind: "failure",
-    message: "操作未能完成，源文件没有被修改。"
+    message: "操作未能完成，源文件没有被修改。",
+    revokeActiveAuthority: true
   });
 });
 
 test("0.2 AEP handoff revokes prior preview authority and rejects path aliases without mutating the source", async () => {
+  const { resolveMultiFormatChooserOutcome } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href
+  );
   const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-aep-handoff-authority-"));
   const sourceStore = new Map();
   const session = createMultiFormatDesktopPreviewSession({
@@ -6256,6 +6270,24 @@ test("0.2 AEP handoff revokes prior preview authority and rejects path aliases w
     assert.notEqual(previous.sourceId, "");
     assert.equal(sourceStore.has(previous.sourceId), true);
 
+    const aliasFailure = await session.openLocalFilePath(aliasPath, "fileButton");
+    assert.equal(aliasFailure.status, "opened");
+    assert.equal(aliasFailure.model.status, "failed");
+    assert.equal(aliasFailure.model.rightPanel.issues[0].code, "open_failed");
+    assert.equal(aliasFailure.sourceId, "");
+    assert.equal(session.activeSourceId, "");
+    assert.equal(sourceStore.has(previous.sourceId), false);
+    assert.doesNotMatch(JSON.stringify(aliasFailure), /auto-svga-aep-handoff-authority|\/private\/tmp/u);
+    assert.deepEqual(await resolveMultiFormatChooserOutcome(aliasFailure), {
+      kind: "failure",
+      code: "open_failed",
+      message: "无法打开本地文件，源文件没有被修改。",
+      pathRedacted: true,
+      revokeActiveAuthority: true
+    });
+
+    const reopened = await session.openLocalFilePath(previousPath, "fileButton");
+    assert.notEqual(reopened.sourceId, "");
     const handoff = await session.openLocalFilePath(aepPath, "fileButton");
     assert.equal(handoff.status, "handoffRequired");
     assert.equal(handoff.outcome, "aepHandoff");
@@ -6267,13 +6299,13 @@ test("0.2 AEP handoff revokes prior preview authority and rejects path aliases w
     assert.equal(handoff.pathRedacted, true);
     assert.equal(handoff.model.status, "handoffRequired");
     assert.equal(handoff.model.detectedFormat, "aep");
-    assert.equal(sourceStore.has(previous.sourceId), false);
+    assert.equal(sourceStore.has(reopened.sourceId), false);
     assert.deepEqual(await readFile(aepPath), aepBytes);
     assert.doesNotMatch(JSON.stringify(handoff), /auto-svga-aep-handoff-authority|\/private\/tmp/u);
-    await assert.rejects(
-      session.openLocalFilePath(aliasPath, "fileButton"),
-      /regular task-owned AEP copy/u
-    );
+    const missingFailure = await session.openLocalFilePath(path.join(root, "missing.aep"), "fileButton");
+    assert.equal(missingFailure.model.status, "failed");
+    assert.equal(missingFailure.model.rightPanel.issues[0].code, "open_failed");
+    assert.equal(missingFailure.sourceId, "");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -6524,7 +6556,7 @@ test("0.2 owner failure rendering trusts only reviewed codes and never raw host 
   }
 });
 
-test("0.2 composed open cancellation and failure preserve active authority for every format", async () => {
+test("0.2 composed open cancellation and picker failure preserve active authority for every format", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
 
@@ -6654,7 +6686,35 @@ test("0.2 composed open cancellation and failure preserve active authority for e
       assert.equal(
         legacyCalls.filter(([name]) => name === "deactivate").length,
         0,
-        `${format} failure must not deactivate the active SVGA authority`
+        `${format} picker failure must not deactivate the active SVGA authority`
+      );
+
+      chooserResult = {
+        status: "opened",
+        sourceId: "",
+        pathRedacted: true,
+        model: {
+          status: "failed",
+          detectedFormat: "lottie",
+          rightPanel: {
+            issues: [{ code: "invalid_file", pathRedacted: true }]
+          }
+        }
+      };
+      await controller.handlers.openFromHostDialog();
+      assert.equal(state.view, "failed", `${format} selected failure must enter the failure shell`);
+      assert.equal(state.model, undefined, `${format} selected failure must revoke the prior model`);
+      assert.equal(state.sourceId, "", `${format} selected failure must revoke the prior source id`);
+      assert.equal(state.selectedImageKey, "", `${format} selected failure must clear image selection`);
+      assert.equal(state.selectedTextKey, "", `${format} selected failure must clear text selection`);
+      assert.equal(nodes.errorMessage.textContent, "文件内容不完整或格式异常，无法预览。");
+      assert.equal(nodes.playbackProgress.attributes["aria-valuenow"], "0");
+      assert.equal(disposeCalls.length, 1, `${format} selected failure must dispose host playback`);
+      assert.equal(controller.handlers.saveActiveOutput(), undefined);
+      assert.equal(
+        legacyCalls.filter(([name]) => name === "deactivate").length,
+        format === "svga" ? 1 : 0,
+        `${format} selected failure must revoke only active SVGA workflow authority`
       );
     }
   } finally {
@@ -7100,7 +7160,7 @@ test("0.2 inventory summary follows Figma asset type rhythm", async () => {
   );
 });
 
-test("0.2 playback meta uses closed renderer-owned status and format semantics", async () => {
+test("0.2 playback meta rejects unknown newer-open status without retaining stale authority", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
   const nodes = createMultiFormatControllerTestNodes();
@@ -7146,10 +7206,13 @@ test("0.2 playback meta uses closed renderer-owned status and format semantics",
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "playback-meta-unknown" }), true);
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "playback-meta-unknown", result: unknownResult }), true);
 
-    assert.equal(state.view, "preview");
-    assert.equal(state.sourceId, "source:playback-meta");
-    assert.equal(nodes.playbackMeta.dataset.status, "playing");
-    assert.equal(nodes.playbackMeta.dataset.format, "vap");
+    assert.equal(state.view, "failed");
+    assert.equal(state.sourceId, "");
+    assert.equal(state.model, undefined);
+    assert.equal(nodes.playbackMeta.textContent, "");
+    assert.equal(nodes.playbackMeta.dataset.status, undefined);
+    assert.equal(nodes.playbackMeta.dataset.format, undefined);
+    assert.equal(nodes.playbackProgress.attributes["aria-valuenow"], "0");
     assert.notEqual(nodes.playbackMeta.dataset.status, "hostInternalPhase123");
     assert.notEqual(nodes.playbackMeta.dataset.format, "internalRuntimeFormat");
     assert.doesNotMatch(
@@ -7397,7 +7460,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieChangedInput.selectionDirection, "forward");
     assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
     assert.equal(lottieChangedInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
-    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     assert.equal(lottieCalls.length, 2);
     assert.equal(lottieCalls[1].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["text:1"]);
@@ -7424,7 +7487,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     const lottieChangedAgainInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
     assert.equal(documentRef.activeElement, lottieChangedAgainInput);
     assert.equal(lottieChangedAgainInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
-    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
 
     controller.handlers.selectImageKey("avatar");
     await controller.handlers.applyReplacementFile({
@@ -7441,7 +7504,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
       bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId).sort(),
       ["avatar", "text:1"]
     );
-    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
 
     await controller.handlers.resetRuntimeText("text:1");
     await flushRuntimeMountPromises();
@@ -7458,7 +7521,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieResetInput.selectionEnd, 16);
     assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "source");
     assert.equal(lottieResetInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, true);
-    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
 
     await controller.handlers.resetImageReplacement("avatar");
     await flushRuntimeMountPromises();
@@ -7528,7 +7591,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     const vapInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="title"]`);
     assert.equal(vapInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
     assert.equal(vapInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
-    assert.equal(nodes.replaceableSummary.textContent, "(2)*");
+    assert.equal(nodes.replaceableSummary.textContent, "(2)");
     vapInput.focus();
     vapInput.setSelectionRange(3, 3, "none");
     await controller.handlers.resetRuntimeText("title");
@@ -8714,9 +8777,11 @@ test("multi-format runtime self-test mirrors accepted-open commit and fails clos
   assert.match(proofSource, /pendingRecentSourceIds\.has\(sourceId\)/u);
   assert.match(proofSource, /const activeSource = previewSession\.activeSourceId === sourceId/u);
   assert.match(proofSource, /!validSourceId \|\| !pendingSource \|\| !activeSource/u);
-  assert.match(proofSource, /async function proveRejectedOpenPreservesActive/u);
+  assert.match(proofSource, /async function proveRejectedOpenRevokesActive/u);
   assert.match(proofSource, /action\?\.begun !== true \|\| action\?\.completed !== true/u);
-  assert.match(proofSource, /afterSourceId !== beforeSourceId/u);
+  assert.match(proofSource, /openResult\?\.sourceId/u);
+  assert.match(proofSource, /afterSourceId/u);
+  assert.match(proofSource, /after\.runtimeMountState === "loaded"/u);
   assert.match(proofSource, /main\(\)\.catch\(async \(error\) => \{\s*process\.exitCode = 1;/u);
   assert.match(proofSource, /app\.exit\(process\.exitCode \?\? 0\)/u);
 });
@@ -10963,7 +11028,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextModel, /export function nextSelectedTextKey/);
   assert.match(shortTermTextModel, /export function selectedRuntimeTextElement/);
   assert.doesNotMatch(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
-  assert.match(shortTermTextModel, /replaceableElementSummaryCopy\(images\.length \+ texts\.length, hasImagePreview \|\| hasTextPreview\)/);
+  assert.match(shortTermTextModel, /replaceableElementSummaryCopy\(images\.length \+ texts\.length\)/);
   assert.match(shortTermReplaceableModel, /export function replaceableElementSummaryCopy/);
   assert.match(shortTermReplaceableSurface, /from "\.\/short-term-macos-replaceable-model\.mjs"/);
   assert.match(shortTermReplaceableSurface, /replaceableImageListView/);
@@ -10978,16 +11043,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.dataset\.empty = view\.hasTextElements \? "false" : "true"/);
   assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.closest\("\.replaceableSection"\)\?\.setAttribute\("data-empty", "false"\)/);
   assert.match(shortTermModules, /\.replaceableSection\[data-empty="true"\]/);
-  assert.match(shortTermComponents, /\.replaceableRow\[data-replacement-state="preview"\] \.rowText strong::after/);
-  assert.match(shortTermComponents, /\.textElementRow\[data-replacement-state="preview"\] \.rowText strong::after/);
-  assert.match(shortTermComponents, /content: "\*"/);
+  assert.doesNotMatch(shortTermComponents, /\[data-replacement-state="preview"\] \.rowText strong::after/);
   assert.doesNotMatch(shortTermModules, /textPreviewBlock/);
   assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
   assert.doesNotMatch(shortTermReplaceableRenderers, /createInlineStatusText/);
   assert.match(shortTermReplaceableModel, /export function replaceableImageListView/);
   assert.match(shortTermReplaceableModel, /export function nextReplaceableSelection/);
   assert.doesNotMatch(shortTermReplaceableModel, /没有可替换元素。/);
-  assert.match(shortTermReplaceableModel, /summaryCopy: replaceableElementSummaryCopy\(images\.length, hasPreview\)/);
+  assert.match(shortTermReplaceableModel, /summaryCopy: replaceableElementSummaryCopy\(images\.length\)/);
   assert.match(shortTermController, /from "\.\/short-term-macos-optimization-surface\.mjs"/);
   assert.match(shortTermOptimizationSurface, /from "\.\/short-term-macos-optimization-model\.mjs"/);
   assert.match(shortTermOptimizationSurface, /optimizationTabView/);

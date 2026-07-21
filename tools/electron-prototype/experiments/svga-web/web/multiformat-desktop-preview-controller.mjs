@@ -201,7 +201,7 @@ export function createMultiFormatDesktopPreviewController({
   function failHostFileOpen(payload = {}) {
     if (!hostFileOpenIsActive(payload)) return false;
     clearHostFileOpenRequest();
-    showOpenFailure(payload);
+    showOpenFailure(payload, { revokeActiveAuthority: true });
     return true;
   }
 
@@ -697,7 +697,9 @@ export function createMultiFormatDesktopPreviewController({
       return true;
     }
     if (outcome.kind === "failure") {
-      showOpenFailure(outcome);
+      showOpenFailure(outcome, {
+        revokeActiveAuthority: outcome.revokeActiveAuthority === true
+      });
       return true;
     }
     if (outcome.kind === "aepHandoff") {
@@ -980,14 +982,7 @@ export function createMultiFormatDesktopPreviewController({
       )
     }));
     const totalCount = imageCount + textCount;
-    const hasReplacementPreview = targets.some((target) => target.replacementActive)
-      || textTargets.some((target) => multiFormatActiveReplacementForPublicTarget(
-        model,
-        "text",
-        target.textKey,
-        publicRuntimeReplacementTargets
-      ));
-    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount, hasReplacementPreview);
+    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount);
     const replaceableSection = nodes.replaceableList.closest?.(".replaceableSection");
     replaceableSection?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
     if (totalCount === 0) {
@@ -2005,8 +2000,8 @@ export function createMultiFormatDesktopPreviewController({
     setView("preview");
   }
 
-  function showOpenFailure(error) {
-    if (state.model && state.sourceId) {
+  function showOpenFailure(error, options = {}) {
+    if (options.revokeActiveAuthority !== true && state.model && state.sourceId) {
       renderFailureMessage(nodes, ownerFailureCopy(error));
       setView("preview");
       return;
@@ -2186,7 +2181,7 @@ export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
     ]);
     return normalizeMultiFormatOpenOutcome(result);
   } catch {
-    return ownerFailureOutcome("open_failed");
+    return ownerFailureOutcome("open_failed", { revokeActiveAuthority: true });
   } finally {
     clearTimeout(timeout);
   }
@@ -2208,8 +2203,10 @@ export function normalizeMultiFormatOpenOutcome(result) {
       ?? ownerFailureOutcome("aep_handoff_invalid", { pathRedacted: true });
   }
   if (kind === "failure") {
-    return ownerFailureOutcome(trustedOwnerFailureCode(result), {
-      pathRedacted: readSafeDataValue(result, "pathRedacted") === true
+    const code = trustedOwnerFailureCode(result);
+    return ownerFailureOutcome(code, {
+      pathRedacted: readSafeDataValue(result, "pathRedacted") === true,
+      revokeActiveAuthority: failureRevokesActiveAuthority(code)
     });
   }
   if (kind === "cancelled" || kind === "model") return result;
@@ -2218,7 +2215,10 @@ export function normalizeMultiFormatOpenOutcome(result) {
     ? trustedOwnerFailureCode(result)
     : "";
   if (reviewedPickerFailureCode) {
-    return ownerFailureOutcome(reviewedPickerFailureCode, { pathRedacted: true });
+    return ownerFailureOutcome(reviewedPickerFailureCode, {
+      pathRedacted: true,
+      revokeActiveAuthority: failureRevokesActiveAuthority(reviewedPickerFailureCode)
+    });
   }
   if (status === "missing") {
     return ownerFailureOutcome("recent_file_missing");
@@ -2226,12 +2226,19 @@ export function normalizeMultiFormatOpenOutcome(result) {
   const model = readSafeDataValue(result, "model");
   if (model) {
     if (isAcceptedMultiFormatOpenModel(model)) return { kind: "model", result };
-    return ownerFailureOutcome(openFailureCodeForModel(model), { pathRedacted: true });
+    return ownerFailureOutcome(openFailureCodeForModel(model), {
+      pathRedacted: true,
+      revokeActiveAuthority: true
+    });
   }
   if (status === "opened") {
-    return ownerFailureOutcome("open_failed");
+    return ownerFailureOutcome("open_failed", { revokeActiveAuthority: true });
   }
-  return ownerFailureOutcome("");
+  return ownerFailureOutcome("", { revokeActiveAuthority: true });
+}
+
+function failureRevokesActiveAuthority(code) {
+  return code !== "file_picker_failed" && code !== "recent_file_missing";
 }
 
 export function isAcceptedMultiFormatOpenModel(model) {
@@ -2416,7 +2423,8 @@ function ownerFailureOutcome(code, options = {}) {
     kind: "failure",
     ...(trustedCode ? { code: trustedCode } : {}),
     message: trustedCode ? reviewedOwnerFailureCopyByCode[trustedCode] : genericOwnerFailureCopy,
-    ...(options.pathRedacted === true && trustedCode ? { pathRedacted: true } : {})
+    ...(options.pathRedacted === true && trustedCode ? { pathRedacted: true } : {}),
+    ...(options.revokeActiveAuthority === true ? { revokeActiveAuthority: true } : {})
   };
 }
 
