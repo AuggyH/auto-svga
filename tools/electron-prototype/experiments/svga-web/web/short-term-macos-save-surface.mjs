@@ -95,12 +95,15 @@ export async function saveShortTermActiveOutput({
   state.saveStatus = "validating";
   renderCommandState();
   showSaveBanner("正在保存并验证输出…", "");
+  const outputKind = state.activeOutput.kind;
+  const outputBytes = new Uint8Array(state.activeOutput.bytes);
+  let expectedSha256;
+  let result;
+  let savedModel;
   try {
-    const outputKind = state.activeOutput.kind;
-    const outputBytes = new Uint8Array(state.activeOutput.bytes);
-    const expectedSha256 = await sha256Hex(outputBytes);
+    expectedSha256 = await sha256Hex(outputBytes);
     if (!authorityIsCurrent()) return undefined;
-    const result = await bridge.saveShortTermSvgaOutput({
+    result = await bridge.saveShortTermSvgaOutput({
       command,
       sourceId: state.sourceId,
       suggestedName: state.activeOutput.suggestedName,
@@ -114,26 +117,10 @@ export async function saveShortTermActiveOutput({
       showSaveBanner("已取消保存。", "当前输出仍未保存。");
       return result;
     }
-    const savedModel = await inspectShortTerm(outputBytes, result.fileName || state.displayName);
+    savedModel = await inspectShortTerm(outputBytes, result.fileName || state.displayName);
     if (!authorityIsCurrent()) return undefined;
     await mountPrimaryPlayback(outputBytes);
     if (!authorityIsCurrent()) return undefined;
-    state.sourceBytes = outputBytes;
-    state.previewBytes = new Uint8Array(outputBytes);
-    state.sourceId = result.sourceId || state.sourceId;
-    state.displayName = result.fileName || state.displayName;
-    clearTransientOutput();
-    state.cleanSaveAsVisible = outputKind !== "optimization" && command === "saveAs";
-    state.model = savedModel;
-    renderPreviewModel();
-    renderCommandState();
-    showSaveBanner("已保存", "");
-    await refreshRecentFiles();
-    return {
-      ...result,
-      outputKind,
-      expectedSha256
-    };
   } catch {
     if (!authorityIsCurrent()) return undefined;
     state.saveStatus = "failed";
@@ -141,4 +128,24 @@ export async function saveShortTermActiveOutput({
     showSaveBanner("保存失败，请重试", "");
     return { status: "failed" };
   }
+  state.sourceBytes = outputBytes;
+  state.previewBytes = new Uint8Array(outputBytes);
+  state.sourceId = result.sourceId || state.sourceId;
+  state.displayName = result.fileName || state.displayName;
+  clearTransientOutput();
+  state.cleanSaveAsVisible = outputKind !== "optimization" && command === "saveAs";
+  state.model = savedModel;
+  renderPreviewModel();
+  renderCommandState();
+  showSaveBanner("已保存", "");
+  try {
+    await refreshRecentFiles();
+  } catch {
+    // Recent refresh is ancillary after the validated Save has committed.
+  }
+  return {
+    ...result,
+    outputKind,
+    expectedSha256
+  };
 }
