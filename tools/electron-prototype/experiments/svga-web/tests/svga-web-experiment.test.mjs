@@ -6239,6 +6239,9 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
 });
 
 test("0.2 AEP handoff revokes prior preview authority and rejects path aliases without mutating the source", async () => {
+  const { resolveMultiFormatChooserOutcome } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href
+  );
   const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-aep-handoff-authority-"));
   const sourceStore = new Map();
   const session = createMultiFormatDesktopPreviewSession({
@@ -6267,6 +6270,24 @@ test("0.2 AEP handoff revokes prior preview authority and rejects path aliases w
     assert.notEqual(previous.sourceId, "");
     assert.equal(sourceStore.has(previous.sourceId), true);
 
+    const aliasFailure = await session.openLocalFilePath(aliasPath, "fileButton");
+    assert.equal(aliasFailure.status, "opened");
+    assert.equal(aliasFailure.model.status, "failed");
+    assert.equal(aliasFailure.model.rightPanel.issues[0].code, "open_failed");
+    assert.equal(aliasFailure.sourceId, "");
+    assert.equal(session.activeSourceId, "");
+    assert.equal(sourceStore.has(previous.sourceId), false);
+    assert.doesNotMatch(JSON.stringify(aliasFailure), /auto-svga-aep-handoff-authority|\/private\/tmp/u);
+    assert.deepEqual(await resolveMultiFormatChooserOutcome(aliasFailure), {
+      kind: "failure",
+      code: "open_failed",
+      message: "无法打开本地文件，源文件没有被修改。",
+      pathRedacted: true,
+      revokeActiveAuthority: true
+    });
+
+    const reopened = await session.openLocalFilePath(previousPath, "fileButton");
+    assert.notEqual(reopened.sourceId, "");
     const handoff = await session.openLocalFilePath(aepPath, "fileButton");
     assert.equal(handoff.status, "handoffRequired");
     assert.equal(handoff.outcome, "aepHandoff");
@@ -6278,13 +6299,13 @@ test("0.2 AEP handoff revokes prior preview authority and rejects path aliases w
     assert.equal(handoff.pathRedacted, true);
     assert.equal(handoff.model.status, "handoffRequired");
     assert.equal(handoff.model.detectedFormat, "aep");
-    assert.equal(sourceStore.has(previous.sourceId), false);
+    assert.equal(sourceStore.has(reopened.sourceId), false);
     assert.deepEqual(await readFile(aepPath), aepBytes);
     assert.doesNotMatch(JSON.stringify(handoff), /auto-svga-aep-handoff-authority|\/private\/tmp/u);
-    await assert.rejects(
-      session.openLocalFilePath(aliasPath, "fileButton"),
-      /regular task-owned AEP copy/u
-    );
+    const missingFailure = await session.openLocalFilePath(path.join(root, "missing.aep"), "fileButton");
+    assert.equal(missingFailure.model.status, "failed");
+    assert.equal(missingFailure.model.rightPanel.issues[0].code, "open_failed");
+    assert.equal(missingFailure.sourceId, "");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

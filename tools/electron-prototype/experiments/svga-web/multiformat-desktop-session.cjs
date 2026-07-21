@@ -92,7 +92,22 @@ class MultiFormatDesktopPreviewSession {
       }), "", "", { inheritActiveSource: false });
     }
     if (isAepPath(normalizedPath)) {
-      validateAepHandoffSource(normalizedPath);
+      try {
+        validateAepHandoffSource(normalizedPath);
+      } catch (error) {
+        this.disposePendingSession();
+        this.clearActiveSourceAuthority();
+        return this.publicResult(createOpenFailureModel({
+          requestId,
+          source,
+          displayName,
+          localPath: normalizedPath,
+          code: "open_failed",
+          reason: "aep_handoff_source_unavailable",
+          message: "The selected After Effects handoff source is unavailable or unsafe.",
+          cause: error
+        }), "", "", { inheritActiveSource: false });
+      }
       this.disposePendingSession();
       this.clearActiveSourceAuthority();
       return this.aepHandoffResult(createAepHandoffModel({
