@@ -445,7 +445,7 @@ test("live SVGA text preview keeps Reset and replacement state aligned with the 
   assert.equal(commandRenders, 5);
 });
 
-test("runtime-only text preview does not impersonate saveable dirty output", async () => {
+test("runtime image and text previews do not impersonate saveable dirty output", async () => {
   const textOnly = runtimeTextListView({
     images: [{ imageKey: "avatar", replacementActive: false }],
     texts: [{ textKey: "title", displayName: "标题", initialText: "欢迎回来" }]
@@ -457,11 +457,10 @@ test("runtime-only text preview does not impersonate saveable dirty output", asy
     images: [{ imageKey: "avatar", replacementActive: true }],
     texts: [{ textKey: "title", displayName: "标题", initialText: "欢迎回来" }]
   }, { title: "新的标题" });
-  assert.equal(imageOutput.summaryCopy, "(2)*");
+  assert.equal(imageOutput.summaryCopy, "(2)");
 
   const components = await readFile(path.join(experimentRoot, "web", "short-term-macos.components.css"), "utf8");
-  assert.match(components, /\.replaceableRow\[data-replacement-state="preview"\] \.rowText strong::after\s*\{[^}]*content:\s*"\*"/su);
-  assert.doesNotMatch(components, /\.textElementRow\[data-replacement-state="preview"\] \.rowText strong::after/u);
+  assert.doesNotMatch(components, /\[data-replacement-state="preview"\] \.rowText strong::after/u);
 });
 
 test("ready workspace right surface keeps tokenized density and containment contracts", async () => {

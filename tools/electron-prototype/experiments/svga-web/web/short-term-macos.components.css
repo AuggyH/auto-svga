@@ -655,13 +655,6 @@
   line-height: var(--asv-asset-row-title-line-height);
 }
 
-.replaceableRow[data-replacement-state="preview"] .rowText strong::after {
-  content: "*";
-  margin-inline-start: var(--asv-space-1);
-  color: var(--asv-action);
-  font-weight: var(--asv-type-weight-semibold);
-}
-
 .replaceableRow .rowText span,
 .textElementRow .rowText span {
   color: var(--asv-replaceable-row-detail-color);
