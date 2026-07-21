@@ -24,6 +24,7 @@ import {
 import { syncShortTermMenuState, syncShortTermWindowMode } from "./short-term-macos-host-client.mjs";
 import { createOverviewFactCell } from "./short-term-macos-overview-renderers.mjs";
 import {
+  applyRuntimeTextRowReplacementState,
   createReplaceableImageRow,
   createTextElementRow,
   replaceRuntimeTextRows
@@ -455,7 +456,7 @@ export function createMultiFormatDesktopPreviewController({
     input?.select?.();
   }
 
-  function updateRuntimeText(textKey, value) {
+  function updateRuntimeText(textKey, value, options = {}) {
     if (svgaWorkflowActive()) return svgaController.handlers.updateRuntimeText?.(textKey, value);
     if (!textKey) return;
     state.selectedTextKey = textKey;
@@ -470,9 +471,19 @@ export function createMultiFormatDesktopPreviewController({
     } else {
       delete state.textPreviewValues[textKey];
     }
-    renderTextTargets();
+    if (!applyLiveRuntimeTextInputState(options.liveInput, textKey, replacement)) {
+      renderTextTargets();
+    }
     renderCommandState();
     return enqueueRuntimeTextMutation(textKey, replacement);
+  }
+
+  function applyLiveRuntimeTextInputState(input, textKey, replacement) {
+    if (input?.dataset?.textKey !== textKey) return false;
+    const row = input.closest?.(".textElementRow[data-text-key]");
+    if (!row || row.parentElement !== nodes.textElementList) return false;
+    applyRuntimeTextRowReplacementState(row, replacement);
+    return true;
   }
 
   function enqueueRuntimeTextMutation(textKey, replacement) {

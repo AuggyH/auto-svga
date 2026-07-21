@@ -6980,6 +6980,76 @@ test("0.2 playback meta uses closed renderer-owned status and format semantics",
   }
 });
 
+test("0.2 live runtime text input preserves DOM identity and character order", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const nodes = createMultiFormatControllerTestNodes();
+  const documentRef = createMultiFormatControllerTestDocument(nodes);
+  globalThis.document = documentRef;
+  globalThis.lottie = {
+    loadAnimation() {
+      return {
+        play() {},
+        pause() {},
+        destroy() {},
+        goToAndStop() {}
+      };
+    }
+  };
+
+  try {
+    const bridge = createMultiFormatRuntimeMountTestBridge();
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+    controller.initialize();
+    bridge.markOpened("lottie");
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "live-text-input-open" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "live-text-input-open",
+      result: createRuntimeMountOpenResult("lottie")
+    }), true);
+    await flushRuntimeMountPromises();
+
+    const liveInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    liveInput.focus();
+    liveInput.select();
+    const mutations = [];
+    for (const character of "Visible Test") {
+      const selectionStart = liveInput.selectionStart;
+      const selectionEnd = liveInput.selectionEnd;
+      liveInput.value = `${liveInput.value.slice(0, selectionStart)}${character}${liveInput.value.slice(selectionEnd)}`;
+      liveInput.setSelectionRange(selectionStart + 1, selectionStart + 1, "none");
+      mutations.push(controller.handlers.updateRuntimeText("text:1", liveInput.value, { liveInput }));
+      assert.equal(
+        nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`),
+        liveInput,
+        "typing must not replace the active input node"
+      );
+    }
+
+    await Promise.all(mutations);
+    await flushRuntimeMountPromises();
+    const finalInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    assert.equal(finalInput.value, "Visible Test");
+    assert.equal(finalInput.selectionStart, "Visible Test".length);
+    assert.equal(finalInput.selectionEnd, "Visible Test".length);
+    assert.equal(finalInput.closest(".textElementRow[data-text-key]").dataset.replacementState, "preview");
+    assert.equal(finalInput.closest(".textElementRow[data-text-key]").querySelector("[data-action='runtime-text-reset']").disabled, false);
+    assert.equal(bridge.prepareInputs.at(-1).replacements.active.at(-1).valuePreview, "Visible Test");
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+  }
+});
+
 test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host file-open", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
@@ -10951,7 +11021,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEventBindings, /nodes\.textElementList\.addEventListener\("keydown"/);
   assert.match(shortTermResourceMenuRenderers, /button:not\(:disabled\)/);
   assert.match(shortTermEventBindings, /nodes\.textElementList\.addEventListener\("input"/);
-  assert.match(shortTermEventBindings, /handlers\.updateRuntimeText\(input\.dataset\.textKey, input\.value\)/);
+  assert.match(shortTermEventBindings, /handlers\.updateRuntimeText\(input\.dataset\.textKey, input\.value, \{ liveInput: input \}\)/);
   assert.match(shortTermEventBindings, /runtime-text-reset/);
   assert.doesNotMatch(shortTermEventBindings, /runtimeTextInput\.addEventListener|nodes\.textDialog\.close/);
   assert.match(shortTermSmokeProofModel, /initialFocusInput/);
