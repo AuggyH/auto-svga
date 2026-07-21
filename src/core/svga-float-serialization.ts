@@ -14,12 +14,12 @@ export const SVGA_FLOAT_SERIALIZATION_CONTRACT = Object.freeze({
 });
 
 export const SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT = Object.freeze({
-  version: "svga_generated_native_frame_v1" as const,
+  version: "svga_generated_native_frame_v2" as const,
   frameCountBinding: "each_sprite_frames_exactly_equals_params_frames" as const,
-  requiredFrameFields: Object.freeze(["alpha", "layout", "transform"] as const),
-  requiredLayoutFields: Object.freeze(["x", "y", "width", "height"] as const),
-  requiredTransformFields: Object.freeze(["a", "b", "c", "d", "tx", "ty"] as const),
-  protobufDefaultPolicy: "missing_wire_fields_are_not_generated_authority" as const
+  requiredFrameMessages: Object.freeze(["layout", "transform"] as const),
+  canonicalLayoutFields: Object.freeze(["x", "y", "width", "height"] as const),
+  canonicalTransformFields: Object.freeze(["a", "b", "c", "d", "tx", "ty"] as const),
+  protobufDefaultPolicy: "proto3_default_scalar_omission_allowed_message_presence_required" as const
 });
 
 export const SVGA_GENERATED_NATIVE_OUTPUT_AUTHORITY_CONTRACT = Object.freeze({
@@ -269,10 +269,10 @@ export function inspectDecodedGeneratedNativeSubset(
       }
       if (!decodedFloatFieldOrDefaultIsCanonical(frame.alpha)) canonicalFloatValues = false;
       if (!isRecord(frame.layout) || !isRecord(frame.transform)) decodedStructureMatches = false;
-      if (!decodedFloatRecordOrDefaultsIsCanonical(frame.layout, SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.requiredLayoutFields)) {
+      if (!decodedFloatRecordOrDefaultsIsCanonical(frame.layout, SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.canonicalLayoutFields)) {
         canonicalFloatValues = false;
       }
-      if (!decodedFloatRecordOrDefaultsIsCanonical(frame.transform, SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.requiredTransformFields)) {
+      if (!decodedFloatRecordOrDefaultsIsCanonical(frame.transform, SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.canonicalTransformFields)) {
         canonicalFloatValues = false;
       }
       if (Array.isArray(frame.shapes)) {
@@ -472,17 +472,17 @@ function readFrameStructure(cursor: WireCursor): { requiredFrameFieldsPresent: b
       skipWireValue(cursor, wireType);
     } else if (field === 2 && wireType === 2) {
       layoutCount += 1;
-      layoutValid = readRequiredFixed32Fields(readWireMessage(cursor), [1, 2, 3, 4]);
+      layoutValid = readCanonicalFixed32Fields(readWireMessage(cursor), [1, 2, 3, 4]);
     } else if (field === 3 && wireType === 2) {
       transformCount += 1;
-      transformValid = readRequiredFixed32Fields(readWireMessage(cursor), [1, 2, 3, 4, 5, 6]);
+      transformValid = readCanonicalFixed32Fields(readWireMessage(cursor), [1, 2, 3, 4, 5, 6]);
     } else {
       closedVocabularyValid = false;
       skipWireValue(cursor, wireType);
     }
   }
   return {
-    requiredFrameFieldsPresent: alphaCount === 1
+    requiredFrameFieldsPresent: alphaCount <= 1
     && layoutCount === 1
     && transformCount === 1
     && layoutValid
@@ -491,12 +491,12 @@ function readFrameStructure(cursor: WireCursor): { requiredFrameFieldsPresent: b
   };
 }
 
-function readRequiredFixed32Fields(cursor: WireCursor, requiredFields: readonly number[]): boolean {
+function readCanonicalFixed32Fields(cursor: WireCursor, allowedFields: readonly number[]): boolean {
   const counts = new Map<number, number>();
   let valid = true;
   while (cursor.offset < cursor.end) {
     const { field, wireType } = readWireTag(cursor);
-    if (requiredFields.includes(field) && wireType === 5) {
+    if (allowedFields.includes(field) && wireType === 5) {
       counts.set(field, (counts.get(field) ?? 0) + 1);
       skipWireValue(cursor, wireType);
     } else {
@@ -504,7 +504,7 @@ function readRequiredFixed32Fields(cursor: WireCursor, requiredFields: readonly 
       skipWireValue(cursor, wireType);
     }
   }
-  return valid && requiredFields.every((field) => counts.get(field) === 1);
+  return valid && [...counts.values()].every((count) => count === 1);
 }
 
 function wireCursor(bytes: Uint8Array, offset = 0, end = bytes.byteLength): WireCursor {

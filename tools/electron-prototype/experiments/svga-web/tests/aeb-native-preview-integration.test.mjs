@@ -1157,10 +1157,10 @@ test("validated native AEB package generates standards-valid SVGA and enters the
       generatedSvgaSha256: result.aebOutput.generatedSvgaSha256
     });
     assert.equal(sha256(hostOwnedOutput.bytes), result.aeb.generatedSvga.sha256);
-    assert.equal(hostOwnedOutput.bytes.byteLength, 831);
+    assert.equal(hostOwnedOutput.bytes.byteLength, 810);
     assert.equal(
       sha256(hostOwnedOutput.bytes),
-      "b65e06e931c30543c85d4fa030fddbee4b74f77f8f4315ff734e118851077fea"
+      "e22e089873bf1860067ceb627b47c28424878ca56318b7623da0a5a920402d81"
     );
     assert.equal(hostOwnedOutput.suggestedName, result.aebOutput.suggestedName);
 
@@ -1495,7 +1495,7 @@ test("multi-layer native package preserves deterministic stack order, local anch
     ];
     assert.deepEqual(resourceHashesInSpriteOrder(first.decoded), expectedResourceOrder);
     assert.deepEqual(resourceHashesInSpriteOrder(reordered.decoded), expectedResourceOrder);
-    assert.equal(sha256(first.saveOutput.bytes), "ff02ea07f5588dda8791426804e2253aff8e38ce27db31966f7576338bb5c034");
+    assert.equal(sha256(first.saveOutput.bytes), "d815d5e3108135c4e6ed45187f60b300c5174853a6e8f3ff492ce92637a437e0");
     assert.equal(sha256(first.saveOutput.bytes), sha256(reordered.saveOutput.bytes));
 
     assertFrameTransform(first.decoded.sprites[0].frames[0], matrixFor({
@@ -1700,14 +1700,14 @@ test("versioned SVGA float32 contract has explicit rounding, zero, underflow, an
   const minimum = SVGA_FLOAT_SERIALIZATION_CONTRACT.minimumNonzeroMagnitude;
 
   assert.equal(SVGA_FLOAT_SERIALIZATION_CONTRACT.version, "svga_float32_v1");
-  assert.equal(SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.version, "svga_generated_native_frame_v1");
+  assert.equal(SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.version, "svga_generated_native_frame_v2");
   assert.equal(SVGA_GENERATED_NATIVE_OUTPUT_AUTHORITY_CONTRACT.version, "aeb_generated_native_output_authority_v1");
   assert.equal(Object.isFrozen(SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT), true);
   assert.equal(Object.isFrozen(SVGA_GENERATED_NATIVE_OUTPUT_AUTHORITY_CONTRACT), true);
   assert.deepEqual(SVGA_GENERATED_NATIVE_OUTPUT_AUTHORITY_CONTRACT.movieVocabulary, ["version", "params", "images", "sprites"]);
   assert.deepEqual(SVGA_GENERATED_NATIVE_OUTPUT_AUTHORITY_CONTRACT.unsupportedFrameFields, ["clipPath", "shapes", "unknown_fields"]);
-  assert.equal(Object.isFrozen(SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.requiredTransformFields), true);
-  assert.deepEqual(SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.requiredFrameFields, ["alpha", "layout", "transform"]);
+  assert.equal(Object.isFrozen(SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.canonicalTransformFields), true);
+  assert.deepEqual(SVGA_GENERATED_NATIVE_STRUCTURE_CONTRACT.requiredFrameMessages, ["layout", "transform"]);
   assert.equal(canonicalizeSvgaFloat32(0.1), Math.fround(0.1));
   assert.equal(canonicalizeSvgaFloat32(maximum), maximum);
   assert.equal(canonicalizeSvgaFloat32(-maximum), -maximum);
@@ -1866,7 +1866,7 @@ test("native float32 boundary values emit canonical decoded matrices and retain 
     assert.equal(result.model.status, "playing", JSON.stringify(result.model.rightPanel?.issues));
     assert.equal(result.aeb.generatedSvga.validation.floatContractVersion, "svga_float32_v1");
     assert.equal(result.aeb.generatedSvga.validation.canonicalFloatValues, true);
-    assert.equal(result.aeb.generatedSvga.validation.structureContractVersion, "svga_generated_native_frame_v1");
+    assert.equal(result.aeb.generatedSvga.validation.structureContractVersion, "svga_generated_native_frame_v2");
     assert.equal(result.aeb.generatedSvga.validation.generatedNativeStructureValid, true);
     assert.equal(result.aeb.generatedSvga.validation.allSpriteFrameCountsMatch, true);
     assert.equal(result.aeb.generatedSvga.validation.requiredFrameFieldsPresent, true);
@@ -1945,7 +1945,7 @@ test("independent generated-SVGA validation rejects a forged nonfinite decoded m
   }
 });
 
-test("generated native FrameEntity structure rejects missing records, scalars, and timeline cardinality", async () => {
+test("generated native FrameEntity structure accepts proto3 scalar defaults and rejects missing messages or timeline drift", async () => {
   const root = await mkdtemp(path.join("/private/tmp", "auto-svga-aeb-native-frame-structure-"));
   try {
     const fixture = await writePackageFixture(path.join(root, "package"));
@@ -1966,7 +1966,7 @@ test("generated native FrameEntity structure rejects missing records, scalars, a
       const malformedBytes = await mutateSvgaBytes(validBytes, mutation.mutate);
       const validation = await validateSvgaBytes(malformedBytes, protoPath);
 
-      assert.equal(validation.structureContractVersion, "svga_generated_native_frame_v1", mutation.name);
+      assert.equal(validation.structureContractVersion, "svga_generated_native_frame_v2", mutation.name);
       assert.equal(validation.generatedNativeStructureValid, false, mutation.name);
       assert.equal(validation.allSpriteFrameCountsMatch, mutation.expectedFrameCountsMatch ?? true, mutation.name);
       assert.equal(validation.requiredFrameFieldsPresent, mutation.expectedRequiredFields ?? true, mutation.name);
@@ -2184,7 +2184,7 @@ test("host bounded read rejects every malformed generated FrameEntity before Pre
                 frameCount: project.durationFrames,
                 floatContractVersion: "svga_float32_v1",
                 canonicalFloatValues: true,
-                structureContractVersion: "svga_generated_native_frame_v1",
+                structureContractVersion: "svga_generated_native_frame_v2",
                 generatedNativeStructureValid: true,
                 allSpriteFrameCountsMatch: true,
                 requiredFrameFieldsPresent: true,
@@ -4398,12 +4398,6 @@ function readWireVarintForTest(bytes, offset) {
 function generatedFrameStructureMutations() {
   return [
     {
-      name: "missing-alpha",
-      expectedRequiredFields: false,
-      expectedCanonical: false,
-      mutate: (movie) => { delete movie.sprites[0].frames[0].alpha; }
-    },
-    {
       name: "missing-layout",
       expectedRequiredFields: false,
       expectedCanonical: false,
@@ -4437,30 +4431,6 @@ function generatedFrameStructureMutations() {
       mutate: (movie) => {
         movie.audios = [{ audioKey: "audio_0", startFrame: 0, endFrame: 1, startTime: 0, totalTime: 1 }];
       }
-    },
-    {
-      name: "empty-layout",
-      expectedRequiredFields: false,
-      expectedCanonical: false,
-      mutate: (movie) => { movie.sprites[0].frames[0].layout = {}; }
-    },
-    {
-      name: "empty-transform",
-      expectedRequiredFields: false,
-      expectedCanonical: false,
-      mutate: (movie) => { movie.sprites[0].frames[0].transform = {}; }
-    },
-    {
-      name: "missing-layout-width",
-      expectedRequiredFields: false,
-      expectedCanonical: false,
-      mutate: (movie) => { delete movie.sprites[0].frames[0].layout.width; }
-    },
-    {
-      name: "missing-transform-tx",
-      expectedRequiredFields: false,
-      expectedCanonical: false,
-      mutate: (movie) => { delete movie.sprites[0].frames[0].transform.tx; }
     },
     {
       name: "shorter-sprite-timeline",

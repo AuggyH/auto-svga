@@ -59,7 +59,7 @@
   "dependencies": {
     "fast-png": "8.0.0",
     "lottie-web": "5.13.0",
-    "protobufjs": "^8.5.0",
+    "protobufjs": "8.6.6",
     "video-animation-player": "1.0.5"
   },
   "devDependencies": {

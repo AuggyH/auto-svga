@@ -1,9 +1,30 @@
 # Auto SVGA Product Roadmap
 
-Date: 2026-06-30
-Current mainline: Auto SVGA `0.1.x` / SVGA Preview MVP. The current
-owner-visible development and QA baseline is the local channel app at
-`/Users/huangtengxin/Applications/Auto SVGA.app`.
+Status: active product authority
+Updated: 2026-07-21
+
+Current mainline: Auto SVGA `0.2.x` Multi-format Preview MVP plus the complete
+production UI/UX system. The installed owner-visible baseline remains the
+SVGA-only `0.1.x` local channel app at
+`/Users/huangtengxin/Applications/Auto SVGA.app` until an exact `0.2.x`
+candidate completes implementation-owner regression, required review,
+installed QA, packaging with rollback, and Product Owner acceptance.
+
+Current integration priority:
+
+1. Complete one stable daily-use SVGA/Lottie/VAP desktop candidate, treating
+   Multi-format behavior and UI/UX as one product mainline.
+2. Keep the AEB AE 26.3 package-to-Preview/Save vertical isolated and integrate
+   only reviewed source milestones; never touch the AE 25.5 owner baseline.
+3. Re-run FBP client coverage only after upstream repairs are integrated into
+   one exact candidate. The completed 29/29 FBP archive remains separate
+   evidence and cannot substitute for client regression.
+
+Development targets at least 70% implementation and implementation-owner
+tests, at most 20% final Code Review plus QA, and at most 10% packaging plus
+coordination. Internal fixes do not create review packets, permits, ledgers, or
+standalone QA cycles.
+
 Historical reset: P5/P6/P6-R1 Workbench evidence remains lineage and rollback
 context, but it is not the current product surface or QA target unless the
 Product Owner explicitly requests it.
@@ -107,17 +128,18 @@ defined in `docs/product/VERSIONING_AND_RELEASE_POLICY.md`.
 
 | Version line | Product name | Product scope |
 | --- | --- | --- |
-| `0.1.x` | SVGA Preview MVP | Current SVGA-only macOS client: open, play, inspect, replaceable preview, imageKey rename, optimization, comparison, save, and owner-visible QA baseline. |
-| `0.2.x` | Multi-format Preview MVP | Planned VAP/Lottie/SVGA multi-format parsing, playback, preview, information, and asset/fusion-element display. |
+| `0.1.x` | SVGA Preview MVP | Installed SVGA-only macOS baseline: open, play, inspect, replaceable preview, imageKey rename, optimization, comparison, and save. |
+| `0.2.x` | Multi-format Preview MVP | Active alpha implementation: one SVGA/Lottie/VAP workspace with complete UI/UX, truthful format-specific behavior, and no `0.1.x` regression. |
 | `0.3.x` | AE Bridge MVP | Planned AE-to-Auto-SVGA production bridge for human designer workflow and direct preview handoff. |
 | `0.4.x` | SVGA Edit MVP | Planned template-based SVGA editing, transform, compile-back, and Edit-mode workflows. |
 | `0.5.x+` | Advanced Motion And Format Expansion | Later advanced effects, conversion/export expansion, Windows, and long-horizon capabilities. |
 
-Current version target:
+Installed baseline and active source target:
 
 ```text
 Auto SVGA 0.1.0-alpha local
 /Users/huangtengxin/Applications/Auto SVGA.app
+Auto SVGA 0.2.0-alpha internal candidate (not installed-QA accepted)
 ```
 
 The exact `alpha.N` number will be assigned by the next deliberate package or
@@ -125,14 +147,13 @@ review-packet stamping step. Until then, tickets and reviews may identify the
 current owner-visible baseline as `Auto SVGA 0.1.0-alpha local` plus the
 observed commit or package manifest.
 
-## Planned 0.2.x Scope: Multi-format Preview MVP
+## Active 0.2.x Scope: Multi-format Preview MVP
 
 Date: 2026-07-09
 
-`Auto SVGA 0.2.x` promotes VAP and Lottie from long-term candidate scope into
-a planned multi-format preview track. This track must not leak visible VAP or
-Lottie controls into the current `0.1.x` SVGA Preview MVP until a `0.2.0-alpha`
-requirement ticket, implementation lane, and QA gate explicitly accept them.
+`Auto SVGA 0.2.x` promotes VAP and Lottie into the active multi-format preview
+track. This track must not replace the installed `0.1.x` baseline until one
+exact `0.2.0-alpha` candidate completes its implementation and lifecycle gates.
 
 Goal: keep the existing SVGA preview workflow, then add local VAP and Lottie
 preview, parsing, information, asset list, and fusion/replaceable-element
@@ -189,6 +210,25 @@ Recommended 0.2 rollout:
 | `0.2-WP3` | VAP container inspection/playback MVP | `vapc` is extracted, fusion metadata is displayed, and a local preview path is proven on safe fixtures. |
 | `0.2-WP4` | Multi-format UI integration | Startup/open/drag/overview/assets surfaces use normalized data while preserving `0.1.x` SVGA flows. |
 | `0.2-WP5` | QA and package gate | Real-material and fixture matrix proves supported/unsupported states before any owner-visible `0.2` package claim. |
+
+Current landing gate:
+
+- Implementation owners complete the positive flow and full source/headless
+  matrix before CR or QA.
+- Every participating implementation lane then runs the complete real
+  foreground matrix on the same exact candidate with staggered real materials.
+- PM deduplicates findings into root-cause repair batches. All affected owners
+  review the same issue set; internal repairs remain implementation work.
+- Integrate the repairs, freeze one successor candidate, and repeat the full
+  matrix until one round produces no new confirmed issue.
+- Only then run the one required final high-risk review, exact-candidate QA,
+  packaging/promotion with rollback, and Product Owner acceptance.
+
+Round 1 ran on historical candidate `c5914672` and produced 24 independently
+tracked findings grouped into seven repair batches. Its results are historical
+input, not acceptance of a successor candidate. Current repair and validation
+state lives in GitHub pull requests and Issues; raw owner materials and private
+matrix evidence remain outside Git.
 
 ## Owner Correction: Short-term Scope
 
@@ -463,7 +503,8 @@ Text elements:
   onto the canvas.
 - Preview/Edit mode switching sits at the top center of the canvas.
 - General compare has no persistent visible main-surface entry. It is entered
-  from the macOS menu or from drag-and-drop decision overlays.
+  only from an already loaded Preview source through the macOS menu or
+  drag-and-drop decision overlays. Compare A is the active primary source.
 - Save controls occupy the right-side action area only when contextually
   relevant. Preview imageKey dirty state enables Save As; optimization result
   exposes Save As SVGA and Overwrite Save.
@@ -476,9 +517,8 @@ Text elements:
 
 General comparison mode focuses only on file and canvas comparison:
 
-- empty compare keeps bottom playback controls visible but disabled
-- if no file is open, the macOS compare command enters a two-file selection
-  flow
+- Compare cannot be entered without an already loaded Preview source
+- Compare A is always the active primary source; B remains empty until selected
 - dragging a supported file over an open canvas offers Open File or Add As
   Compare File through an unequal top/bottom decision overlay; Add As Compare
   File is the top secondary strip, defaulting to 25% of canvas height and

@@ -244,8 +244,9 @@ Owner-confirmed canvas direction, aligned with the PM-synced main PRD:
   thresholds are not shown in the default preview surface; they appear only in
   the optimization detail/result context.
 - General compare has no persistent visible entry on the main surface. It is
-  entered from the macOS menu or from drag-and-drop decision overlays. If no
-  file is open, the menu command enters a two-file compare selection state.
+  entered only from an already loaded Preview source through the macOS menu or
+  drag-and-drop decision overlays. Launch and File do not expose an empty
+  compare entry; Compare A is always the active primary source.
 - Dragging a supported file over an open preview shows a top/bottom two-zone
   overlay instead of left/right halves. Add As Compare File is the top
   secondary strip, defaulting to 25% of canvas height and allowed to vary
@@ -577,8 +578,10 @@ The app should feel native even if implemented with web technology:
   row into a toolbar-heavy engineering shell.
 - Launch has the central Open action; Preview opens another file from the
   macOS menu or canvas drag-and-drop.
-- General Compare is entered from the macOS menu or drag-decision overlay, not
-  from a persistent main-surface button.
+- General Compare is entered only from an already loaded Preview source through
+  the macOS menu or drag-decision overlay, not from Launch, File, or a
+  persistent main-surface button. Compare A is always the active primary
+  source.
 - Put context-specific save affordances in the right-side action area only
   when output exists or dirty state requires it.
 - Use the macOS menu bar for settings, logs, appearance, help, and app-wide
