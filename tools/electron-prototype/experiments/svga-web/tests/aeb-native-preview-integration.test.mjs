@@ -193,8 +193,15 @@ test("AEP handoff revokes stale preview authority without reading dropped bytes 
     assert.equal(handoff.saveAuthority, false);
     assert.equal(sourceStore.has(previous.sourceId), false);
 
-    await assert.rejects(session.openLocalFilePath(aliasPath, "fileButton"), /regular task-owned AEP copy/);
-    await assert.rejects(session.openLocalFilePath(path.join(root, "missing.aep"), "fileButton"), { code: "ENOENT" });
+    for (const candidatePath of [aliasPath, path.join(root, "missing.aep")]) {
+      const failure = await session.openLocalFilePath(candidatePath, "fileButton");
+      assert.equal(failure.status, "opened");
+      assert.equal(failure.model.status, "failed");
+      assert.equal(failure.model.rightPanel.issues[0].code, "open_failed");
+      assert.equal(failure.sourceId, "");
+      assert.equal(failure.pathRedacted, true);
+      assert.doesNotMatch(JSON.stringify(failure), /auto-svga-aeb-client-handoff-guard|\/private\/tmp/u);
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }
