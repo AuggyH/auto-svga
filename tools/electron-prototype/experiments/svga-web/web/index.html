@@ -122,7 +122,7 @@
       </section>
 
       <section class="view stateView workbenchStateView" data-view="failed" aria-live="assertive" role="alert" data-page-state="Load failed" hidden>
-        <section class="previewStagePanel stateStagePanel" aria-label="加载失败" data-module="PreviewCanvasModule" data-component="PreviewStage">
+        <section class="previewStagePanel stateStagePanel" id="failureStage" aria-label="加载失败" data-module="PreviewCanvasModule" data-component="PreviewStage">
           <div class="canvasModeSwitch stateModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch" aria-disabled="true">
             <button type="button" class="isSelected" aria-pressed="true" disabled>预览模式</button>
             <button type="button" aria-pressed="false" disabled>编辑模式</button>
@@ -135,7 +135,7 @@
                   <path d="m16 8-8 8"></path>
                 </svg>
               </span>
-              <h1>文件加载失败</h1>
+              <h1 id="failureTitle">文件加载失败</h1>
               <p id="errorMessage">文件格式不受支持或已损坏</p>
               <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">
                 <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
@@ -176,12 +176,12 @@
             </div>
           </div>
         </section>
-        <aside class="rightPanel stateInfoPanel" aria-label="加载失败信息" data-component="RightInformationSurface" data-module="StateRecoveryModule" data-panel-state="failed">
+        <aside class="rightPanel stateInfoPanel" id="failurePanel" aria-label="加载失败信息" data-component="RightInformationSurface" data-module="StateRecoveryModule" data-panel-state="failed">
           <div class="stateInfoHeader">
-            <h1>加载失败</h1>
+            <h1 id="failurePanelTitle">加载失败</h1>
           </div>
           <section class="stateInfoBody" aria-label="恢复状态">
-            <p class="stateInfoText">源文件没有被修改。</p>
+            <p class="stateInfoText" id="failurePanelMessage">源文件没有被修改。</p>
           </section>
         </aside>
       </section>

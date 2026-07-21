@@ -48,8 +48,20 @@ export function renderDiscardMessage(nodes, copy) {
   nodes.discardMessage.textContent = copy;
 }
 
-export function renderFailureMessage(nodes, copy) {
+export function renderFailureMessage(nodes, copy, options = {}) {
+  const title = options.title || "文件加载失败";
+  const panelTitle = options.panelTitle || "加载失败";
+  const panelMessage = options.panelMessage || "源文件没有被修改。";
+  if (nodes.failureTitle) nodes.failureTitle.textContent = title;
   nodes.errorMessage.textContent = copy;
+  if (nodes.failurePanelTitle) nodes.failurePanelTitle.textContent = panelTitle;
+  if (nodes.failurePanelMessage) nodes.failurePanelMessage.textContent = panelMessage;
+  nodes.failureStage?.setAttribute("aria-label", title);
+  if (nodes.failureView) nodes.failureView.dataset.pageState = options.pageState || "Load failed";
+  if (nodes.failurePanel) {
+    nodes.failurePanel.dataset.panelState = options.panelState || "failed";
+    nodes.failurePanel.setAttribute("aria-label", `${panelTitle}信息`);
+  }
 }
 
 export function showPlaybackFailureRecovery(nodes) {
