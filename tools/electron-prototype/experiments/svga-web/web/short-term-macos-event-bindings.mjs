@@ -161,7 +161,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
   nodes.textElementList.addEventListener("input", (event) => {
     const input = eventElement(event)?.closest("[data-text-input]");
     if (!input) return;
-    handlers.updateRuntimeText(input.dataset.textKey, input.value);
+    handlers.updateRuntimeText(input.dataset.textKey, input.value, { liveInput: input });
   });
 
   nodes.resourceContextMenu.addEventListener("keydown", handlers.handleResourceContextMenuKeydown);

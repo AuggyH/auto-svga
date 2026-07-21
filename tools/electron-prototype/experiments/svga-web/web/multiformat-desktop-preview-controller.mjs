@@ -24,6 +24,7 @@ import {
 import { syncShortTermMenuState, syncShortTermWindowMode } from "./short-term-macos-host-client.mjs";
 import { createOverviewFactCell } from "./short-term-macos-overview-renderers.mjs";
 import {
+  applyRuntimeTextRowReplacementState,
   createReplaceableImageRow,
   createTextElementRow,
   replaceRuntimeTextRows
@@ -355,11 +356,11 @@ export function createMultiFormatDesktopPreviewController({
     renderCommandState();
   }
 
-  function selectTextKey(textKey) {
-    if (svgaWorkflowActive()) return svgaController.handlers.selectTextKey?.(textKey);
+  function selectTextKey(textKey, options = {}) {
+    if (svgaWorkflowActive()) return svgaController.handlers.selectTextKey?.(textKey, options);
     if (!textKey) return;
     state.selectedTextKey = textKey;
-    renderTextTargets();
+    if (options.rerender !== false) renderTextTargets();
     renderCommandState();
   }
 
@@ -455,7 +456,7 @@ export function createMultiFormatDesktopPreviewController({
     input?.select?.();
   }
 
-  function updateRuntimeText(textKey, value) {
+  function updateRuntimeText(textKey, value, options = {}) {
     if (svgaWorkflowActive()) return svgaController.handlers.updateRuntimeText?.(textKey, value);
     if (!textKey) return;
     state.selectedTextKey = textKey;
@@ -470,13 +471,24 @@ export function createMultiFormatDesktopPreviewController({
     } else {
       delete state.textPreviewValues[textKey];
     }
-    renderTextTargets();
+    const preserveRuntimeTextInput = applyLiveRuntimeTextInputState(options.liveInput, textKey, replacement);
+    if (!preserveRuntimeTextInput) {
+      renderTextTargets();
+    }
     renderCommandState();
-    return enqueueRuntimeTextMutation(textKey, replacement);
+    return enqueueRuntimeTextMutation(textKey, replacement, { preserveRuntimeTextInput });
   }
 
-  function enqueueRuntimeTextMutation(textKey, replacement) {
-    const intent = beginRuntimeTextMutationIntent(textKey, replacement);
+  function applyLiveRuntimeTextInputState(input, textKey, replacement) {
+    if (input?.dataset?.textKey !== textKey) return false;
+    const row = input.closest?.(".textElementRow[data-text-key]");
+    if (!row || row.parentElement !== nodes.textElementList) return false;
+    applyRuntimeTextRowReplacementState(row, replacement);
+    return true;
+  }
+
+  function enqueueRuntimeTextMutation(textKey, replacement, options = {}) {
+    const intent = beginRuntimeTextMutationIntent(textKey, replacement, options);
     const previous = runtimeTextMutationQueues.get(intent.key) ?? Promise.resolve();
     const queued = previous
       .catch(() => {})
@@ -495,7 +507,7 @@ export function createMultiFormatDesktopPreviewController({
     return queued;
   }
 
-  function beginRuntimeTextMutationIntent(textKey, replacement) {
+  function beginRuntimeTextMutationIntent(textKey, replacement, options = {}) {
     const sourceId = state.sourceId || "";
     const generation = runtimeTextMutationGeneration;
     const sequence = ++runtimeTextMutationSequence;
@@ -507,6 +519,7 @@ export function createMultiFormatDesktopPreviewController({
       textKey,
       key,
       hasPreview: replacement.hasPreview,
+      preserveRuntimeTextInput: options.preserveRuntimeTextInput === true,
       value: replacement.value
     };
     runtimeTextMutationIntents.set(key, intent);
@@ -540,7 +553,11 @@ export function createMultiFormatDesktopPreviewController({
         clearRuntimeReplacementValues("text", runtimeTargetId);
       }
       runtimeTextMutationMayHaveAuthority.delete(intent.key);
-      applyHostResult(result, { keepView: true });
+      applyHostResult(result, {
+        keepView: true,
+        preserveRuntimeTextInput: intent.preserveRuntimeTextInput,
+        runtimeTextKey: intent.textKey
+      });
       return;
     }
 
@@ -561,7 +578,11 @@ export function createMultiFormatDesktopPreviewController({
       setPublicRuntimeReplacementTarget(result, "text", intent.textKey, runtimeValue.targetId);
       setRuntimeReplacementValue("text", runtimeValue.targetId, runtimeValue.value);
     }
-    applyHostResult(result, { keepView: true });
+    applyHostResult(result, {
+      keepView: true,
+      preserveRuntimeTextInput: intent.preserveRuntimeTextInput,
+      runtimeTextKey: intent.textKey
+    });
   }
 
   function resetRuntimeText(textKey = state.selectedTextKey) {
@@ -587,7 +608,7 @@ export function createMultiFormatDesktopPreviewController({
       : result.sourceId || state.sourceId || "";
     state.displayName = model.displayName || state.displayName || "";
     selectDefaultTargets(model);
-    renderModel(normalizedResult);
+    renderModel(normalizedResult, options);
     if (options.keepView && state.view === "preview") {
       renderCommandState();
       return;
@@ -674,14 +695,16 @@ export function createMultiFormatDesktopPreviewController({
     return applyOpenedHostResult(outcome.result, options);
   }
 
-  function renderModel(result) {
+  function renderModel(result, options = {}) {
     const model = result.model;
     renderFileHeader(nodes, model.displayName || "本地文件", playbackMeta(model));
     renderFacts(model);
     renderAssets(model);
     renderIssues(model);
     renderReplaceableTargets();
-    renderTextTargets();
+    if (!canPreserveRuntimeTextInput(options.runtimeTextKey, options.preserveRuntimeTextInput)) {
+      renderTextTargets();
+    }
     if (!activeRuntimePreviewOwnsCanvasOutput(result)) renderCanvasState();
     renderPlaybackState(model);
     mountRuntimePreview(result);
@@ -690,6 +713,13 @@ export function createMultiFormatDesktopPreviewController({
     } else {
       renderFailureMessage(nodes, "");
     }
+  }
+
+  function canPreserveRuntimeTextInput(textKey, preserve) {
+    if (!preserve || !textKey) return false;
+    const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${cssEscape(textKey)}"]`);
+    const row = input?.closest?.(".textElementRow[data-text-key]");
+    return Boolean(row && row.parentElement === nodes.textElementList);
   }
 
   function renderFacts(model) {
