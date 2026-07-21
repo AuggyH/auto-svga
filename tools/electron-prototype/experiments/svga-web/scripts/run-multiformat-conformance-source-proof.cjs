@@ -101,13 +101,13 @@ async function inspectInput(spec, input) {
       return { canceled: false, filePaths: [input.path] };
     }
   });
-  if (selection.status !== "selected" || dialogOptions?.filters?.[0]?.extensions?.[0] !== "*") {
+  if (selection.status !== "selected" || Object.hasOwn(dialogOptions ?? {}, "filters")) {
     throw new Error(`${spec.alias} did not pass the macOS host picker selection contract.`);
   }
   const opened = await session.openLocalFilePath(selection.filePath, "fileButton");
   const model = opened?.model;
-  if (opened?.status !== "opened" || model?.detectedFormat !== spec.format || model?.status !== "previewReady") {
-    throw new Error(`${spec.alias} did not reach previewReady through the host-owned source chain: ${JSON.stringify({
+  if (opened?.status !== "opened" || model?.detectedFormat !== spec.format || model?.status !== "playing") {
+    throw new Error(`${spec.alias} did not reach playing through the host-owned source chain: ${JSON.stringify({
       openStatus: opened?.status,
       format: model?.detectedFormat,
       modelStatus: model?.status,
@@ -125,9 +125,19 @@ async function inspectInput(spec, input) {
   }
   const issues = model.rightPanel?.issues ?? [];
   const dimensions = model.rightPanel?.facts?.find(({ id }) => id === "dimensions");
-  const riskIssues = issues.filter(({ details }) => details?.reason === "vap_dimensions_over_1504");
-  if (spec.alias === "OWNER-VAP-A" && (dimensions?.status !== "warning" || riskIssues.length !== 1)) {
-    throw new Error("OWNER-VAP-A did not preserve exactly one truthful canvas risk warning while remaining previewReady.");
+  const riskIssues = issues.filter((issue) =>
+    issue?.code === "canvas_size_risk"
+    && issue?.severity === "warning"
+    && issue?.message === "画布尺寸超过兼容性阈值，仍可播放；请留意设备性能。"
+    && issue?.pathRedacted === true
+  );
+  if (spec.alias === "OWNER-VAP-A" && (
+    dimensions?.status !== "warning"
+    || dimensions.value !== "750 x 1624"
+    || issues.length !== 1
+    || riskIssues.length !== 1
+  )) {
+    throw new Error("OWNER-VAP-A did not preserve exactly one truthful Canvas risk warning while playing.");
   }
   const inventory = model.rightPanel?.assetInventory?.summary ?? {};
   const row = {

@@ -1255,6 +1255,12 @@ test("real-material source proof validates the private binding and emits aliases
   assert.match(proofSource, /bindingStat\.mode & 0o777/u);
   assert.match(proofSource, /inputStat\.isFile\(\) \|\| inputStat\.isSymbolicLink\(\)/u);
   assert.match(proofSource, /chooseMultiFormatLocalFile/u);
+  assert.match(proofSource, /Object\.hasOwn\(dialogOptions \?\? \{\}, "filters"\)/u);
+  assert.doesNotMatch(proofSource, /extensions\?\.\[0\] !== "\*"/u);
+  assert.match(proofSource, /model\?\.status !== "playing"/u);
+  assert.doesNotMatch(proofSource, /model\?\.status !== "previewReady"/u);
+  assert.match(proofSource, /issue\?\.code === "canvas_size_risk"/u);
+  assert.doesNotMatch(proofSource, /details\?\.reason === "vap_dimensions_over_1504"/u);
   assert.match(proofSource, /pickerStatus: selection\.status/u);
   assert.match(proofSource, /nativeButtonAcceptanceRequiresInstalledQa: true/u);
   assert.match(proofSource, /waitedForHumanDecision: true/u);
