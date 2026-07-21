@@ -6983,6 +6983,208 @@ test("0.2 owner failure rendering trusts only reviewed codes and never raw host 
   }
 });
 
+test("0.2 production controller composition resets only the requested SVGA runtime text target", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href
+  );
+  const {
+    applyShortTermRuntimeTextPreview,
+    resetShortTermRuntimeTextPreview
+  } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/short-term-macos-runtime-text-surface.mjs")).href
+  );
+  const { renderShortTermRuntimeTextElements } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs")).href
+  );
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  nodes.runtimeTextOverlay = new FakeDomElement("div");
+  nodes.recentList = new FakeDomElement("div");
+  nodes.recentNote = new FakeDomElement("p");
+  nodes.clearRecentButton = new FakeDomElement("button");
+  const sourceBytes = Uint8Array.from([1, 2, 3]);
+  const state = {
+    view: "preview",
+    mode: "preview",
+    tab: "replaceable",
+    appearance: "light",
+    sourceBytes,
+    previewBytes: new Uint8Array(sourceBytes),
+    sourceId: "source:svga-runtime-text-composition",
+    displayName: "two-runtime-text-targets.svga",
+    model: {
+      replaceableElements: {
+        images: [],
+        texts: [
+          { textKey: "text-a", displayName: "Text A", initialText: "Source A" },
+          { textKey: "text-b", displayName: "Text B", initialText: "Source B" }
+        ]
+      }
+    },
+    selectedImageKey: "",
+    selectedTextKey: "text-a",
+    assetFilter: "all",
+    renameImageKey: "",
+    renameSession: undefined,
+    activeOutput: undefined,
+    cleanSaveAsVisible: false,
+    primaryPlaybackLooping: true,
+    comparePlaybackLooping: true,
+    editPlaybackLooping: true,
+    textPreview: "",
+    textPreviewValues: {},
+    saveStatus: "idle",
+    lastMenuStateSnapshot: "",
+    lastWindowModeSnapshot: ""
+  };
+  const bridge = {
+    updateShortTermMenuState() {
+      return Promise.resolve();
+    },
+    setShortTermWindowMode() {
+      return Promise.resolve();
+    }
+  };
+
+  try {
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const renderCommandState = () => {};
+    const svgaController = {
+      handlers: {
+        async loadOpenedSource() {
+          return true;
+        },
+        updateRuntimeText(textKey, value) {
+          return applyShortTermRuntimeTextPreview({
+            nodes,
+            state,
+            textKey,
+            value,
+            renderCommandState
+          });
+        },
+        resetRuntimeText(textKey) {
+          return resetShortTermRuntimeTextPreview({
+            nodes,
+            state,
+            textKey,
+            renderTextElements(model) {
+              renderShortTermRuntimeTextElements({ nodes, state, model });
+            },
+            renderCommandState
+          });
+        },
+        refreshRecentFiles() {}
+      }
+    };
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state, svgaController });
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "svga-runtime-text-composition-open" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "svga-runtime-text-composition-open",
+      result: {
+        status: "opened",
+        sourceId: state.sourceId,
+        model: {
+          status: "previewReady",
+          detectedFormat: "svga",
+          displayName: state.displayName
+        },
+        svgaSource: {
+          displayName: state.displayName,
+          bytes: sourceBytes
+        }
+      }
+    }), true);
+    controller.handlers.updateRuntimeText("text-a", "Preview A");
+    controller.handlers.updateRuntimeText("text-b", "Preview B");
+    assert.deepEqual(state.textPreviewValues, {
+      "text-a": "Preview A",
+      "text-b": "Preview B"
+    });
+
+    controller.handlers.resetRuntimeText("text-a");
+    assert.deepEqual(state.textPreviewValues, { "text-b": "Preview B" });
+
+    controller.handlers.updateRuntimeText("text-a", "Preview A again");
+    controller.handlers.resetRuntimeText("text-b");
+    assert.deepEqual(state.textPreviewValues, { "text-a": "Preview A again" });
+    assert.deepEqual(state.sourceBytes, sourceBytes);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.2 SVGA target-scoped Reset delegation preserves image and text identifiers", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href
+  );
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  const resetCalls = [];
+  const state = {
+    view: "preview",
+    mode: "preview",
+    tab: "replaceable",
+    appearance: "light",
+    primaryPlaybackLooping: true,
+    textPreviewValues: {}
+  };
+  const bridge = {
+    updateShortTermMenuState() {
+      return Promise.resolve();
+    },
+    setShortTermWindowMode() {
+      return Promise.resolve();
+    }
+  };
+  const svgaController = {
+    handlers: {
+      async loadOpenedSource() {
+        return true;
+      },
+      resetImageReplacement(imageKey) {
+        resetCalls.push(["image", imageKey]);
+      },
+      resetRuntimeText(textKey) {
+        resetCalls.push(["text", textKey]);
+      },
+      refreshRecentFiles() {}
+    }
+  };
+
+  try {
+    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state, svgaController });
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "svga-target-contract-open" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "svga-target-contract-open",
+      result: {
+        status: "opened",
+        sourceId: "source:svga-target-contract",
+        model: {
+          status: "previewReady",
+          detectedFormat: "svga",
+          displayName: "target-contract.svga"
+        },
+        svgaSource: {
+          displayName: "target-contract.svga",
+          bytes: Uint8Array.from([1])
+        }
+      }
+    }), true);
+
+    controller.handlers.resetImageReplacement("avatar-b");
+    controller.handlers.resetRuntimeText("text-b");
+    assert.deepEqual(resetCalls, [
+      ["image", "avatar-b"],
+      ["text", "text-b"]
+    ]);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("0.2 composed open cancellation and picker failure preserve active authority for every format", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
