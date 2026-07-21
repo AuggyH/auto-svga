@@ -104,6 +104,12 @@ export async function beginShortTermImageKeyRename({
   if (!state.sourceBytes || !state.selectedImageKey) return;
   const continuesExistingRename = state.activeOutput?.kind === "rename" && state.previewBytes?.byteLength;
   if (!continuesExistingRename && !(await confirmDiscardUnsavedOutput("重命名 imageKey 会放弃当前未保存的 SVGA 输出。"))) return;
+  state.renameSession = {
+    sourceId: state.sourceId || "",
+    sourceBytes: state.sourceBytes,
+    activeOutput: state.activeOutput,
+    renameBytes: continuesExistingRename ? state.previewBytes : state.sourceBytes
+  };
   state.renameImageKey = state.selectedImageKey;
   if (state.view !== "preview") setMode("preview");
   setTab("replaceable");
@@ -132,6 +138,19 @@ export async function confirmShortTermInlineRename({
   authorityIsCurrent = () => true
 }) {
   if (!state.sourceBytes || !state.renameImageKey) return;
+  const renameSession = state.renameSession;
+  const renameSessionIsCurrent = () => Boolean(
+    renameSession
+    && state.renameSession === renameSession
+    && state.sourceId === renameSession.sourceId
+    && state.sourceBytes === renameSession.sourceBytes
+    && state.activeOutput === renameSession.activeOutput
+  );
+  if (!renameSessionIsCurrent()) {
+    cancelShortTermInlineRename({ nodes, state });
+    showSaveBanner("重命名已取消。", "当前未保存输出保持不变。");
+    return;
+  }
   const fromImageKey = state.renameImageKey;
   const input = nodes.replaceableList.querySelector("[data-rename-input]");
   const toImageKey = input?.value?.trim() ?? "";
@@ -139,9 +158,7 @@ export async function confirmShortTermInlineRename({
     cancelShortTermInlineRename({ nodes, state });
     return;
   }
-  const renameBytes = state.activeOutput?.kind === "rename" && state.previewBytes?.byteLength
-    ? state.previewBytes
-    : state.sourceBytes;
+  const renameBytes = renameSession.renameBytes;
   showSaveBanner("正在重命名 imageKey…", "");
   try {
     const renamed = await renameShortTermImageKey({
@@ -151,18 +168,25 @@ export async function confirmShortTermInlineRename({
       toImageKey,
       reportToken: bridge?.reportToken
     });
-    if (!authorityIsCurrent()) return;
+    if (!authorityIsCurrent() || !renameSessionIsCurrent()) {
+      cancelShortTermInlineRename({ nodes, state });
+      return;
+    }
     const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
     if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
       showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", "源文件没有被修改。");
       return;
     }
     const model = await inspectShortTerm(renamedBytes, state.displayName);
-    if (!authorityIsCurrent()) return;
+    if (!authorityIsCurrent() || !renameSessionIsCurrent()) {
+      cancelShortTermInlineRename({ nodes, state });
+      return;
+    }
     state.previewBytes = renamedBytes;
     state.model = model;
     state.selectedImageKey = toImageKey;
     state.renameImageKey = "";
+    state.renameSession = undefined;
     setActiveOutput({
       kind: "rename",
       bytes: renamedBytes,
@@ -181,6 +205,7 @@ export async function confirmShortTermInlineRename({
 
 export function cancelShortTermInlineRename({ nodes, state }) {
   state.renameImageKey = "";
+  state.renameSession = undefined;
   renderShortTermReplaceableImages({
     nodes,
     state,

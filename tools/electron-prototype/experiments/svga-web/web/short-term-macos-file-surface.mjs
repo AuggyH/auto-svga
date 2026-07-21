@@ -196,6 +196,7 @@ export function prepareShortTermSourceLoad({
   state.selectedTextKey = "";
   state.assetFilter = "all";
   state.renameImageKey = "";
+  state.renameSession = undefined;
   state.textPreview = "";
   state.textPreviewValues = {};
   state.cleanSaveAsVisible = false;
@@ -218,6 +219,7 @@ export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
   state.selectedTextKey = "";
   state.assetFilter = "all";
   state.renameImageKey = "";
+  state.renameSession = undefined;
   state.textPreview = "";
   state.textPreviewValues = {};
   state.activeOutput = undefined;

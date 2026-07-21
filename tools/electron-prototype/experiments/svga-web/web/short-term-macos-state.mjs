@@ -14,6 +14,7 @@ export function createShortTermInitialState() {
     selectedTextKey: "",
     assetFilter: "all",
     renameImageKey: "",
+    renameSession: undefined,
     activeOutput: undefined,
     cleanSaveAsVisible: false,
     primaryPlaybackLooping: true,

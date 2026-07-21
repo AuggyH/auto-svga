@@ -477,100 +477,202 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
   assert.equal(staleSaveState.saveStatus, "idle");
 });
 
-test("short-term consecutive imageKey rename uses dirty preview bytes and restores the original visible key", async () => {
-  const { confirmShortTermInlineRename } = await import(
+test("short-term imageKey rename stays output-bound and restores the original key through real SVGA APIs", async () => {
+  const {
+    beginShortTermImageKeyRename,
+    confirmShortTermInlineRename
+  } = await import(
     pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs")).href
   );
-  const replaceableSurfaceSource = await readFile(
-    path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs"),
-    "utf8"
+  const { inspectShortTermSvga } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/short-term-macos-api-client.mjs")).href
   );
-  assert.match(replaceableSurfaceSource, /const continuesExistingRename = state\.activeOutput\?\.kind === "rename"/u);
-  assert.match(replaceableSurfaceSource, /if \(!continuesExistingRename && !\(await confirmDiscardUnsavedOutput/u);
+  const reportToken = "image-key-reversibility-token";
+  const server = await startSvgaWebExperimentServer({ appRoot: experimentRoot, reportToken });
   const originalFetch = globalThis.fetch;
-  const sourceBytes = Uint8Array.from([1]);
-  const firstRenamedBytes = Uint8Array.from([2]);
-  const revertedBytes = Uint8Array.from([3]);
-  const requests = [];
-  let responseIndex = 0;
-  const input = { value: "profile_frame_r2" };
-  const state = {
-    sourceBytes,
-    previewBytes: new Uint8Array(sourceBytes),
-    sourceId: "source:image-key",
-    displayName: "daily.svga",
-    model: { replaceableElements: { images: [{ imageKey: "profile_frame" }], texts: [] } },
-    selectedImageKey: "profile_frame",
-    renameImageKey: "profile_frame"
-  };
-  const nodes = {
-    replaceableList: {
-      querySelector(selector) {
-        return selector === "[data-rename-input]" ? input : null;
-      }
+  const originalDocument = globalThis.document;
+  const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+  const sourceBytes = new Uint8Array(await createReplaceableWideSvgaFixture());
+  const sourceSha256 = createHash("sha256").update(sourceBytes).digest("hex");
+  const renameRequests = [];
+  let delayNextRenameResponse = false;
+  let signalDelayedResponse;
+  let releaseDelayedResponse;
+  let delayedResponseReached = new Promise((resolve) => { signalDelayedResponse = resolve; });
+  const documentRef = {
+    activeElement: null,
+    createElement(tagName) {
+      const node = new FakeDomElement(tagName);
+      node.ownerDocument = documentRef;
+      return node;
     }
   };
+  const section = new FakeDomElement("section");
+  section.className = "replaceableSection";
+  const replaceableSummary = new FakeDomElement("p");
+  const replaceableList = new FakeDomElement("div");
+  const input = new FakeDomElement("input");
+  input.value = "profile_frame_r2";
+  input.focus = () => { documentRef.activeElement = input; };
+  input.select = () => {};
+  const inheritedQuerySelector = replaceableList.querySelector.bind(replaceableList);
+  replaceableList.querySelector = (selector) => (
+    selector === "[data-rename-input]" ? input : inheritedQuerySelector(selector)
+  );
+  section.replaceChildren(replaceableSummary, replaceableList);
+  const nodes = {
+    replaceableList,
+    replaceableSummary
+  };
+  const banners = [];
+  const renderedKeys = [];
+  let state;
   try {
     globalThis.fetch = async (url, options) => {
-      const nextBytes = responseIndex === 0 ? firstRenamedBytes : revertedBytes;
-      responseIndex += 1;
-      requests.push({
-        url: String(url),
-        bytes: Array.from(new Uint8Array(options.body))
-      });
-      return {
-        ok: true,
-        async json() {
-          return {
-            renamedSvgaBase64: Buffer.from(nextBytes).toString("base64"),
-            rename: {
-              status: "renamed",
-              resultTitle: "imageKey 已重命名",
-              resultSummary: "引用已更新"
-            }
-          };
-        }
-      };
+      const targetUrl = new URL(String(url), server.origin);
+      if (targetUrl.pathname === "/api/short-term-product-image-key-rename") {
+        renameRequests.push({
+          from: targetUrl.searchParams.get("from"),
+          to: targetUrl.searchParams.get("to"),
+          sha256: createHash("sha256").update(new Uint8Array(options.body)).digest("hex")
+        });
+      }
+      const response = await originalFetch(targetUrl, options);
+      if (delayNextRenameResponse && targetUrl.pathname === "/api/short-term-product-image-key-rename") {
+        delayNextRenameResponse = false;
+        signalDelayedResponse();
+        await new Promise((resolve) => { releaseDelayedResponse = resolve; });
+      }
+      return response;
     };
-    const runRename = () => confirmShortTermInlineRename({
-      bridge: {},
+    globalThis.document = documentRef;
+    globalThis.requestAnimationFrame = (callback) => {
+      callback();
+      return 1;
+    };
+    const sourceModel = await inspectShortTermSvga({
+      bytes: sourceBytes,
+      name: "daily.svga",
+      reportToken
+    });
+    state = {
+      sourceBytes,
+      previewBytes: new Uint8Array(sourceBytes),
+      sourceId: "source:image-key",
+      displayName: "daily.svga",
+      view: "preview",
+      model: sourceModel,
+      selectedImageKey: "profile_frame",
+      renameImageKey: "",
+      renameSession: undefined,
+      activeOutput: undefined
+    };
+    const beginRename = async (confirmDiscardUnsavedOutput) => beginShortTermImageKeyRename({
       nodes,
       state,
-      async inspectShortTerm(bytes) {
-        const requestedKey = new URL(requests.at(-1).url, "http://localhost").searchParams.get("to");
-        return {
-          replaceableElements: { images: [{ imageKey: requestedKey }], texts: [] },
-          inspectedBytes: Array.from(bytes)
-        };
-      },
+      confirmDiscardUnsavedOutput,
+      setMode(mode) { state.view = mode; },
+      setTab() {}
+    });
+    const runRename = () => confirmShortTermInlineRename({
+      bridge: { reportToken },
+      nodes,
+      state,
+      inspectShortTerm: (bytes, name) => inspectShortTermSvga({ bytes, name, reportToken }),
       setActiveOutput(output) {
         state.activeOutput = output;
       },
-      renderPreviewModel() {},
+      renderPreviewModel() {
+        renderedKeys.push(state.model.replaceableElements.images.map(({ imageKey }) => imageKey));
+      },
       async mountPrimaryPlayback() {},
-      showSaveBanner() {},
+      showSaveBanner(title, message) {
+        banners.push({ title, message });
+      },
       showOperationFailure(_title, error) {
         throw error;
       }
     });
 
+    await beginRename(async () => true);
     await runRename();
-    assert.equal(state.selectedImageKey, "profile_frame_r2");
-    assert.deepEqual(Array.from(state.previewBytes), Array.from(firstRenamedBytes));
-    assert.deepEqual(requests[0].bytes, Array.from(sourceBytes));
+    const firstRenameOutput = state.activeOutput;
+    const firstRenameSha256 = createHash("sha256").update(state.previewBytes).digest("hex");
+    assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame_r2"), true);
+    assert.equal(renderedKeys.at(-1).includes("profile_frame_r2"), true);
+    assert.deepEqual(renameRequests[0], {
+      from: "profile_frame",
+      to: "profile_frame_r2",
+      sha256: sourceSha256
+    });
 
-    state.renameImageKey = "profile_frame_r2";
+    let continuingDiscardCalls = 0;
+    await beginRename(async () => {
+      continuingDiscardCalls += 1;
+      return false;
+    });
+    assert.equal(continuingDiscardCalls, 0);
     input.value = "profile_frame";
     await runRename();
 
-    assert.equal(state.selectedImageKey, "profile_frame");
-    assert.deepEqual(Array.from(state.previewBytes), Array.from(revertedBytes));
-    assert.deepEqual(requests[1].bytes, Array.from(firstRenamedBytes));
-    assert.deepEqual(Array.from(state.sourceBytes), Array.from(sourceBytes));
-    assert.match(requests[0].url, /from=profile_frame&to=profile_frame_r2/u);
-    assert.match(requests[1].url, /from=profile_frame_r2&to=profile_frame/u);
+    assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame"), true);
+    assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame_r2"), false);
+    assert.equal(renderedKeys.at(-1).includes("profile_frame"), true);
+    assert.deepEqual(renameRequests[1], {
+      from: "profile_frame_r2",
+      to: "profile_frame",
+      sha256: firstRenameSha256
+    });
+    assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
+
+    await beginRename(async () => false);
+    const newerReplacementOutput = {
+      kind: "replacement",
+      bytes: Uint8Array.from([9]),
+      suggestedName: "newer-replacement.svga"
+    };
+    state.activeOutput = newerReplacementOutput;
+    input.value = "profile_frame_stale";
+    const requestCountBeforeStaleConfirm = renameRequests.length;
+    await runRename();
+    assert.equal(renameRequests.length, requestCountBeforeStaleConfirm);
+    assert.equal(state.activeOutput, newerReplacementOutput);
+    assert.deepEqual(banners.at(-1), {
+      title: "重命名已取消。",
+      message: "当前未保存输出保持不变。"
+    });
+
+    state.activeOutput = firstRenameOutput;
+    state.previewBytes = new Uint8Array(firstRenameOutput.bytes);
+    state.selectedImageKey = "profile_frame_r2";
+    state.model = await inspectShortTermSvga({
+      bytes: state.previewBytes,
+      name: state.displayName,
+      reportToken
+    });
+    await beginRename(async () => false);
+    input.value = "profile_frame_async";
+    delayNextRenameResponse = true;
+    const pendingRename = runRename();
+    await delayedResponseReached;
+    const asyncReplacementOutput = {
+      kind: "replacement",
+      bytes: Uint8Array.from([10]),
+      suggestedName: "async-replacement.svga"
+    };
+    state.activeOutput = asyncReplacementOutput;
+    releaseDelayedResponse();
+    await pendingRename;
+    assert.equal(state.activeOutput, asyncReplacementOutput);
+    assert.equal(state.renameSession, undefined);
+    assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame_async"), false);
+    assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
   } finally {
+    if (releaseDelayedResponse) releaseDelayedResponse();
     globalThis.fetch = originalFetch;
+    globalThis.document = originalDocument;
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+    await server.close();
   }
 });
 
