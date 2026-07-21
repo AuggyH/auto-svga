@@ -496,6 +496,7 @@ test("short-term imageKey rename stays output-bound and restores the original ke
   const sourceSha256 = createHash("sha256").update(sourceBytes).digest("hex");
   const renameRequests = [];
   let delayNextRenameResponse = false;
+  let rejectDelayedRenameResponse = false;
   let signalDelayedResponse;
   let releaseDelayedResponse;
   let delayedResponseReached = new Promise((resolve) => { signalDelayedResponse = resolve; });
@@ -542,6 +543,10 @@ test("short-term imageKey rename stays output-bound and restores the original ke
         delayNextRenameResponse = false;
         signalDelayedResponse();
         await new Promise((resolve) => { releaseDelayedResponse = resolve; });
+        if (rejectDelayedRenameResponse) {
+          rejectDelayedRenameResponse = false;
+          throw new Error("delayed rename response rejected");
+        }
       }
       return response;
     };
@@ -666,6 +671,38 @@ test("short-term imageKey rename stays output-bound and restores the original ke
     assert.equal(state.activeOutput, asyncReplacementOutput);
     assert.equal(state.renameSession, undefined);
     assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame_async"), false);
+    assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
+
+    state.activeOutput = firstRenameOutput;
+    state.previewBytes = new Uint8Array(firstRenameOutput.bytes);
+    state.selectedImageKey = "profile_frame_r2";
+    state.model = await inspectShortTermSvga({
+      bytes: state.previewBytes,
+      name: state.displayName,
+      reportToken
+    });
+    await beginRename(async () => false);
+    input.value = "profile_frame_rejected";
+    delayedResponseReached = new Promise((resolve) => { signalDelayedResponse = resolve; });
+    releaseDelayedResponse = undefined;
+    delayNextRenameResponse = true;
+    rejectDelayedRenameResponse = true;
+    const failureBannerCount = banners.length;
+    const rejectedRename = runRename();
+    await delayedResponseReached;
+    const rejectedReplacementOutput = {
+      kind: "replacement",
+      bytes: Uint8Array.from([11]),
+      suggestedName: "rejected-replacement.svga"
+    };
+    state.activeOutput = rejectedReplacementOutput;
+    releaseDelayedResponse();
+    await rejectedRename;
+    assert.equal(state.activeOutput, rejectedReplacementOutput);
+    assert.equal(state.renameSession, undefined);
+    assert.equal(state.renameImageKey, "");
+    assert.equal(banners.slice(failureBannerCount).some(({ title }) => title === "重命名未完成。"), false);
+    assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame_rejected"), false);
     assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
   } finally {
     if (releaseDelayedResponse) releaseDelayedResponse();

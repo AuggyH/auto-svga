@@ -199,6 +199,10 @@ export async function confirmShortTermInlineRename({
     await mountPrimaryPlayback(state.previewBytes);
   } catch (error) {
     if (!authorityIsCurrent()) return;
+    if (!renameSessionIsCurrent()) {
+      cancelShortTermInlineRename({ nodes, state });
+      return;
+    }
     showOperationFailure("重命名未完成。", error);
   }
 }
