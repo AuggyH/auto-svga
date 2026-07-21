@@ -481,7 +481,7 @@ test("cancelled host chooser preserves Launch state and window geometry behavior
   assert.deepEqual(windowModes, []);
 });
 
-test("host-opened SVGA delegates established save, optimize, and rename workflows", async () => {
+test("host-opened SVGA delegates established save, optimize, discard, and rename workflows", async () => {
   const calls = [];
   const svgaController = {
     handlers: {
@@ -499,6 +499,10 @@ test("host-opened SVGA delegates established save, optimize, and rename workflow
       runOptimization() {
         calls.push(["optimize"]);
         return "optimized";
+      },
+      discardOptimizationResult() {
+        calls.push(["discard-optimization"]);
+        return "discarded";
       },
       renameSelectedImageKey() {
         calls.push(["rename"]);
@@ -537,8 +541,9 @@ test("host-opened SVGA delegates established save, optimize, and rename workflow
 
   assert.equal(controller.handlers.saveActiveOutput(), "saved");
   assert.equal(controller.handlers.runOptimization(), "optimized");
+  assert.equal(controller.handlers.discardOptimizationResult(), "discarded");
   assert.equal(controller.handlers.renameSelectedImageKey(), "renamed");
-  assert.deepEqual(calls.map(([name]) => name), ["load", "commit", "refresh", "save", "optimize", "rename"]);
+  assert.deepEqual(calls.map(([name]) => name), ["load", "commit", "refresh", "save", "optimize", "discard-optimization", "rename"]);
   assert.equal(calls[0][1].sourceId, "sha256:svga-source");
   assert.deepEqual(Array.from(calls[0][1].bytes), [1, 2, 3]);
   assert.equal(calls[0][1].startPlayback, true);

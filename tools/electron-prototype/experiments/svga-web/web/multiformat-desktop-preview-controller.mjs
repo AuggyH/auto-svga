@@ -2071,6 +2071,7 @@ export function createMultiFormatDesktopPreviewController({
 
   const enterGeneralCompare = (...args) => delegateSvga("enterGeneralCompare", ...args);
   const runOptimization = (...args) => delegateSvga("runOptimization", ...args);
+  const discardOptimizationResult = (...args) => delegateSvga("discardOptimizationResult", ...args);
   const saveActiveOutput = (...args) => delegateSvga("saveActiveOutput", ...args);
   const openCompareAFromHost = (...args) => delegateSvga("openCompareAFromHost", ...args);
   const openCompareBFromHost = (...args) => delegateSvga("openCompareBFromHost", ...args);
@@ -2101,6 +2102,7 @@ export function createMultiFormatDesktopPreviewController({
     replayPrimary,
     togglePrimaryPlaybackLoop,
     runOptimization,
+    discardOptimizationResult,
     saveActiveOutput,
     openCompareAFromHost,
     openCompareBFromHost,
