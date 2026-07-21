@@ -7019,6 +7019,12 @@ test("0.2 live runtime text input preserves DOM identity and character order", a
     await flushRuntimeMountPromises();
 
     const liveInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    controller.handlers.selectTextKey("text:1", { rerender: false });
+    assert.equal(
+      nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`),
+      liveInput,
+      "focus selection must honor the no-rerender contract"
+    );
     liveInput.focus();
     liveInput.select();
     const mutations = [];

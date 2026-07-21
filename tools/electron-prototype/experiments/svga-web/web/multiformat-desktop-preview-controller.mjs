@@ -356,11 +356,11 @@ export function createMultiFormatDesktopPreviewController({
     renderCommandState();
   }
 
-  function selectTextKey(textKey) {
-    if (svgaWorkflowActive()) return svgaController.handlers.selectTextKey?.(textKey);
+  function selectTextKey(textKey, options = {}) {
+    if (svgaWorkflowActive()) return svgaController.handlers.selectTextKey?.(textKey, options);
     if (!textKey) return;
     state.selectedTextKey = textKey;
-    renderTextTargets();
+    if (options.rerender !== false) renderTextTargets();
     renderCommandState();
   }
 
