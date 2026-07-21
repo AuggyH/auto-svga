@@ -281,7 +281,8 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
     saveStatus: "idle"
   };
 
-  await assert.rejects(saveShortTermActiveOutput({
+  const failureBanners = [];
+  const failedSaveResult = await saveShortTermActiveOutput({
     bridge: {
       async saveShortTermSvgaOutput() {
         return { status: "saved", sourceId: "source:saved", fileName: "saved.svga" };
@@ -301,8 +302,11 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
       throw new Error("mount failed after host save");
     },
     async refreshRecentFiles() {},
-    showSaveBanner() {}
-  }), /mount failed after host save/u);
+    showSaveBanner(title, message) {
+      failureBanners.push({ title, message });
+    }
+  });
+  assert.deepEqual(failedSaveResult, { status: "failed" });
   assert.equal(state.sourceBytes, sourceBytes);
   assert.equal(state.previewBytes, previewBytes);
   assert.equal(state.sourceId, "source:dirty");
@@ -310,6 +314,7 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
   assert.equal(state.activeOutput, activeOutput);
   assert.equal(state.mode, "edit");
   assert.equal(state.saveStatus, "failed");
+  assert.deepEqual(failureBanners.at(-1), { title: "保存失败，请重试", message: "" });
 
   let resolveInspection;
   let authorityCurrent = true;
@@ -6378,6 +6383,7 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
     activeOpenButton.focus();
     const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
     controller.initialize();
+    globalThis.document.activeElement = globalThis.document.body;
 
     await controller.handlers.openFromHostDialog();
 

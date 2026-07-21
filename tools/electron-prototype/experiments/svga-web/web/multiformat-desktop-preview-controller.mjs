@@ -703,13 +703,12 @@ export function createMultiFormatDesktopPreviewController({
       return true;
     }
     if (outcome.kind === "aepHandoff") {
-      const focusContext = captureViewTransitionFocus(nodes);
       revokeActiveDocumentAuthority();
       applyHostResult(outcome.result, {
         replaceSourceAuthority: true,
         renderAepHandoffGuidance: true
       });
-      moveViewTransitionFocus(focusContext, nodes.failureRecoveryButton);
+      moveViewTransitionFocus({ shouldMove: true }, nodes.failureRecoveryButton);
       return true;
     }
     return applyOpenedHostResult(outcome.result, options);

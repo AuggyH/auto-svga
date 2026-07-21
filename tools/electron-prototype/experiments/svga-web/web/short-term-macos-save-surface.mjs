@@ -134,11 +134,11 @@ export async function saveShortTermActiveOutput({
       outputKind,
       expectedSha256
     };
-  } catch (error) {
+  } catch {
     if (!authorityIsCurrent()) return undefined;
     state.saveStatus = "failed";
     renderCommandState();
     showSaveBanner("保存失败，请重试", "");
-    throw error;
+    return { status: "failed" };
   }
 }
