@@ -250,8 +250,8 @@ test("macOS multi-format picker uses the active BrowserWindow with no extension 
   });
   assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.svga", () => ({ isFile: () => false })), {
     status: "failed",
-    code: "file_picker_failed",
-    message: "无法打开文件选择器，源文件没有被修改。",
+    code: "open_failed",
+    message: "无法打开本地文件，源文件没有被修改。",
     pathRedacted: true
   });
 
@@ -405,6 +405,34 @@ test("unsupported picker selection stays typed and revokes stale renderer author
   assert.equal(untrustedResult.code, undefined);
   assert.equal(untrustedResult.message, "操作未能完成，源文件没有被修改。");
   assert.doesNotMatch(JSON.stringify(untrustedResult), /Users\/alice|Secret Project/u);
+});
+
+test("selected unavailable picker path revokes stale renderer authority", async () => {
+  const hostResult = await chooseMultiFormatLocalFile({
+    platform: "darwin",
+    readStats() {
+      throw new Error("Selected file vanished at /Users/alice/Secret Project/input.svga");
+    },
+    async showOpenDialog() {
+      return { canceled: false, filePaths: ["/Users/alice/Secret Project/input.svga"] };
+    }
+  });
+  const rendererResult = await resolveMultiFormatChooserOutcome(hostResult);
+
+  assert.deepEqual(hostResult, {
+    status: "failed",
+    code: "open_failed",
+    message: "无法打开本地文件，源文件没有被修改。",
+    pathRedacted: true
+  });
+  assert.deepEqual(rendererResult, {
+    kind: "failure",
+    code: "open_failed",
+    message: "无法打开本地文件，源文件没有被修改。",
+    pathRedacted: true,
+    revokeActiveAuthority: true
+  });
+  assert.doesNotMatch(JSON.stringify({ hostResult, rendererResult }), /Users\/alice|Secret Project/u);
 });
 
 test("picker exception stays typed and mutation-free through the renderer contract", async () => {

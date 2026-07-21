@@ -29,7 +29,9 @@ function failedPickerResult(code = "file_picker_failed") {
     code,
     message: code === "unsupported_file_type"
       ? "仅支持 SVGA、Lottie JSON、VAP MP4 或 After Effects AEP 交接文件。"
-      : "无法打开文件选择器，源文件没有被修改。",
+      : code === "open_failed"
+        ? "无法打开本地文件，源文件没有被修改。"
+        : "无法打开文件选择器，源文件没有被修改。",
     pathRedacted: true
   };
 }
@@ -42,9 +44,9 @@ function validateMultiFormatPickerSelection(filePath, readStats = lstatSync) {
     return failedPickerResult("unsupported_file_type");
   }
   try {
-    if (!readStats(filePath).isFile()) return failedPickerResult();
+    if (!readStats(filePath).isFile()) return failedPickerResult("open_failed");
   } catch {
-    return failedPickerResult();
+    return failedPickerResult("open_failed");
   }
   return { status: "selected", filePath };
 }
