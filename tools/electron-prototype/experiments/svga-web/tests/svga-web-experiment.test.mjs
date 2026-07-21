@@ -7038,6 +7038,7 @@ test("0.2 live runtime text input preserves DOM identity and character order", a
     await Promise.all(mutations);
     await flushRuntimeMountPromises();
     const finalInput = nodes.textElementList.querySelector(`[data-text-input][data-text-key="text:1"]`);
+    assert.equal(finalInput, liveInput, "async replacement completion must preserve the active input node");
     assert.equal(finalInput.value, "Visible Test");
     assert.equal(finalInput.selectionStart, "Visible Test".length);
     assert.equal(finalInput.selectionEnd, "Visible Test".length);
