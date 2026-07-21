@@ -6294,6 +6294,15 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
   const aepPath = path.join(root, "task-owned.aep");
   const originalDocument = globalThis.document;
   const nodes = createMultiFormatControllerTestNodes();
+  const previewView = new FakeDomElement("section");
+  const activeOpenButton = new FakeDomElement("button");
+  const failureRecoveryButton = new FakeDomElement("button");
+  previewView.dataset.view = "preview";
+  nodes.failureView.dataset.view = "failed";
+  previewView.replaceChildren(activeOpenButton);
+  nodes.failureView.replaceChildren(failureRecoveryButton);
+  nodes.app.replaceChildren(previewView, nodes.failureView);
+  nodes.failureRecoveryButton = failureRecoveryButton;
   const menus = [];
   try {
     await writeFile(previousPath, JSON.stringify({
@@ -6331,6 +6340,10 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
       sourceId: previous.sourceId
     };
     globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    for (const node of [nodes.app, previewView, activeOpenButton, nodes.failureView, failureRecoveryButton]) {
+      node.ownerDocument = globalThis.document;
+    }
+    activeOpenButton.focus();
     const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
     controller.initialize();
 
@@ -6355,6 +6368,7 @@ test("0.2 renderer preserves typed AEP handoff guidance without source Recent Pr
     assert.equal(nodes.failurePanel.dataset.panelState, "handoff");
     assert.equal(nodes.failureStage.attributes["aria-label"], "需要 AEB 交接");
     assert.equal(nodes.failurePanel.attributes["aria-label"], "AEP 交接信息");
+    assert.equal(globalThis.document.activeElement, failureRecoveryButton);
     assert.equal(sourceStore.has(previous.sourceId), false);
     assert.equal(menus.at(-1).canPlay, false);
     assert.equal(menus.at(-1).canSaveAs, false);

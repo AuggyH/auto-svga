@@ -17,6 +17,8 @@ import {
   openShortTermSettings
 } from "./short-term-macos-settings-surface.mjs";
 import {
+  captureViewTransitionFocus,
+  moveViewTransitionFocus,
   renderFailureMessage,
   renderFileHeader,
   renderLoadingMessage
@@ -699,11 +701,13 @@ export function createMultiFormatDesktopPreviewController({
       return true;
     }
     if (outcome.kind === "aepHandoff") {
+      const focusContext = captureViewTransitionFocus(nodes);
       revokeActiveDocumentAuthority();
       applyHostResult(outcome.result, {
         replaceSourceAuthority: true,
         renderAepHandoffGuidance: true
       });
+      moveViewTransitionFocus(focusContext, nodes.failureRecoveryButton);
       return true;
     }
     return applyOpenedHostResult(outcome.result, options);
