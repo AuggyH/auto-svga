@@ -528,7 +528,10 @@ test("short-term imageKey rename stays output-bound and restores the original ke
   const banners = [];
   const operationFailures = [];
   const renderedKeys = [];
+  let delayNextPlaybackMount = false;
   let rejectNextPlaybackMount = false;
+  let signalPlaybackMount;
+  let releasePlaybackMount;
   let state;
   try {
     globalThis.fetch = async (url, options) => {
@@ -587,12 +590,20 @@ test("short-term imageKey rename stays output-bound and restores the original ke
       state,
       inspectShortTerm: (bytes, name) => inspectShortTermSvga({ bytes, name, reportToken }),
       setActiveOutput(output) {
-        state.activeOutput = output;
+        state.activeOutput = {
+          ...output,
+          bytes: new Uint8Array(output.bytes)
+        };
       },
       renderPreviewModel() {
         renderedKeys.push(state.model.replaceableElements.images.map(({ imageKey }) => imageKey));
       },
       async mountPrimaryPlayback() {
+        if (delayNextPlaybackMount) {
+          delayNextPlaybackMount = false;
+          signalPlaybackMount();
+          await new Promise((resolve) => { releasePlaybackMount = resolve; });
+        }
         if (!rejectNextPlaybackMount) return;
         rejectNextPlaybackMount = false;
         throw new Error("rename playback mount rejected");
@@ -733,8 +744,38 @@ test("short-term imageKey rename stays output-bound and restores the original ke
       message: "rename playback mount rejected"
     }]);
     assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
+
+    state.activeOutput = firstRenameOutput;
+    state.previewBytes = new Uint8Array(firstRenameOutput.bytes);
+    state.selectedImageKey = "profile_frame_r2";
+    state.model = await inspectShortTermSvga({
+      bytes: state.previewBytes,
+      name: state.displayName,
+      reportToken
+    });
+    await beginRename(async () => false);
+    input.value = "profile_frame_mount_superseded";
+    const playbackMountReached = new Promise((resolve) => { signalPlaybackMount = resolve; });
+    delayNextPlaybackMount = true;
+    rejectNextPlaybackMount = true;
+    const supersededMount = runRename();
+    await playbackMountReached;
+    const mountReplacementOutput = {
+      kind: "replacement",
+      bytes: Uint8Array.from([12]),
+      suggestedName: "mount-replacement.svga"
+    };
+    state.activeOutput = mountReplacementOutput;
+    releasePlaybackMount();
+    await supersededMount;
+    assert.equal(state.activeOutput, mountReplacementOutput);
+    assert.equal(operationFailures.length, 1);
+    assert.equal(state.renameSession, undefined);
+    assert.equal(state.renameImageKey, "");
+    assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
   } finally {
     if (releaseDelayedResponse) releaseDelayedResponse();
+    if (releasePlaybackMount) releasePlaybackMount();
     globalThis.fetch = originalFetch;
     globalThis.document = originalDocument;
     globalThis.requestAnimationFrame = originalRequestAnimationFrame;

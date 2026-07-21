@@ -195,7 +195,7 @@ export async function confirmShortTermInlineRename({
       details: renamed.rename
     };
     setActiveOutput(output);
-    publishedOutput = output;
+    publishedOutput = state.activeOutput;
     state.renameImageKey = "";
     state.renameSession = undefined;
     renderPreviewModel();
