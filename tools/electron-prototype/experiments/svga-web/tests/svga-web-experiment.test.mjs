@@ -526,7 +526,9 @@ test("short-term imageKey rename stays output-bound and restores the original ke
     replaceableSummary
   };
   const banners = [];
+  const operationFailures = [];
   const renderedKeys = [];
+  let rejectNextPlaybackMount = false;
   let state;
   try {
     globalThis.fetch = async (url, options) => {
@@ -590,12 +592,16 @@ test("short-term imageKey rename stays output-bound and restores the original ke
       renderPreviewModel() {
         renderedKeys.push(state.model.replaceableElements.images.map(({ imageKey }) => imageKey));
       },
-      async mountPrimaryPlayback() {},
+      async mountPrimaryPlayback() {
+        if (!rejectNextPlaybackMount) return;
+        rejectNextPlaybackMount = false;
+        throw new Error("rename playback mount rejected");
+      },
       showSaveBanner(title, message) {
         banners.push({ title, message });
       },
-      showOperationFailure(_title, error) {
-        throw error;
+      showOperationFailure(title, error) {
+        operationFailures.push({ title, message: error.message });
       }
     });
 
@@ -702,7 +708,30 @@ test("short-term imageKey rename stays output-bound and restores the original ke
     assert.equal(state.renameSession, undefined);
     assert.equal(state.renameImageKey, "");
     assert.equal(banners.slice(failureBannerCount).some(({ title }) => title === "重命名未完成。"), false);
+    assert.equal(operationFailures.length, 0);
     assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame_rejected"), false);
+    assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
+
+    state.activeOutput = firstRenameOutput;
+    state.previewBytes = new Uint8Array(firstRenameOutput.bytes);
+    state.selectedImageKey = "profile_frame_r2";
+    state.model = await inspectShortTermSvga({
+      bytes: state.previewBytes,
+      name: state.displayName,
+      reportToken
+    });
+    await beginRename(async () => false);
+    input.value = "profile_frame_mount_failure";
+    rejectNextPlaybackMount = true;
+    await runRename();
+    assert.equal(state.activeOutput.kind, "rename");
+    assert.equal(state.renameSession, undefined);
+    assert.equal(state.renameImageKey, "");
+    assert.equal(state.model.replaceableElements.images.some(({ imageKey }) => imageKey === "profile_frame_mount_failure"), true);
+    assert.deepEqual(operationFailures, [{
+      title: "重命名已完成，但预览刷新未完成。",
+      message: "rename playback mount rejected"
+    }]);
     assert.equal(createHash("sha256").update(state.sourceBytes).digest("hex"), sourceSha256);
   } finally {
     if (releaseDelayedResponse) releaseDelayedResponse();

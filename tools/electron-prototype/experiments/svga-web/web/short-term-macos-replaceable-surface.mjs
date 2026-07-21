@@ -139,6 +139,7 @@ export async function confirmShortTermInlineRename({
 }) {
   if (!state.sourceBytes || !state.renameImageKey) return;
   const renameSession = state.renameSession;
+  let publishedOutput;
   const renameSessionIsCurrent = () => Boolean(
     renameSession
     && state.renameSession === renameSession
@@ -185,20 +186,27 @@ export async function confirmShortTermInlineRename({
     state.previewBytes = renamedBytes;
     state.model = model;
     state.selectedImageKey = toImageKey;
-    state.renameImageKey = "";
-    state.renameSession = undefined;
-    setActiveOutput({
+    const output = {
       kind: "rename",
       bytes: renamedBytes,
       suggestedName: suffixName(state.displayName, "renamed"),
       title: renamed.rename.resultTitle,
       summary: renamed.rename.resultSummary,
       details: renamed.rename
-    });
+    };
+    setActiveOutput(output);
+    publishedOutput = output;
+    state.renameImageKey = "";
+    state.renameSession = undefined;
     renderPreviewModel();
     await mountPrimaryPlayback(state.previewBytes);
   } catch (error) {
     if (!authorityIsCurrent()) return;
+    if (publishedOutput) {
+      if (state.activeOutput !== publishedOutput) return;
+      showOperationFailure("重命名已完成，但预览刷新未完成。", error);
+      return;
+    }
     if (!renameSessionIsCurrent()) {
       cancelShortTermInlineRename({ nodes, state });
       return;
