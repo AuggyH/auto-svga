@@ -1767,7 +1767,7 @@ canvas {
   color: var(--asv-subtle);
 }
 
-.optimizationActions .toolbarButton[data-action="back-preview"] {
+.optimizationActions .toolbarButton[data-action="discard-optimization"] {
   color: var(--asv-optimization-action-tertiary-color);
 }
 

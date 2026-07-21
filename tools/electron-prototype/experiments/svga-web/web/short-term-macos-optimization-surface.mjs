@@ -81,6 +81,18 @@ export async function showShortTermOptimizationComparison({
   });
 }
 
+export function discardShortTermOptimizationResult({
+  state,
+  clearTransientOutput,
+  setMode
+}) {
+  if (state.activeOutput?.kind !== "optimization") return false;
+  state.previewBytes = undefined;
+  clearTransientOutput();
+  setMode("preview");
+  return true;
+}
+
 export async function runShortTermOptimizationWorkflow({
   bridge,
   nodes,

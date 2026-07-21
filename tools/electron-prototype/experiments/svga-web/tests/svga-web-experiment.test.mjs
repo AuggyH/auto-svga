@@ -2088,11 +2088,15 @@ test("short-term optimization detail exposes the frozen action group and an expl
     compareDragOverlay: listenerTarget()
   };
   const openedTabs = [];
+  let discardedOptimizationResults = 0;
   const noOp = () => {};
   const handlers = new Proxy({
     closeResourceContextMenu: noOp,
     openTab(tab) {
       openedTabs.push(tab);
+    },
+    discardOptimizationResult() {
+      discardedOptimizationResults += 1;
     }
   }, {
     get(target, key) {
@@ -2116,6 +2120,16 @@ test("short-term optimization detail exposes the frozen action group and an expl
   listeners.get("click")({ target: exitButton });
   assert.deepEqual(openedTabs, ["overview"]);
 
+  const resultExitButton = {
+    dataset: { action: "discard-optimization" },
+    closest(selector) {
+      if (selector === "[data-action]") return this;
+      return null;
+    }
+  };
+  listeners.get("click")({ target: resultExitButton });
+  assert.equal(discardedOptimizationResults, 1);
+
   const { openShortTermTab } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-navigation-surface.mjs")).href);
   const tabTransitions = [];
   openShortTermTab({
@@ -2132,6 +2146,57 @@ test("short-term optimization detail exposes the frozen action group and an expl
     tab: "optimization",
     options: { focus: true, scroll: true }
   }]);
+});
+
+test("short-term optimization discard revokes generated output authority before returning to Preview", async () => {
+  const { discardShortTermOptimizationResult } = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-optimization-surface.mjs"
+  )).href);
+  const sourceBytes = new Uint8Array([1, 2, 3]);
+  const optimizedBytes = new Uint8Array([4, 5, 6]);
+  const state = {
+    sourceBytes,
+    previewBytes: optimizedBytes,
+    activeOutput: { kind: "optimization", bytes: optimizedBytes },
+    saveStatus: "dirty"
+  };
+  const transitions = [];
+
+  const discarded = discardShortTermOptimizationResult({
+    state,
+    clearTransientOutput() {
+      state.activeOutput = undefined;
+      state.saveStatus = "idle";
+      transitions.push("clear-output");
+    },
+    setMode(mode) {
+      transitions.push(`mode:${mode}`);
+    }
+  });
+
+  assert.equal(discarded, true);
+  assert.equal(state.previewBytes, undefined);
+  assert.equal(state.activeOutput, undefined);
+  assert.equal(state.saveStatus, "idle");
+  assert.deepEqual(transitions, ["clear-output", "mode:preview"]);
+
+  const replacementOutput = { kind: "replacement", bytes: optimizedBytes };
+  state.previewBytes = optimizedBytes;
+  state.activeOutput = replacementOutput;
+  transitions.length = 0;
+  assert.equal(discardShortTermOptimizationResult({
+    state,
+    clearTransientOutput() {
+      assert.fail("a stale optimization action must not clear a newer output");
+    },
+    setMode() {
+      assert.fail("a stale optimization action must not change the current view");
+    }
+  }), false);
+  assert.equal(state.previewBytes, optimizedBytes);
+  assert.equal(state.activeOutput, replacementOutput);
+  assert.deepEqual(transitions, []);
 });
 
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
@@ -10869,7 +10934,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*background: transparent/s);
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*min-height: var\(--asv-optimization-action-secondary-height\)/s);
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*box-shadow: none/s);
-  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton\[data-action="back-preview"\]\s*\{[^}]*color: var\(--asv-optimization-action-tertiary-color\)/s);
+  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton\[data-action="discard-optimization"\]\s*\{[^}]*color: var\(--asv-optimization-action-tertiary-color\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);
   assert.doesNotMatch(shortTermStyles, /scrollbar-gutter:\s*stable/);
   assert.match(shortTermTokens, /--asv-component-scrollable-surface-scrollbar-size: 0px/);
@@ -11865,7 +11930,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /data-component="OptimizationResultDetailRow" data-result-disposition="skipped"/);
   assert.match(shortTermCompareModel, /data-action="save-as"\$\{saveDisabled\}>另存为 SVGA/);
   assert.match(shortTermCompareModel, /data-action="save-overwrite"\$\{saveDisabled\}>覆盖保存/);
-  assert.match(shortTermCompareModel, /data-action="back-preview">放弃优化/);
+  assert.match(shortTermCompareModel, /data-action="discard-optimization">放弃优化/);
   assert.ok(
     shortTermCompareModel.indexOf("optimizationMetricGrid") < shortTermCompareModel.indexOf("optimizationActions")
       && shortTermCompareModel.indexOf("optimizationActions") < shortTermCompareModel.indexOf("data-optimization-actions"),
