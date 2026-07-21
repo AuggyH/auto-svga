@@ -477,6 +477,103 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
   assert.equal(staleSaveState.saveStatus, "idle");
 });
 
+test("short-term consecutive imageKey rename uses dirty preview bytes and restores the original visible key", async () => {
+  const { confirmShortTermInlineRename } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs")).href
+  );
+  const replaceableSurfaceSource = await readFile(
+    path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs"),
+    "utf8"
+  );
+  assert.match(replaceableSurfaceSource, /const continuesExistingRename = state\.activeOutput\?\.kind === "rename"/u);
+  assert.match(replaceableSurfaceSource, /if \(!continuesExistingRename && !\(await confirmDiscardUnsavedOutput/u);
+  const originalFetch = globalThis.fetch;
+  const sourceBytes = Uint8Array.from([1]);
+  const firstRenamedBytes = Uint8Array.from([2]);
+  const revertedBytes = Uint8Array.from([3]);
+  const requests = [];
+  let responseIndex = 0;
+  const input = { value: "profile_frame_r2" };
+  const state = {
+    sourceBytes,
+    previewBytes: new Uint8Array(sourceBytes),
+    sourceId: "source:image-key",
+    displayName: "daily.svga",
+    model: { replaceableElements: { images: [{ imageKey: "profile_frame" }], texts: [] } },
+    selectedImageKey: "profile_frame",
+    renameImageKey: "profile_frame"
+  };
+  const nodes = {
+    replaceableList: {
+      querySelector(selector) {
+        return selector === "[data-rename-input]" ? input : null;
+      }
+    }
+  };
+  try {
+    globalThis.fetch = async (url, options) => {
+      const nextBytes = responseIndex === 0 ? firstRenamedBytes : revertedBytes;
+      responseIndex += 1;
+      requests.push({
+        url: String(url),
+        bytes: Array.from(new Uint8Array(options.body))
+      });
+      return {
+        ok: true,
+        async json() {
+          return {
+            renamedSvgaBase64: Buffer.from(nextBytes).toString("base64"),
+            rename: {
+              status: "renamed",
+              resultTitle: "imageKey 已重命名",
+              resultSummary: "引用已更新"
+            }
+          };
+        }
+      };
+    };
+    const runRename = () => confirmShortTermInlineRename({
+      bridge: {},
+      nodes,
+      state,
+      async inspectShortTerm(bytes) {
+        const requestedKey = new URL(requests.at(-1).url, "http://localhost").searchParams.get("to");
+        return {
+          replaceableElements: { images: [{ imageKey: requestedKey }], texts: [] },
+          inspectedBytes: Array.from(bytes)
+        };
+      },
+      setActiveOutput(output) {
+        state.activeOutput = output;
+      },
+      renderPreviewModel() {},
+      async mountPrimaryPlayback() {},
+      showSaveBanner() {},
+      showOperationFailure(_title, error) {
+        throw error;
+      }
+    });
+
+    await runRename();
+    assert.equal(state.selectedImageKey, "profile_frame_r2");
+    assert.deepEqual(Array.from(state.previewBytes), Array.from(firstRenamedBytes));
+    assert.deepEqual(requests[0].bytes, Array.from(sourceBytes));
+
+    state.renameImageKey = "profile_frame_r2";
+    input.value = "profile_frame";
+    await runRename();
+
+    assert.equal(state.selectedImageKey, "profile_frame");
+    assert.deepEqual(Array.from(state.previewBytes), Array.from(revertedBytes));
+    assert.deepEqual(requests[1].bytes, Array.from(firstRenamedBytes));
+    assert.deepEqual(Array.from(state.sourceBytes), Array.from(sourceBytes));
+    assert.match(requests[0].url, /from=profile_frame&to=profile_frame_r2/u);
+    assert.match(requests[1].url, /from=profile_frame_r2&to=profile_frame/u);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("short-term thumbnail renderer follows frozen image sequence and audio variants", async () => {
   const { renderThumbnailHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-thumbnail-renderers.mjs")).href);
   const imageDataUrl = "data:image/png;base64,AA==";

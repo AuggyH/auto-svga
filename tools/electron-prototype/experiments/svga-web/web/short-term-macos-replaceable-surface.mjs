@@ -102,7 +102,8 @@ export async function beginShortTermImageKeyRename({
   setTab
 }) {
   if (!state.sourceBytes || !state.selectedImageKey) return;
-  if (!(await confirmDiscardUnsavedOutput("重命名 imageKey 会放弃当前未保存的 SVGA 输出。"))) return;
+  const continuesExistingRename = state.activeOutput?.kind === "rename" && state.previewBytes?.byteLength;
+  if (!continuesExistingRename && !(await confirmDiscardUnsavedOutput("重命名 imageKey 会放弃当前未保存的 SVGA 输出。"))) return;
   state.renameImageKey = state.selectedImageKey;
   if (state.view !== "preview") setMode("preview");
   setTab("replaceable");
@@ -138,10 +139,13 @@ export async function confirmShortTermInlineRename({
     cancelShortTermInlineRename({ nodes, state });
     return;
   }
+  const renameBytes = state.activeOutput?.kind === "rename" && state.previewBytes?.byteLength
+    ? state.previewBytes
+    : state.sourceBytes;
   showSaveBanner("正在重命名 imageKey…", "");
   try {
     const renamed = await renameShortTermImageKey({
-      bytes: state.sourceBytes,
+      bytes: renameBytes,
       name: state.displayName,
       fromImageKey,
       toImageKey,
