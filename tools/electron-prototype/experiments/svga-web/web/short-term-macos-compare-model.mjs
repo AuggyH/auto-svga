@@ -218,7 +218,7 @@ export function renderOptimizationCompareResultHtml(model) {
     <div class="compareActions optimizationActions">
       <button class="toolbarButton primary" type="button" data-action="save-as"${saveDisabled}>另存为 SVGA</button>
       <button class="toolbarButton" type="button" data-action="save-overwrite"${saveDisabled}>覆盖保存</button>
-      <button class="toolbarButton" type="button" data-action="back-preview">放弃优化</button>
+      <button class="toolbarButton" type="button" data-action="discard-optimization">放弃优化</button>
     </div>
     ${actionRows ? `<section class="resultGroup" data-status="success"><h3>已执行</h3><ul data-optimization-actions>${actionRows}</ul></section>` : ""}
     ${skippedRows ? `<section class="resultGroup muted" data-status="warning"><h3>未执行</h3><ul data-optimization-skipped>${skippedRows}</ul></section>` : ""}

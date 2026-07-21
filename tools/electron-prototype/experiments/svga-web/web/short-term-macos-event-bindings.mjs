@@ -68,6 +68,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
     if (action === "close-optimization") handlers.openTab("overview");
     if (action === "asset-filter") handlers.setAssetFilter(target.dataset.assetFilter);
     if (action === "run-optimization") handlers.runOptimization().catch(handlers.showFailure);
+    if (action === "discard-optimization") handlers.discardOptimizationResult();
     if (action === "save-as") handlers.saveActiveOutput("saveAs").catch(handlers.showFailure);
     if (action === "save-overwrite") handlers.saveActiveOutput("overwrite").catch(handlers.showFailure);
     if (action === "open-compare-a") handlers.openCompareAFromHost().catch(handlers.showFailure);

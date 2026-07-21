@@ -93,6 +93,7 @@ import {
   resetShortTermRuntimeTextPreview
 } from "./short-term-macos-runtime-text-surface.mjs";
 import {
+  discardShortTermOptimizationResult,
   renderShortTermOptimization,
   runShortTermOptimizationWorkflow,
   showShortTermOptimizationComparison
@@ -422,6 +423,14 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       },
       showOperationFailure,
       authorityIsCurrent
+    });
+  }
+
+  function discardOptimizationResult() {
+    return discardShortTermOptimizationResult({
+      state,
+      clearTransientOutput,
+      setMode
     });
   }
 
@@ -840,6 +849,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     reloadPrimaryPlayback,
     togglePrimaryPlaybackLoop,
     runOptimization,
+    discardOptimizationResult,
     saveActiveOutput,
     openCompareAFromHost,
     openCompareBFromHost,
