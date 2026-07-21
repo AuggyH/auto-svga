@@ -51,7 +51,7 @@ export function runtimeTextListView(model, textPreviewValues) {
     hasTextElements: texts.length > 0,
     hasTextPreview,
     emptyCopy: "",
-    summaryCopy: replaceableElementSummaryCopy(images.length + texts.length, hasImagePreview || hasTextPreview)
+    summaryCopy: replaceableElementSummaryCopy(images.length + texts.length, hasImagePreview)
   };
 }
 

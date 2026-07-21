@@ -10926,7 +10926,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextModel, /export function nextSelectedTextKey/);
   assert.match(shortTermTextModel, /export function selectedRuntimeTextElement/);
   assert.doesNotMatch(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
-  assert.match(shortTermTextModel, /replaceableElementSummaryCopy\(images\.length \+ texts\.length, hasImagePreview \|\| hasTextPreview\)/);
+  assert.match(shortTermTextModel, /replaceableElementSummaryCopy\(images\.length \+ texts\.length, hasImagePreview\)/);
   assert.match(shortTermReplaceableModel, /export function replaceableElementSummaryCopy/);
   assert.match(shortTermReplaceableSurface, /from "\.\/short-term-macos-replaceable-model\.mjs"/);
   assert.match(shortTermReplaceableSurface, /replaceableImageListView/);
@@ -10942,7 +10942,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.closest\("\.replaceableSection"\)\?\.setAttribute\("data-empty", "false"\)/);
   assert.match(shortTermModules, /\.replaceableSection\[data-empty="true"\]/);
   assert.match(shortTermComponents, /\.replaceableRow\[data-replacement-state="preview"\] \.rowText strong::after/);
-  assert.match(shortTermComponents, /\.textElementRow\[data-replacement-state="preview"\] \.rowText strong::after/);
+  assert.doesNotMatch(shortTermComponents, /\.textElementRow\[data-replacement-state="preview"\] \.rowText strong::after/);
   assert.match(shortTermComponents, /content: "\*"/);
   assert.doesNotMatch(shortTermModules, /textPreviewBlock/);
   assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
