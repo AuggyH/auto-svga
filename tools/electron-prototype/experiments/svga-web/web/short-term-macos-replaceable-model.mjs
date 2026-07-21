@@ -1,6 +1,5 @@
 export function replaceableImageListView(model, selectedImageKey, renameImageKey) {
   const images = Array.isArray(model?.images) ? model.images : [];
-  const hasPreview = images.some((item) => item?.replacementActive === true);
   return {
     images,
     rows: images.map((item, index) => ({
@@ -11,12 +10,12 @@ export function replaceableImageListView(model, selectedImageKey, renameImageKey
     })),
     hasImages: images.length > 0,
     emptyCopy: "",
-    summaryCopy: replaceableElementSummaryCopy(images.length, hasPreview)
+    summaryCopy: replaceableElementSummaryCopy(images.length)
   };
 }
 
-export function replaceableElementSummaryCopy(totalCount, hasPreview = false) {
-  return `(${Math.max(0, Number(totalCount) || 0)})${hasPreview ? "*" : ""}`;
+export function replaceableElementSummaryCopy(totalCount) {
+  return `(${Math.max(0, Number(totalCount) || 0)})`;
 }
 
 export function nextReplaceableSelection(imageKey, renameImageKey) {

@@ -964,14 +964,7 @@ export function createMultiFormatDesktopPreviewController({
       )
     }));
     const totalCount = imageCount + textCount;
-    const hasReplacementPreview = targets.some((target) => target.replacementActive)
-      || textTargets.some((target) => multiFormatActiveReplacementForPublicTarget(
-        model,
-        "text",
-        target.textKey,
-        publicRuntimeReplacementTargets
-      ));
-    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount, hasReplacementPreview);
+    nodes.replaceableSummary.textContent = replaceableElementSummaryCopy(totalCount);
     const replaceableSection = nodes.replaceableList.closest?.(".replaceableSection");
     replaceableSection?.setAttribute("data-empty", totalCount > 0 ? "false" : "true");
     if (totalCount === 0) {
