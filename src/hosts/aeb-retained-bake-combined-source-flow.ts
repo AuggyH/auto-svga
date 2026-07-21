@@ -24,12 +24,16 @@ import {
   type AebRetainedBakeSvgaFragmentSourceProbe
 } from "./aeb-node-retained-bake-svga-fragment-publisher.js";
 import {
+  NodeAebRetainedBakeFullCompositionPublisher,
+  type AebRetainedBakeFullCompositionResult
+} from "./aeb-retained-bake-full-composition-publisher.js";
+import {
   createAebRetainedBakeSvgaFragmentOracleReport,
   type AebRetainedBakeSvgaFragmentOracleReport
 } from "./aeb-retained-bake-svga-fragment-oracle.js";
 
 export const AEB_RETAINED_BAKE_COMBINED_SOURCE_FLOW_SCHEMA_VERSION =
-  "aeb-retained-bake-combined-source-flow-v1" as const;
+  "aeb-retained-bake-combined-source-flow-v2" as const;
 
 export interface AebRetainedBakeCombinedSourceFlowInput {
   execution: AebBoundedAeBakeExecutionResult;
@@ -78,6 +82,7 @@ export interface AebRetainedBakeCombinedSourceFlowReport {
     nativeMergeRequired: true;
     fullCompositionEncoded: false;
   };
+  fullComposition: AebRetainedBakeFullCompositionResult;
   authority: {
     actualBakeAuthorityMinted: false;
     runtimeProved: false;
@@ -97,6 +102,7 @@ interface VerifiedReportState {
   chainInput: CreateAebRetainedBakeAuthorityChainInput;
   packagePublisher: NodeAebBakePackagePublisher;
   fragmentPublisher: NodeAebRetainedBakeSvgaFragmentPublisher;
+  fullCompositionPublisher: NodeAebRetainedBakeFullCompositionPublisher;
 }
 
 export class NodeAebRetainedBakeCombinedSourceFlow {
@@ -115,6 +121,8 @@ export class NodeAebRetainedBakeCombinedSourceFlow {
     let published: AebPublishedSuccessorPackage | undefined;
     let fragmentPublisher: NodeAebRetainedBakeSvgaFragmentPublisher | undefined;
     let sourceProbe: AebRetainedBakeSvgaFragmentSourceProbe | undefined;
+    let fullCompositionPublisher: NodeAebRetainedBakeFullCompositionPublisher | undefined;
+    let fullComposition: AebRetainedBakeFullCompositionResult | undefined;
     let chainInput: CreateAebRetainedBakeAuthorityChainInput | undefined;
     let chainReceipt: AebRetainedBakeAuthorityChainReceipt | undefined;
     try {
@@ -181,17 +189,38 @@ export class NodeAebRetainedBakeCombinedSourceFlow {
           "Combined retained Bake source flow could not rebind its physical output after validation."
         );
       }
+      fullCompositionPublisher = new NodeAebRetainedBakeFullCompositionPublisher(this.authority);
+      fullComposition = await fullCompositionPublisher.publish({
+        chainReceipt,
+        chainInput,
+        sourceIr: input.sourceIr
+      });
       const sourceProject = await verifySourceProject(this.authority, chainInput);
-      const report = createReport(chainReceipt, chainInput, sourceProject, sourceProbe, oracle);
-      this.verifiedReports.set(report, { chainInput, packagePublisher, fragmentPublisher });
+      const report = createReport(
+        chainReceipt,
+        chainInput,
+        sourceProject,
+        sourceProbe,
+        oracle,
+        fullComposition
+      );
+      this.verifiedReports.set(report, {
+        chainInput,
+        packagePublisher,
+        fragmentPublisher,
+        fullCompositionPublisher
+      });
       return report;
     } catch (error) {
       let rollbackFailed = false;
+      if (fullComposition && fullCompositionPublisher) {
+        rollbackFailed = !await fullCompositionPublisher.revoke(fullComposition);
+      }
       if (sourceProbe && fragmentPublisher && chainInput && chainReceipt) {
         rollbackFailed = !await fragmentPublisher.revokeSourceProbe(
           sourceProbe,
           { chainReceipt, chainInput }
-        );
+        ) || rollbackFailed;
       }
       if (published && packagePublisher) {
         rollbackFailed = !await packagePublisher.revokePublishedSuccessor(published) || rollbackFailed;
@@ -210,13 +239,14 @@ export class NodeAebRetainedBakeCombinedSourceFlow {
     try {
       const state = this.verifiedReports.get(report);
       if (!state) return false;
-      const { chainInput, packagePublisher, fragmentPublisher } = state;
+      const { chainInput, packagePublisher, fragmentPublisher, fullCompositionPublisher } = state;
       const chainReceipt = await createAebRetainedBakeAuthorityChain(chainInput);
       if (!await packagePublisher.verifyPublishedSuccessor(chainInput.published, chainInput.hasher)
         || !await fragmentPublisher.verifySourceProbe(
           report.evidence.sourceProbe,
           { chainReceipt, chainInput }
-        )) {
+        )
+        || !await fullCompositionPublisher.verify(report.fullComposition)) {
         return false;
       }
       const oracle = await createAebRetainedBakeSvgaFragmentOracleReport(
@@ -227,7 +257,14 @@ export class NodeAebRetainedBakeCombinedSourceFlow {
       const sourceProject = await verifySourceProject(this.authority, chainInput);
       return sameJson(
         report,
-        createReport(chainReceipt, chainInput, sourceProject, report.evidence.sourceProbe, oracle)
+        createReport(
+          chainReceipt,
+          chainInput,
+          sourceProject,
+          report.evidence.sourceProbe,
+          oracle,
+          report.fullComposition
+        )
       );
     } catch {
       return false;
@@ -259,7 +296,8 @@ function createReport(
   chainInput: CreateAebRetainedBakeAuthorityChainInput,
   sourceProject: AebBoundedTaskFile,
   sourceProbe: AebRetainedBakeSvgaFragmentSourceProbe,
-  oracle: AebRetainedBakeSvgaFragmentOracleReport
+  oracle: AebRetainedBakeSvgaFragmentOracleReport,
+  fullComposition: AebRetainedBakeFullCompositionResult
 ): AebRetainedBakeCombinedSourceFlowReport {
   const classification = classificationFor(chainInput);
   const unsigned: Omit<AebRetainedBakeCombinedSourceFlowReport, "reportHash"> = {
@@ -297,6 +335,7 @@ function createReport(
       nativeMergeRequired: true,
       fullCompositionEncoded: false
     },
+    fullComposition,
     authority: {
       actualBakeAuthorityMinted: false,
       runtimeProved: false,

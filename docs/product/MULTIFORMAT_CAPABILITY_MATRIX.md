@@ -55,6 +55,7 @@ and a complete Round 2 matrix on one exact successor candidate. It must start
 with native Open, then cover Recent, real playback, replacement/Reset, Compare,
 failure recovery, UI/UX, AEB handoff, FBP client rows, source immutability,
 network silence, and cleanup without transferring Round 1 acceptance.
+GitHub Issue #6 is the sole active execution record for that matrix.
 
 ## Protected Boundaries
 

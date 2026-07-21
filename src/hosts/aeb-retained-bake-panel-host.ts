@@ -74,6 +74,7 @@ interface NoPanelOutputAuthorityClaims {
   actualAeBakeAuthorityMinted: false;
   packageOutputAuthorityMinted: false;
   standardsValidSvgaFragmentAuthorityMinted: false;
+  fullCompositionOutputAuthorityMinted: false;
   previewOrSaveAuthorized: false;
 }
 
@@ -137,6 +138,12 @@ export interface AebRetainedBakePanelSourceValidationResult {
     nativeMergeRequired: true;
     fullCompositionEncoded: false;
   };
+  fullComposition: AebRetainedBakePanelPhysicalOutput & {
+    standardsValidSvga: true;
+    nativeMergeCompleted: true;
+    fullCompositionEncoded: true;
+    previewOrSaveAuthorized: false;
+  };
   authorityClaims: NoPanelOutputAuthorityClaims;
   resultHash: string;
 }
@@ -145,6 +152,7 @@ interface ActualPanelOutputAuthorityClaims {
   actualAeBakeAuthorityMinted: true;
   packageOutputAuthorityMinted: true;
   standardsValidSvgaFragmentAuthorityMinted: true;
+  fullCompositionOutputAuthorityMinted: true;
   previewOrSaveAuthorized: false;
 }
 
@@ -160,6 +168,7 @@ export interface AebRetainedBakePanelRuntimeResult {
   classification: AebRetainedBakePanelClassification;
   package: AebRetainedBakePanelSourceValidationResult["package"];
   fragment: AebRetainedBakePanelSourceValidationResult["fragment"];
+  fullComposition: AebRetainedBakePanelSourceValidationResult["fullComposition"];
   retainedExecution: {
     actualAeRenderExecuted: true;
     executionReceiptHash: string;
@@ -184,8 +193,10 @@ export interface AebRetainedBakePanelMainHandoff {
   outputRoot: AebRetainedBakePanelOutputRootBinding;
   package: AebRetainedBakePanelRuntimeResult["package"];
   fragment: AebRetainedBakePanelRuntimeResult["fragment"];
+  fullComposition: AebRetainedBakePanelRuntimeResult["fullComposition"];
   actualAeBakeAuthorityMinted: true;
   standardsValidSvgaFragmentAuthorityMinted: true;
+  fullCompositionOutputAuthorityMinted: true;
   nativeMergeRequired: true;
   previewOrSaveAuthorized: false;
   handoffHash: string;
@@ -223,6 +234,7 @@ interface OutputState {
   source: AebRetainedBakeCombinedHostInput["source"];
   package: AebRetainedBakePanelPhysicalOutput;
   fragment: AebRetainedBakePanelPhysicalOutput;
+  fullComposition: AebRetainedBakePanelPhysicalOutput;
   consumed: boolean;
 }
 
@@ -351,6 +363,13 @@ export class NodeAebRetainedBakePanelHost {
         nativeMergeRequired: true,
         fullCompositionEncoded: false
       },
+      fullComposition: {
+        ...outputs.fullComposition,
+        standardsValidSvga: true,
+        nativeMergeCompleted: true,
+        fullCompositionEncoded: true,
+        previewOrSaveAuthorized: false
+      },
       authorityClaims: noAuthorityClaims()
     };
     const result = deepFreeze({ ...unsigned, resultHash: sha256Canonical(unsigned) });
@@ -409,6 +428,13 @@ export class NodeAebRetainedBakePanelHost {
         nativeMergeRequired: true,
         fullCompositionEncoded: false
       },
+      fullComposition: {
+        ...outputs.fullComposition,
+        standardsValidSvga: true,
+        nativeMergeCompleted: true,
+        fullCompositionEncoded: true,
+        previewOrSaveAuthorized: false
+      },
       retainedExecution: {
         actualAeRenderExecuted: true,
         executionReceiptHash: execution.executionReceipt.receiptHash,
@@ -458,8 +484,10 @@ export class NodeAebRetainedBakePanelHost {
       outputRoot: result.outputRoot,
       package: result.package,
       fragment: result.fragment,
+      fullComposition: result.fullComposition,
       actualAeBakeAuthorityMinted: true,
       standardsValidSvgaFragmentAuthorityMinted: true,
+      fullCompositionOutputAuthorityMinted: true,
       nativeMergeRequired: true,
       previewOrSaveAuthorized: false
     };
@@ -490,7 +518,7 @@ export class NodeAebRetainedBakePanelHost {
   }
 
   private async verifyOutputState(
-    value: { outputRoot: AebRetainedBakePanelOutputRootBinding; package: AebRetainedBakePanelPhysicalOutput; fragment: AebRetainedBakePanelPhysicalOutput },
+    value: { outputRoot: AebRetainedBakePanelOutputRootBinding; package: AebRetainedBakePanelPhysicalOutput; fragment: AebRetainedBakePanelPhysicalOutput; fullComposition: AebRetainedBakePanelPhysicalOutput },
     state: OutputState | undefined
   ): Promise<boolean> {
     try {
@@ -499,10 +527,17 @@ export class NodeAebRetainedBakePanelHost {
       if (!await sourcesStillBound(state.root.authority, state.plan, state.source)) return false;
       const packageFile = await readOutput(state.root.authority, state.package, state.plan.job.budgets.maxPackageBytes);
       const fragmentFile = await readOutput(state.root.authority, state.fragment, state.plan.job.budgets.maxPackageBytes);
+      const fullCompositionFile = await readOutput(
+        state.root.authority,
+        state.fullComposition,
+        state.plan.job.budgets.maxPackageBytes
+      );
       return samePhysicalOutput(packageFile, state.package)
         && samePhysicalOutput(fragmentFile, state.fragment)
+        && samePhysicalOutput(fullCompositionFile, state.fullComposition)
         && sameOutputBinding(value.package, state.package)
-        && sameOutputBinding(value.fragment, state.fragment);
+        && sameOutputBinding(value.fragment, state.fragment)
+        && sameOutputBinding(value.fullComposition, state.fullComposition);
     } catch {
       return false;
     }
@@ -661,7 +696,11 @@ async function bindReportOutputs(
   plan: AebAeBakeExecutionPlan,
   source: AebRetainedBakeCombinedHostInput["source"],
   report: AebRetainedBakeCombinedSourceFlowReport
-): Promise<{ package: AebRetainedBakePanelPhysicalOutput; fragment: AebRetainedBakePanelPhysicalOutput }> {
+): Promise<{
+  package: AebRetainedBakePanelPhysicalOutput;
+  fragment: AebRetainedBakePanelPhysicalOutput;
+  fullComposition: AebRetainedBakePanelPhysicalOutput;
+}> {
   await verifyPinnedPanelRoot(root);
   if (report.taskId !== plan.job.task.taskId
     || report.executionId !== plan.executionId
@@ -677,6 +716,10 @@ async function bindReportOutputs(
     || report.fragment.standardsValidSvgaFragment !== true
     || report.fragment.nativeMergeRequired !== true
     || report.fragment.fullCompositionEncoded !== false
+    || report.fullComposition.standardsValidSvga !== true
+    || report.fullComposition.nativeMergeCompleted !== true
+    || report.fullComposition.fullCompositionEncoded !== true
+    || report.fullComposition.validation.previewOrSaveAuthorized !== false
     || report.authority.realPreviewValidated !== false
     || report.authority.saveAsBytesAuthorized !== false) {
     fail("AEB_PANEL_OUTPUT_REPORT_INVALID", "Retained Bake output report does not match the prepared panel authority.");
@@ -691,18 +734,30 @@ async function bindReportOutputs(
     plan.job.budgets.maxPackageBytes,
     "PANEL_SVGA_FRAGMENT"
   );
+  const fullCompositionFile = await root.authority.readBoundedTaskFile(
+    report.fullComposition.output.relativePath,
+    plan.job.budgets.maxPackageBytes,
+    "PANEL_FULL_COMPOSITION"
+  );
   const packageOutput = physicalOutput(report.package.successorPackageRelativePath, packageFile);
   const fragmentOutput = physicalOutput(report.fragment.relativePath, fragmentFile);
+  const fullCompositionOutput = physicalOutput(
+    report.fullComposition.output.relativePath,
+    fullCompositionFile
+  );
   if (packageOutput.contentHash !== report.package.successorPackageContentHash
     || fragmentOutput.contentHash !== report.fragment.contentHash
     || fragmentOutput.identityDigest !== report.fragment.identityDigest
-    || fragmentOutput.encodedBytes !== report.fragment.encodedBytes) {
+    || fragmentOutput.encodedBytes !== report.fragment.encodedBytes
+    || fullCompositionOutput.contentHash !== report.fullComposition.output.contentHash
+    || fullCompositionOutput.identityDigest !== report.fullComposition.output.identityDigest
+    || fullCompositionOutput.encodedBytes !== report.fullComposition.output.encodedBytes) {
     fail("AEB_PANEL_OUTPUT_REBIND_FAILED", "Retained Bake physical outputs changed before panel authority minting.");
   }
   if (!await sourcesStillBound(root.authority, plan, source)) {
     fail("AEB_PANEL_SOURCE_CHANGED", "Retained Bake source project or package changed before panel authority minting.");
   }
-  return { package: packageOutput, fragment: fragmentOutput };
+  return { package: packageOutput, fragment: fragmentOutput, fullComposition: fullCompositionOutput };
 }
 
 async function sourcesStillBound(
@@ -796,6 +851,7 @@ function noAuthorityClaims(): NoPanelOutputAuthorityClaims {
     actualAeBakeAuthorityMinted: false,
     packageOutputAuthorityMinted: false,
     standardsValidSvgaFragmentAuthorityMinted: false,
+    fullCompositionOutputAuthorityMinted: false,
     previewOrSaveAuthorized: false
   });
 }
@@ -805,6 +861,7 @@ function actualAuthorityClaims(): ActualPanelOutputAuthorityClaims {
     actualAeBakeAuthorityMinted: true,
     packageOutputAuthorityMinted: true,
     standardsValidSvgaFragmentAuthorityMinted: true,
+    fullCompositionOutputAuthorityMinted: true,
     previewOrSaveAuthorized: false
   });
 }
