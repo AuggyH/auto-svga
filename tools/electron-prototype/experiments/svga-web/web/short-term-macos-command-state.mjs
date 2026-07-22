@@ -20,6 +20,15 @@ export function buildCommandState(input) {
   const canShowOptimizationComparison = input.activeOutput?.kind === "optimization"
     && Boolean(input.activeOutput.bytes?.byteLength);
   const canCompare = hasFile && (input.view === "preview" || input.view === "compare");
+  const saveUnavailableReason = saveBusy
+    ? "正在保存并验证输出"
+    : !hasOutput
+      ? "没有可保存的输出"
+      : !outputSaveable
+        ? "当前优化结果不可保存"
+        : "";
+  const overwriteUnavailableReason = saveUnavailableReason
+    || (input.sourceId ? "" : "当前文件不支持覆盖保存");
 
   return {
     actionStates: {
@@ -28,8 +37,8 @@ export function buildCommandState(input) {
       replay: { enabled: hasFile, reason: "请先打开 SVGA" },
       "loop-toggle": { enabled: hasFile, reason: "请先打开 SVGA" },
       "run-optimization": { enabled: canRunOptimization, reason: "没有可安全执行的优化项" },
-      "save-as": { enabled: canSaveAs, reason: hasOutput ? "正在保存并验证输出" : "没有可保存的输出" },
-      "save-overwrite": { enabled: canOverwrite, reason: input.sourceId ? "正在保存并验证输出" : "当前文件不支持覆盖保存" },
+      "save-as": { enabled: canSaveAs, reason: saveUnavailableReason },
+      "save-overwrite": { enabled: canOverwrite, reason: overwriteUnavailableReason },
       "edit-text": { enabled: canEditText, reason: "当前文件没有可预览文本元素" },
       "reset-text": { enabled: canResetText, reason: "当前没有已应用的文本预览" }
     },

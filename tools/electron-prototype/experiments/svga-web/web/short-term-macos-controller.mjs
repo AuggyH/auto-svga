@@ -558,6 +558,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       mountPrimaryPlayback: (bytes) => mountPrimaryWithAuthority(bytes, authorityIsCurrent),
       refreshRecentFiles,
       showSaveBanner,
+      onOptimizationOverwriteCommitted: () => setMode("preview"),
       authorityIsCurrent
     });
   }

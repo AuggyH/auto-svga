@@ -80,6 +80,7 @@ export async function saveShortTermActiveOutput({
   mountPrimaryPlayback,
   refreshRecentFiles,
   showSaveBanner,
+  onOptimizationOverwriteCommitted,
   authorityIsCurrent = () => true
 }) {
   if (!state.activeOutput?.bytes?.byteLength || !bridge?.saveShortTermSvgaOutput) return undefined;
@@ -137,6 +138,9 @@ export async function saveShortTermActiveOutput({
   state.model = savedModel;
   renderPreviewModel();
   renderCommandState();
+  if (outputKind === "optimization" && command === "overwrite") {
+    onOptimizationOverwriteCommitted?.();
+  }
   showSaveBanner("已保存", "");
   try {
     await refreshRecentFiles();

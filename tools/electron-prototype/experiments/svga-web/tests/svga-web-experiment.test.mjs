@@ -477,6 +477,186 @@ test("short-term failed Save and stale SVGA inspection preserve the current docu
   assert.equal(staleSaveState.saveStatus, "idle");
 });
 
+test("short-term optimization overwrite completes compare state and rebinds Preview to saved bytes", async () => {
+  const { saveShortTermActiveOutput } = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-save-surface.mjs"
+  )).href);
+  const controllerSource = await readFile(path.join(
+    experimentRoot,
+    "web/short-term-macos-controller.mjs"
+  ), "utf8");
+  const controllerFactorySource = controllerSource.slice(controllerSource.indexOf(
+    "export function createShortTermAppController"
+  ));
+  const banners = [];
+  const createController = vm.runInNewContext(`(${controllerFactorySource.replace(/^export\s+/, "")})`, {
+    applyModeButtons() {},
+    applyViewState(app, view) {
+      app.dataset.appState = view;
+    },
+    cancelAnimationFrame() {},
+    captureViewTransitionFocus() {
+      return {};
+    },
+    clearShortTermTransientOutput({ state, onOutputStateChange }) {
+      state.activeOutput = undefined;
+      state.cleanSaveAsVisible = false;
+      state.saveStatus = "idle";
+      onOutputStateChange?.();
+    },
+    focusModeViewTransition() {},
+    hidePlaybackFailureRecovery() {},
+    inspectShortTermSvga: async () => ({ status: "ready", detectedFormat: "svga" }),
+    mountShortTermPlayback({ state, key, canvas, bytes, onPlaybackStateChange }) {
+      state[`${key}Playback`]?.player?.clear?.();
+      state[`${key}Playback`] = {
+        bytes: new Uint8Array(bytes),
+        canvas,
+        playing: true,
+        player: { clear() {} }
+      };
+      onPlaybackStateChange?.();
+      return Promise.resolve(state[`${key}Playback`]);
+    },
+    refreshShortTermRecentFiles: async () => {},
+    renderShortTermCommandSurface() {
+      return "command-state";
+    },
+    renderShortTermPlaybackProgress() {},
+    renderShortTermPreviewModel() {},
+    requestAnimationFrame() {
+      return 1;
+    },
+    saveShortTermActiveOutput,
+    selectedShortTermRuntimeTextElement() {
+      return undefined;
+    },
+    setShortTermTab({ state, tab }) {
+      state.tab = tab;
+    },
+    showShortTermOutputBanner({ title, message }) {
+      banners.push({ title, message });
+    },
+    stopShortTermPlayback({ state, key }) {
+      state[`${key}Playback`]?.player?.clear?.();
+      state[`${key}Playback`] = undefined;
+    },
+    syncShortTermWindowMode(_bridge, windowMode) {
+      return windowMode;
+    },
+    Uint8Array
+  });
+  const sourceBytes = Uint8Array.from([1, 2, 3]);
+  const optimizedBytes = Uint8Array.from([4, 5, 6]);
+  const createOptimizationCompareState = () => ({
+    view: "compare",
+    tab: "optimization",
+    mode: "preview",
+    sourceBytes,
+    previewBytes: optimizedBytes,
+    sourceId: "source:optimization",
+    displayName: "optimization.svga",
+    model: { status: "ready", detectedFormat: "svga" },
+    activeOutput: {
+      kind: "optimization",
+      bytes: optimizedBytes,
+      suggestedName: "optimization-optimized.svga",
+      details: { status: "optimized" }
+    },
+    cleanSaveAsVisible: false,
+    saveStatus: "dirty",
+    compareAPlayback: { player: { clear() {} }, canvas: {} },
+    compareBPlayback: { player: { clear() {} }, canvas: {} },
+    compareBSource: { sourceId: "source:optimization-peer", bytes: Uint8Array.from([7]) },
+    textPreviewValues: {},
+    primaryPlaybackLooping: true,
+    comparePlaybackLooping: true,
+    editPlaybackLooping: true,
+    lastMenuStateSnapshot: "",
+    lastWindowModeSnapshot: ""
+  });
+  const createOptimizationController = (state, saveShortTermSvgaOutput) => createController({
+    bridge: { saveShortTermSvgaOutput },
+    nodes: {
+      app: { dataset: {} },
+      primaryCanvas: {},
+      compareCanvasA: {},
+      compareCanvasB: {}
+    },
+    state
+  });
+  const savedResult = {
+    status: "saved",
+    sourceId: "source:optimization",
+    fileName: "optimization.svga"
+  };
+  const state = createOptimizationCompareState();
+  const controller = createOptimizationController(state, async () => savedResult);
+
+  const result = await controller.handlers.saveActiveOutput("overwrite");
+
+  assert.equal(result.status, "saved");
+  assert.equal(result.outputKind, "optimization");
+  assert.equal(state.view, "preview");
+  assert.equal(state.tab, "overview");
+  assert.equal(state.mode, "preview");
+  assert.equal(state.saveStatus, "idle");
+  assert.equal(state.activeOutput, undefined);
+  assert.deepEqual(state.sourceBytes, optimizedBytes);
+  assert.deepEqual(state.previewBytes, optimizedBytes);
+  assert.equal(state.compareAPlayback, undefined);
+  assert.equal(state.compareBPlayback, undefined);
+  assert.equal(state.compareBSource, undefined);
+  assert.deepEqual(state.primaryPlayback?.bytes, optimizedBytes);
+  assert.deepEqual(banners.at(-1), { title: "已保存", message: "" });
+
+  const saveAsState = createOptimizationCompareState();
+  const saveAsResult = await createOptimizationController(
+    saveAsState,
+    async () => ({ ...savedResult, sourceId: "source:optimization-copy" })
+  ).handlers.saveActiveOutput("saveAs");
+  assert.equal(saveAsResult.status, "saved");
+  assert.equal(saveAsState.view, "compare");
+  assert.equal(saveAsState.tab, "optimization");
+  assert.equal(saveAsState.saveStatus, "idle");
+  assert.equal(saveAsState.activeOutput, undefined);
+  assert.notEqual(saveAsState.compareAPlayback, undefined);
+  assert.notEqual(saveAsState.compareBPlayback, undefined);
+  assert.notEqual(saveAsState.compareBSource, undefined);
+
+  const cancelledState = createOptimizationCompareState();
+  const cancelledOutput = cancelledState.activeOutput;
+  const cancelledSourceBytes = cancelledState.sourceBytes;
+  const cancelledResult = await createOptimizationController(
+    cancelledState,
+    async () => ({ status: "cancelled" })
+  ).handlers.saveActiveOutput("overwrite");
+  assert.equal(cancelledResult.status, "cancelled");
+  assert.equal(cancelledState.view, "compare");
+  assert.equal(cancelledState.tab, "optimization");
+  assert.equal(cancelledState.saveStatus, "idle");
+  assert.equal(cancelledState.activeOutput, cancelledOutput);
+  assert.equal(cancelledState.sourceBytes, cancelledSourceBytes);
+  assert.notEqual(cancelledState.compareAPlayback, undefined);
+  assert.notEqual(cancelledState.compareBPlayback, undefined);
+
+  const failedState = createOptimizationCompareState();
+  const failedOutput = failedState.activeOutput;
+  const failedSourceBytes = failedState.sourceBytes;
+  const failedResult = await createOptimizationController(failedState, async () => {
+    throw new Error("host write failed");
+  }).handlers.saveActiveOutput("overwrite");
+  assert.equal(failedResult.status, "failed");
+  assert.equal(failedState.view, "compare");
+  assert.equal(failedState.tab, "optimization");
+  assert.equal(failedState.saveStatus, "failed");
+  assert.equal(failedState.activeOutput, failedOutput);
+  assert.equal(failedState.sourceBytes, failedSourceBytes);
+  assert.notEqual(failedState.compareAPlayback, undefined);
+  assert.notEqual(failedState.compareBPlayback, undefined);
+});
+
 test("short-term imageKey rename stays output-bound and restores the original key through real SVGA APIs", async () => {
   const {
     beginShortTermImageKeyRename,
@@ -3983,6 +4163,39 @@ test("short-term optimization result UI fails closed for no-benefit output", asy
   });
   assert.equal(disabledState.actionStates["save-as"].enabled, false);
   assert.equal(disabledState.actionStates["save-overwrite"].enabled, false);
+  assert.equal(disabledState.actionStates["save-as"].reason, "当前优化结果不可保存");
+  assert.equal(disabledState.actionStates["save-overwrite"].reason, "当前优化结果不可保存");
+
+  const noOutputState = commandStateModel.buildCommandState({
+    sourceId: "source-id",
+    saveStatus: "idle"
+  });
+  assert.equal(noOutputState.actionStates["save-as"].reason, "没有可保存的输出");
+  assert.equal(noOutputState.actionStates["save-overwrite"].reason, "没有可保存的输出");
+
+  const validatingState = commandStateModel.buildCommandState({
+    activeOutput: {
+      kind: "optimization",
+      bytes: new Uint8Array([1]),
+      details: { status: "optimized" }
+    },
+    sourceId: "source-id",
+    saveStatus: "validating"
+  });
+  assert.equal(validatingState.actionStates["save-as"].reason, "正在保存并验证输出");
+  assert.equal(validatingState.actionStates["save-overwrite"].reason, "正在保存并验证输出");
+
+  const noSourceState = commandStateModel.buildCommandState({
+    activeOutput: {
+      kind: "optimization",
+      bytes: new Uint8Array([1]),
+      details: { status: "optimized" }
+    },
+    sourceId: "",
+    saveStatus: "idle"
+  });
+  assert.equal(noSourceState.actionStates["save-as"].enabled, true);
+  assert.equal(noSourceState.actionStates["save-overwrite"].reason, "当前文件不支持覆盖保存");
 
   const disabledHtml = compareModel.renderOptimizationCompareResultHtml({
     status: "no-benefit",
