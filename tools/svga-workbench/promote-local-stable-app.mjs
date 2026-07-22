@@ -20,6 +20,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   atomicSwapApps,
+  createCandidateRuntimeVersionAuthority,
   inspectAppBundle,
   inspectRecoveryState,
   legacyPreviousAppPathForTarget,
@@ -265,6 +266,15 @@ function readJson(filePath) {
 
 function sha256(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+function sha256ZipEntry(archivePath, entryPath) {
+  const bytes = execFileSync("/usr/bin/unzip", ["-p", archivePath, entryPath], {
+    encoding: null,
+    maxBuffer: 512 * 1024 * 1024,
+    stdio: "pipe"
+  });
+  return createHash("sha256").update(bytes).digest("hex");
 }
 
 function directorySizeBytes(directoryPath) {
@@ -966,8 +976,8 @@ function updatePromotionJournalPhase(dependencies, journalPath, journal, phase, 
   return nextJournal;
 }
 
-function inspectIfExists(appPath, inspectBundle) {
-  return existsSync(appPath) ? inspectBundle(appPath) : null;
+function inspectIfExists(appPath, inspectBundle, inspection = {}) {
+  return existsSync(appPath) ? inspectBundle(appPath, inspection) : null;
 }
 
 function classifyPromotionTransaction({ installed, previous, legacyPrevious, stage, expected }) {
@@ -993,12 +1003,12 @@ function classifyPromotionTransaction({ installed, previous, legacyPrevious, sta
 }
 
 function inspectPromotionTransaction(journal, inspectBundle) {
-  const installed = inspectIfExists(journal.target, inspectBundle);
-  const previous = inspectIfExists(journal.backupTarget, inspectBundle);
+  const installed = inspectIfExists(journal.target, inspectBundle, { runtimeRole: "installed" });
+  const previous = inspectIfExists(journal.backupTarget, inspectBundle, { runtimeRole: "previous" });
   const legacyPrevious = journal.legacyBackupTarget
-    ? inspectIfExists(journal.legacyBackupTarget, inspectBundle)
+    ? inspectIfExists(journal.legacyBackupTarget, inspectBundle, { runtimeRole: "previous" })
     : null;
-  const stage = inspectIfExists(journal.stagedApp, inspectBundle);
+  const stage = inspectIfExists(journal.stagedApp, inspectBundle, { runtimeRole: "installed" });
   return {
     installed,
     previous,
@@ -1067,11 +1077,27 @@ function loadAndValidatePackage(options) {
   const head = git(["rev-parse", "HEAD"]);
   const sourceApp = path.resolve(repoRoot, manifest.packagePath ?? "");
   const sourceArchive = path.resolve(repoRoot, manifest.archivePath ?? "");
+  const sourceAppAsar = path.join(sourceApp, "Contents/Resources/app.asar");
+  const expectedProofPath = path.relative(repoRoot, proofPath);
+  const expectedAsarEvidencePath = path.join(
+    manifest.packagePath ?? "",
+    "Contents/Resources/app.asar"
+  ).split(path.sep).join("/");
 
   const errors = [];
   if (manifest.appName !== "Auto SVGA") errors.push("manifest appName is not Auto SVGA");
   if (manifest.bundleDisplayName !== "Auto SVGA") errors.push("manifest display name is not Auto SVGA");
   if (manifest.buildCommit !== head) errors.push(`manifest buildCommit ${manifest.buildCommit} does not match HEAD ${head}`);
+  if (proof.buildCommit !== head) errors.push(`proof buildCommit ${proof.buildCommit} does not match HEAD ${head}`);
+  if (manifest.proofManifestPath !== expectedProofPath) {
+    errors.push(`manifest proof path ${manifest.proofManifestPath ?? "missing"} does not match ${expectedProofPath}`);
+  }
+  if (manifest.packagedRuntimeClosure?.asarPath !== expectedAsarEvidencePath) {
+    errors.push("manifest runtime closure app.asar path does not match packagePath");
+  }
+  if (proof.packagingScaffold?.packagedRuntimeClosure?.asarPath !== expectedAsarEvidencePath) {
+    errors.push("proof runtime closure app.asar path does not match packagePath");
+  }
   if (manifest.productionApproved !== false) errors.push("manifest productionApproved must be false for D0 internal packages");
   if (manifest.distribution?.internalUseOnly !== true) errors.push("manifest distribution.internalUseOnly must be true");
   if (manifest.distribution?.unsigned !== true) errors.push("manifest distribution.unsigned must be true");
@@ -1083,6 +1109,29 @@ function loadAndValidatePackage(options) {
   if (existsSync(sourceArchive) && manifest.sha256 && sha256(sourceArchive) !== manifest.sha256) {
     errors.push("manifest archive sha256 does not match the archive on disk");
   }
+  if (!existsSync(sourceAppAsar)) errors.push(`source app.asar missing: ${sourceAppAsar}`);
+
+  let candidateRuntimeAuthority;
+  if (errors.length === 0) {
+    try {
+      const sourceAppAsarSha256 = sha256(sourceAppAsar);
+      const archivedAppAsarSha256 = sha256ZipEntry(
+        sourceArchive,
+        `${manifest.appName}.app/Contents/Resources/app.asar`
+      );
+      if (archivedAppAsarSha256 !== sourceAppAsarSha256) {
+        throw new Error("source app.asar sha256 does not match manifest-bound archive app.asar");
+      }
+      candidateRuntimeAuthority = createCandidateRuntimeVersionAuthority({
+        buildCommit: head,
+        appAsarSha256: sourceAppAsarSha256,
+        manifestRuntimeClosure: manifest.packagedRuntimeClosure,
+        proofRuntimeClosure: proof.packagingScaffold.packagedRuntimeClosure
+      });
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   if (errors.length > 0) {
     const hint = options.useExisting
@@ -1092,7 +1141,11 @@ function loadAndValidatePackage(options) {
   }
 
   validateAppIdentity(sourceApp);
-  return { manifest, proof, sourceApp, sourceArchive, head };
+  inspectAppBundle(sourceApp, {
+    runtimeRole: "candidate",
+    runtimeAuthorities: [candidateRuntimeAuthority]
+  });
+  return { manifest, proof, sourceApp, sourceArchive, head, candidateRuntimeAuthority };
 }
 
 function validateAppIdentity(appBundle) {
@@ -1211,7 +1264,7 @@ function restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPat
     throw new Error("Promotion journal marked legacy previous migrated without a legacy backup target");
   }
   if (existsSync(journal.legacyBackupTarget)) {
-    const legacyIdentity = dependencies.inspectBundle(journal.legacyBackupTarget);
+    const legacyIdentity = dependencies.inspectBundle(journal.legacyBackupTarget, { runtimeRole: "previous" });
     if (!appPayloadMatches(legacyIdentity, journal.expected.legacyPreviousBefore)) {
       throw new Error("Existing legacy previous app does not match journal authority");
     }
@@ -1231,7 +1284,7 @@ function restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPat
   if (!existsSync(journal.backupTarget)) {
     throw new Error(`Migrated legacy previous bundle is missing: ${journal.backupTarget}`);
   }
-  const migratedIdentity = dependencies.inspectBundle(journal.backupTarget);
+  const migratedIdentity = dependencies.inspectBundle(journal.backupTarget, { runtimeRole: "previous" });
   if (!appPayloadMatches(migratedIdentity, journal.expected.previousBefore)
     || !appPayloadMatches(migratedIdentity, journal.expected.legacyPreviousBefore)
     || !appRootInodeMatches(migratedIdentity, journal.expected.previousBefore)
@@ -1240,7 +1293,7 @@ function restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPat
   }
   journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "restoring-legacy-previous");
   dependencies.renameDurably(journal.backupTarget, journal.legacyBackupTarget);
-  const restoredIdentity = dependencies.inspectBundle(journal.legacyBackupTarget);
+  const restoredIdentity = dependencies.inspectBundle(journal.legacyBackupTarget, { runtimeRole: "previous" });
   if (!appPayloadMatches(restoredIdentity, journal.expected.legacyPreviousBefore)
     || !appRootInodeMatches(restoredIdentity, journal.expected.legacyPreviousBefore)) {
     throw new Error("Restored legacy previous app does not match journal authority");
@@ -1310,7 +1363,7 @@ export function recoverPromotionTransaction({
   return { disposition: "completed-after-interrupted-exchange", mutationPerformed: true, manifestPath: journal.manifestPath };
 }
 
-export function installApp({ sourceApp, target, dependencies = {} }) {
+export function installApp({ sourceApp, target, candidateRuntimeAuthority, dependencies = {} }) {
   const resolvedDependencies = promotionInstallDependencies(dependencies);
   const targetParent = path.dirname(target);
   const backupTarget = previousBackupPathForTarget(target);
@@ -1330,7 +1383,11 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     assertNoPromotionResidue(targetParent);
     assertNoPromotionTransactionResidue({ journalPath, manifestPath: exchangeManifestPath });
 
-    const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp);
+    const candidateInspection = {
+      runtimeRole: "candidate",
+      runtimeAuthorities: candidateRuntimeAuthority ? [candidateRuntimeAuthority] : undefined
+    };
+    const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp, candidateInspection);
     const installStatePlan = resolvedDependencies.planLaunchServicesInstallState({
       target,
       backupTarget,
@@ -1358,16 +1415,18 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     resolvedDependencies.copyBundle(sourceApp, stagedApp);
     resolvedDependencies.clearQuarantine(stagedApp);
     resolvedDependencies.validateIdentity(stagedApp);
-    const stagedIdentity = resolvedDependencies.inspectBundle(stagedApp);
+    const stagedIdentity = resolvedDependencies.inspectBundle(stagedApp, candidateInspection);
     assertSameAppPayload(sourceIdentity, stagedIdentity, "Staged candidate");
 
     resolvedDependencies.checkpoint("after-staged-candidate-validation");
-    const installedBefore = existsSync(target) ? resolvedDependencies.inspectBundle(target) : null;
+    const installedBefore = existsSync(target)
+      ? resolvedDependencies.inspectBundle(target, { runtimeRole: "installed" })
+      : null;
     const legacyPreviousBefore = installStatePlan.migrateLegacyPrevious
-      ? resolvedDependencies.inspectBundle(legacyBackupTarget)
+      ? resolvedDependencies.inspectBundle(legacyBackupTarget, { runtimeRole: "previous" })
       : null;
     let previousBefore = existsSync(backupTarget)
-      ? resolvedDependencies.inspectBundle(backupTarget)
+      ? resolvedDependencies.inspectBundle(backupTarget, { runtimeRole: "previous" })
       : legacyPreviousBefore;
     const remediation = {
       targetParent,
@@ -1459,7 +1518,7 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       resolvedDependencies.checkpoint("before-legacy-previous-migration");
       resolvedDependencies.renameDurably(legacyBackupTarget, backupTarget);
       resolvedDependencies.checkpoint("after-legacy-previous-migration");
-      const migratedPrevious = resolvedDependencies.inspectBundle(backupTarget);
+      const migratedPrevious = resolvedDependencies.inspectBundle(backupTarget, { runtimeRole: "previous" });
       assertSameAppPayload(legacyPreviousBefore, migratedPrevious, "Migrated legacy previous bundle");
       previousBefore = migratedPrevious;
       remediation.legacyPrevious.migrated = true;
@@ -1483,8 +1542,8 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       });
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "first-exchange-complete");
       resolvedDependencies.checkpoint("after-first-exchange");
-      const installedAfter = resolvedDependencies.inspectBundle(target);
-      const displacedInstalled = resolvedDependencies.inspectBundle(stagedApp);
+      const installedAfter = resolvedDependencies.inspectBundle(target, candidateInspection);
+      const displacedInstalled = resolvedDependencies.inspectBundle(stagedApp, { runtimeRole: "installed" });
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after promotion");
       assertSameAppPayload(installedBefore, displacedInstalled, "Displaced installed app");
 
@@ -1499,14 +1558,14 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       }
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
       resolvedDependencies.checkpoint("after-second-exchange");
-      const previousAfter = resolvedDependencies.inspectBundle(backupTarget);
+      const previousAfter = resolvedDependencies.inspectBundle(backupTarget, { runtimeRole: "previous" });
       assertSameAppPayload(installedBefore, previousAfter, "Previous app after promotion");
     } else {
       resolvedDependencies.checkpoint("before-first-install");
       renameSync(stagedApp, target);
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
       resolvedDependencies.checkpoint("after-first-install");
-      const installedAfter = resolvedDependencies.inspectBundle(target);
+      const installedAfter = resolvedDependencies.inspectBundle(target, candidateInspection);
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after first promotion");
     }
 
@@ -1566,6 +1625,7 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
     console.log(JSON.stringify(inspectRecoveryState({
       target: options.target,
       candidateApp: packageInfo.sourceApp,
+      candidateRuntimeAuthority: packageInfo.candidateRuntimeAuthority,
       ...rollbackPaths
     }), null, 2));
     return;
@@ -1600,7 +1660,11 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
   }
 
   const packageInfo = loadAndValidatePackage(options);
-  const installInfo = installApp({ sourceApp: packageInfo.sourceApp, target: options.target });
+  const installInfo = installApp({
+    sourceApp: packageInfo.sourceApp,
+    target: options.target,
+    candidateRuntimeAuthority: packageInfo.candidateRuntimeAuthority
+  });
 
   const summary = {
     schemaVersion: 1,

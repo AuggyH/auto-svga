@@ -20,8 +20,12 @@ import path from "node:path";
 import {
   atomicSwapApps,
   classifyRollbackState,
+  createCandidateRuntimeVersionAuthority,
+  currentSourceRuntimeVersionAuthority,
   inspectAppBundle,
   inspectRecoveryState,
+  legacyLocalRuntimeVersionAuthority,
+  resolveRuntimeVersionAuthority,
   recoverRollbackTransaction,
   rollbackPreviousApp
 } from "./local-stable-recovery.mjs";
@@ -39,6 +43,38 @@ import {
 const installedBuild = "a".repeat(40);
 const previousBuild = "b".repeat(40);
 const candidateBuild = "c".repeat(40);
+const candidateAppAsarSha256 = "d".repeat(64);
+
+function runtimeClosureEvidence(buildCommit, dependencyVersions = currentSourceRuntimeVersionAuthority.dependencyVersions) {
+  return {
+    validated: true,
+    buildInfo: {
+      validated: true,
+      buildCommit,
+      source: "package-internal-trial",
+      error: null
+    },
+    missingEntries: [],
+    dependencies: Object.entries(dependencyVersions).map(([packageName, version]) => ({
+      packageName,
+      expectedVersion: null,
+      version,
+      validated: true,
+      error: null
+    })),
+    findings: []
+  };
+}
+
+function candidateRuntimeAuthority(overrides = {}) {
+  return createCandidateRuntimeVersionAuthority({
+    buildCommit: candidateBuild,
+    appAsarSha256: candidateAppAsarSha256,
+    manifestRuntimeClosure: runtimeClosureEvidence(candidateBuild),
+    proofRuntimeClosure: runtimeClosureEvidence(candidateBuild),
+    ...overrides
+  });
+}
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -358,6 +394,106 @@ test("CLI parses separate inspect, rollback, and recovery modes with exact bindi
   assert.throws(() => parseArgs(["--skip-register"]), /LaunchServices postcheck/);
 });
 
+test("runtime closure uses role-aware legacy and source-bound candidate version authorities", () => {
+  assert.equal(legacyLocalRuntimeVersionAuthority.dependencyVersions.protobufjs, "8.6.4");
+  assert.equal(currentSourceRuntimeVersionAuthority.dependencyVersions.protobufjs, "8.6.6");
+
+  for (const runtimeRole of ["installed", "previous"]) {
+    const authority = resolveRuntimeVersionAuthority({
+      buildInfo: { buildCommit: installedBuild },
+      appAsarSha256: "1".repeat(64),
+      dependencyVersions: legacyLocalRuntimeVersionAuthority.dependencyVersions,
+      runtimeRole
+    });
+    assert.equal(authority.authorityId, legacyLocalRuntimeVersionAuthority.authorityId);
+    assert.equal(authority.runtimeRole, runtimeRole);
+  }
+
+  assert.throws(() => resolveRuntimeVersionAuthority({
+    buildInfo: { buildCommit: candidateBuild },
+    appAsarSha256: candidateAppAsarSha256,
+    dependencyVersions: currentSourceRuntimeVersionAuthority.dependencyVersions,
+    runtimeRole: "candidate"
+  }), /requires explicit manifest\/source-bound version authority/);
+
+  const candidateAuthority = candidateRuntimeAuthority();
+  const resolvedCandidate = resolveRuntimeVersionAuthority({
+    buildInfo: { buildCommit: candidateBuild },
+    appAsarSha256: candidateAppAsarSha256,
+    dependencyVersions: currentSourceRuntimeVersionAuthority.dependencyVersions,
+    runtimeRole: "candidate",
+    runtimeAuthorities: [candidateAuthority]
+  });
+  assert.equal(resolvedCandidate.authorityId, `candidate-package-${candidateBuild}`);
+  assert.equal(resolvedCandidate.dependencyVersions.protobufjs, "8.6.6");
+
+  for (const runtimeRole of ["installed", "previous"]) {
+    assert.throws(() => resolveRuntimeVersionAuthority({
+      buildInfo: { buildCommit: candidateBuild },
+      appAsarSha256: candidateAppAsarSha256,
+      dependencyVersions: currentSourceRuntimeVersionAuthority.dependencyVersions,
+      runtimeRole,
+      runtimeAuthorities: [candidateAuthority]
+    }), new RegExp(`does not allow runtime role ${runtimeRole}`));
+  }
+
+  assert.throws(() => resolveRuntimeVersionAuthority({
+    buildInfo: { buildCommit: installedBuild },
+    appAsarSha256: "1".repeat(64),
+    dependencyVersions: legacyLocalRuntimeVersionAuthority.dependencyVersions,
+    runtimeRole: "candidate",
+    runtimeAuthorities: [legacyLocalRuntimeVersionAuthority]
+  }), /does not allow runtime role candidate/);
+
+  assert.throws(() => resolveRuntimeVersionAuthority({
+    buildInfo: { buildCommit: candidateBuild },
+    appAsarSha256: candidateAppAsarSha256,
+    dependencyVersions: legacyLocalRuntimeVersionAuthority.dependencyVersions,
+    runtimeRole: "candidate",
+    runtimeAuthorities: [candidateAuthority]
+  }), /protobufjs version 8\.6\.4 does not match 8\.6\.6/);
+
+  assert.throws(() => resolveRuntimeVersionAuthority({
+    buildInfo: { buildCommit: installedBuild },
+    appAsarSha256: "1".repeat(64),
+    dependencyVersions: {
+      ...legacyLocalRuntimeVersionAuthority.dependencyVersions,
+      protobufjs: "9.0.0"
+    },
+    runtimeRole: "installed"
+  }), /protobufjs version 9\.0\.0/);
+});
+
+test("candidate authority rejects manifest, proof, buildCommit, and app.asar identity drift", () => {
+  const proofVersionDrift = runtimeClosureEvidence(candidateBuild, {
+    ...currentSourceRuntimeVersionAuthority.dependencyVersions,
+    protobufjs: "8.6.4"
+  });
+  assert.throws(() => candidateRuntimeAuthority({
+    proofRuntimeClosure: proofVersionDrift
+  }), /manifest\/proof disagree on protobufjs/);
+
+  assert.throws(() => candidateRuntimeAuthority({
+    proofRuntimeClosure: runtimeClosureEvidence(previousBuild)
+  }), /proof packagedRuntimeClosure buildCommit/);
+
+  const authority = candidateRuntimeAuthority();
+  assert.throws(() => resolveRuntimeVersionAuthority({
+    buildInfo: { buildCommit: previousBuild },
+    appAsarSha256: candidateAppAsarSha256,
+    dependencyVersions: currentSourceRuntimeVersionAuthority.dependencyVersions,
+    runtimeRole: "candidate",
+    runtimeAuthorities: [authority]
+  }), /buildCommit/);
+  assert.throws(() => resolveRuntimeVersionAuthority({
+    buildInfo: { buildCommit: candidateBuild },
+    appAsarSha256: "e".repeat(64),
+    dependencyVersions: currentSourceRuntimeVersionAuthority.dependencyVersions,
+    runtimeRole: "candidate",
+    runtimeAuthorities: [authority]
+  }), /app\.asar sha256/);
+});
+
 test("LaunchServices dump parser extracts same-bundle-id paths and missing-node records", () => {
   const bundleIdentifier = "local.auto-svga.internal-prototype";
   const dump = [
@@ -463,10 +599,15 @@ test("inspect is behaviorally read-only for installed, previous, and candidate a
   const fixture = makeRollbackFixture();
   try {
     const before = snapshotTree(fixture.root);
+    const inspectedRoles = [];
     const report = inspectRecoveryState({
       target: fixture.target,
       candidateApp: fixture.candidate,
-      inspectBundle: fixtureInspector,
+      candidateRuntimeAuthority: candidateRuntimeAuthority(),
+      inspectBundle: (appPath, inspection) => {
+        inspectedRoles.push([path.basename(appPath), inspection.runtimeRole, inspection.runtimeAuthorities?.length ?? 0]);
+        return fixtureInspector(appPath);
+      },
       now: () => new Date("2026-07-15T00:00:00.000Z")
     });
     const after = snapshotTree(fixture.root);
@@ -475,6 +616,11 @@ test("inspect is behaviorally read-only for installed, previous, and candidate a
     assert.equal(report.installed.buildInfo.buildCommit, installedBuild);
     assert.equal(report.previous.buildInfo.buildCommit, previousBuild);
     assert.equal(report.candidate.buildInfo.buildCommit, candidateBuild);
+    assert.deepEqual(inspectedRoles, [
+      ["Auto SVGA.app", "installed", 0],
+      ["Auto SVGA.previous.bundle", "previous", 0],
+      ["Candidate.app", "candidate", 1]
+    ]);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }

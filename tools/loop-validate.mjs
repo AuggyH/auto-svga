@@ -129,6 +129,15 @@ export function createLoopValidationSteps() {
       }
     },
     {
+      id: "promotion-runtime-closure-tests",
+      command: "node --test tools/svga-workbench/promote-local-stable-app.test.mjs",
+      required: true,
+      run: {
+        cmd: process.execPath,
+        args: ["--test", "tools/svga-workbench/promote-local-stable-app.test.mjs"]
+      }
+    },
+    {
       id: "git-diff-check",
       command: "git diff --check",
       required: true,
