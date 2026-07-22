@@ -35,10 +35,12 @@ import {
   validateCandidatePackageDeclarations
 } from "./local-stable-recovery.mjs";
 import {
-  installApp,
+  installApp as directInstallApp,
+  installAppWithTestDependencies as installApp,
   launchServicesDumpMaxBufferBytes,
   parseLaunchServicesDump,
   parseArgs,
+  planLaunchServicesInstallState,
   readLaunchServicesDump,
   recoverPromotionCommand,
   recoverPromotionTransaction,
@@ -273,6 +275,21 @@ function swapFixtureDirectories(left, right) {
   renameSync(temporary, right);
 }
 
+function writeFixtureJsonExclusive(filePath, value) {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, {
+    encoding: "utf8",
+    flag: "wx",
+    mode: 0o600
+  });
+}
+
+function replaceFixtureJson(filePath, value) {
+  const temporaryPath = `${filePath}.next`;
+  writeFixtureJsonExclusive(temporaryPath, value);
+  renameSync(temporaryPath, filePath);
+}
+
 function promoteFixtureDependencies(fixture, overrides = {}) {
   const stagingRoot = path.join(fixture.root, ".Auto-SVGA.promote-ASV-TEST-PROMOTION-001.stage.app");
   const promotionJournalPath = path.join(fixture.root, "evidence", "promotion-journal.json");
@@ -305,18 +322,28 @@ function promoteFixtureDependencies(fixture, overrides = {}) {
       assert.equal(operationId, "ASV-TEST-PROMOTION-001");
       return stagingRoot;
     },
+    fsyncDirectory: () => {},
+    listDirectory: readdirSync,
+    now: () => new Date("2026-07-15T00:00:00.000Z"),
+    planLaunchServicesInstallState,
     promotionTransactionPaths: () => ({
       journalPath: promotionJournalPath,
       manifestPath: promotionManifestPath
     }),
     preflightDestination: () => {},
     atomicSwap: (left, right) => swapFixtureDirectories(left, right),
+    readBundleIdentifier: fixtureBundleIdentifier,
     readXattr: () => null,
     clearXattr: () => {},
     writeXattr: () => {},
+    removeDurably: (filePath) => rmSync(filePath, { recursive: true, force: false }),
     renameDurably: (source, destination) => swapFixtureRename(source, destination),
+    updateJournal: replaceFixtureJson,
+    writeJournalInitial: writeFixtureJsonExclusive,
+    writeManifestExclusive: writeFixtureJsonExclusive,
     launchServicesRecordSettleAttempts: 2,
     launchServicesRecordSettleDelayMs: 0,
+    checkpoint: () => {},
     sleep: () => {},
     stagingRoot,
     promotionJournalPath,
@@ -587,18 +614,99 @@ test("candidate capability cannot be acquired from an exported loader or reused 
 
     const reusableCandidateIdentity = fixtureInspector(fixture.candidate);
     reusableCandidateIdentity.runtimeClosure.versionAuthority = { runtimeRole: "candidate" };
-    assert.throws(() => installApp({
+    assert.throws(() => directInstallApp({
       sourceApp: fixture.candidate,
       target: fixture.target,
       candidateIdentity: reusableCandidateIdentity,
       dependencies: promoteFixtureDependencies(fixture)
     }), /Caller-supplied candidate identity is not accepted/);
-    assert.throws(() => installApp({
+    assert.throws(() => directInstallApp({
       sourceApp: fixture.candidate,
       target: fixture.target
-    }), /production must use the fixed-package operation/);
+    }), /private fixed-package production operation/);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("direct installApp rejects a partial inspector before source inspection or production mutation", async () => {
+  const promotionModule = await import("./promote-local-stable-app.mjs");
+  assert.equal(promotionModule.installAppTransaction, undefined);
+  assert.equal(promotionModule.createFixedPackageInstallOperation, undefined);
+
+  const root = createFixtureRoot();
+  const targetParent = path.join(root, "empty-target-parent");
+  const target = path.join(targetParent, "Auto SVGA.app");
+  const missingSource = path.join(root, "missing-but-caller-selected.app");
+  mkdirSync(targetParent, { recursive: true });
+  const before = snapshotTree(targetParent);
+
+  try {
+    assert.throws(() => directInstallApp({
+      sourceApp: missingSource,
+      target,
+      dependencies: { inspectBundle: inspectAppBundle }
+    }), /fixed-package production operation/);
+    assert.deepEqual(snapshotTree(targetParent), before, "the direct partial call must leave the target parent untouched");
+
+    const calls = {
+      sourceInspection: 0,
+      preflight: 0,
+      copy: 0,
+      quarantine: 0,
+      journal: 0,
+      launchServices: 0,
+      exchange: 0,
+      cleanup: 0,
+      validation: 0
+    };
+    const failIfCalled = (name) => () => {
+      calls[name] += 1;
+      throw new Error(`unexpected ${name} side effect`);
+    };
+
+    assert.throws(() => installApp({
+      sourceApp: missingSource,
+      target,
+      dependencies: { inspectBundle: failIfCalled("sourceInspection") }
+    }), /Complete isolated test install dependencies.*production defaults are not available/);
+
+    assert.throws(() => directInstallApp({
+      sourceApp: missingSource,
+      target,
+      dependencies: {
+        inspectBundle: failIfCalled("sourceInspection"),
+        preflightDestination: failIfCalled("preflight"),
+        copyBundle: failIfCalled("copy"),
+        clearQuarantine: failIfCalled("quarantine"),
+        clearXattr: failIfCalled("quarantine"),
+        writeXattr: failIfCalled("quarantine"),
+        writeJournalInitial: failIfCalled("journal"),
+        updateJournal: failIfCalled("journal"),
+        writeManifestExclusive: failIfCalled("journal"),
+        readLaunchServicesRecords: failIfCalled("launchServices"),
+        registerLaunchServices: failIfCalled("launchServices"),
+        unregisterLaunchServicesRecord: failIfCalled("launchServices"),
+        atomicSwap: failIfCalled("exchange"),
+        renameDurably: failIfCalled("exchange"),
+        removeDurably: failIfCalled("cleanup"),
+        validateIdentity: failIfCalled("validation")
+      }
+    }), /fixed-package production operation/);
+    assert.deepEqual(calls, {
+      sourceInspection: 0,
+      preflight: 0,
+      copy: 0,
+      quarantine: 0,
+      journal: 0,
+      launchServices: 0,
+      exchange: 0,
+      cleanup: 0,
+      validation: 0
+    });
+    assert.deepEqual(snapshotTree(targetParent), before, "no direct-call side effect may alter the target parent");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

@@ -41,6 +41,39 @@ const launchServicesRegisterTool = "/System/Library/Frameworks/CoreServices.fram
 export const launchServicesDumpMaxBufferBytes = 64 * 1024 * 1024;
 const launchServicesRecordSettleAttempts = 6;
 const launchServicesRecordSettleDelayMs = 250;
+const fixedPackageInstallOperations = new WeakMap();
+const testInstallDependencyContract = Object.freeze({
+  atomicSwap: "function",
+  checkpoint: "function",
+  clearQuarantine: "function",
+  clearXattr: "function",
+  copyBundle: "function",
+  createOperationId: "function",
+  createStagedAppPath: "function",
+  fsyncDirectory: "function",
+  inspectBundle: "function",
+  launchServicesRecordSettleAttempts: "number",
+  launchServicesRecordSettleDelayMs: "number",
+  listDirectory: "function",
+  now: "function",
+  pathExists: "function",
+  planLaunchServicesInstallState: "function",
+  preflightDestination: "function",
+  promotionTransactionPaths: "function",
+  readBundleIdentifier: "function",
+  readLaunchServicesRecords: "function",
+  readXattr: "function",
+  registerLaunchServices: "function",
+  removeDurably: "function",
+  renameDurably: "function",
+  sleep: "function",
+  unregisterLaunchServicesRecord: "function",
+  updateJournal: "function",
+  validateIdentity: "function",
+  writeJournalInitial: "function",
+  writeManifestExclusive: "function",
+  writeXattr: "function"
+});
 
 function usage() {
   return [
@@ -704,7 +737,7 @@ function assertLaunchServicesUniqueTarget({
   };
 }
 
-function planLaunchServicesInstallState({
+export function planLaunchServicesInstallState({
   target,
   backupTarget = previousBackupPathForTarget(target),
   legacyBackupTarget = legacyPreviousAppPathForTarget(target),
@@ -1282,8 +1315,8 @@ export function recoverPromotionTransaction({
   return { disposition: "completed-after-interrupted-exchange", mutationPerformed: true, manifestPath: journal.manifestPath };
 }
 
-function installAppTransaction({ sourceApp, target, candidateIdentity, dependencies = {} }) {
-  const resolvedDependencies = promotionInstallDependencies(dependencies);
+function executeInstallAppTransaction({ sourceApp, target, dependencies, verifySourceIdentity }) {
+  const resolvedDependencies = dependencies;
   const targetParent = path.dirname(target);
   const backupTarget = previousBackupPathForTarget(target);
   const legacyBackupTarget = legacyPreviousAppPathForTarget(target);
@@ -1304,18 +1337,7 @@ function installAppTransaction({ sourceApp, target, candidateIdentity, dependenc
 
     const candidateInspection = { runtimeRole: "candidate-copy" };
     const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp, candidateInspection);
-    if (candidateIdentity) {
-      if (candidateIdentity.appPath !== path.resolve(sourceApp)) {
-        throw new Error("Fixed candidate identity does not match the promotion source App path");
-      }
-      if (candidateIdentity.runtimeClosure?.versionAuthority?.runtimeRole !== "candidate") {
-        throw new Error("Fixed candidate identity is not authorized for the candidate runtime role");
-      }
-      assertSameAppPayload(candidateIdentity, sourceIdentity, "Promotion source candidate");
-      if (candidateIdentity.stabilityFingerprint !== sourceIdentity.stabilityFingerprint) {
-        throw new Error("Promotion source candidate changed after fixed-package inspection");
-      }
-    }
+    verifySourceIdentity(sourceIdentity);
     const installStatePlan = resolvedDependencies.planLaunchServicesInstallState({
       target,
       backupTarget,
@@ -1482,7 +1504,7 @@ function installAppTransaction({ sourceApp, target, candidateIdentity, dependenc
           rightObject: previousBefore.rootObject
         });
       } else {
-        renameSync(stagedApp, backupTarget);
+        resolvedDependencies.renameDurably(stagedApp, backupTarget);
       }
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
       resolvedDependencies.checkpoint("after-second-exchange");
@@ -1490,7 +1512,7 @@ function installAppTransaction({ sourceApp, target, candidateIdentity, dependenc
       assertSameAppPayload(installedBefore, previousAfter, "Previous app after promotion");
     } else {
       resolvedDependencies.checkpoint("before-first-install");
-      renameSync(stagedApp, target);
+      resolvedDependencies.renameDurably(stagedApp, target);
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
       resolvedDependencies.checkpoint("after-first-install");
       const installedAfter = resolvedDependencies.inspectBundle(target, { runtimeRole: "installed" });
@@ -1510,28 +1532,94 @@ function installAppTransaction({ sourceApp, target, candidateIdentity, dependenc
       launchServicesPostcheck
     };
   } finally {
-    if (stagingRoot && !journalCreated && !transactionCompleted) {
-      rmSync(stagingRoot, { recursive: true, force: true });
+    if (stagingRoot && !journalCreated && !transactionCompleted && existsSync(stagingRoot)) {
+      resolvedDependencies.removeDurably(stagingRoot);
     }
   }
 }
 
-export function installApp({ candidateIdentity, dependencies, ...options }) {
+function isolatedTestInstallDependencies(dependencies) {
+  if (!dependencies || typeof dependencies !== "object" || Array.isArray(dependencies)) {
+    throw new Error("Complete isolated test install dependencies are required; production defaults are not available");
+  }
+  const invalid = [];
+  for (const [name, expectedType] of Object.entries(testInstallDependencyContract)) {
+    const descriptor = Object.getOwnPropertyDescriptor(dependencies, name);
+    if (!descriptor || !("value" in descriptor) || typeof descriptor.value !== expectedType) {
+      invalid.push(name);
+    }
+  }
+  if (invalid.length > 0) {
+    throw new Error(
+      `Complete isolated test install dependencies are required; production defaults are not available: ${invalid.join(", ")}`
+    );
+  }
+  return dependencies;
+}
+
+function createFixedPackageInstallOperation(packageInfo) {
+  const operation = Object.freeze({});
+  fixedPackageInstallOperations.set(operation, Object.freeze({
+    sourceApp: packageInfo.sourceApp,
+    candidateIdentity: packageInfo.candidateIdentity
+  }));
+  return operation;
+}
+
+function consumeFixedPackageInstallOperation(operation) {
+  const binding = fixedPackageInstallOperations.get(operation);
+  if (!binding) {
+    throw new Error("Promotion mutation requires a live private fixed-package production operation");
+  }
+  fixedPackageInstallOperations.delete(operation);
+  return binding;
+}
+
+function installAppTransaction({ fixedPackageOperation, target }) {
+  const { sourceApp, candidateIdentity } = consumeFixedPackageInstallOperation(fixedPackageOperation);
+  if (candidateIdentity?.appPath !== path.resolve(sourceApp)) {
+    throw new Error("Private fixed candidate identity does not match the promotion source App path");
+  }
+  if (candidateIdentity.runtimeClosure?.versionAuthority?.runtimeRole !== "candidate") {
+    throw new Error("Private fixed candidate identity is not authorized for the candidate runtime role");
+  }
+  return executeInstallAppTransaction({
+    sourceApp,
+    target,
+    dependencies: promotionInstallDependencies(),
+    verifySourceIdentity: (sourceIdentity) => {
+      assertSameAppPayload(candidateIdentity, sourceIdentity, "Promotion source candidate");
+      if (candidateIdentity.stabilityFingerprint !== sourceIdentity.stabilityFingerprint) {
+        throw new Error("Promotion source candidate changed after fixed-package inspection");
+      }
+    }
+  });
+}
+
+export function installApp({ candidateIdentity } = {}) {
   if (candidateIdentity !== undefined) {
     throw new Error("Caller-supplied candidate identity is not accepted by the promotion transaction");
   }
-  if (!dependencies?.inspectBundle) {
-    throw new Error("Direct installApp use requires an explicit test inspector; production must use the fixed-package operation");
+  throw new Error("Direct installApp is disabled; production mutation requires a private fixed-package production operation");
+}
+
+export function installAppWithTestDependencies({ candidateIdentity, dependencies, ...options }) {
+  if (candidateIdentity !== undefined) {
+    throw new Error("Caller-supplied candidate identity is not accepted by the isolated test transaction");
   }
-  return installAppTransaction({ ...options, dependencies });
+  return executeInstallAppTransaction({
+    ...options,
+    dependencies: isolatedTestInstallDependencies(dependencies),
+    verifySourceIdentity: () => {}
+  });
 }
 
 function installFixedTrialPackage(options) {
   const packageInfo = loadAndValidatePackage(options);
+  const fixedPackageOperation = createFixedPackageInstallOperation(packageInfo);
   const installInfo = installAppTransaction({
-    sourceApp: packageInfo.sourceApp,
     target: options.target,
-    candidateIdentity: packageInfo.candidateIdentity
+    fixedPackageOperation
   });
   return { packageInfo, installInfo };
 }
