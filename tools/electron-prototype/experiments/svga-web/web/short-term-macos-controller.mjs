@@ -90,6 +90,7 @@ import {
 import {
   applyShortTermRuntimeTextPreview,
   focusShortTermRuntimeTextPreviewInput,
+  restoreShortTermRuntimeTextPreviews,
   resetShortTermRuntimeTextPreview
 } from "./short-term-macos-runtime-text-surface.mjs";
 import {
@@ -142,6 +143,11 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     if (!authorityIsCurrent()) {
       stopPlayback("primary");
       return undefined;
+    }
+    if (!restoreShortTermRuntimeTextPreviews(state)) {
+      state.textPreviewValues = {};
+      state.textPreview = "";
+      showSaveBanner("文本预览未恢复。", "播放器未能把运行时文本绑定到原 imageKey；源文件没有被修改。");
     }
     return playback;
   }
@@ -226,7 +232,10 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     setTab("overview");
     setView("preview");
     focusModeViewTransition(nodes, mode, focusContext);
-    mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes).catch(showPlaybackFailure);
+    mountPrimaryWithAuthority(
+      state.previewBytes ?? state.sourceBytes,
+      currentSourceAuthority()
+    ).catch(showPlaybackFailure);
   }
 
   async function openFromHostDialog() {
@@ -531,7 +540,8 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       state,
       textKey,
       value,
-      renderCommandState
+      renderCommandState,
+      showSaveBanner
     });
   }
 
@@ -704,7 +714,10 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   async function reloadPrimaryPlayback() {
     if (!state.sourceBytes) return;
     try {
-      await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes);
+      await mountPrimaryWithAuthority(
+        state.previewBytes ?? state.sourceBytes,
+        currentSourceAuthority()
+      );
     } catch (error) {
       showPlaybackFailure(error);
     }

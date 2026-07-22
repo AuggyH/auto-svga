@@ -448,6 +448,7 @@ function inspectionFixture(): ShortTermProductInspectionModel {
     },
     assets: [],
     replaceableElements: {
+      targets: [],
       images: [],
       texts: [],
       emptyCopy: "",

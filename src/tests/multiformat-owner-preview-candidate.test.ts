@@ -87,13 +87,13 @@ test("owner right-panel snapshot carries only bounded display data and fixed cop
   const localPath = "/Users/designer/private/card.json";
   const host = memoryHost({
     [localPath]: minimalLottie({
-      assets: [{ id: "avatar", u: "images", p: "/Users/designer/private/hero.png", w: 20, h: 20 }],
+      assets: [{ id: "avatar", u: "images", p: "hero.png", w: 20, h: 20 }],
       layers: [
         { ind: 1, ty: 2, nm: "layers.0.xp /Users/designer/private", refId: "avatar" },
         { ind: 2, ty: 5, nm: "Complete bounded JSON is required", t: { d: { k: [{ s: { t: "/Users/designer/private/name" } }] } } }
       ]
     }),
-    [`${localPath}::images//Users/designer/private/hero.png`]: Uint8Array.from([1, 2, 3])
+    [`${localPath}::images/hero.png`]: Uint8Array.from([1, 2, 3])
   });
   const session = createOwnerVisibleMultiFormatPreviewCandidate({
     host,
@@ -128,6 +128,10 @@ test("owner right-panel snapshot carries only bounded display data and fixed cop
     "textTargets",
     "unsupportedFeatures"
   ]);
+  assert.equal(snapshot.assets[0]?.replaceable, false);
+  assert.equal(snapshot.assets[0]?.technicalReplaceable, true);
+  assert.equal(snapshot.assets[0]?.designerIntentQualified, false);
+  assert.match(snapshot.imageTargets[0]?.detail ?? "", /设计意图未确认/u);
   assert.doesNotMatch(envelope.snapshotJson, /\/Users|private|layers\.0\.xp|Complete bounded JSON/u);
   assertNoLocalPaths(opened);
 });

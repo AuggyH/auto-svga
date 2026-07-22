@@ -119,7 +119,7 @@ const ownerFactLabelsById = Object.freeze({
 const ownerProjectionSchemas = Object.freeze({
   rightPanel: Object.freeze(["facts", "assets", "assetInventory", "unsupportedFeatures", "issues"]),
   fact: Object.freeze(["id", "label", "value", "status"]),
-  asset: Object.freeze(["id", "name", "kind", "dimensions", "replaceable", "ownerKind", "fileSize", "resolutionStatus"]),
+  asset: Object.freeze(["id", "name", "kind", "dimensions", "replaceable", "technicalReplaceable", "designerIntentQualified", "ownerKind", "fileSize", "resolutionStatus"]),
   inventory: Object.freeze(["schemaVersion", "pathRedacted", "format", "groups", "summary", "capabilityMarkers"]),
   inventorySummary: Object.freeze(["totalItems", "replaceableItems", "imageCount", "textCount", "sequenceFrameCount", "audioVideoCount", "unsupportedOrMissingCount"]),
   inventoryGroup: Object.freeze(["id", "label", "count", "replaceableCount", "status", "items"]),
@@ -147,7 +147,7 @@ const ownerSnapshotSchemas = Object.freeze({
   envelope: Object.freeze(["pathRedacted", "schemaVersion", "snapshotByteLength", "snapshotJson", "snapshotSha256", "sourceId"]),
   snapshot: Object.freeze(["assetInventory", "assets", "facts", "imageTargets", "issues", "pathRedacted", "schemaVersion", "textTargets", "unsupportedFeatures"]),
   fact: Object.freeze(["id", "label", "status", "value"]),
-  asset: Object.freeze(["dimensions", "fileSize", "id", "kind", "name", "ownerKind", "replaceable", "resolutionStatus"]),
+  asset: Object.freeze(["designerIntentQualified", "dimensions", "fileSize", "id", "kind", "name", "ownerKind", "replaceable", "resolutionStatus", "technicalReplaceable"]),
   inventory: Object.freeze(["capabilityMarkers", "format", "groups", "pathRedacted", "schemaVersion", "summary"]),
   inventoryNoFormat: Object.freeze(["capabilityMarkers", "groups", "pathRedacted", "schemaVersion", "summary"]),
   inventorySummary: Object.freeze(["audioVideoCount", "imageCount", "replaceableItems", "sequenceFrameCount", "textCount", "totalItems", "unsupportedOrMissingCount"]),
@@ -296,7 +296,9 @@ function validateSnapshotAsset(asset) {
     && asset.fileSize.length <= 32
     && typeof asset.resolutionStatus === "string"
     && asset.resolutionStatus.length <= 32
-    && typeof asset.replaceable === "boolean";
+    && typeof asset.replaceable === "boolean"
+    && typeof asset.technicalReplaceable === "boolean"
+    && typeof asset.designerIntentQualified === "boolean";
 }
 
 function validateSnapshotInventory(inventory) {

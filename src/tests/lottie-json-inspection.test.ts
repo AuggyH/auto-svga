@@ -64,14 +64,51 @@ test("normalizes relative image metadata precomps text candidates and fonts with
   assert.equal(result.value?.resources[0]?.metadata?.referencePath, "images/hero.png");
   assert.deepEqual(result.value?.resources[0]?.dimensions, { width: 128, height: 64 });
   assert.equal(result.value?.resources[0]?.replaceable, true);
+  assert.deepEqual(result.value?.resources[0]?.metadata?.replaceability, {
+    technical: true,
+    designerIntent: "unqualified",
+    basis: "external_image_reference"
+  });
   assert.deepEqual(result.value?.layers.map(({ kind }) => kind), ["image", "precomp", "text"]);
   assert.equal(result.value?.layers[0]?.replaceable, true);
   assert.equal(result.value?.layers[2]?.replaceable, true);
+  assert.deepEqual(result.value?.layers[0]?.metadata?.replaceability, {
+    technical: true,
+    designerIntent: "unqualified",
+    basis: "ty:2"
+  });
+  assert.deepEqual(result.value?.layers[2]?.metadata?.replaceability, {
+    technical: true,
+    designerIntent: "structural",
+    basis: "ty:5"
+  });
   assert.equal(result.value?.layers[2]?.metadata?.text, "Hello");
   assert.equal(lottieMetadata(result).imageAssetCount, 1);
   assert.equal(lottieMetadata(result).precompAssetCount, 1);
   assert.equal(lottieMetadata(result).textCandidateCount, 1);
   assert.equal(lottieMetadata(result).fontCount, 1);
+});
+
+test("Lottie ty structure wins over misleading names ids and paths", async () => {
+  const result = await service().inspect(
+    memorySource("structural-authority.json", minimalLottie({
+      assets: [{ id: "text-layer", w: 64, h: 64, u: "images/", p: "nickname-text.png" }],
+      layers: [
+        { ind: "text-looking-image", ty: 2, nm: "Title Text", refId: "text-layer" },
+        { ind: "image-looking-text", ty: 5, nm: "avatar.png", t: { d: { k: [{ s: { t: "Hello" } }] } } }
+      ]
+    })),
+    { gate: LOTTIE_JSON_INSPECTION_WP2A_GATE }
+  );
+
+  assert.equal(result.issues.length, 0);
+  assert.deepEqual(result.value?.layers.map(({ kind }) => kind), ["image", "text"]);
+  assert.equal(result.value?.layers[0]?.metadata?.lottieType, 2);
+  assert.equal(result.value?.layers[1]?.metadata?.lottieType, 5);
+  assert.equal(
+    (result.value?.resources[0]?.metadata?.replaceability as { designerIntent?: string } | undefined)?.designerIntent,
+    "unqualified"
+  );
 });
 
 test("reports unsupported Lottie features without rejecting metadata inspection", async () => {

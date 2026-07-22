@@ -131,6 +131,8 @@ export interface HiddenLottiePreviewAssetRow {
   kind: MotionResourceInfo["kind"];
   dimensions: string;
   replaceable: boolean;
+  technicalReplaceable: boolean;
+  designerIntentQualified: boolean;
   referencePath?: string;
   resolutionStatus: "not_required" | "resolved" | "missing" | "unsupported";
   sizeBytes?: number;
@@ -335,7 +337,7 @@ export class HiddenLottiePreviewVerticalSession {
         assets: assetRows,
         replaceable: {
           ...this.model.replaceable,
-          images: assetRows.filter(({ kind, replaceable }) => kind === "image" && replaceable)
+          images: assetRows.filter(({ kind, technicalReplaceable }) => kind === "image" && technicalReplaceable)
         },
         issues: [...this.model.issues, ...imageResolution.issues],
         playback: playbackState("error", inspection.value.timing.durationMs)
@@ -365,7 +367,7 @@ export class HiddenLottiePreviewVerticalSession {
       assets: assetRows,
       replaceable: {
         ...this.model.replaceable,
-        images: assetRows.filter(({ kind, replaceable }) => kind === "image" && replaceable)
+        images: assetRows.filter(({ kind, technicalReplaceable }) => kind === "image" && technicalReplaceable)
       }
     };
     this.prepared = {
@@ -707,7 +709,7 @@ function surfaceFromAsset(
     layers,
     assets,
     replaceable: {
-      images: assets.filter(({ kind, replaceable }) => kind === "image" && replaceable),
+      images: assets.filter(({ kind, technicalReplaceable }) => kind === "image" && technicalReplaceable),
       texts: asset.layers.filter(({ kind }) => kind === "text").map(textCandidateRow)
     },
     unsupportedFeatures,
@@ -1135,16 +1137,30 @@ function issue(
 }
 
 function assetRow(resource: MotionResourceInfo): HiddenLottiePreviewAssetRow {
+  const technicalReplaceable = resource.replaceable === true;
+  const designerIntent = replaceabilityDesignerIntent(resource);
+  const designerIntentQualified = designerIntent === undefined
+    ? technicalReplaceable
+    : designerIntent !== "unqualified";
   return {
     id: resource.id,
     name: resource.name,
     kind: resource.kind,
     dimensions: formatDimensions(resource.dimensions),
-    replaceable: resource.replaceable === true,
+    replaceable: technicalReplaceable && designerIntentQualified,
+    technicalReplaceable,
+    designerIntentQualified,
     referencePath: stringFromMetadata(resource, "referencePath"),
     resolutionStatus: resource.kind === "image" ? "missing" : "not_required",
     pathRedacted: true
   };
+}
+
+function replaceabilityDesignerIntent(resource: MotionResourceInfo): string | undefined {
+  const replaceability = resource.metadata?.replaceability;
+  if (!replaceability || typeof replaceability !== "object" || Array.isArray(replaceability)) return undefined;
+  const designerIntent = (replaceability as Record<string, unknown>).designerIntent;
+  return typeof designerIntent === "string" ? designerIntent : undefined;
 }
 
 function layerRow(layer: MotionLayerInfo): HiddenLottiePreviewLayerRow {

@@ -493,6 +493,12 @@ Components combine molecules into product units:
 - `SaveFeedbackBanner`
 - `ErrorRecoveryPanel`
 - `LayerRow`
+
+`ReplaceableImageRow` and `ReplaceableTextRow` are presentation variants of
+one canonical imageKey target, not separate resource identities or intrinsic
+SVGA types. Both variants expose the supported image and target-bound text
+runtime preview actions; the variant only communicates the deterministic
+default presentation.
 - `ReservedOperationPanel`
 
 Every component must document its supported PRD IDs, tokens, variants, states,

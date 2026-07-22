@@ -1492,3 +1492,15 @@ promoted, watched, rejected, or kept historical.
   no-overwrite first publication.
 - Status: Candidate pending combined Reset/UIUX/placement integration and one
   rebuilt installed placement discriminator.
+
+## 2026-07-22: Separate Target Identity From Capability And Intent
+
+- Candidate lesson: When a protocol identifier does not encode an intrinsic
+  resource type, keep one canonical target and model technical runtime
+  capability, designer-intent qualification, and default presentation as
+  independent facts. A display default must not erase a supported alternate
+  action or create a duplicate resource identity.
+- Evidence: Failure-first SVGA and Lottie tests exposed broad filename-based
+  qualification and duplicate image/text presentation assumptions. The repair
+  keeps target identity stable while the full loop validation passes.
+- Status: Candidate pending independent Code Review and merged-candidate QA.

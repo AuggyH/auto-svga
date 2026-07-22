@@ -137,6 +137,8 @@ export interface HiddenMultiFormatPreviewAssetRow {
   dimensions?: string;
   sizeBytes?: number;
   replaceable: boolean;
+  technicalReplaceable?: boolean;
+  designerIntentQualified?: boolean;
   referencePath?: string;
   resolutionStatus?: "not_required" | "resolved" | "missing" | "unsupported";
   pathRedacted: true;
@@ -812,6 +814,8 @@ function mapLottieModel(
     dimensions: asset.dimensions,
     sizeBytes: asset.sizeBytes,
     replaceable: asset.replaceable,
+    technicalReplaceable: asset.technicalReplaceable,
+    designerIntentQualified: asset.designerIntentQualified,
     referencePath: asset.referencePath,
     resolutionStatus: asset.resolutionStatus,
     pathRedacted: true
@@ -860,7 +864,9 @@ function mapLottieModel(
     assets,
     fusionElements: [],
     replaceable: {
-      images: assets.filter(({ kind, replaceable }) => kind === "image" && replaceable),
+      images: assets.filter(({ kind, technicalReplaceable, replaceable }) => (
+        kind === "image" && (technicalReplaceable ?? replaceable)
+      )),
       texts,
       fusionImages: [],
       fusionTexts: []

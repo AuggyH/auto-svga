@@ -17,7 +17,7 @@ export function runtimeTextOverlayCopy(textElement, textPreview) {
 export function runtimeTextReplacementView(textElement, inputValue, options = {}) {
   const initialValue = typeof textElement?.initialText === "string" ? textElement.initialText : "";
   const value = typeof inputValue === "string" ? inputValue : "";
-  const sourceEquivalent = value === initialValue
+  const sourceEquivalent = (options.initialIsSource !== false && value === initialValue)
     || (options.emptyIsSource === true && value === "");
   return {
     value,
@@ -39,7 +39,10 @@ export function runtimeTextListView(model, textPreviewValues) {
   return {
     texts: texts.map((item) => {
       const inputValue = runtimeTextInputValue(textPreviewValues, item);
-      const replacement = runtimeTextReplacementView(item, inputValue, { emptyIsSource: true });
+      const replacement = runtimeTextReplacementView(item, inputValue, {
+        emptyIsSource: true,
+        initialIsSource: false
+      });
       return {
         ...item,
         inputValue,
@@ -62,5 +65,16 @@ export function nextSelectedTextKey(selectedTextKey, texts) {
 
 export function selectedRuntimeTextElement(model, selectedTextKey) {
   const texts = Array.isArray(model?.texts) ? model.texts : [];
-  return texts.find((item) => item.textKey === selectedTextKey);
+  const text = texts.find((item) => item.textKey === selectedTextKey);
+  if (text) return text;
+  const targets = Array.isArray(model?.targets) ? model.targets : [];
+  const target = targets.find((item) => item.imageKey === selectedTextKey);
+  return target && target.supportedPreviewActions?.includes?.("text")
+    ? {
+        ...target,
+        textKey: target.imageKey,
+        initialText: RUNTIME_TEXT_DEFAULT_VALUE,
+        supportedFields: ["text"]
+      }
+    : undefined;
 }

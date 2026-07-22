@@ -75,6 +75,8 @@ export interface MultiFormatAssetInventoryAssetInput {
   dimensions?: string;
   sizeBytes?: number;
   replaceable: boolean;
+  technicalReplaceable?: boolean;
+  designerIntentQualified?: boolean;
   resolutionStatus?: "not_required" | "resolved" | "missing" | "unsupported";
 }
 
@@ -254,6 +256,10 @@ function assetItems(input: MultiFormatAssetInventoryInput): MultiFormatAssetInve
     .map((asset) => {
       const groupId = groupIdForAsset(asset);
       const status = statusForAsset(asset);
+      const technicalReplaceable = asset.technicalReplaceable ?? asset.replaceable;
+      const designerIntentQualified = asset.designerIntentQualified ?? asset.replaceable;
+      const confirmedReplaceable = technicalReplaceable && designerIntentQualified
+        && status !== "missing" && status !== "unsupported";
       return {
         id: inventoryText(asset.id, "asset"),
         label: inventoryText(asset.name || asset.id, "asset"),
@@ -262,13 +268,14 @@ function assetItems(input: MultiFormatAssetInventoryInput): MultiFormatAssetInve
         kind: inventoryText(asset.kind, "asset"),
         source: "asset",
         status,
-        replaceable: asset.replaceable && status !== "missing" && status !== "unsupported",
-        runtimeTargetId: asset.replaceable ? inventoryText(asset.id, "asset") : undefined,
+        replaceable: confirmedReplaceable,
+        runtimeTargetId: technicalReplaceable ? inventoryText(asset.id, "asset") : undefined,
         detail: inventoryDetails([
           asset.role,
           asset.dimensions,
           asset.sizeBytes !== undefined ? `${asset.sizeBytes} bytes` : undefined,
-          asset.resolutionStatus
+          asset.resolutionStatus,
+          technicalReplaceable && !designerIntentQualified ? "designer intent unqualified" : undefined
         ]),
         pathRedacted: true
       };

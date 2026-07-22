@@ -1,16 +1,17 @@
 import {
   runtimeTextReplacementView,
-  runtimeTextOverlayCopy,
   selectedRuntimeTextElement
 } from "./short-term-macos-text-model.mjs";
 import { applyRuntimeTextRowReplacementState } from "./short-term-macos-replaceable-renderers.mjs";
+import { clearRuntimeTextOverlay } from "./short-term-macos-text-renderers.mjs";
 import {
-  applyRuntimeTextOverlay,
-  clearRuntimeTextOverlay
-} from "./short-term-macos-text-renderers.mjs";
+  applySvgaRuntimeTextTarget,
+  resetSvgaRuntimeTextTarget
+} from "./short-term-macos-svga-runtime-text-model.mjs";
 
 function findRuntimeTextInput(nodes, textKey) {
-  return Array.from(nodes.textElementList.querySelectorAll("[data-text-input]"))
+  return [nodes.textElementList, nodes.replaceableList]
+    .flatMap((list) => Array.from(list?.querySelectorAll?.("[data-text-input]") || []))
     .find((input) => input.dataset.textKey === textKey);
 }
 
@@ -45,26 +46,54 @@ export function applyShortTermRuntimeTextPreview({
   state,
   textKey,
   value,
-  renderCommandState
+  renderCommandState,
+  showSaveBanner
 }) {
   if (!state.sourceBytes || !textKey) return;
   const textElement = selectedRuntimeTextElement(state.model?.replaceableElements, textKey);
   if (!textElement) return;
-  state.selectedTextKey = textKey;
-  const replacement = runtimeTextReplacementView(textElement, value, { emptyIsSource: true });
-  setRuntimeTextValue(state, textKey, replacement.hasPreview ? replacement.value : "");
-  if (replacement.hasPreview) {
-    applyRuntimeTextOverlay(
-      nodes.runtimeTextOverlay,
-      runtimeTextOverlayCopy(textElement, state.textPreview),
-      true
+  const replacement = runtimeTextReplacementView(textElement, value, {
+    emptyIsSource: true,
+    initialIsSource: false
+  });
+  const targetResult = replacement.hasPreview
+    ? applySvgaRuntimeTextTarget(state.primaryPlayback, textElement.imageKey, replacement.value)
+    : resetSvgaRuntimeTextTarget(state.primaryPlayback, textElement.imageKey);
+  if (replacement.hasPreview && !targetResult.applied) {
+    showSaveBanner?.(
+      "文本预览未应用。",
+      `播放器未能把运行时文本绑定到 ${textElement.imageKey}；源文件没有被修改。`
     );
-  } else {
-    clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+    return;
   }
+  state.selectedTextKey = textKey;
+  setRuntimeTextValue(state, textKey, replacement.hasPreview ? replacement.value : "");
+  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   const input = findRuntimeTextInput(nodes, textKey);
-  applyRuntimeTextRowReplacementState(input?.closest(".textElementRow"), replacement);
+  applyRuntimeTextRowReplacementState(
+    input?.closest(".textElementRow") ?? input?.closest(".replaceableRow"),
+    replacement
+  );
   renderCommandState();
+}
+
+export function restoreShortTermRuntimeTextPreviews(state) {
+  const appliedImageKeys = [];
+  for (const [textKey, value] of Object.entries(state.textPreviewValues || {})) {
+    if (!value) continue;
+    const textElement = selectedRuntimeTextElement(state.model?.replaceableElements, textKey);
+    const result = textElement
+      ? applySvgaRuntimeTextTarget(state.primaryPlayback, textElement.imageKey, value)
+      : { applied: false };
+    if (!result.applied) {
+      for (const imageKey of appliedImageKeys) {
+        resetSvgaRuntimeTextTarget(state.primaryPlayback, imageKey);
+      }
+      return false;
+    }
+    appliedImageKeys.push(textElement.imageKey);
+  }
+  return true;
 }
 
 export function resetShortTermRuntimeTextPreview({
@@ -75,6 +104,19 @@ export function resetShortTermRuntimeTextPreview({
   renderCommandState
 }) {
   if (!textKey) {
+    for (const activeTextKey of Object.keys(state.textPreviewValues || {})) {
+      const activeTextElement = selectedRuntimeTextElement(state.model?.replaceableElements, activeTextKey);
+      resetSvgaRuntimeTextTarget(state.primaryPlayback, activeTextElement?.imageKey);
+      const activeInput = findRuntimeTextInput(nodes, activeTextKey);
+      if (activeInput) activeInput.value = "";
+      applyRuntimeTextRowReplacementState(
+        activeInput?.closest(".textElementRow") ?? activeInput?.closest(".replaceableRow"),
+        runtimeTextReplacementView(activeTextElement, "", {
+          emptyIsSource: true,
+          initialIsSource: false
+        })
+      );
+    }
     state.textPreviewValues = {};
     state.textPreview = "";
     clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
@@ -82,7 +124,18 @@ export function resetShortTermRuntimeTextPreview({
     renderCommandState();
     return;
   }
+  const textElement = selectedRuntimeTextElement(state.model?.replaceableElements, textKey);
+  resetSvgaRuntimeTextTarget(state.primaryPlayback, textElement?.imageKey);
   setRuntimeTextValue(state, textKey, "");
+  const input = findRuntimeTextInput(nodes, textKey);
+  if (input) input.value = "";
+  applyRuntimeTextRowReplacementState(
+    input?.closest(".textElementRow") ?? input?.closest(".replaceableRow"),
+    runtimeTextReplacementView(textElement, "", {
+      emptyIsSource: true,
+      initialIsSource: false
+    })
+  );
   if (state.selectedTextKey === textKey) {
     clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   } else {

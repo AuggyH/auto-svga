@@ -1054,7 +1054,7 @@ function resolveReplacementSelection(
   if (model.detectedFormat === "lottie") {
     const candidates = [
       ...model.rightPanel.assets
-        .filter((entry) => entry.kind === "image" && entry.replaceable)
+        .filter((entry) => entry.kind === "image" && (entry.technicalReplaceable ?? entry.replaceable))
         .map((entry) => ({
           kind: "image" as const,
           publicAliases: uniqueStrings([entry.id]),
@@ -1613,6 +1613,8 @@ function safePublicRightPanelFromSnapshot(
       fileSize?: string;
       resolutionStatus?: string;
       replaceable: boolean;
+      technicalReplaceable: boolean;
+      designerIntentQualified: boolean;
     }>;
     assetInventory?: MultiFormatAssetInventory;
     unsupportedFeatures?: Array<{ feature: string; path: ""; message?: string; pathRedacted: true }>;
@@ -1631,6 +1633,8 @@ function safePublicRightPanelFromSnapshot(
     kind: asset.kind === "unknown" ? "image" : asset.kind,
     dimensions: asset.dimensions || undefined,
     replaceable: asset.replaceable,
+    technicalReplaceable: asset.technicalReplaceable,
+    designerIntentQualified: asset.designerIntentQualified,
     pathRedacted: true as const,
     resolutionStatus: asset.resolutionStatus === "缺失"
       ? "missing" as const

@@ -44,6 +44,8 @@ export interface OwnerRightPanelSnapshotAsset {
   fileSize: string;
   resolutionStatus: string;
   replaceable: boolean;
+  technicalReplaceable: boolean;
+  designerIntentQualified: boolean;
 }
 
 export interface OwnerRightPanelSnapshotInventoryItem {
@@ -269,12 +271,16 @@ function createOwnerRightPanelSnapshot(input: CreateOwnerRightPanelSnapshotInput
     .filter((asset) => format !== "vap" || !vapFusionTargetIds.has(asset.id));
   const imageTargets = [
     ...assets
-      .filter((asset) => asset.replaceable && !(format === "vap" && vapFusionTargetIds.has(asset.id)))
+      .filter((asset) => asset.technicalReplaceable && !(format === "vap" && vapFusionTargetIds.has(asset.id)))
       .map((asset) => ({
         imageKey: asset.id,
         resourceId: asset.id,
         displayName: asset.name,
-        detail: [asset.dimensions, asset.fileSize].filter(Boolean).join(" · ")
+        detail: [
+          asset.dimensions,
+          asset.fileSize,
+          asset.designerIntentQualified ? "设计意图已确认" : "技术可运行时替换 · 设计意图未确认"
+        ].filter(Boolean).join(" · ")
       })),
     ...input.vapFusionImages.filter((entry) => entry.replaceable).map((entry, index) => {
       const displayName = ownerDisplayName(entry.srcTag, `融合图片 ${index + 1}`);
@@ -363,6 +369,8 @@ function factValue(id: string, value: string): string {
 
 function ownerAsset(asset: HiddenMultiFormatPreviewAssetRow, index: number): OwnerRightPanelSnapshotAsset {
   const kind = assetKind(asset.kind);
+  const technicalReplaceable = asset.technicalReplaceable ?? asset.replaceable === true;
+  const designerIntentQualified = asset.designerIntentQualified ?? asset.replaceable === true;
   return {
     id: safeIdentifier(asset.id, `asset-${index + 1}`),
     name: ownerDisplayName(asset.name, `资源 ${index + 1}`),
@@ -371,7 +379,9 @@ function ownerAsset(asset: HiddenMultiFormatPreviewAssetRow, index: number): Own
     dimensions: ownerDimensionsString(asset.dimensions ?? ""),
     fileSize: formatBytes(asset.sizeBytes),
     resolutionStatus: resolutionStatus(asset.resolutionStatus),
-    replaceable: asset.replaceable === true
+    replaceable: technicalReplaceable && designerIntentQualified,
+    technicalReplaceable,
+    designerIntentQualified
   };
 }
 
@@ -406,8 +416,13 @@ function ownerInventory(input: {
       source: "asset",
       status: asset.replaceable ? "replaceable" : "available",
       replaceable: asset.replaceable,
-      runtimeTargetId: asset.id,
-      detail: [asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean),
+      runtimeTargetId: asset.technicalReplaceable ? asset.id : undefined,
+      detail: [
+        asset.dimensions,
+        asset.fileSize,
+        asset.resolutionStatus,
+        asset.technicalReplaceable && !asset.designerIntentQualified ? "技术可替换，设计意图未确认" : ""
+      ].filter(Boolean),
       pathRedacted: true
     });
     void index;

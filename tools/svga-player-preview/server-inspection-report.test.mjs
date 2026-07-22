@@ -61,8 +61,9 @@ test("preview host creates the short-term product inspection model", async () =>
   assert.ok(model.prdIds.includes("S15"));
   assert.equal(model.overview.profileId, "production_target");
   assert.equal(model.overview.audioGroup.copy, "当前文件暂无音频资产");
-  assert.equal(model.replaceableElements.images.length, 1);
-  assert.equal(model.replaceableElements.images[0].imageKey, "img_frame");
+  assert.equal(model.replaceableElements.targets.length, 0);
+  assert.equal(model.replaceableElements.images.length, 0);
+  assert.equal(model.assets.find(({ name }) => name === "img_frame")?.replaceable, false);
   assert.equal(model.assets.some(({ kind }) => kind === "audio"), true);
 });
 

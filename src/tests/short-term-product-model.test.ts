@@ -61,6 +61,10 @@ test("short-term product model keeps replaceable elements separate from ordinary
   assert.equal(isAutomaticImageKey("img-42"), true);
   assert.equal(isAutomaticImageKey("000"), true);
   assert.equal(isAutomaticImageKey("42"), true);
+  assert.equal(isAutomaticImageKey("psd_xxxx"), true);
+  assert.equal(isAutomaticImageKey("PSD-xxxx"), true);
+  assert.equal(isAutomaticImageKey("psd xxxx"), true);
+  assert.equal(isAutomaticImageKey("psd.xxxx"), true);
   assert.equal(isAutomaticImageKey("profile_frame_highlight"), false);
   assert.equal(isAutomaticImageKey("profile_42_frame"), false);
   assert.equal(isReplaceableImageResource(resource("sparkle_000", "sequence_frame")), false);
@@ -104,6 +108,22 @@ test("short-term product model keeps replaceable elements separate from ordinary
     }]
   );
   assert.equal(model.replaceableElements.textPreviewCopy, "文本会叠加到对应 imageKey 的预览位置，不写入 SVGA 字节。");
+  assert.deepEqual(
+    model.replaceableElements.targets.map(({ imageKey, defaultPresentation, supportedPreviewActions }) => ({
+      imageKey,
+      defaultPresentation,
+      supportedPreviewActions
+    })),
+    [{
+      imageKey: "nickname_text",
+      defaultPresentation: "text",
+      supportedPreviewActions: ["image", "text"]
+    }, {
+      imageKey: "profile_frame_highlight",
+      defaultPresentation: "image",
+      supportedPreviewActions: ["image", "text"]
+    }]
+  );
 });
 
 test("short-term product model classifies deterministic text imageKeys into text targets", () => {
@@ -137,6 +157,41 @@ test("short-term product model classifies deterministic text imageKeys into text
   assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "from"), false);
   assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "to"), false);
   assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "avatar"), true);
+});
+
+test("short-term product model confirms only deterministic designer intent and keeps one dual-capability SVGA target", () => {
+  const base = reportFixture();
+  const resources = [
+    resource("psd_xxxx", "static_image"),
+    resource("PSD-text1", "static_image"),
+    resource("0042", "static_image"),
+    resource("img_42", "static_image"),
+    resource("avatar", "static_image"),
+    resource("campaign-hero", "static_image"),
+    resource("text1", "static_image"),
+    resource("decoration", "static_image"),
+    resource("frame_base", "static_image")
+  ];
+  const model = createShortTermProductInspectionModel({
+    ...base,
+    asset: { ...base.asset, resourceCount: resources.length },
+    assetIntelligence: { ...base.assetIntelligence, resources }
+  });
+
+  assert.deepEqual(
+    model.replaceableElements.targets.map(({ imageKey, defaultPresentation }) => ({ imageKey, defaultPresentation })),
+    [
+      { imageKey: "avatar", defaultPresentation: "image" },
+      { imageKey: "campaign-hero", defaultPresentation: "image" },
+      { imageKey: "text1", defaultPresentation: "text" }
+    ]
+  );
+  assert.equal(model.replaceableElements.targets.every(({ supportedPreviewActions }) => (
+    supportedPreviewActions.join(",") === "image,text"
+  )), true);
+  assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "text1"), false);
+  assert.equal(model.replaceableElements.texts.some(({ imageKey }) => imageKey === "text1"), true);
+  assert.equal(new Set(model.replaceableElements.targets.map(({ imageKey }) => imageKey)).size, 3);
 });
 
 test("short-term product model classifies optimization findings for UI actions", () => {

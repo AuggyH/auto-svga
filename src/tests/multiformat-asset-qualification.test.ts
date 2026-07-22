@@ -44,6 +44,27 @@ test("unified asset inventory groups Lottie images text candidates and unsupport
   );
 });
 
+test("Lottie external images keep runtime replacement without claiming confirmed designer intent", () => {
+  const inventory = buildMultiFormatAssetInventory({
+    format: "lottie",
+    assets: [{
+      id: "img_0",
+      name: "psd_avatar.png",
+      kind: "image",
+      replaceable: false,
+      technicalReplaceable: true,
+      designerIntentQualified: false,
+      resolutionStatus: "resolved"
+    }]
+  });
+  const item = group(inventory, "image_resources").items[0];
+
+  assert.equal(item?.status, "available");
+  assert.equal(item?.replaceable, false);
+  assert.equal(item?.runtimeTargetId, "img_0");
+  assert.ok(item?.detail.includes("designer intent unqualified"));
+});
+
 test("unified asset inventory exposes VAP fusion tags media facts and missing replacements", () => {
   const inventory = buildMultiFormatAssetInventory({
     format: "vap",
