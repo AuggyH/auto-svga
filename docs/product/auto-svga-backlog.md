@@ -44,6 +44,18 @@ Priority candidates:
 - [ ] recommend bounded motion treatments from deterministic structure metadata
 - [ ] generate basic motion and optional enhancements
 - [ ] evaluate file size, resource count, memory, and compatibility before export
+- [ ] accept Asset Pack + Motion Plan as the headless engine input contract
+- [ ] integrate the separately delivered ComfyUI MVP through an explicit
+  local/LAN/self-hosted endpoint contract
+- [ ] prove the first Agent-first avatar-frame vertical through generated SVGA,
+  validation, optimization, desktop preview, and human acceptance
+
+### Product discovery
+
+- [ ] define what LTR and RTL identify in the requested conversion workflow
+- [ ] decide source/target formats, direction/mirroring semantics, BiDi/font
+  behavior, batch interaction, preview/diff, output naming, and rollback
+- [ ] assign a version and requirement ticket only after that discovery closes
 
 ## Backlog By Capability
 
@@ -80,12 +92,17 @@ MVP objective.
 
 ## Explicitly Deferred
 
-- direct Figma, PSD, Sketch, C4D, Blender, or unbounded source-project import
+- direct PSD, Sketch, C4D, Blender, or unbounded source-project import
+- arbitrary Figma document import or live Figma editing; the controlled
+  FBP/Figma Bridge package path is an existing bounded exception
 - direct After Effects source-project import outside the Owner-approved
   `AE_BRIDGE_PRODUCT_BRIEF.md` package/scanner/bake pipeline
 - universal layer and composition authoring
 - complete timeline and advanced keyframe-curve editor
 - complete particle authoring system
-- broad multi-format production editor
+- broad multi-format production editor beyond the versioned PAG preview and
+  VAP generation requirements in the product roadmap
 - automatic optimization or destructive repair without evidence and rollback
-- AI or external-model analysis without a separately approved capability module
+- Agent/ComfyUI implementation before the separately developed ComfyUI MVP is
+  handed off and the roadmap's engine-readiness, privacy, runtime, and package
+  gates are satisfied

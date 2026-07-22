@@ -1,6 +1,7 @@
 # VAP Official Repository Research
 
 Date: 2026-07-04
+Last product disposition: 2026-07-23
 Owner role: Product / format research
 Status: research input for future multi-format workbench planning
 
@@ -10,10 +11,23 @@ This note records the first-pass research on the official Tencent VAP
 repository so future Auto SVGA work can continue from a stable baseline instead
 of rediscovering the same format facts.
 
-This document is not a PRD and does not change committed short-term or mid-term
-scope. The project-level product authority remains
-`docs/product/PRODUCT_ROADMAP.md`. Current architecture scope for VAP remains
-Research in `docs/multiformat-workbench-architecture.md`.
+This document is not a PRD and does not change product scope. The project-level
+product authority remains `docs/product/PRODUCT_ROADMAP.md`; architecture and
+implementation records own the current VAP preview baseline, while this note
+supplies official-tool and generation feasibility facts.
+
+## 2026-07-23 Product Disposition
+
+The roadmap now commits a later VAP Generation MVP. It accepts either a local
+video or an existing frame sequence, converges both into one normalized
+project, supports mask-range and fusion-element editing with real-time preview,
+and generates through a pinned official VapTool adapter. Export automatically
+keeps the final encoded VAP at `max(videoW, videoH) <= 1504`, preserves aspect,
+avoids default upscaling, and reports 16-pixel alignment and quality impact.
+
+This research remains supporting evidence, not scope authority. The exact
+requirements live in `docs/product/PRODUCT_ROADMAP.md` and
+`docs/product/requirements/ASV-REQ-20260723-002.md`.
 
 ## Official Project Snapshot
 
@@ -179,7 +193,8 @@ order is:
 
 ## Recommended Auto SVGA Work Packages
 
-These are research follow-ups, not committed scope changes.
+These work packages are research inputs to the committed roadmap requirement;
+they do not independently activate implementation.
 
 | Work package | Goal | Exit criteria |
 | --- | --- | --- |
@@ -192,9 +207,9 @@ These are research follow-ups, not committed scope changes.
 
 ## Product Boundary Recommendation
 
-VAP should remain outside short-term SVGA scope. If Product Owner promotes VAP
-from long-term candidate to active work, the first committed deliverable should
-be inspection and preview, not full export. Export should follow only after:
+VAP generation remains outside the current preview/local-stable closure scope.
+Its existing inspection and preview foundation does not activate export.
+Generation should begin only after:
 
 - local deterministic fixtures exist
 - `vapc` parsing is validated

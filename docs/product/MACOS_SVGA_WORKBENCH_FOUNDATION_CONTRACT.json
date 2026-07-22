@@ -60,7 +60,7 @@
     "phase3": "Reserve replaceable-element editing capacity only; do not expose inactive imageKey or text editing controls.",
     "phase4": "Reserve sequence-review capacity only; do not expose anti-flicker or scheduling controls.",
     "midTerm": "Adapters may attach to the same regions later, but no multi-format parser or converter starts in P6-R1.",
-    "longTerm": "Agent, Motion Plan, ComfyUI, and generation modules remain isolated future work requiring separate approval."
+    "longTerm": "Agent, Motion Plan, ComfyUI, and generation modules are Owner-planned future work. They remain isolated and inactive until the separately developed ComfyUI MVP handoff, the matching Auto SVGA engine-readiness gate, and dedicated implementation approval."
   },
   "ownerVisibleRules": [
     "Preview Stage remains the visual anchor.",

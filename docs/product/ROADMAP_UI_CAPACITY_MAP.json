@@ -47,6 +47,24 @@
       "status": "long_term_adapter_foundation"
     },
     {
+      "capability": "pag_preview_inspection_runtime_replacement",
+      "phase": "0.2.x PAG Follow-up",
+      "hostRegions": ["source_document", "preview_stage", "inspector", "resources", "activity_history"],
+      "status": "owner_planned_after_0_2_0_local_stable"
+    },
+    {
+      "capability": "vap_video_sequence_generation_mask_fusion_export",
+      "phase": "0.5.x VAP Generation",
+      "hostRegions": ["source_document", "preview_stage", "inspector", "resources", "action_workflow", "activity_history"],
+      "status": "owner_planned_requires_dedicated_product_and_tooling_gate"
+    },
+    {
+      "capability": "ltr_rtl_conversion",
+      "phase": "Product Discovery",
+      "hostRegions": ["source_document", "preview_stage", "action_workflow", "activity_history"],
+      "status": "discovery_required_before_version_or_ui_commitment"
+    },
+    {
       "capability": "sweep_glow_shiny_ray_blend_particles_template_matching",
       "phase": "Long-term",
       "hostRegions": ["inspector", "preview_stage"],
@@ -56,15 +74,16 @@
       "capability": "comfyui_motion_plan_agent_headless_generation",
       "phase": "Long-term Agent Engine",
       "hostRegions": ["source_document", "action_workflow", "activity_history"],
-      "status": "deferred_after_ae_bridge_and_explicit_ai_approval"
+      "status": "owner_planned_after_comfyui_mvp_and_auto_svga_engine_readiness"
     }
   ],
   "visibilityRules": [
     "Do not expose inactive future features as clickable UI in P6-R1.",
     "Do not reduce Web parity inventory or weaken parity checks.",
-    "Do not start Phase 2, Phase 3, Phase 4, conversion, export workbench, or Agent APIs from this map.",
+    "Do not start Phase 2, Phase 3, Phase 4, PAG, VAP generation, conversion, export workbench, or Agent APIs from this map.",
     "AE Production Bridge is owner-committed, but visible entry points still require a dedicated implementation lane and must not appear as inactive short-term controls.",
-    "ComfyUI, external AI, multimodal, and agent-driven generation remain lower priority than AE Production Bridge.",
+    "PAG preview, VAP generation, and Agent-first generation are Owner-planned, but each remains hidden until its versioned dependency and implementation gate is active.",
+    "ComfyUI and agent-driven generation remain lower priority than AE Production Bridge and require the external ComfyUI MVP handoff plus Auto SVGA engine readiness.",
     "Use this map only to verify that current macOS IA can host future capabilities without becoming an engineering dashboard."
   ],
   "productionApproved": false,
