@@ -21,9 +21,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   atomicSwapApps,
   inspectAppBundle,
+  inspectFixedTrialCandidatePackage,
   inspectRecoveryState,
   legacyPreviousAppPathForTarget,
-  loadFixedTrialCandidateRuntimeAuthority,
   previousBackupPathForTarget,
   recoverRollbackTransaction,
   rollbackPreviousApp
@@ -1055,7 +1055,7 @@ function loadAndValidatePackage(options) {
   const head = git(["rev-parse", "HEAD"]);
   let packageInfo;
   try {
-    packageInfo = loadFixedTrialCandidateRuntimeAuthority({ expectedHead: head });
+    packageInfo = inspectFixedTrialCandidatePackage({ expectedHead: head });
   } catch (error) {
     const hint = options.useExisting
       ? "Run without --use-existing after the source tree is clean to rebuild a fresh internal package."
@@ -1064,10 +1064,6 @@ function loadAndValidatePackage(options) {
   }
 
   validateAppIdentity(packageInfo.sourceApp);
-  inspectAppBundle(packageInfo.sourceApp, {
-    runtimeRole: "candidate",
-    runtimeAuthorities: [packageInfo.candidateRuntimeAuthority]
-  });
   return packageInfo;
 }
 
@@ -1286,7 +1282,7 @@ export function recoverPromotionTransaction({
   return { disposition: "completed-after-interrupted-exchange", mutationPerformed: true, manifestPath: journal.manifestPath };
 }
 
-export function installApp({ sourceApp, target, candidateRuntimeAuthority, dependencies = {} }) {
+function installAppTransaction({ sourceApp, target, candidateIdentity, dependencies = {} }) {
   const resolvedDependencies = promotionInstallDependencies(dependencies);
   const targetParent = path.dirname(target);
   const backupTarget = previousBackupPathForTarget(target);
@@ -1306,11 +1302,20 @@ export function installApp({ sourceApp, target, candidateRuntimeAuthority, depen
     assertNoPromotionResidue(targetParent);
     assertNoPromotionTransactionResidue({ journalPath, manifestPath: exchangeManifestPath });
 
-    const candidateInspection = {
-      runtimeRole: "candidate",
-      runtimeAuthorities: candidateRuntimeAuthority ? [candidateRuntimeAuthority] : undefined
-    };
+    const candidateInspection = { runtimeRole: "candidate-copy" };
     const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp, candidateInspection);
+    if (candidateIdentity) {
+      if (candidateIdentity.appPath !== path.resolve(sourceApp)) {
+        throw new Error("Fixed candidate identity does not match the promotion source App path");
+      }
+      if (candidateIdentity.runtimeClosure?.versionAuthority?.runtimeRole !== "candidate") {
+        throw new Error("Fixed candidate identity is not authorized for the candidate runtime role");
+      }
+      assertSameAppPayload(candidateIdentity, sourceIdentity, "Promotion source candidate");
+      if (candidateIdentity.stabilityFingerprint !== sourceIdentity.stabilityFingerprint) {
+        throw new Error("Promotion source candidate changed after fixed-package inspection");
+      }
+    }
     const installStatePlan = resolvedDependencies.planLaunchServicesInstallState({
       target,
       backupTarget,
@@ -1465,7 +1470,7 @@ export function installApp({ sourceApp, target, candidateRuntimeAuthority, depen
       });
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "first-exchange-complete");
       resolvedDependencies.checkpoint("after-first-exchange");
-      const installedAfter = resolvedDependencies.inspectBundle(target, candidateInspection);
+      const installedAfter = resolvedDependencies.inspectBundle(target, { runtimeRole: "installed" });
       const displacedInstalled = resolvedDependencies.inspectBundle(stagedApp, { runtimeRole: "installed" });
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after promotion");
       assertSameAppPayload(installedBefore, displacedInstalled, "Displaced installed app");
@@ -1488,7 +1493,7 @@ export function installApp({ sourceApp, target, candidateRuntimeAuthority, depen
       renameSync(stagedApp, target);
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
       resolvedDependencies.checkpoint("after-first-install");
-      const installedAfter = resolvedDependencies.inspectBundle(target, candidateInspection);
+      const installedAfter = resolvedDependencies.inspectBundle(target, { runtimeRole: "installed" });
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after first promotion");
     }
 
@@ -1509,6 +1514,26 @@ export function installApp({ sourceApp, target, candidateRuntimeAuthority, depen
       rmSync(stagingRoot, { recursive: true, force: true });
     }
   }
+}
+
+export function installApp({ candidateIdentity, dependencies, ...options }) {
+  if (candidateIdentity !== undefined) {
+    throw new Error("Caller-supplied candidate identity is not accepted by the promotion transaction");
+  }
+  if (!dependencies?.inspectBundle) {
+    throw new Error("Direct installApp use requires an explicit test inspector; production must use the fixed-package operation");
+  }
+  return installAppTransaction({ ...options, dependencies });
+}
+
+function installFixedTrialPackage(options) {
+  const packageInfo = loadAndValidatePackage(options);
+  const installInfo = installAppTransaction({
+    sourceApp: packageInfo.sourceApp,
+    target: options.target,
+    candidateIdentity: packageInfo.candidateIdentity
+  });
+  return { packageInfo, installInfo };
 }
 
 function registerLaunchServices(target) {
@@ -1545,12 +1570,17 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
   if (options.inspect) {
     const packageInfo = loadAndValidatePackage({ ...options, useExisting: true });
     const rollbackPaths = options.rollbackId ? rollbackPathsForId(options.rollbackId) : {};
-    console.log(JSON.stringify(inspectRecoveryState({
+    const report = inspectRecoveryState({
       target: options.target,
       candidateApp: packageInfo.sourceApp,
-      candidateRuntimeAuthority: packageInfo.candidateRuntimeAuthority,
       ...rollbackPaths
-    }), null, 2));
+    });
+    assertSameAppPayload(packageInfo.candidateIdentity, report.candidate, "Read-only candidate inspection");
+    if (packageInfo.candidateIdentity.stabilityFingerprint !== report.candidate.stabilityFingerprint) {
+      throw new Error("Read-only candidate changed after fixed-package inspection");
+    }
+    report.candidate = packageInfo.candidateIdentity;
+    console.log(JSON.stringify(report, null, 2));
     return;
   }
 
@@ -1582,12 +1612,7 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
     packageInternalTrial();
   }
 
-  const packageInfo = loadAndValidatePackage(options);
-  const installInfo = installApp({
-    sourceApp: packageInfo.sourceApp,
-    target: options.target,
-    candidateRuntimeAuthority: packageInfo.candidateRuntimeAuthority
-  });
+  const { packageInfo, installInfo } = installFixedTrialPackage(options);
 
   const summary = {
     schemaVersion: 1,

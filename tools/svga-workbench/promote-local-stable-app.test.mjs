@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   cpSync,
@@ -128,6 +129,18 @@ function candidatePackageDeclarations() {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function createZipWithAppAsar(archivePath, appAsarBytes) {
+  const sourceRoot = `${archivePath}.source`;
+  const resources = path.join(sourceRoot, "Auto SVGA.app", "Contents", "Resources");
+  mkdirSync(resources, { recursive: true });
+  writeFileSync(path.join(resources, "app.asar"), appAsarBytes);
+  execFileSync("/usr/bin/zip", ["-qry", archivePath, "Auto SVGA.app"], {
+    cwd: sourceRoot,
+    stdio: "pipe"
+  });
+  rmSync(sourceRoot, { recursive: true, force: true });
 }
 
 function createFixtureRoot() {
@@ -448,7 +461,7 @@ test("runtime closure uses role-aware legacy and source-bound candidate version 
   assert.equal(legacyLocalRuntimeVersionAuthority.dependencyVersions.protobufjs, "8.6.4");
   assert.equal(currentSourceRuntimeVersionAuthority.dependencyVersions.protobufjs, "8.6.6");
 
-  for (const runtimeRole of ["installed", "previous"]) {
+  for (const runtimeRole of ["installed", "previous", "candidate-copy"]) {
     const authority = resolveRuntimeVersionAuthority({
       buildInfo: { buildCommit: installedBuild },
       appAsarSha256: "1".repeat(64),
@@ -459,7 +472,7 @@ test("runtime closure uses role-aware legacy and source-bound candidate version 
     assert.equal(authority.runtimeRole, runtimeRole);
   }
 
-  for (const runtimeRole of ["installed", "previous"]) {
+  for (const runtimeRole of ["installed", "previous", "candidate-copy"]) {
     const authority = resolveRuntimeVersionAuthority({
       buildInfo: { buildCommit: candidateBuild },
       appAsarSha256: candidateAppAsarSha256,
@@ -469,22 +482,24 @@ test("runtime closure uses role-aware legacy and source-bound candidate version 
     assert.equal(authority.authorityId, retainedRuntimeVersionAuthorities[0].authorityId);
   }
 
-  assert.throws(() => resolveRuntimeVersionAuthority({
-    buildInfo: { buildCommit: candidateBuild },
-    appAsarSha256: candidateAppAsarSha256,
-    dependencyVersions: {
-      ...currentSourceRuntimeVersionAuthority.dependencyVersions,
-      protobufjs: "8.6.7"
-    },
-    runtimeRole: "installed"
-  }), /protobufjs version 8\.6\.7/);
+  for (const runtimeRole of ["installed", "previous", "candidate-copy"]) {
+    assert.throws(() => resolveRuntimeVersionAuthority({
+      buildInfo: { buildCommit: candidateBuild },
+      appAsarSha256: candidateAppAsarSha256,
+      dependencyVersions: {
+        ...currentSourceRuntimeVersionAuthority.dependencyVersions,
+        protobufjs: "8.6.7"
+      },
+      runtimeRole
+    }), /protobufjs version 8\.6\.7/);
+  }
 
   assert.throws(() => resolveRuntimeVersionAuthority({
     buildInfo: { buildCommit: candidateBuild },
     appAsarSha256: candidateAppAsarSha256,
     dependencyVersions: currentSourceRuntimeVersionAuthority.dependencyVersions,
     runtimeRole: "candidate"
-  }), /requires explicit manifest\/source-bound version authority/);
+  }), /only inside one fixed-package inspection operation/);
 
   const candidateDescriptor = candidateRuntimeDescriptor();
   assert.equal(candidateDescriptor.authorityId, `candidate-package-${candidateBuild}`);
@@ -495,9 +510,9 @@ test("runtime closure uses role-aware legacy and source-bound candidate version 
     dependencyVersions: currentSourceRuntimeVersionAuthority.dependencyVersions,
     runtimeRole: "candidate",
     runtimeAuthorities: [candidateDescriptor]
-  }), /not a trusted fixed-package capability/);
+  }), /does not accept caller-supplied version authorities/);
 
-  for (const runtimeRole of ["installed", "previous"]) {
+  for (const runtimeRole of ["installed", "previous", "candidate-copy"]) {
     assert.throws(() => resolveRuntimeVersionAuthority({
       buildInfo: { buildCommit: candidateBuild },
       appAsarSha256: candidateAppAsarSha256,
@@ -513,7 +528,7 @@ test("runtime closure uses role-aware legacy and source-bound candidate version 
     dependencyVersions: legacyLocalRuntimeVersionAuthority.dependencyVersions,
     runtimeRole: "candidate",
     runtimeAuthorities: [legacyLocalRuntimeVersionAuthority]
-  }), /not a trusted fixed-package capability/);
+  }), /does not accept caller-supplied version authorities/);
 
   assert.throws(() => candidateRuntimeDescriptor({
     manifestRuntimeClosure: runtimeClosureEvidence(candidateBuild, legacyLocalRuntimeVersionAuthority.dependencyVersions),
@@ -550,7 +565,41 @@ test("shape-valid forged candidate authority cannot authorize arbitrary dependen
     dependencyVersions: forgedVersions,
     runtimeRole: "candidate",
     runtimeAuthorities: [forgedAuthority]
-  }), /not a trusted fixed-package capability/);
+  }), /does not accept caller-supplied version authorities/);
+});
+
+test("candidate capability cannot be acquired from an exported loader or reused by external inspection", async () => {
+  const recoveryModule = await import("./local-stable-recovery.mjs");
+  assert.equal(
+    recoveryModule.loadFixedTrialCandidateRuntimeAuthority,
+    undefined,
+    "the fixed-package boundary must not export a reusable candidate capability loader"
+  );
+
+  const fixture = makeRollbackFixture();
+  try {
+    assert.throws(() => inspectAppBundle(fixture.candidate, {
+      readPlistIdentity: readFixturePlistIdentity,
+      readRuntimeIdentity: readFixtureRuntimeIdentity,
+      runtimeRole: "candidate",
+      runtimeAuthorities: [candidateRuntimeDescriptor()]
+    }), /fixed-package.*operation/i);
+
+    const reusableCandidateIdentity = fixtureInspector(fixture.candidate);
+    reusableCandidateIdentity.runtimeClosure.versionAuthority = { runtimeRole: "candidate" };
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      candidateIdentity: reusableCandidateIdentity,
+      dependencies: promoteFixtureDependencies(fixture)
+    }), /Caller-supplied candidate identity is not accepted/);
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target
+    }), /production must use the fixed-package operation/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 test("candidate descriptor rejects manifest/proof drift and preserves exact runtime identity bindings", () => {
@@ -621,19 +670,76 @@ test("archive hash and app.asar entry share one stable archive object", () => {
   const root = createFixtureRoot();
   const archivePath = path.join(root, "candidate.zip");
   try {
-    writeFileSync(archivePath, "stable-archive-bytes");
-    const stable = readStableArchiveEvidence(archivePath, fixedTrialPackageContract.archiveAppAsarEntry, {
-      readArchiveEntry: () => Buffer.from("stable-app-asar")
-    });
-    assert.equal(stable.archiveSha256, sha256("stable-archive-bytes"));
+    createZipWithAppAsar(archivePath, "stable-app-asar");
+    const archiveBytes = readFileSync(archivePath);
+    const stable = readStableArchiveEvidence(archivePath, fixedTrialPackageContract.archiveAppAsarEntry);
+    assert.equal(stable.archiveSha256, sha256(archiveBytes));
     assert.equal(stable.entrySha256, sha256("stable-app-asar"));
 
     assert.throws(() => readStableArchiveEvidence(archivePath, fixedTrialPackageContract.archiveAppAsarEntry, {
-      readArchiveEntry: () => {
-        writeFileSync(archivePath, "mutated-archive-bytes-with-different-size");
-        return Buffer.from("stable-app-asar");
-      }
+      beforeArchiveEntryRead: () => writeFileSync(
+        archivePath,
+        Buffer.concat([archiveBytes, Buffer.from("archive-drift")])
+      )
     }), /Candidate archive changed while it was being inspected/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("archive evidence rejects a path-based entry reader that swaps in a substitute ZIP and restores the parent", () => {
+  const root = createFixtureRoot();
+  const originalParent = path.join(root, "candidate-parent");
+  const displacedParent = path.join(root, "candidate-parent.original");
+  const archivePath = path.join(originalParent, "candidate.zip");
+  try {
+    mkdirSync(originalParent);
+    writeFileSync(archivePath, "original-archive-bytes");
+    assert.throws(() => readStableArchiveEvidence(archivePath, fixedTrialPackageContract.archiveAppAsarEntry, {
+      readArchiveEntry: () => {
+        renameSync(originalParent, displacedParent);
+        try {
+          mkdirSync(originalParent);
+          writeFileSync(archivePath, "substitute-archive-bytes");
+          return Buffer.from("substitute-app-asar");
+        } finally {
+          rmSync(originalParent, { recursive: true, force: true });
+          renameSync(displacedParent, originalParent);
+        }
+      }
+    }), /same opened archive object/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("archive entry extraction stays on the opened descriptor across parent-directory swap and restore", () => {
+  const root = createFixtureRoot();
+  const originalParent = path.join(root, "candidate-parent");
+  const displacedParent = path.join(root, "candidate-parent.original");
+  const substituteParent = path.join(root, "candidate-parent.substitute");
+  const archivePath = path.join(originalParent, "candidate.zip");
+  const substituteArchivePath = path.join(substituteParent, "candidate.zip");
+  try {
+    mkdirSync(originalParent);
+    mkdirSync(substituteParent);
+    createZipWithAppAsar(archivePath, "original-app-asar");
+    createZipWithAppAsar(substituteArchivePath, "substitute-app-asar");
+    const originalArchiveSha256 = sha256(readFileSync(archivePath));
+    const evidence = readStableArchiveEvidence(archivePath, fixedTrialPackageContract.archiveAppAsarEntry, {
+      beforeArchiveEntryRead: () => {
+        renameSync(originalParent, displacedParent);
+        renameSync(substituteParent, originalParent);
+      },
+      afterArchiveEntryRead: () => {
+        renameSync(originalParent, substituteParent);
+        renameSync(displacedParent, originalParent);
+      }
+    });
+    assert.equal(evidence.archiveSha256, originalArchiveSha256);
+    assert.equal(evidence.entrySha256, sha256("original-app-asar"));
+    assert.notEqual(evidence.entrySha256, sha256("substitute-app-asar"));
+    assert.equal(existsSync(archivePath), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -748,7 +854,6 @@ test("inspect is behaviorally read-only for installed, previous, and candidate a
     const report = inspectRecoveryState({
       target: fixture.target,
       candidateApp: fixture.candidate,
-      candidateRuntimeAuthority: candidateRuntimeDescriptor(),
       inspectBundle: (appPath, inspection) => {
         inspectedRoles.push([path.basename(appPath), inspection.runtimeRole, inspection.runtimeAuthorities?.length ?? 0]);
         return fixtureInspector(appPath);
@@ -764,7 +869,7 @@ test("inspect is behaviorally read-only for installed, previous, and candidate a
     assert.deepEqual(inspectedRoles, [
       ["Auto SVGA.app", "installed", 0],
       ["Auto SVGA.previous.bundle", "previous", 0],
-      ["Candidate.app", "candidate", 1]
+      ["Candidate.app", "candidate-copy", 0]
     ]);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });

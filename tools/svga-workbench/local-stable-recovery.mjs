@@ -75,7 +75,7 @@ export const legacyLocalRuntimeVersionAuthority = Object.freeze({
   schemaVersion: 1,
   authorityId: "legacy-local-runtime-2026-07-09",
   authoritySource: "role-policy:installed-or-previous",
-  runtimeRoles: Object.freeze(["legacy-retained", "installed", "previous"]),
+  runtimeRoles: Object.freeze(["legacy-retained", "installed", "previous", "candidate-copy"]),
   dependencyVersions: Object.freeze({ ...legacyLocalRuntimeVersions })
 });
 
@@ -97,7 +97,7 @@ export const retainedRuntimeVersionAuthorities = Object.freeze([
     schemaVersion: 1,
     authorityId: "retained-runtime-protobufjs-8.6.6",
     authoritySource: "retained-policy:0.2.0-alpha.2",
-    runtimeRoles: Object.freeze(["installed", "previous"]),
+    runtimeRoles: Object.freeze(["installed", "previous", "candidate-copy"]),
     dependencyVersions: Object.freeze({ ...retainedCurrentRuntimeVersions })
   })
 ]);
@@ -109,7 +109,7 @@ const defaultRetainedRuntimeAuthorities = Object.freeze([
   legacyLocalRuntimeVersionAuthority,
   ...retainedRuntimeVersionAuthorities
 ]);
-const candidateRuntimeAuthorityCapabilities = new WeakSet();
+const candidateRuntimeAuthorityCapabilities = new WeakMap();
 
 export const requiredRuntimeEntries = [
   "/.runtime/build-info.json",
@@ -376,70 +376,27 @@ function assertLowerHex(value, length, label) {
   }
 }
 
-function normalizeRuntimeVersionAuthority(authority, label) {
-  if (!authority || authority.schemaVersion !== 1) throw new Error(`${label} must use schemaVersion 1`);
-  if (typeof authority.authorityId !== "string" || authority.authorityId.length === 0) {
-    throw new Error(`${label} must name an authorityId`);
-  }
-  if (typeof authority.authoritySource !== "string" || authority.authoritySource.length === 0) {
-    throw new Error(`${label} must name an authoritySource`);
-  }
-  if (!Array.isArray(authority.runtimeRoles) || authority.runtimeRoles.length === 0) {
-    throw new Error(`${label} must name at least one runtimeRole`);
-  }
-  for (const runtimeRole of authority.runtimeRoles) {
-    if (!["legacy-retained", "installed", "previous", "candidate"].includes(runtimeRole)) {
-      throw new Error(`${label}.runtimeRoles contains unsupported role ${runtimeRole}`);
-    }
-  }
-  if (authority.buildCommit !== undefined) assertLowerHex(authority.buildCommit, 40, `${label}.buildCommit`);
-  if (authority.appAsarSha256 !== undefined) assertLowerHex(authority.appAsarSha256, 64, `${label}.appAsarSha256`);
-  const expectedNames = runtimeDependencies.map(({ packageName }) => packageName);
-  const actualNames = Object.keys(authority.dependencyVersions ?? {}).sort();
-  if (JSON.stringify(actualNames) !== JSON.stringify([...expectedNames].sort())) {
-    throw new Error(`${label}.dependencyVersions must contain exactly ${expectedNames.join(", ")}`);
-  }
-  for (const packageName of expectedNames) {
-    const version = authority.dependencyVersions[packageName];
-    if (typeof version !== "string" || version.length === 0) {
-      throw new Error(`${label}.dependencyVersions.${packageName} must be a non-empty version`);
-    }
-  }
-  return authority;
-}
-
 function runtimeAuthoritiesForRole(runtimeRole, runtimeAuthorities) {
   if (runtimeAuthorities !== undefined) {
-    if (runtimeRole !== "candidate") {
-      throw new Error(`Runtime role ${runtimeRole} does not accept caller-supplied version authorities`);
-    }
-    if (!Array.isArray(runtimeAuthorities) || runtimeAuthorities.length === 0) {
-      throw new Error(`Runtime role ${runtimeRole} requires at least one explicit version authority`);
-    }
-    return runtimeAuthorities.map((authority, index) => {
-      const normalized = normalizeRuntimeVersionAuthority(authority, `runtimeAuthorities[${index}]`);
-      if (runtimeRole === "candidate" && !candidateRuntimeAuthorityCapabilities.has(normalized)) {
-        throw new Error("Candidate runtime authority is not a trusted fixed-package capability");
-      }
-      return normalized;
-    });
+    throw new Error(`Runtime role ${runtimeRole} does not accept caller-supplied version authorities`);
   }
   if (runtimeRole === "legacy-retained") return [legacyLocalRuntimeVersionAuthority];
-  if (runtimeRole === "installed" || runtimeRole === "previous") {
+  if (["installed", "previous", "candidate-copy"].includes(runtimeRole)) {
     return defaultRetainedRuntimeAuthorities;
   }
-  throw new Error(`Runtime role ${runtimeRole} requires explicit manifest/source-bound version authority`);
+  if (runtimeRole === "candidate") {
+    throw new Error("Candidate runtime authority is available only inside one fixed-package inspection operation");
+  }
+  throw new Error(`Unsupported runtime role ${runtimeRole}`);
 }
 
-export function resolveRuntimeVersionAuthority({
+function resolveRuntimeVersionAuthorityFromAuthorities({
   buildInfo,
   appAsarSha256,
   dependencyVersions,
-  runtimeRole = "legacy-retained",
-  runtimeAuthorities
-}) {
+  runtimeRole
+}, authorities) {
   assertLowerHex(appAsarSha256, 64, "appAsarSha256");
-  const authorities = runtimeAuthoritiesForRole(runtimeRole, runtimeAuthorities);
   const matches = authorities.filter((authority) => (
     authority.runtimeRoles.includes(runtimeRole)
     && (!authority.buildCommit || authority.buildCommit === buildInfo?.buildCommit)
@@ -480,6 +437,21 @@ export function resolveRuntimeVersionAuthority({
     appAsarSha256,
     dependencyVersions: { ...matched.dependencyVersions }
   };
+}
+
+export function resolveRuntimeVersionAuthority({
+  buildInfo,
+  appAsarSha256,
+  dependencyVersions,
+  runtimeRole = "legacy-retained",
+  runtimeAuthorities
+}) {
+  return resolveRuntimeVersionAuthorityFromAuthorities({
+    buildInfo,
+    appAsarSha256,
+    dependencyVersions,
+    runtimeRole
+  }, runtimeAuthoritiesForRole(runtimeRole, runtimeAuthorities));
 }
 
 function runtimeDependencyVersionsFromEvidence(closure, buildCommit, label) {
@@ -552,10 +524,16 @@ export function deriveCandidateRuntimeVersionAuthorityDescriptor({
   });
 }
 
-function createCandidateRuntimeVersionAuthority(evidence) {
-  const authority = deriveCandidateRuntimeVersionAuthorityDescriptor(evidence);
-  candidateRuntimeAuthorityCapabilities.add(authority);
-  return authority;
+function createCandidateRuntimeVersionAuthority(evidence, binding) {
+  const capability = Object.freeze({});
+  candidateRuntimeAuthorityCapabilities.set(capability, {
+    authority: deriveCandidateRuntimeVersionAuthorityDescriptor(evidence),
+    operation: binding.operation,
+    appPath: binding.appPath,
+    stabilityFingerprint: binding.stabilityFingerprint,
+    consumed: false
+  });
+  return capability;
 }
 
 export function validateCandidatePackageDeclarations({ manifest, proof, expectedHead }) {
@@ -635,14 +613,28 @@ function assertFixedTrialPath(candidatePath, expectedType, label) {
   return resolvedCandidate;
 }
 
+function readArchiveEntryFromDescriptor(descriptor, entryPath) {
+  return execFileSync("/usr/bin/unzip", ["-p", "/dev/fd/3", entryPath], {
+    encoding: null,
+    maxBuffer: 512 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe", descriptor]
+  });
+}
+
 export function readStableArchiveEvidence(archivePath, entryPath, dependencies = {}) {
-  const readArchiveEntry = dependencies.readArchiveEntry ?? ((filePath, archiveEntryPath) => (
-    execFileSync("/usr/bin/unzip", ["-p", filePath, archiveEntryPath], {
-      encoding: null,
-      maxBuffer: 512 * 1024 * 1024,
-      stdio: "pipe"
-    })
-  ));
+  if (Object.hasOwn(dependencies, "readArchiveEntry")) {
+    throw new Error("Candidate archive entry must come from the same opened archive object");
+  }
+  if (
+    typeof entryPath !== "string"
+    || entryPath.length === 0
+    || path.isAbsolute(entryPath)
+    || entryPath.split("/").includes("..")
+  ) {
+    throw new Error("Candidate archive entry path must be a contained relative path");
+  }
+  const beforeArchiveEntryRead = dependencies.beforeArchiveEntryRead ?? (() => {});
+  const afterArchiveEntryRead = dependencies.afterArchiveEntryRead ?? (() => {});
   const pathStatBefore = assertRegularUniqueFile(archivePath);
   if (pathStatBefore.size > 512 * 1024 * 1024) throw new Error("Candidate archive exceeds the inspection byte limit");
   let descriptor;
@@ -654,7 +646,13 @@ export function readStableArchiveEvidence(archivePath, entryPath, dependencies =
     const archiveBytes = readFileSync(descriptor);
     const descriptorStatAfterHash = fstatSync(descriptor);
     assertSameStatIdentity(descriptorStatBefore, descriptorStatAfterHash, "Candidate archive");
-    const entryBytes = readArchiveEntry(archivePath, entryPath);
+    let entryBytes;
+    beforeArchiveEntryRead();
+    try {
+      entryBytes = readArchiveEntryFromDescriptor(descriptor, entryPath);
+    } finally {
+      afterArchiveEntryRead();
+    }
     if (!Buffer.isBuffer(entryBytes)) throw new Error("Candidate archive entry reader must return bytes");
     const descriptorStatAfterEntry = fstatSync(descriptor);
     const pathStatAfter = assertRegularUniqueFile(archivePath);
@@ -677,7 +675,7 @@ function readStableJson(filePath, label) {
   return JSON.parse(input.bytes.toString("utf8"));
 }
 
-export function loadFixedTrialCandidateRuntimeAuthority({ expectedHead }) {
+export function inspectFixedTrialCandidatePackage({ expectedHead }) {
   assertLowerHex(expectedHead, 40, "expected candidate HEAD");
   const manifestFile = assertFixedTrialPath(path.join(repoRoot, fixedTrialPackageContract.manifestPath), "file", "Candidate manifest");
   const proofFile = assertFixedTrialPath(path.join(repoRoot, fixedTrialPackageContract.proofPath), "file", "Candidate proof");
@@ -698,12 +696,46 @@ export function loadFixedTrialCandidateRuntimeAuthority({ expectedHead }) {
   if (archiveEvidence.entrySha256 !== sourceAppAsarInput.sha256) {
     throw new Error("Candidate source app.asar does not match the stable archive entry");
   }
+
+  let candidateRuntimeEvidence;
+  const candidateIdentity = inspectAppBundleCore(sourceApp, {}, {
+    readRuntimeIdentity: (asarFile) => {
+      candidateRuntimeEvidence = readDefaultRuntimeEvidence(asarFile);
+      return {
+        buildInfo: candidateRuntimeEvidence.buildInfo,
+        buildInfoSha256: candidateRuntimeEvidence.buildInfoSha256,
+        runtimeClosure: candidateRuntimeEvidence.runtimeClosure
+      };
+    }
+  });
+  if (!candidateRuntimeEvidence) throw new Error("Candidate runtime evidence was not inspected");
+  if (candidateIdentity.appPath !== sourceApp || candidateIdentity.realPath !== sourceApp) {
+    throw new Error("Candidate App inspection did not bind the exact canonical App path");
+  }
+  if (candidateIdentity.appAsar.sha256 !== sourceAppAsarInput.sha256) {
+    throw new Error("Candidate App inspection does not match the fixed app.asar object");
+  }
+  if (candidateIdentity.buildInfo.buildCommit !== expectedHead) {
+    throw new Error("Candidate App buildCommit does not match the expected candidate HEAD");
+  }
+
+  const operation = Object.freeze({});
   const candidateRuntimeAuthority = createCandidateRuntimeVersionAuthority({
     buildCommit: expectedHead,
-    appAsarSha256: sourceAppAsarInput.sha256,
+    appAsarSha256: candidateIdentity.appAsar.sha256,
     manifestRuntimeClosure: manifest.packagedRuntimeClosure,
     proofRuntimeClosure: proof.packagingScaffold.packagedRuntimeClosure
+  }, {
+    operation,
+    appPath: candidateIdentity.appPath,
+    stabilityFingerprint: candidateIdentity.stabilityFingerprint
   });
+  const authorizedRuntimeIdentity = consumeCandidateRuntimeVersionAuthority(candidateRuntimeAuthority, {
+    operation,
+    identity: candidateIdentity,
+    runtimeEvidence: candidateRuntimeEvidence
+  });
+  candidateIdentity.runtimeClosure = authorizedRuntimeIdentity.runtimeClosure;
   return {
     manifest,
     proof,
@@ -711,11 +743,11 @@ export function loadFixedTrialCandidateRuntimeAuthority({ expectedHead }) {
     sourceArchive,
     head: expectedHead,
     archiveEvidence,
-    candidateRuntimeAuthority
+    candidateIdentity
   };
 }
 
-export function readDefaultRuntimeIdentity(asarFile, options = {}) {
+function readDefaultRuntimeEvidence(asarFile) {
   const asarInput = asarFile?.bytes ? asarFile : readNoFollowCriticalFile(asarFile, "app.asar");
   const bytes = asarInput.bytes;
   const appAsarSha256 = asarInput.sha256 ?? sha256Buffer(bytes);
@@ -742,30 +774,73 @@ export function readDefaultRuntimeIdentity(asarFile, options = {}) {
     findings.push(`runtime build-info source is ${buildInfo.source ?? "missing"}, expected package-internal-trial`);
   }
   if (findings.length > 0) throw new Error(`App runtime closure failed: ${findings.join("; ")}`);
-  const versionAuthority = resolveRuntimeVersionAuthority({
-    buildInfo,
-    appAsarSha256,
-    dependencyVersions,
-    runtimeRole: options.runtimeRole,
-    runtimeAuthorities: options.runtimeAuthorities
-  });
-  for (const dependency of dependencies) {
-    dependency.expectedVersion = versionAuthority.dependencyVersions[dependency.packageName];
-    dependency.validated = dependency.version === dependency.expectedVersion;
-  }
-
   return {
+    appAsarSha256,
     buildInfo,
     buildInfoSha256: sha256Buffer(buildInfoBuffer),
+    dependencyVersions,
     runtimeClosure: {
-      validated: true,
+      validated: false,
       requiredEntries: requiredRuntimeEntries,
       missingEntries,
       dependencies,
-      versionAuthority,
       findings: []
     }
   };
+}
+
+function runtimeIdentityFromEvidence(evidence, versionAuthority) {
+  const dependencies = evidence.runtimeClosure.dependencies.map((dependency) => ({
+    ...dependency,
+    expectedVersion: versionAuthority.dependencyVersions[dependency.packageName],
+    validated: dependency.version === versionAuthority.dependencyVersions[dependency.packageName]
+  }));
+  return {
+    buildInfo: evidence.buildInfo,
+    buildInfoSha256: evidence.buildInfoSha256,
+    runtimeClosure: {
+      ...evidence.runtimeClosure,
+      validated: true,
+      dependencies,
+      versionAuthority
+    }
+  };
+}
+
+function consumeCandidateRuntimeVersionAuthority(capability, { operation, identity, runtimeEvidence }) {
+  const state = candidateRuntimeAuthorityCapabilities.get(capability);
+  candidateRuntimeAuthorityCapabilities.delete(capability);
+  if (!state || state.consumed) {
+    throw new Error("Candidate runtime authority capability is unavailable or already consumed");
+  }
+  state.consumed = true;
+  if (state.operation !== operation) throw new Error("Candidate runtime authority operation does not match");
+  if (state.appPath !== identity.appPath) throw new Error("Candidate runtime authority App path does not match");
+  if (state.stabilityFingerprint !== identity.stabilityFingerprint) {
+    throw new Error("Candidate runtime authority App fingerprint does not match");
+  }
+  if (runtimeEvidence.appAsarSha256 !== identity.appAsar.sha256) {
+    throw new Error("Candidate runtime authority app.asar fingerprint does not match");
+  }
+  const versionAuthority = resolveRuntimeVersionAuthorityFromAuthorities({
+    buildInfo: runtimeEvidence.buildInfo,
+    appAsarSha256: runtimeEvidence.appAsarSha256,
+    dependencyVersions: runtimeEvidence.dependencyVersions,
+    runtimeRole: "candidate"
+  }, [state.authority]);
+  return runtimeIdentityFromEvidence(runtimeEvidence, versionAuthority);
+}
+
+export function readDefaultRuntimeIdentity(asarFile, options = {}) {
+  const evidence = readDefaultRuntimeEvidence(asarFile);
+  const versionAuthority = resolveRuntimeVersionAuthority({
+    buildInfo: evidence.buildInfo,
+    appAsarSha256: evidence.appAsarSha256,
+    dependencyVersions: evidence.dependencyVersions,
+    runtimeRole: options.runtimeRole,
+    runtimeAuthorities: options.runtimeAuthorities
+  });
+  return runtimeIdentityFromEvidence(evidence, versionAuthority);
 }
 
 /*
@@ -780,7 +855,7 @@ export function readDefaultRuntimeIdentityFromPath(asarPath) {
   return readDefaultRuntimeIdentity(asarPath);
 }
 
-export function inspectAppBundle(appPath, dependencies = {}) {
+function inspectAppBundleCore(appPath, dependencies = {}, internal = {}) {
   const resolvedInput = path.resolve(appPath);
   if (!path.isAbsolute(appPath)) throw new Error(`App path must be absolute: ${appPath}`);
   if (!existsSync(resolvedInput)) throw new Error(`App bundle is missing: ${resolvedInput}`);
@@ -804,7 +879,7 @@ export function inspectAppBundle(appPath, dependencies = {}) {
   }
 
   const readPlistIdentity = dependencies.readPlistIdentity ?? readDefaultPlistIdentity;
-  const readRuntimeIdentity = dependencies.readRuntimeIdentity ?? readDefaultRuntimeIdentity;
+  const readRuntimeIdentity = internal.readRuntimeIdentity ?? dependencies.readRuntimeIdentity ?? readDefaultRuntimeIdentity;
   const plistFile = readNoFollowCriticalFile(plistPath, "Info.plist");
   const asarFile = readNoFollowCriticalFile(asarPath, "app.asar");
   const plistSha256 = plistFile.sha256;
@@ -868,6 +943,13 @@ export function inspectAppBundle(appPath, dependencies = {}) {
   return identity;
 }
 
+export function inspectAppBundle(appPath, dependencies = {}) {
+  if (dependencies.runtimeRole === "candidate") {
+    throw new Error("Candidate App inspection is available only inside one fixed-package inspection operation");
+  }
+  return inspectAppBundleCore(appPath, dependencies);
+}
+
 function identityMatchesBinding(identity, binding) {
   return Boolean(
     identity
@@ -910,7 +992,6 @@ export function inspectRecoveryState({
   candidateApp,
   rollbackJournalPath,
   rollbackManifestPath,
-  candidateRuntimeAuthority,
   inspectBundle = inspectAppBundle,
   now = () => new Date(),
   readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"))
@@ -936,10 +1017,7 @@ export function inspectRecoveryState({
     previousPath: previous,
     legacyPrevious: legacyPreviousIdentity,
     legacyPreviousPath: legacyPrevious,
-    candidate: inspectBundle(candidateApp, {
-      runtimeRole: "candidate",
-      runtimeAuthorities: candidateRuntimeAuthority ? [candidateRuntimeAuthority] : undefined
-    })
+    candidate: inspectBundle(candidateApp, { runtimeRole: "candidate-copy" })
   };
   if (rollbackJournalPath) {
     result.rollback = {
