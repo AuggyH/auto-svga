@@ -20,18 +20,14 @@ import {
 } from "./short-term-macos-replaceable-model.mjs";
 import {
   nextSelectedTextKey,
-  runtimeTextOverlayCopy,
   runtimeTextListView,
   selectedRuntimeTextElement
 } from "./short-term-macos-text-model.mjs";
-import {
-  applyRuntimeTextOverlay,
-  clearRuntimeTextOverlay
-} from "./short-term-macos-text-renderers.mjs";
+import { clearRuntimeTextOverlay } from "./short-term-macos-text-renderers.mjs";
 
 export function renderShortTermReplaceableImages({ nodes, state, model }) {
   if (!model) return;
-  const view = replaceableImageListView(model, state.selectedImageKey, state.renameImageKey);
+  const view = replaceableImageListView(model, state.selectedImageKey, state.renameImageKey, state.textPreviewValues);
   renderReplaceableImages(nodes, view, state.model);
 }
 
@@ -48,12 +44,7 @@ export function selectShortTermRuntimeTextElement({ nodes, state, textKey, reren
   if (!textKey) return;
   state.selectedTextKey = textKey;
   state.textPreview = state.textPreviewValues?.[textKey] || "";
-  const textElement = selectedRuntimeTextElement(state.model?.replaceableElements, textKey);
-  if (state.textPreview) {
-    applyRuntimeTextOverlay(nodes.runtimeTextOverlay, runtimeTextOverlayCopy(textElement, state.textPreview), true);
-  } else {
-    clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
-  }
+  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   if (!rerender) {
     applyRuntimeTextSelection(nodes, textKey);
     return;

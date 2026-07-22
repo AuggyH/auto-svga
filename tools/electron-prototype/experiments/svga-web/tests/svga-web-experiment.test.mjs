@@ -525,6 +525,9 @@ test("short-term optimization overwrite completes compare state and rebinds Prev
     },
     renderShortTermPlaybackProgress() {},
     renderShortTermPreviewModel() {},
+    restoreShortTermRuntimeTextPreviews() {
+      return true;
+    },
     requestAnimationFrame() {
       return 1;
     },
@@ -1033,9 +1036,11 @@ test("short-term replaceable rows follow frozen image and text composition", asy
     }
     assert.match(imageRow.innerHTML, /data-component="ThumbnailFrame" data-variant="image"/);
     assert.match(imageRow.innerHTML, /class="replacementRowActions"/);
+    assert.match(imageRow.innerHTML, /data-text-key="avatar"/);
     assert.match(textRow.innerHTML, /data-component="ThumbnailFrame" data-variant="text"/);
     assert.match(textRow.innerHTML, /data-component="ThumbnailTextIcon"/);
     assert.match(textRow.innerHTML, /class="runtimeTextActions"/);
+    assert.match(textRow.innerHTML, /data-action="row-menu" data-image-key="username"/);
   } finally {
     globalThis.document = originalDocument;
   }
@@ -7202,6 +7207,7 @@ test("0.2 production controller composition resets only the requested SVGA runti
   );
   const {
     applyShortTermRuntimeTextPreview,
+    restoreShortTermRuntimeTextPreviews,
     resetShortTermRuntimeTextPreview
   } = await import(
     pathToFileURL(path.join(experimentRoot, "web/short-term-macos-runtime-text-surface.mjs")).href
@@ -7210,6 +7216,7 @@ test("0.2 production controller composition resets only the requested SVGA runti
     pathToFileURL(path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs")).href
   );
   const originalDocument = globalThis.document;
+  const originalOffscreenCanvas = globalThis.OffscreenCanvas;
   const nodes = createMultiFormatControllerTestNodes();
   nodes.runtimeTextOverlay = new FakeDomElement("div");
   nodes.recentList = new FakeDomElement("div");
@@ -7229,8 +7236,8 @@ test("0.2 production controller composition resets only the requested SVGA runti
       replaceableElements: {
         images: [],
         texts: [
-          { textKey: "text-a", displayName: "Text A", initialText: "Source A" },
-          { textKey: "text-b", displayName: "Text B", initialText: "Source B" }
+          { textKey: "text-a", imageKey: "text-a", displayName: "Text A", initialText: "Source A" },
+          { textKey: "text-b", imageKey: "text-b", displayName: "Text B", initialText: "Source B" }
         ]
       }
     },
@@ -7258,13 +7265,60 @@ test("0.2 production controller composition resets only the requested SVGA runti
       return Promise.resolve();
     }
   };
+  const createTextPlayback = (imageKeys = ["text-a", "text-b"]) => ({
+    player: { currentFrame: 0, renderer: { drawFrame() {} } },
+    videoItem: {
+      images: {},
+      sprites: imageKeys.map((imageKey) => ({
+        imageKey,
+        frames: [{ layout: { width: 120, height: 32 } }]
+      })),
+      dynamicElements: {},
+      frames: 12
+    }
+  });
 
   try {
-    globalThis.document = createMultiFormatControllerTestDocument(nodes);
+    globalThis.OffscreenCanvas = class {
+      constructor(width, height) {
+        this.width = width;
+        this.height = height;
+      }
+      getContext() {
+        return {
+          clearRect() {},
+          fillText() {},
+          measureText(value) { return { width: String(value).length * 8 }; },
+          set fillStyle(value) { this._fillStyle = value; },
+          set font(value) { this._font = value; },
+          set textAlign(value) { this._textAlign = value; },
+          set textBaseline(value) { this._textBaseline = value; }
+        };
+      }
+    };
+    const documentRef = createMultiFormatControllerTestDocument(nodes);
+    const createElement = documentRef.createElement.bind(documentRef);
+    documentRef.createElement = (tagName) => {
+      const node = createElement(tagName);
+      if (tagName === "canvas") {
+        node.getContext = () => ({
+          clearRect() {},
+          fillText() {},
+          measureText(value) { return { width: String(value).length * 8 }; },
+          set fillStyle(value) { this._fillStyle = value; },
+          set font(value) { this._font = value; },
+          set textAlign(value) { this._textAlign = value; },
+          set textBaseline(value) { this._textBaseline = value; }
+        });
+      }
+      return node;
+    };
+    globalThis.document = documentRef;
     const renderCommandState = () => {};
     const svgaController = {
       handlers: {
         async loadOpenedSource() {
+          state.primaryPlayback = createTextPlayback();
           return true;
         },
         updateRuntimeText(textKey, value) {
@@ -7315,9 +7369,25 @@ test("0.2 production controller composition resets only the requested SVGA runti
       "text-a": "Preview A",
       "text-b": "Preview B"
     });
+    state.primaryPlayback = createTextPlayback();
+    assert.equal(restoreShortTermRuntimeTextPreviews(state), true);
+    assert.equal(state.primaryPlayback.videoItem.dynamicElements["text-a"].source.runtimeTextValue, "Preview A");
+    assert.equal(state.primaryPlayback.videoItem.dynamicElements["text-b"].source.runtimeTextValue, "Preview B");
+
+    state.primaryPlayback = createTextPlayback(["text-a"]);
+    assert.equal(restoreShortTermRuntimeTextPreviews(state), false);
+    assert.equal(
+      state.primaryPlayback.videoItem.dynamicElements["text-a"],
+      undefined,
+      "a partial remount must roll back already-applied sibling text"
+    );
+    state.primaryPlayback = createTextPlayback();
+    assert.equal(restoreShortTermRuntimeTextPreviews(state), true);
 
     controller.handlers.resetRuntimeText("text-a");
     assert.deepEqual(state.textPreviewValues, { "text-b": "Preview B" });
+    assert.equal(state.primaryPlayback.videoItem.dynamicElements["text-a"], undefined);
+    assert.equal(state.primaryPlayback.videoItem.dynamicElements["text-b"].source.runtimeTextValue, "Preview B");
 
     controller.handlers.updateRuntimeText("text-a", "Preview A again");
     controller.handlers.resetRuntimeText("text-b");
@@ -7325,6 +7395,132 @@ test("0.2 production controller composition resets only the requested SVGA runti
     assert.deepEqual(state.sourceBytes, sourceBytes);
   } finally {
     globalThis.document = originalDocument;
+    if (originalOffscreenCanvas === undefined) delete globalThis.OffscreenCanvas;
+    else globalThis.OffscreenCanvas = originalOffscreenCanvas;
+  }
+});
+
+test("SVGA runtime text paints the exact value into the selected imageKey target and resets one sibling", async () => {
+  const {
+    applySvgaRuntimeTextTarget,
+    resetSvgaRuntimeTextTarget
+  } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/short-term-macos-svga-runtime-text-model.mjs")).href
+  );
+  const paintCalls = [];
+  const drawCalls = [];
+  const makeSurface = () => ({
+    width: 0,
+    height: 0,
+    dataset: {},
+    getContext() {
+      return {
+        clearRect() {},
+        fillText(...args) { paintCalls.push(args); },
+        set fillStyle(value) { this._fillStyle = value; },
+        set font(value) { this._font = value; },
+        set textAlign(value) { this._textAlign = value; },
+        set textBaseline(value) { this._textBaseline = value; }
+      };
+    }
+  });
+  const sibling = { source: { dataset: { runtimeTextValue: "sibling" } }, fit: "fill" };
+  const playback = {
+    canvas: {},
+    player: {
+      currentFrame: 3,
+      renderer: {
+        drawFrame(images, sprites, dynamicElements, frame) {
+          drawCalls.push({ images, sprites, dynamicElements: { ...dynamicElements }, frame });
+        }
+      }
+    },
+    videoItem: {
+      images: {},
+      sprites: [{
+        imageKey: "nickname_text",
+        frames: [{ alpha: 1, layout: { width: 180, height: 48 } }]
+      }, {
+        imageKey: "sibling_text",
+        frames: [{ alpha: 1, layout: { width: 120, height: 32 } }]
+      }],
+      dynamicElements: { sibling_text: sibling },
+      frames: 12
+    }
+  };
+  const exactText = "精准目标文本 42";
+
+  const applied = applySvgaRuntimeTextTarget(playback, "nickname_text", exactText, {
+    createSurface: makeSurface,
+    color: "CanvasText"
+  });
+
+  assert.equal(applied.applied, true);
+  assert.equal(applied.imageKey, "nickname_text");
+  assert.equal(playback.videoItem.dynamicElements.nickname_text.source.dataset.runtimeTextValue, exactText);
+  assert.equal(playback.videoItem.dynamicElements.sibling_text, sibling);
+  assert.ok(paintCalls.some(([value]) => value === exactText));
+  assert.equal(drawCalls.at(-1).frame, 3);
+  assert.equal(drawCalls.at(-1).dynamicElements.nickname_text.source.dataset.runtimeTextValue, exactText);
+
+  const reset = resetSvgaRuntimeTextTarget(playback, "nickname_text");
+  assert.equal(reset.reset, true);
+  assert.equal(playback.videoItem.dynamicElements.nickname_text, undefined);
+  assert.equal(playback.videoItem.dynamicElements.sibling_text, sibling);
+  assert.equal(drawCalls.at(-1).dynamicElements.nickname_text, undefined);
+  assert.equal(drawCalls.at(-1).dynamicElements.sibling_text, sibling);
+});
+
+test("SVGA runtime text fails closed when its target has no visibly drawable layout", async () => {
+  const { applySvgaRuntimeTextTarget } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/short-term-macos-svga-runtime-text-model.mjs")).href
+  );
+  const unusableLayouts = [
+    undefined,
+    { width: 0, height: 32 },
+    { width: 120, height: 0 },
+    { width: -1, height: 32 },
+    { width: 120, height: -1 },
+    { width: Number.NaN, height: 32 },
+    { width: Number.POSITIVE_INFINITY, height: 32 },
+    { width: 0.4, height: 32 }
+  ];
+
+  for (const layout of unusableLayouts) {
+    let surfaceCreations = 0;
+    let drawCalls = 0;
+    const playback = {
+      player: {
+        currentFrame: 0,
+        renderer: { drawFrame() { drawCalls += 1; } }
+      },
+      videoItem: {
+        images: {},
+        sprites: [{ imageKey: "target", frames: [{ layout }] }],
+        dynamicElements: {},
+        frames: 1
+      }
+    };
+
+    const result = applySvgaRuntimeTextTarget(playback, "target", "必须可见", {
+      createSurface() {
+        surfaceCreations += 1;
+        return {
+          getContext() {
+            return {
+              clearRect() {},
+              fillText() {},
+              measureText() { return { width: 1 }; }
+            };
+          }
+        };
+      }
+    });
+
+    assert.equal(result.applied, false, `layout must fail closed: ${String(layout?.width)} x ${String(layout?.height)}`);
+    assert.equal(surfaceCreations, 0);
+    assert.equal(drawCalls, 0);
+    assert.equal(playback.videoItem.dynamicElements.target, undefined);
   }
 });
 
@@ -9445,7 +9641,12 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.equal(state.model.status, "playing");
     assert.equal(state.model.openedFrom, "fileOpenEvent");
     assert.equal(state.model.rightPanel.lottieTexts.length, 1);
-    assert.equal(state.model.rightPanel.assets.some((asset) => asset.id === "avatar" && asset.replaceable), true);
+    assert.equal(state.model.rightPanel.assets.some((asset) => (
+      asset.id === "avatar"
+      && asset.replaceable === false
+      && asset.technicalReplaceable === true
+      && asset.designerIntentQualified === false
+    )), true);
     assert.equal(state.model.rightPanel.assetInventory.summary.imageCount > 0, true);
     assert.equal(state.model.rightPanel.assetInventory.summary.textCount > 0, true);
     assert.equal(lottieCalls.length, 1);
@@ -10707,6 +10908,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermReplaceableRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-renderers.mjs"), "utf8");
   const shortTermReplaceableSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-surface.mjs"), "utf8");
   const shortTermRuntimeTextSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-runtime-text-surface.mjs"), "utf8");
+  const shortTermSvgaRuntimeTextModel = await readFile(path.join(experimentRoot, "web/short-term-macos-svga-runtime-text-model.mjs"), "utf8");
   const shortTermOptimizationModel = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-model.mjs"), "utf8");
   const shortTermOptimizationRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-renderers.mjs"), "utf8");
   const shortTermOptimizationSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-surface.mjs"), "utf8");
@@ -11491,7 +11693,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /invokeShortTermAction\("setAppearance", "dark", \{ persist: true \}\)/);
   assert.match(shortTermCompareSurface, /applyCompareSlotView/);
   assert.match(shortTermCompareSurface, /applyCompareTraceView/);
-  assert.match(shortTermRuntimeTextSurface, /applyRuntimeTextOverlay/);
+  assert.doesNotMatch(shortTermRuntimeTextSurface, /applyRuntimeTextOverlay/);
   assert.match(shortTermRuntimeTextSurface, /clearRuntimeTextOverlay/);
   assert.match(shortTermFeedbackSurface, /clearSaveFeedbackBanner/);
   assert.match(shortTermResourceMenuSurface, /hideResourceContextMenu/);
@@ -11543,7 +11745,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermController, /showShortTermFailure\(\{ nodes, setView \}, error\)/);
   assert.match(shortTermController, /showShortTermOperationFailure\(\{ nodes, state, setMode, renderCommandState \}, title, error\)/);
   assert.match(shortTermFileSurface, /showPlaybackFailure\(error\)/);
-  assert.match(shortTermController, /async function reloadPrimaryPlayback\(\)[\s\S]*mountPlayback\("primary", nodes\.primaryCanvas, state\.previewBytes \?\? state\.sourceBytes\)[\s\S]*showPlaybackFailure\(error\)/);
+  assert.match(shortTermController, /async function reloadPrimaryPlayback\(\)[\s\S]*mountPrimaryWithAuthority\([\s\S]*state\.previewBytes \?\? state\.sourceBytes,[\s\S]*currentSourceAuthority\(\)[\s\S]*showPlaybackFailure\(error\)/);
   assert.match(shortTermController, /function showPlaybackFailure\(\)[\s\S]*stopAllPlayback\(\)[\s\S]*clearCanvas\(nodes\.primaryCanvas\)[\s\S]*setView\("preview"\)[\s\S]*showPlaybackFailureRecovery\(nodes\)/);
   assert.match(shortTermEventBindings, /action === "reload-playback"[^\n]*handlers\.reloadPrimaryPlayback\(\)/);
   assert.match(shortTermController, /shortTermCurrentStateSummary\(\{ nodes, state \}\)/);
@@ -11837,7 +12039,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableSurface, /runtimeTextListView/);
   assert.match(shortTermController, /from "\.\/short-term-macos-runtime-text-surface\.mjs"/);
   assert.match(shortTermRuntimeTextSurface, /from "\.\/short-term-macos-text-model\.mjs"/);
-  assert.match(shortTermRuntimeTextSurface, /runtimeTextOverlayCopy/);
+  assert.match(shortTermRuntimeTextSurface, /applySvgaRuntimeTextTarget/);
   assert.match(shortTermReplaceableSurface, /selectedRuntimeTextElement/);
   assert.match(shortTermReplaceableSurface, /renderRuntimeTextElements\(nodes, view, state\.selectedTextKey\)/);
   assert.match(shortTermReplaceableSurface, /from "\.\/short-term-macos-replaceable-renderers\.mjs"/);
@@ -11850,10 +12052,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermReplaceableRenderers, /nodes\.editTextButton\.hidden|nodes\.resetTextButton\.hidden/);
   assert.match(shortTermRuntimeTextSurface, /export function focusShortTermRuntimeTextPreviewInput/);
   assert.match(shortTermRuntimeTextSurface, /export function applyShortTermRuntimeTextPreview/);
-  assert.match(shortTermRuntimeTextSurface, /runtimeTextReplacementView\(textElement, value, \{ emptyIsSource: true \}\)/);
+  assert.match(shortTermRuntimeTextSurface, /runtimeTextReplacementView\(textElement, value, \{[\s\S]*emptyIsSource: true,[\s\S]*initialIsSource: false[\s\S]*\}\)/);
   assert.match(shortTermRuntimeTextSurface, /setRuntimeTextValue\(state, textKey, replacement\.hasPreview \? replacement\.value : ""\)/);
-  assert.match(shortTermRuntimeTextSurface, /if \(replacement\.hasPreview\) \{\s*applyRuntimeTextOverlay\(\s*nodes\.runtimeTextOverlay,\s*runtimeTextOverlayCopy\(textElement, state\.textPreview\),\s*true\s*\)/s);
+  assert.match(shortTermRuntimeTextSurface, /applySvgaRuntimeTextTarget\(state\.primaryPlayback, textElement\.imageKey, replacement\.value\)/);
   assert.match(shortTermRuntimeTextSurface, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);
+  assert.match(shortTermSvgaRuntimeTextModel, /dynamicElements\[imageKey\] = \{ source: surface, fit: "fill" \}/);
+  assert.match(shortTermSvgaRuntimeTextModel, /context\.fillText\(value/);
+  assert.match(shortTermSvgaRuntimeTextModel, /delete playback\.videoItem\.dynamicElements\[imageKey\]/);
   assert.doesNotMatch(shortTermEntry, /applyRuntimeTextOverlay|clearRuntimeTextOverlay|runtimeTextOverlayCopy\(textElement|from "\.\/short-term-macos-text-renderers\.mjs"|from "\.\/short-term-macos-text-model\.mjs"/);
   assert.doesNotMatch(shortTermEntry, /nodes\.runtimeTextOverlay\.(hidden|textContent)\s*=/);
   assert.match(shortTermTextRenderers, /node\.textContent = copy/);

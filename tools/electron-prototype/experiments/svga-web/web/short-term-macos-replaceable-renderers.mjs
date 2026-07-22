@@ -48,6 +48,10 @@ export function createReplaceableImageRow(item, _index, options) {
       </span>
     `;
   } else {
+    const textReplacement = runtimeTextReplacementView(item, item.textPreviewValue, {
+      emptyIsSource: true,
+      initialIsSource: false
+    });
     const trailingAction = options.directReplace
       ? `<span class="replacementRowActions">
           <button type="button" class="replaceImageButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="替换 ${escapeHtml(label)} 图片">替换图片</button>
@@ -60,6 +64,10 @@ export function createReplaceableImageRow(item, _index, options) {
         <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(detail)}</span></span>
       </span>
       ${trailingAction}
+      <span class="runtimeTextActions" aria-label="${escapeHtml(label)} 文本预览">
+        <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.imageKey)}" data-initial-value="${escapeHtml(textReplacement.initialValue)}" value="${escapeHtml(item.textPreviewValue || "")}" placeholder="${escapeHtml(item.initialText)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
+        <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.imageKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" title="重置" ${textReplacement.resetDisabled ? "disabled" : ""}>${runtimeTextResetIconHtml}</button>
+      </span>
     `;
   }
   return row;
@@ -95,6 +103,7 @@ export function renderReplaceableEmptyState(nodes) {
 }
 
 export function createTextElementRow(item, _index, options) {
+  const imageKey = item.imageKey || item.textKey;
   const row = document.createElement("article");
   row.className = "textElementRow";
   row.tabIndex = 0;
@@ -111,8 +120,11 @@ export function createTextElementRow(item, _index, options) {
   });
   const { initialValue } = replacement;
   const replacementActive = item.replacementActive === true || options.replacementActive === true;
-  const resetDisabled = replacementActive ? false : replacement.resetDisabled;
-  row.dataset.replacementState = replacementActive ? "preview" : replacement.replacementState;
+  const explicitState = ["source", "preview"].includes(item.replacementState)
+    ? item.replacementState
+    : replacement.replacementState;
+  row.dataset.replacementState = replacementActive ? "preview" : explicitState;
+  const resetDisabled = row.dataset.replacementState === "source";
   row.title = `${label}: ${value || item.initialText || item.textKey}`;
   row.innerHTML = `
     <span class="replaceableIdentity">
@@ -120,6 +132,7 @@ export function createTextElementRow(item, _index, options) {
       <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
     </span>
     <span class="runtimeTextActions">
+      <button type="button" class="replaceImageButton" data-action="row-menu" data-image-key="${escapeHtml(imageKey)}" aria-label="替换 ${escapeHtml(label)} 图片">替换图片</button>
       <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.textKey)}" data-initial-value="${escapeHtml(initialValue)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
       <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" title="重置" ${resetDisabled ? "disabled" : ""}>${runtimeTextResetIconHtml}</button>
     </span>

@@ -117,6 +117,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
 
   nodes.replaceableList.addEventListener("keydown", (event) => {
     const eventTarget = eventElement(event);
+    if (eventTarget?.matches("[data-text-input]")) return;
     if (eventTarget?.matches("[data-rename-input]")) {
       if (event.key === "Enter") {
         consumeKeyboardEvent(event);
@@ -160,6 +161,18 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
   });
 
   nodes.textElementList.addEventListener("input", (event) => {
+    const input = eventElement(event)?.closest("[data-text-input]");
+    if (!input) return;
+    handlers.updateRuntimeText(input.dataset.textKey, input.value, { liveInput: input });
+  });
+
+  nodes.replaceableList.addEventListener("focusin", (event) => {
+    const input = eventElement(event)?.closest("[data-text-input]");
+    if (!input) return;
+    handlers.selectTextKey(input.dataset.textKey, { rerender: false });
+  });
+
+  nodes.replaceableList.addEventListener("input", (event) => {
     const input = eventElement(event)?.closest("[data-text-input]");
     if (!input) return;
     handlers.updateRuntimeText(input.dataset.textKey, input.value, { liveInput: input });

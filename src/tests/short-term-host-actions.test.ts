@@ -1619,6 +1619,7 @@ function inspectionFixture(): ShortTermProductInspectionModel {
     },
     assets: [],
     replaceableElements: {
+      targets: [],
       images: [],
       texts: [],
       emptyCopy: "",
@@ -1673,6 +1674,7 @@ function inspectionFixtureWithLocalPath(localPath: string): ShortTermProductInsp
       findingCodes: [`from-${localPath}`]
     }],
     replaceableElements: {
+      targets: [],
       images: [{
         index: 0,
         imageKey: `key-${localPath}`,

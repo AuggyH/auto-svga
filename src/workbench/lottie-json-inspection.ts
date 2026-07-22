@@ -370,7 +370,12 @@ function normalizeAssets(
           metadata: {
             lottieAssetType: "image",
             referencePath: reference.value.path,
-            embedded: false
+            embedded: false,
+            replaceability: {
+              technical: true,
+              designerIntent: "unqualified",
+              basis: "external_image_reference"
+            }
           }
         });
       }
@@ -495,6 +500,20 @@ function normalizeLayers(
       metadata: {
         lottieLayerIndex: index,
         lottieType: layer.ty,
+        ...(kind === "image" && !!refId && !nonReplaceableAssetIds.has(refId) ? {
+          replaceability: {
+            technical: true,
+            designerIntent: "unqualified",
+            basis: "ty:2"
+          }
+        } : {}),
+        ...(kind === "text" ? {
+          replaceability: {
+            technical: true,
+            designerIntent: "structural",
+            basis: "ty:5"
+          }
+        } : {}),
         ...(kind === "text" ? { text: textDocumentValue(layer) } : {})
       }
     };

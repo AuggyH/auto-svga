@@ -45,6 +45,11 @@ function extractFunctionSource(moduleSource, functionSignature) {
 }
 
 function ownerEnvelope(snapshot) {
+  const assets = (snapshot.assets ?? []).map((asset) => ({
+    technicalReplaceable: asset.technicalReplaceable ?? asset.replaceable === true,
+    designerIntentQualified: asset.designerIntentQualified ?? asset.replaceable === true,
+    ...asset
+  }));
   const normalized = {
     schemaVersion: 1,
     pathRedacted: true,
@@ -69,7 +74,8 @@ function ownerEnvelope(snapshot) {
     issues: [],
     imageTargets: [],
     textTargets: [],
-    ...snapshot
+    ...snapshot,
+    assets
   };
   const snapshotJson = stableStringify(normalized);
   return {

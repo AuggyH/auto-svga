@@ -1,9 +1,14 @@
-export function replaceableImageListView(model, selectedImageKey, renameImageKey) {
+export function replaceableImageListView(model, selectedImageKey, renameImageKey, textPreviewValues = {}) {
   const images = Array.isArray(model?.images) ? model.images : [];
   return {
     images,
     rows: images.map((item, index) => ({
-      item,
+      item: {
+        ...item,
+        textKey: item.imageKey,
+        initialText: "SVGA VIP",
+        textPreviewValue: textPreviewValues[item.imageKey] || ""
+      },
       index,
       selected: item.imageKey === selectedImageKey,
       renaming: item.imageKey === renameImageKey

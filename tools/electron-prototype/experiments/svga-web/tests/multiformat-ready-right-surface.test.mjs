@@ -228,14 +228,25 @@ function textTarget(overrides = {}) {
   };
 }
 
-test("ready workspace text Reset follows the current preview value", () => {
+test("ready workspace text Reset preserves explicit preview authority across rerender", () => {
   withFakeDocument(() => {
-    const sourceRow = createTextElementRow(textTarget(), 0, { selected: false });
+    const model = {
+      texts: [{ textKey: "title", displayName: "标题", initialText: "欢迎回来" }]
+    };
+    const [sourceView] = runtimeTextListView(model, {}).texts;
+    const sourceRow = createTextElementRow(sourceView, 0, { selected: false });
     assert.match(sourceRow.innerHTML, /data-initial-value="欢迎回来"/u);
     assert.match(sourceRow.innerHTML, /data-action="runtime-text-reset"[^>]*disabled/u);
     assert.equal(sourceRow.dataset.replacementState, "source");
 
-    const changedRow = createTextElementRow(textTarget({ inputValue: "新的标题" }), 0, { selected: true });
+    const [exactInitialPreview] = runtimeTextListView(model, { title: "欢迎回来" }).texts;
+    assert.equal(exactInitialPreview.replacementState, "preview");
+    const exactInitialRow = createTextElementRow(exactInitialPreview, 0, { selected: true });
+    assert.doesNotMatch(exactInitialRow.innerHTML, /data-action="runtime-text-reset"[^>]*disabled/u);
+    assert.equal(exactInitialRow.dataset.replacementState, "preview");
+
+    const [changedView] = runtimeTextListView(model, { title: "新的标题" }).texts;
+    const changedRow = createTextElementRow(changedView, 0, { selected: true });
     assert.doesNotMatch(changedRow.innerHTML, /data-action="runtime-text-reset"[^>]*disabled/u);
     assert.equal(changedRow.dataset.replacementState, "preview");
   });
@@ -369,6 +380,20 @@ test("ready right surface rejects stale raw rightPanel data without a trusted sn
 });
 
 test("live SVGA text preview keeps Reset and replacement state aligned with the source value", () => {
+  const originalOffscreenCanvas = globalThis.OffscreenCanvas;
+  globalThis.OffscreenCanvas = class {
+    constructor(width, height) {
+      this.width = width;
+      this.height = height;
+    }
+    getContext() {
+      return {
+        clearRect() {},
+        fillText() {},
+        measureText(value) { return { width: String(value).length * 8 }; }
+      };
+    }
+  };
   const resetButton = { disabled: true };
   const row = {
     dataset: { replacementState: "source" },
@@ -396,7 +421,16 @@ test("live SVGA text preview keeps Reset and replacement state aligned with the 
     textPreviewValues: {},
     model: {
       replaceableElements: {
-        texts: [{ textKey: "title", displayName: "标题", initialText: "欢迎回来" }]
+        texts: [{ textKey: "title", imageKey: "title", displayName: "标题", initialText: "欢迎回来" }]
+      }
+    },
+    primaryPlayback: {
+      player: { currentFrame: 0, renderer: { drawFrame() {} } },
+      videoItem: {
+        images: {},
+        sprites: [{ imageKey: "title", frames: [{ layout: { width: 120, height: 32 } }] }],
+        dynamicElements: {},
+        frames: 1
       }
     }
   };
@@ -411,38 +445,57 @@ test("live SVGA text preview keeps Reset and replacement state aligned with the 
     }
   });
 
-  applyValue("欢迎回来");
-  assert.equal(resetButton.disabled, true);
-  assert.equal(row.dataset.replacementState, "source");
-  assert.deepEqual(state.textPreviewValues, {});
+  try {
+    applyValue("欢迎回来");
+    assert.equal(resetButton.disabled, false);
+    assert.equal(row.dataset.replacementState, "preview");
+    assert.deepEqual(state.textPreviewValues, { title: "欢迎回来" });
+    assert.equal(
+      state.primaryPlayback.videoItem.dynamicElements.title.source.runtimeTextValue,
+      "欢迎回来",
+      "the placeholder example is still an exact user-entered runtime value"
+    );
 
-  applyValue("新的标题");
-  assert.equal(resetButton.disabled, false);
-  assert.equal(row.dataset.replacementState, "preview");
-  assert.deepEqual(state.textPreviewValues, { title: "新的标题" });
+    applyValue("");
+    assert.equal(resetButton.disabled, true);
+    assert.equal(row.dataset.replacementState, "source");
+    assert.deepEqual(state.textPreviewValues, {});
 
-  applyValue("欢迎回来");
-  assert.equal(resetButton.disabled, true);
-  assert.equal(row.dataset.replacementState, "source");
-  assert.deepEqual(state.textPreviewValues, {});
+    applyValue("新的标题");
+    assert.equal(resetButton.disabled, false);
+    assert.equal(row.dataset.replacementState, "preview");
+    assert.deepEqual(state.textPreviewValues, { title: "新的标题" });
+    assert.equal(
+      state.primaryPlayback.videoItem.dynamicElements.title.source.runtimeTextValue,
+      "新的标题"
+    );
 
-  applyValue("再次修改");
-  resetShortTermRuntimeTextPreview({
-    nodes,
-    state,
-    textKey: "title",
-    renderTextElements() {
-      resetButton.disabled = true;
-      row.dataset.replacementState = "source";
-    },
-    renderCommandState() {
-      commandRenders += 1;
-    }
-  });
-  assert.equal(resetButton.disabled, true);
-  assert.equal(row.dataset.replacementState, "source");
-  assert.deepEqual(state.textPreviewValues, {});
-  assert.equal(commandRenders, 5);
+    applyValue("欢迎回来");
+    assert.equal(resetButton.disabled, false);
+    assert.equal(row.dataset.replacementState, "preview");
+    assert.deepEqual(state.textPreviewValues, { title: "欢迎回来" });
+
+    resetShortTermRuntimeTextPreview({
+      nodes,
+      state,
+      textKey: "title",
+      renderTextElements() {
+        resetButton.disabled = true;
+        row.dataset.replacementState = "source";
+      },
+      renderCommandState() {
+        commandRenders += 1;
+      }
+    });
+    assert.equal(resetButton.disabled, true);
+    assert.equal(row.dataset.replacementState, "source");
+    assert.deepEqual(state.textPreviewValues, {});
+    assert.equal(state.primaryPlayback.videoItem.dynamicElements.title, undefined);
+    assert.equal(commandRenders, 5);
+  } finally {
+    if (originalOffscreenCanvas === undefined) delete globalThis.OffscreenCanvas;
+    else globalThis.OffscreenCanvas = originalOffscreenCanvas;
+  }
 });
 
 test("runtime image and text previews do not impersonate saveable dirty output", async () => {

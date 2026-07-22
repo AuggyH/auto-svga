@@ -80,6 +80,33 @@ test("normalizes VAP image and text fusion elements with placement metadata", as
   assert.equal(vapMetadata(result).fusion.missingReplacementCount, 0);
 });
 
+test("VAP srcType wins over misleading srcTag names and unknown types fail closed", async () => {
+  const result = await service().inspect(
+    memorySource("fusion-type-authority.mp4", validVapBytes({
+      src: [
+        { srcId: 1, srcType: "img", srcTag: "nickname_text" },
+        { srcId: 2, srcType: "txt", srcTag: "avatar_image" },
+        { srcId: 3, srcType: "mystery", srcTag: "obvious_avatar_image" }
+      ]
+    })),
+    {
+      gate: VAP_INSPECTION_READINESS_GATE,
+      providedFusionTags: ["nickname_text", "avatar_image", "obvious_avatar_image"]
+    }
+  );
+
+  assert.ok(result.value);
+  assert.deepEqual(
+    result.value.layers.map(({ kind, replaceable }) => ({ kind, replaceable })),
+    [
+      { kind: "vap_fusion_image", replaceable: true },
+      { kind: "vap_fusion_text", replaceable: true },
+      { kind: "vap_fusion_unknown", replaceable: false }
+    ]
+  );
+  assert.ok(result.issues.some(({ details }) => details?.feature === "unknown_fusion_source_type"));
+});
+
 test("reports missing fusion runtime data without reading or committing external assets", async () => {
   const result = await service().inspect(
     memorySource("missing-fusion-assets.mp4", validVapBytes({

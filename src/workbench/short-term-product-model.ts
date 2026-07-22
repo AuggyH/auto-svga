@@ -62,6 +62,22 @@ export interface ShortTermReplaceableImageElement {
 }
 
 export type ShortTermRuntimeTextField = "text";
+export type ShortTermPreviewAction = "image" | "text";
+export type ShortTermDefaultPresentation = "image" | "text";
+
+export interface ShortTermReplaceableTarget {
+  index: number;
+  imageKey: string;
+  resourceId: string;
+  dimensions: string;
+  fileSize: string;
+  usageCount: number;
+  displayName: string;
+  defaultPresentation: ShortTermDefaultPresentation;
+  supportedPreviewActions: readonly ShortTermPreviewAction[];
+  designerIntent: "qualified";
+  qualificationBasis: "designerSemanticImageKey";
+}
 
 export interface ShortTermReplaceableTextElement {
   index: number;
@@ -75,6 +91,7 @@ export interface ShortTermReplaceableTextElement {
 }
 
 export interface ShortTermReplaceableElementsModel {
+  targets: readonly ShortTermReplaceableTarget[];
   images: readonly ShortTermReplaceableImageElement[];
   texts: readonly ShortTermReplaceableTextElement[];
   emptyCopy: string;
@@ -138,9 +155,9 @@ export function createShortTermProductInspectionModel(
 ): ShortTermProductInspectionModel {
   const sequenceGroups = groupSequenceResources(report.assetIntelligence.resources);
   const sequenceResourceIds = new Set(sequenceGroups.flatMap(({ resources }) => resources.map(({ resourceId }) => resourceId)));
-  const replaceableTexts = replaceableTextElements(report.assetIntelligence.resources);
-  const replaceableTextResourceIds = new Set(replaceableTexts.map(({ resourceId }) => resourceId));
-  const replaceableImages = replaceableImageElements(report.assetIntelligence.resources, replaceableTextResourceIds);
+  const replaceableTargets = replaceableTargetElements(report.assetIntelligence.resources);
+  const replaceableTexts = replaceableTextElements(replaceableTargets);
+  const replaceableImages = replaceableImageElements(replaceableTargets);
   const audioResources = report.assetIntelligence.resources.filter(({ kind }) => kind === "audio");
 
   return {
@@ -165,6 +182,7 @@ export function createShortTermProductInspectionModel(
       audioAssetRow(audioResources)
     ],
     replaceableElements: {
+      targets: replaceableTargets,
       images: replaceableImages,
       texts: replaceableTexts,
       emptyCopy: replaceableImages.length === 0
@@ -180,13 +198,16 @@ export function createShortTermProductInspectionModel(
 
 export function isAutomaticImageKey(imageKey: string): boolean {
   const normalized = imageKey.trim();
-  return /^\d+$/.test(normalized) || /^img[_-]?\d+$/i.test(normalized);
+  return /^\d+$/u.test(normalized)
+    || /^img(?:[\s._-]*\d+)$/iu.test(normalized)
+    || /^psd(?:[\s._-]+.*)?$/iu.test(normalized);
 }
 
 export function isReplaceableImageResource(resource: Pick<AssetIntelligenceResourceNode, "kind" | "name" | "role">): boolean {
   return resource.kind === "image"
     && resource.role === "static_image"
     && !isAutomaticImageKey(resource.name)
+    && designerIntentDefaultPresentation(resource.name) !== undefined;
 }
 
 function factRows(report: AvatarFrameInspectionReport): ShortTermFactRow[] {
@@ -382,12 +403,11 @@ function audioAssetRow(resources: readonly AssetIntelligenceResourceNode[]): Sho
   };
 }
 
-function replaceableImageElements(
-  resources: readonly AssetIntelligenceResourceNode[],
-  excludedResourceIds: ReadonlySet<string> = new Set()
-): ShortTermReplaceableImageElement[] {
+function replaceableTargetElements(
+  resources: readonly AssetIntelligenceResourceNode[]
+): ShortTermReplaceableTarget[] {
   return resources
-    .filter((resource) => isReplaceableImageResource(resource) && !excludedResourceIds.has(resource.resourceId))
+    .filter(isReplaceableImageResource)
     .sort((left, right) => left.name.localeCompare(right.name) || left.resourceId.localeCompare(right.resourceId))
     .map((resource, index) => ({
       index: index + 1,
@@ -395,30 +415,49 @@ function replaceableImageElements(
       resourceId: resource.resourceId,
       dimensions: formatDimensions(resource.dimensions),
       fileSize: formatBytes(resource.compressedSizeBytes),
-      usageCount: resource.usageCount
+      usageCount: resource.usageCount,
+      displayName: displayNameFromTextKey(resource.name),
+      defaultPresentation: designerIntentDefaultPresentation(resource.name) ?? "image",
+      supportedPreviewActions: ["image", "text"],
+      designerIntent: "qualified",
+      qualificationBasis: "designerSemanticImageKey"
     }));
 }
 
-function replaceableTextElements(
-  resources: readonly AssetIntelligenceResourceNode[]
-): ShortTermReplaceableTextElement[] {
-  return resources
-    .filter(isReplaceableTextAnchorResource)
-    .sort((left, right) => left.name.localeCompare(right.name) || left.resourceId.localeCompare(right.resourceId))
-    .map((resource, index) => ({
+function replaceableImageElements(targets: readonly ShortTermReplaceableTarget[]): ShortTermReplaceableImageElement[] {
+  return targets
+    .filter(({ defaultPresentation }) => defaultPresentation === "image")
+    .map((target, index) => ({
       index: index + 1,
-      textKey: resource.name,
-      imageKey: resource.name,
-      resourceId: resource.resourceId,
-      displayName: displayNameFromTextKey(resource.name),
+      imageKey: target.imageKey,
+      resourceId: target.resourceId,
+      dimensions: target.dimensions,
+      fileSize: target.fileSize,
+      usageCount: target.usageCount
+    }));
+}
+
+function replaceableTextElements(targets: readonly ShortTermReplaceableTarget[]): ShortTermReplaceableTextElement[] {
+  return targets
+    .filter(({ defaultPresentation }) => defaultPresentation === "text")
+    .map((target, index) => ({
+      index: index + 1,
+      textKey: target.imageKey,
+      imageKey: target.imageKey,
+      resourceId: target.resourceId,
+      displayName: target.displayName,
       initialText: "SVGA VIP",
       supportedFields: ["text"],
       anchorSource: "designerNamedImageKey"
     }));
 }
 
-function isReplaceableTextAnchorResource(resource: AssetIntelligenceResourceNode): boolean {
-  return isReplaceableImageResource(resource) && isTextAnchorName(resource.name);
+function designerIntentDefaultPresentation(imageKey: string): ShortTermDefaultPresentation | undefined {
+  if (isTextAnchorName(imageKey)) return "text";
+  const tokens = imageKey.trim().toLowerCase().split(/[\s._-]+/u).filter(Boolean);
+  return tokens.some((token) => /^(avatar|profile|portrait|photo|logo|icon|badge|cover|hero|poster|slot|placeholder)$/u.test(token))
+    ? "image"
+    : undefined;
 }
 
 function isTextAnchorName(imageKey: string): boolean {

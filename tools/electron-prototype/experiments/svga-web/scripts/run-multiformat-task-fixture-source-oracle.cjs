@@ -108,7 +108,8 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
   assertOwnerInventoryProjection(ownerSnapshot, {
     expectedGroupIds: ["image_resources", "text_candidates"],
     expectedImageTargetIds: ["avatar"],
-    expectedTextTargetIds: ["text:2"]
+    expectedTextTargetIds: ["text:2"],
+    expectedConfirmedInventoryTargetIds: ["text:2"]
   });
   const imageTarget = ownerSnapshot.imageTargets.find((entry) => entry.resourceId === "avatar");
   const textTarget = ownerSnapshot.textTargets.find((entry) => entry.textKey === "text:2")?.textKey;
@@ -578,9 +579,11 @@ function assertOwnerInventoryProjection(snapshot, expected) {
     .flatMap(({ items }) => items)
     .filter(({ replaceable }) => replaceable)
     .map(({ id }) => id);
+  const expectedConfirmedInventoryTargetIds = expected.expectedConfirmedInventoryTargetIds
+    ?? [...expectedImageTargetIds, ...expectedTextTargetIds];
   assertExactStringSet(
     inventoryTargetIds,
-    [...expectedImageTargetIds, ...expectedTextTargetIds],
+    expectedConfirmedInventoryTargetIds,
     "Owner inventory replacement targets drifted"
   );
   assertInventorySummaryMatchesGroups(snapshot.assetInventory);
