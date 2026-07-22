@@ -28,13 +28,14 @@ review, QA, and release state remains governed by live GitHub records.
 | Field | Readback |
 | --- | --- |
 | Repository | `AuggyH/auto-svga` |
-| `origin/main` at audit start | `6806e1370cd411fce8362c317e7f30543da889b1` |
+| Product candidate source at audit start | `6806e1370cd411fce8362c317e7f30543da889b1` |
+| Current integration main | `a51862cc945e1e3cca415a3a234bcd4b5f36f8d0`; PR #19 merged exact reviewed head `e9ed62e1cace89fd93957b9ee3c9dd4b09e23c53`; main CI `29946838874` SUCCESS |
 | Current exact product candidate | `0.2.0-alpha.2` internal, build commit `6806e1370cd411fce8362c317e7f30543da889b1` |
 | Exact-candidate QA | `18 PASS / 1 PARTIAL / 0 FAIL / 2 BLOCKED`; Approved For Owner Review and Packaging Preparation |
 | Accepted QA boundaries | Reduced Motion / independent loading-frame evidence `PARTIAL`; one valid combined Lottie replacement case and valid AEB/FBP cases `BLOCKED` |
 | Release tracking | GitHub Issue #6 `OPEN/HOLD` |
-| Packaging gate | PR #19 remains open; exact reviewed successor `452efe1ad2b4c9356fbd264b529c2d36c7ad3537` received Changes Requested and a focused successor repair is active |
-| Roadmap/alignment delivery | PR #20, branch `codex/product-roadmap-pag-vap-agent-first`; parent head before this handoff `a22b380eea74fa500f92c95f94d6990ce559e0c9` |
+| Packaging gate | Packaging-inspector source repair PR #19 is merged and independently source-reviewed; the exact `6806e137…` product candidate still requires Product Owner review before any promotion preparation or local-stable claim |
+| Roadmap/alignment delivery | PR #20, branch `codex/product-roadmap-pag-vap-agent-first`; rebased by merge onto current integration main before final current-head CI |
 
 The QA result is not Product Owner acceptance, package acceptance, installed
 local stable, promotion, or release. The current installed macOS baseline must
@@ -279,14 +280,13 @@ through their assigned owners.
 
 ## Current Next Actions
 
-1. Auto SVGA continues PR #19's focused packaging-inspector repair and
-   independent exact-head re-review. No package promotion is authorized yet.
-2. After PR #19 merges, freeze and independently validate the exact successor,
-   complete Owner review, and execute the controlled local-stable promotion
-   gate before closing Issue #6.
-3. PR #20 carries the roadmap and this alignment checkpoint. It must not be
-   treated as Windows implementation or merge ahead of an incompatible active
-   exact-base gate.
+1. Packaging-inspector PR #19 is merged at current `main@a51862cc…`; its main
+   CI is successful. This source result is not package or promotion approval.
+2. Preserve the QA-passed exact `6806e137…` product candidate and complete the
+   focused Product Owner review. Only an explicit Owner acceptance opens the
+   controlled packaging/promotion task and its baseline-drift/rollback checks.
+3. PR #20 carries the roadmap and this alignment checkpoint on top of current
+   main. It is documentation/governance delivery, not Windows implementation.
 4. Windows continues `active_acquisition_only`; no training, client port,
    worker API, remote ComfyUI, or Auto SVGA integration starts now.
 5. Once macOS `0.2.x` is stable, create the dedicated Windows W0 task and keep
