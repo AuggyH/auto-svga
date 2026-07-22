@@ -50,11 +50,11 @@ to change quickly, but each named product version still needs a stable scope.
 | Version line | Product name | Current planning meaning |
 | --- | --- | --- |
 | `0.1.x` | SVGA Preview MVP | Current SVGA-only macOS client: open, play, inspect, replaceable preview, imageKey rename, optimization, comparison, save, and QA baseline. |
-| `0.2.x` | Multi-format Preview MVP | `0.2.0` closes the SVGA/Lottie/VAP baseline; a later separately gated `0.2.x` increment adds PAG parsing, playback, parameter analysis, and runtime text/image replacement preview. |
+| `0.2.x` | Multi-format Preview MVP | `0.2.0` first closes the macOS SVGA/Lottie/VAP baseline. After that exact macOS build is Owner-accepted and promoted to `local`, a separately gated Windows parity build may use the same feature line and the `windows-internal` channel. A later separately gated `0.2.x` increment adds PAG parsing, playback, parameter analysis, and runtime text/image replacement preview. |
 | `0.3.x` | AE Bridge MVP | Planned AE-to-Auto-SVGA production bridge for human designer workflow. |
 | `0.4.x` | SVGA Edit MVP | Planned template-based SVGA editing, transform, compile-back, and edit-mode workflows. |
 | `0.5.x` | VAP Generation And Format Conversion | Planned local VAP generation from video/frame-sequence input; exact LTR/RTL conversion scope remains unversioned until discovery closes. |
-| `0.6.x+` | Agent Motion Generation And Advanced Expansion | Agent-first Motion Plan and headless engine, local/LAN ComfyUI integration, broader export, advanced effects, Windows, and later asset types. |
+| `0.6.x+` | Agent Motion Generation And Advanced Expansion | Agent-first Motion Plan and headless engine, local/LAN ComfyUI integration, broader export, advanced effects, and later asset types. |
 
 These version lines do not replace the PRD. If a capability moves between
 versions, update `docs/product/PRODUCT_ROADMAP.md` first and then update this

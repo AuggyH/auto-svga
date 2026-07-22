@@ -145,11 +145,11 @@ defined in `docs/product/VERSIONING_AND_RELEASE_POLICY.md`.
 | Version line | Product name | Product scope |
 | --- | --- | --- |
 | `0.1.x` | SVGA Preview MVP | Installed SVGA-only macOS baseline: open, play, inspect, replaceable preview, imageKey rename, optimization, comparison, and save. |
-| `0.2.x` | Multi-format Preview MVP | First close one SVGA/Lottie/VAP workspace with complete UI/UX and no `0.1.x` regression, then add PAG preview/inspection/runtime replacement as a separately gated follow-up. |
+| `0.2.x` | Multi-format Preview MVP | First close one macOS SVGA/Lottie/VAP workspace with complete UI/UX and no `0.1.x` regression. After the macOS exact candidate becomes Owner-accepted `local` stable, start a separately gated Windows parity client on the same feature line. PAG preview/inspection/runtime replacement remains a separate follow-up. |
 | `0.3.x` | AE Bridge MVP | Planned AE-to-Auto-SVGA production bridge for human designer workflow and direct preview handoff. |
 | `0.4.x` | SVGA Edit MVP | Planned template-based SVGA editing, transform, compile-back, and Edit-mode workflows. |
 | `0.5.x` | VAP Generation And Format Conversion | Planned local VAP generation from video or frame sequences plus bounded format-conversion work whose exact LTR/RTL scope is still in discovery. |
-| `0.6.x+` | Agent Motion Generation And Advanced Expansion | Agent-first Motion Plan and headless-engine automation, local/LAN ComfyUI integration, advanced effects, broader format export, Windows, and later asset types. |
+| `0.6.x+` | Agent Motion Generation And Advanced Expansion | Agent-first Motion Plan and headless-engine automation, local/LAN ComfyUI integration, advanced effects, broader format export, and later asset types. |
 
 Installed baseline and active source target:
 
@@ -212,7 +212,8 @@ Required 0.2 MVP capabilities:
 - VAP export/generation, VAP sequence-folder generation, or VAP conversion.
 - Lottie authoring, Lottie export, or lossless conversion into SVGA/VAP.
 - Persistent editing or saving of VAP/Lottie replacement changes.
-- Windows client support.
+- Windows client support before the macOS local-stable gate; the post-stable
+  parity workstream is separately gated below.
 - AE Bridge package intake.
 - External AI, cloud services, or network-dependent parsing/playback.
 - Claiming production readiness from fixture-only playback.
@@ -283,6 +284,39 @@ real native/Web playback, representative pixel/timing parity, editability,
 cleanup, and rollback evidence. Parseable bytes alone are not export success.
 Supporting research lives in
 `docs/research/pag-official-ecosystem-and-auto-svga-feasibility.md`.
+
+### Planned 0.2.x Platform Follow-up: Windows Client Parity
+
+The Product Owner will start the Windows client workstream only after one exact
+macOS `0.2.x` SVGA/Lottie/VAP candidate has passed Owner review, controlled
+`local` promotion, installed-app verification, and rollback verification. A QA
+PASS or a frozen internal package alone does not open the Windows workstream.
+
+The Windows client is a platform port of the stable `0.2.x` product core, not a
+second product definition. It should reuse format detection, normalized facts,
+playback, runtime replacement, reset, and source-immutability behavior while
+replacing macOS-specific host and distribution boundaries with Windows-native
+ones. The first Windows parity gate covers SVGA, Lottie, and VAP only. PAG,
+VAP generation, LTR/RTL conversion, AE Bridge, and Agent/ComfyUI integration
+retain their own roadmap gates and must not enter the port implicitly.
+
+Windows work may begin only when all of the following are recorded:
+
+1. the exact macOS stable source commit, installed build identity, package
+   identity, and accepted support boundaries;
+2. the exact portable-core and macOS-host boundary that Windows will fork or
+   adapt, with no dependency on LaunchServices, Finder, macOS dialogs, or
+   macOS signing semantics;
+3. a Windows dependency, codec/GPU, path/encoding, packaging, install,
+   rollback, and exact-installed-client QA plan;
+4. one accountable Windows implementation owner, one focused workstream, and
+   an independent review and QA route;
+5. no unresolved P0 product defect in the exact macOS baseline being ported.
+
+The cross-repository architecture, schema deltas, phased Windows plan, and
+current Windows asset-pipeline boundary are recorded in
+`docs/reviews/2026-07-23-auto-svga-windows-client-and-asset-pipeline-alignment.md`.
+That handoff is supporting context; this roadmap remains the product authority.
 
 ## Owner Correction: Short-term Scope
 
