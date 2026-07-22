@@ -53,9 +53,12 @@ Early accepted asset sources should be result-oriented:
 - layered PNG packages
 
 Figma, PSD, Sketch, After Effects, C4D, Blender, and AI-assisted pipelines are
-important upstream sources, but early Auto SVGA work should consume their
-exported results. Direct source-project ingestion would require a much larger
-authoring, layer, timeline, and export platform.
+important upstream sources, but early Auto SVGA work should consume controlled
+export packages or prepared results. FBP is the existing bounded Figma Bridge
+exception, and AEB is the approved bounded After Effects package/scanner/bake
+pipeline. Neither means arbitrary live source-project ingestion. Agent-first
+generation is a later headless-engine path, not a reason to turn the desktop
+client into a universal source editor.
 
 ## Editing Boundary
 
@@ -89,8 +92,9 @@ motion authoring is long-term only and requires a separate product decision.
 - Do not turn Auto SVGA into a universal motion-production suite.
 - Do not let visual UI work outrun parsing, inspection, evidence, and report
   contracts.
-- Do not add direct Figma/PSD/AE/C4D/Blender project ingestion without a
-  separate scope decision.
+- Do not add arbitrary Figma/PSD/AE/C4D/Blender project ingestion without a
+  separate scope decision; preserve the narrower approved FBP and AEB package
+  contracts.
 - Do not promote complete timelines, complex keyframe curves, full particle
   editors, or multi-format source authoring into the short-term mainline.
 - Do not use historical or competitor outputs to silently weaken production

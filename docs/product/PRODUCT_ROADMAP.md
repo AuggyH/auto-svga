@@ -1,7 +1,7 @@
 # Auto SVGA Product Roadmap
 
 Status: active product authority
-Updated: 2026-07-21
+Updated: 2026-07-23
 
 Current mainline: Auto SVGA `0.2.x` Multi-format Preview MVP plus the complete
 production UI/UX system. The installed owner-visible baseline remains the
@@ -87,6 +87,19 @@ unless explicitly requested. If the installed owner-used app contains behavior
 that is not represented in source, product docs, review notes, or promotion
 metadata, treat it as baseline drift and reconcile it before replacing the app.
 
+Owner correction: On 2026-07-23, the roadmap was expanded without reopening
+the current `0.2.0-alpha.2` local-stable closure gate. The controlled Figma
+Bridge Package (FBP) path is an existing partial Figma-import capability and
+must not be described as if all Figma intake were absent. PAG joins the
+`0.2.x` preview line as a follow-up after the current SVGA/Lottie/VAP baseline,
+with local playback, inspection, and runtime replacement preview first. VAP
+generation becomes a later committed product line based on a pinned official
+VapTool workflow. LTR/RTL conversion enters bounded product discovery only,
+pending terminology, format, and interaction decisions. Agent + ComfyUI + Auto
+SVGA becomes an Owner-planned, Agent-first long-term engine, gated by delivery
+of the separately developed ComfyUI MVP and readiness of the corresponding
+Auto SVGA stage.
+
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
 model, source hierarchy, status vocabulary, product brief checklist, and
@@ -132,10 +145,11 @@ defined in `docs/product/VERSIONING_AND_RELEASE_POLICY.md`.
 | Version line | Product name | Product scope |
 | --- | --- | --- |
 | `0.1.x` | SVGA Preview MVP | Installed SVGA-only macOS baseline: open, play, inspect, replaceable preview, imageKey rename, optimization, comparison, and save. |
-| `0.2.x` | Multi-format Preview MVP | Active alpha implementation: one SVGA/Lottie/VAP workspace with complete UI/UX, truthful format-specific behavior, and no `0.1.x` regression. |
+| `0.2.x` | Multi-format Preview MVP | First close one SVGA/Lottie/VAP workspace with complete UI/UX and no `0.1.x` regression, then add PAG preview/inspection/runtime replacement as a separately gated follow-up. |
 | `0.3.x` | AE Bridge MVP | Planned AE-to-Auto-SVGA production bridge for human designer workflow and direct preview handoff. |
 | `0.4.x` | SVGA Edit MVP | Planned template-based SVGA editing, transform, compile-back, and Edit-mode workflows. |
-| `0.5.x+` | Advanced Motion And Format Expansion | Later advanced effects, conversion/export expansion, Windows, and long-horizon capabilities. |
+| `0.5.x` | VAP Generation And Format Conversion | Planned local VAP generation from video or frame sequences plus bounded format-conversion work whose exact LTR/RTL scope is still in discovery. |
+| `0.6.x+` | Agent Motion Generation And Advanced Expansion | Agent-first Motion Plan and headless-engine automation, local/LAN ComfyUI integration, advanced effects, broader format export, Windows, and later asset types. |
 
 Installed baseline and active source target:
 
@@ -236,6 +250,39 @@ matrix evidence remain outside Git.
 The reviewed Round 1 source repairs are integrated. GitHub Issue #6 owns the
 Round 2 exact-candidate matrix and is the only active cross-lane execution
 entry; it does not imply foreground, QA, package, or Owner acceptance.
+
+### Planned 0.2.x Follow-up: PAG Preview And Runtime Replacement
+
+PAG is approved as a multi-format preview follow-up, but it is not part of the
+current `0.2.0-alpha.2` local-stable closure gate. It starts only after that
+exact SVGA/Lottie/VAP baseline is closed or the Product Owner explicitly
+changes the active gate.
+
+Initial PAG capabilities:
+
+| ID | Capability | Product expectation |
+| --- | --- | --- |
+| PG1 | Intake and detection | Open, drag, Recent, and recovery can identify a bounded local `.pag` file without leaking its path. |
+| PG2 | Real playback | A pinned local PAG runtime can load, play, pause, seek, loop, and dispose the file with time-separated pixel evidence. |
+| PG3 | Parameter analysis | Show dimensions, duration, frame rate/timebase, file size, layer/resource counts, editable text/image inventory, runtime/version requirements, and typed unsupported features. |
+| PG4 | Runtime replacement | Every runtime-supported editable text or image target can be modified in the inspector and observed on the rendered stage immediately. |
+| PG5 | Target reset and isolation | Reset restores the selected target, sibling replacements remain intact, stale async work cannot mutate a newer source, and source bytes remain immutable. |
+| PG6 | Lifecycle and safety | Repeated open/replace/reset/close balances PAG/WASM/WebGL object destruction, stays offline, reports memory/performance facts, and leaves no process, listener, profile, or temporary residue. |
+
+PAG preview-phase non-goals:
+
+- no claim that a runtime replacement can be serialized back into a new PAG;
+- no persistent PAG editing, Save As, overwrite, or general PAG authoring;
+- no arbitrary AE feature-fidelity claim;
+- no AEB-to-PAG export activation from the preview milestone.
+
+The researched AEB-to-PAG export path remains a separate later gate. It should
+compare a pinned stock exporter with an Auto SVGA-controlled source build,
+retain immutable input and stage identities, and require structural validity,
+real native/Web playback, representative pixel/timing parity, editability,
+cleanup, and rollback evidence. Parseable bytes alone are not export success.
+Supporting research lives in
+`docs/research/pag-official-ecosystem-and-auto-svga-feasibility.md`.
 
 ## Owner Correction: Short-term Scope
 
@@ -863,7 +910,7 @@ Subordinate planning lives in `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md`.
 | AEB13 | Real SVGA output | When export is enabled, Auto SVGA must produce standards-compliant SVGA bytes, validate inflate/decode/reopen/playback load, and allow Overwrite Save or Save As only after validation. |
 | AEB14 | Version and OS compatibility matrix | The product must maintain a real compatibility matrix for macOS and Windows across supported AE versions. Formal support, compatibility support, and best-effort legacy support must be separate. |
 | AEB15 | Failure-safe source handling | The bridge must not mutate the original AE project, must isolate temporary comps and rendered frames, and must provide cleanup/recovery instructions on failure. |
-| AEB16 | Future-format readiness | The package and internal animation IR should avoid SVGA-only assumptions where practical, so VAP, WebM, APNG, Lottie, or other approved future outputs can reuse the bridge. Future formats remain later scope until approved. |
+| AEB16 | Future-format readiness | The package and internal animation IR should avoid SVGA-only assumptions where practical, so PAG, VAP, WebM, APNG, Lottie, or other approved future outputs can reuse the bridge. Each format still requires its own approved exporter, validation, and runtime-support gate. |
 
 ### AE Bridge Compatibility Policy
 
@@ -1267,38 +1314,176 @@ Default mid-term editing flow:
 - Complete particle editor comparable to Particular.
 - Automatic assembly of unordered asset folders into a complete avatar frame.
 - External AI, multimodal, cloud, or ComfyUI-based semantic recognition.
-- Direct Figma, PSD, Sketch, C4D, Blender, or unbounded source-project import.
-  The Owner-approved AE production bridge is a separate committed production
-  pipeline with a bounded export package, compatibility scanner, and bake
-  strategy; it is not a general mid-term source-project editor.
-- Multi-format intake, conversion, and recommendation; those remain long-term
-  unless the Product Owner explicitly changes the roadmap.
+- Direct PSD, Sketch, C4D, Blender, or unbounded source-project import. Figma is
+  not wholly absent: the controlled FBP/Figma Bridge path already imports a
+  bounded prepared result package and has separate client evidence. It does
+  not imply arbitrary Figma document ingestion, live Figma editing, or broad
+  source-project fidelity. The Owner-approved AE production bridge is likewise
+  a bounded package/scanner/bake pipeline, not a general source-project editor.
+- Multi-format conversion outside the specifically approved PAG preview, VAP
+  generation, and later discovery gates below.
 - Audio waveform editing, audio replacement, trimming, or volume automation.
+
+## Planned 0.5.x: VAP Generation And Format Conversion
+
+### VAP Generation MVP
+
+Goal: generate a standards-conforming local VAP package from either an input
+video or an existing frame sequence, while preserving a common analysis,
+fusion-element, preview, validation, and export pipeline.
+
+Required capabilities:
+
+| ID | Capability | Product expectation |
+| --- | --- | --- |
+| VG1 | Recursive intake | Selecting a folder analyzes all eligible child folders deterministically, reports ignored/ambiguous inputs, and never writes into source folders. |
+| VG2 | Video path | A local input video is decoded into an ordered working frame sequence with explicit FPS, duration, alpha/background, codec, and source identity. |
+| VG3 | Sequence path | An existing frame sequence enters the same normalized pipeline after ordering, first-frame, gap, dimension, alpha, and duration validation. |
+| VG4 | Mask-range editor | The user can define the visible mask range and preview at least linear wipe and fade-out behavior over time without destructive source edits. |
+| VG5 | Fusion discovery | Deterministic analysis proposes fusion images/text and mask linkage; every proposal shows its reason and requires confirmation before it becomes output metadata. |
+| VG6 | Fusion editing | The inspector supports real-time modification and Reset of fusion type, tag, content, placement, fit, z-order, text attributes, and mask behavior on the rendered preview. |
+| VG7 | Resolution policy | The user can choose output resolution; export automatically preserves aspect ratio and reduces the encoded VAP so `max(videoW, videoH) <= 1504`. It does not upscale smaller input by default and reports any quality loss and 16-pixel alignment adjustment. |
+| VG8 | Official-tool adapter | A pinned, locally controlled official VapTool workflow receives normalized frames, masks, fusion metadata, FPS, codec, quality, and optional audio; licensing, redistribution, platform, and dependency closure are explicit. |
+| VG9 | Transactional export | Inputs remain immutable; staging and output are isolated; cancellation/failure keeps the prior valid output; hashes and a generation receipt bind every stage. |
+| VG10 | Output validation | The generated MP4 contains valid `vapc`, reopens in the pinned runtime, plays with time advance, renders alpha/masks/fusion replacements correctly, obeys resolution limits, and leaves no process or temporary residue. |
+
+Both input paths converge before mask/fusion editing and export:
+
+```text
+video -> decoded working frames --\
+                                  -> normalized VAP project -> mask/fusion edit
+frame sequence ------------------/                          -> VapTool -> validate
+```
+
+The first release is not a general video editor. It excludes unrestricted
+timeline editing, color grading, arbitrary compositing, hosted transcoding,
+and silent auto-acceptance of detected fusion elements.
+
+### LTR / RTL Conversion Discovery
+
+LTR/RTL conversion is a confirmed product candidate, not yet an implementation
+requirement. The label is ambiguous enough that no owner should infer a file
+format or UI from the acronym alone. Discovery must settle:
+
+- the exact source and target file formats represented by LTR and RTL;
+- whether conversion means text direction, layout mirroring, paired regional
+  resources, animation-direction reversal, or another domain contract;
+- BiDi shaping, font fallback, image/text semantics, imageKey mapping, layer
+  order, anchors, timing, easing, masks, and replaceable-element behavior;
+- single-file versus batch interaction, naming and destination rules, dry-run,
+  preview/diff, overwrite policy, rollback, and unsupported-state feedback;
+- fidelity and runtime validation on each target platform.
+
+Only after those questions are answered should PM assign a version, write
+acceptance criteria, and route an implementation task.
 
 ## Long-term Direction
 
-Longer term, Auto SVGA may become a multi-format motion workbench. The AE
-production bridge has been promoted into its own committed production mainline
-and should inform the future multi-format package/IR design. Generative AI,
-ComfyUI, or external model modules remain lower priority and require separate
-explicit approval; they must stay isolated from the core deterministic
-pipeline.
+Longer term, Auto SVGA becomes an Agent-first advanced motion engine. Human
+desktop workflows remain supported, but the engine is designed first as a
+headless, parameterized, and transactional system so an Agent calls explicit
+APIs rather than operating a complex human editing interface.
+
+This direction is Owner-planned but not an active implementation milestone.
+It starts only after the separately developed first ComfyUI MVP is delivered
+into this project and Auto SVGA reaches the corresponding engine-readiness
+stage. The AE production bridge remains the nearer production priority and
+should inform the shared Asset Pack, Motion Plan, validation, and export
+contracts.
+
+The complete target path is:
+
+```text
+user need
+  -> Agent applies Design Rules and an asset skill
+  -> local/LAN/self-hosted ComfyUI generation or reverse engineering
+  -> cutout, split, layer, merge, and asset-integrity validation
+  -> Asset Pack
+  -> Motion Plan
+  -> Auto SVGA Headless Engine
+  -> assemble assets, apply templates, and add motion
+  -> inspect, validate, and optimize
+  -> export SVGA or another explicitly supported format
+  -> desktop playback preview
+  -> human acceptance
+```
+
+ComfyUI may run on the Product Owner's machine or another explicitly trusted
+machine on the local network or a self-owned remote endpoint. A public cloud
+model provider is not the baseline. Endpoint identity, authorization, asset
+flow, storage, deletion, retry, timeout, and offline behavior must be explicit
+before integration. Video and audio generation are later adapters, not first
+vertical requirements.
+
+### Motion Plan Contract
+
+A Motion Plan must define at least:
+
+- asset roles and layer relationships;
+- template ID and template version;
+- time structure, including entry, loop, and exit;
+- easing;
+- light and particle parameters;
+- imageKey/replaceable-target mapping;
+- export constraints;
+- quality and performance goals.
+
+It must also bind immutable input/Asset Pack identities, deterministic model or
+workflow configuration when available, intermediate outputs, validation
+results, and retry/rollback state. Generated visual quality is not accepted
+until the final client preview receives human approval.
+
+### Headless Engine Contract
+
+The advanced engine begins with these stable capabilities:
+
+```text
+Engine
+├── load
+├── inspect
+├── replace
+├── transform
+├── timeline
+├── effect
+├── render
+├── validate
+└── export
+```
+
+Desktop UI and Agent API are separate callers of the same engine. Operations
+must be explicit, composable, source-immutable, cancellable, and resumable;
+each export is committed only after validation, while failure preserves the
+last valid state and provides a typed recovery path.
+
+### First Agent Vertical
+
+The first end-to-end Agent path is avatar frame only:
+
+```text
+need -> generate assets -> Asset Pack -> Motion Plan -> avatar-frame template
+     -> automatic assembly -> SVGA -> inspect/optimize -> human acceptance
+```
+
+After that vertical is accepted, later milestones may add other asset types,
+template reuse, whole-pack replacement, quality enhancement, structure repair,
+video generation, audio generation, and additional supported export formats.
 
 Long-term capabilities:
 
 - Multi-format intake and routing from the startup page
 - AE export package intake as the first approved source-authoring bridge,
   bounded by compatibility scanning and bake planning
-- Format adapters for SVGA, VAP, Lottie, animated WebP, WebM, APNG, sprite
-  sequences, and prepared layered-result packages
+- Format adapters for SVGA, VAP, PAG, Lottie, animated WebP, WebM, APNG,
+  sprite sequences, controlled FBP packages, and other prepared layered-result
+  packages
 - Decode, preview, inspect, validate, optimize, replace, convert, and export
   capability matrix for every supported format
 - Format recommendation based on deterministic metadata, platform constraints,
   compatibility, size, and performance
 - Conversion only between approved result formats with explicit visual and
   semantic limitations
-- Isolated generation assistance only after privacy, cost, offline, and package
-  impact approval
+- Agent-driven generation only after the ComfyUI MVP handoff, engine-readiness,
+  privacy/security, runtime, cost, offline, and package-impact gates pass
 
 Long-term interaction expectations:
 

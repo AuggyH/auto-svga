@@ -305,8 +305,11 @@ foundational dependencies.
 
 ## Relationship To AI / ComfyUI
 
-AI, ComfyUI, external model, and multimodal generation work remains deferred
-relative to AE bridge.
+The Product Owner has approved Agent + ComfyUI + Auto SVGA as a planned
+long-term, Agent-first engine direction. It remains deferred relative to the AE
+bridge and is not active implementation scope until the separately developed
+ComfyUI MVP is handed into this repository and Auto SVGA reaches its matching
+engine-readiness gate.
 
 Reason:
 
@@ -316,8 +319,18 @@ Reason:
 - It produces validation artifacts and does not require model cost, uploads, or
   privacy review.
 
-AI modules may later consume the same package/IR concepts, but they must stay
-isolated and separately approved.
+Later Agent modules should reuse the bridge's immutable package identities,
+layer/asset facts, bake decisions, timebase, budgets, and validation records as
+inputs to Asset Pack and Motion Plan. Desktop UI and Agent API remain separate
+callers of a shared headless engine. Integration must stay isolated behind an
+explicit local/LAN/self-hosted endpoint, privacy, lifecycle, and rollback
+contract.
+
+PAG export is also a later format-specific AEB lane. The shared bridge may own
+preflight, source identity, scan facts, stage records, and bake outputs, while
+the PAG adapter owns exporter selection, translation, serialization, runtime
+validation, pixel/timing comparison, editability, and format-specific failure
+handling. PAG preview support alone does not approve AEB-to-PAG export.
 
 ## Evidence And References
 

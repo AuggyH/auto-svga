@@ -2,7 +2,9 @@
 
 ## Authority And Use
 
-- Product scope authority: `docs/product/PRODUCT_ROADMAP.md`, planned `0.2.x` Multi-format Preview MVP.
+- Product scope authority: `docs/product/PRODUCT_ROADMAP.md`, `0.2.x`
+  Multi-format Preview MVP. The current `0.2.0` candidate is
+  SVGA/Lottie/VAP; PAG is a separately gated `0.2.x` follow-up.
 - Requirement authority: `docs/product/requirements/ASV-REQ-20260709-003.md`.
 - UI behavior constraints: `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md`, `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`, and `DESIGN.md`.
 - Current recovery baseline: main source after PR #4, plus bounded Round 1 repair
@@ -47,6 +49,24 @@ not satisfy real playback or replacement evidence.
 | Formal `0.1.x` isolation | implemented; validated | hidden from formal `0.1.x` | hidden from formal `0.1.x` | The separately versioned formal `0.2` mode owns multi-format surfaces. |
 | Offline/local-only runtime | implemented; validated | implemented; validated | implemented; validated | Self-hosted exact dependencies only; external requests are rejected by proof gates. |
 
+## Planned PAG Follow-up
+
+PAG is intentionally not shown as implemented in the current matrix. Before a
+PAG candidate can enter QA, it must separately prove:
+
+| User flow | Planned boundary |
+| --- | --- |
+| Intake and recovery | Local `.pag` open/drag/Recent with path redaction and typed invalid/unsupported feedback. |
+| Playback | Pinned local runtime, real pixels, time advance, play/pause/seek/loop, and balanced dispose. |
+| Parameter analysis | Dimensions, duration/timebase, file size, resources/layers, editable text/images, runtime/version and unsupported-feature facts. |
+| Runtime replacement | Text/image changes appear on the rendered stage immediately; target Reset and sibling isolation are proven. |
+| Persistence | Unsupported in the preview milestone; source bytes remain immutable and no rewritten PAG is claimed. |
+| Lifecycle | Repeated WASM/WebGL open/replace/reset/close, memory settle, offline runtime, and zero-residue cleanup. |
+
+The later AEB-to-PAG exporter is not inherited from these rows. It requires its
+own source/exporter, structural, visual, timing, editability, and rollback
+evidence.
+
 ## Current Highest-value Gap
 
 Target-scoped replacement isolation and focused runtime text entry are closed
@@ -59,7 +79,9 @@ GitHub Issue #6 is the sole active execution record for that matrix.
 
 ## Protected Boundaries
 
-- No persistent Lottie/VAP authoring, save, export, generation, or conversion.
+- No persistent Lottie/VAP/PAG authoring or save in the current preview
+  milestone. Planned VAP generation and later PAG export remain separate
+  versioned gates.
 - No `.lottie`, Windows, AEB intake, CDN, cloud, telemetry, or external AI.
 - No production or owner material is committed; durable evidence uses aliases and hashes only.
 - No source/dev proof is Product Owner acceptance, support, distribution, or release readiness.
