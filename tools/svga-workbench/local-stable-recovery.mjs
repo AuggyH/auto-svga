@@ -22,6 +22,21 @@ import { fileURLToPath } from "node:url";
 
 const modulePath = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(modulePath), "../..");
+const trialRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial");
+
+export const fixedTrialPackageContract = Object.freeze({
+  appName: "Auto SVGA",
+  bundleDisplayName: "Auto SVGA",
+  bundleIdentifier: "local.auto-svga.internal-prototype",
+  platform: "darwin",
+  architecture: "arm64",
+  manifestPath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/internal-trial-manifest.json",
+  proofPath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/macos-package-proof.json",
+  appPath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app",
+  archivePath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64.zip",
+  appAsarPath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app/Contents/Resources/app.asar",
+  archiveAppAsarEntry: "Auto SVGA.app/Contents/Resources/app.asar"
+});
 
 const runtimeDependencies = [
   { packageName: "protobufjs", entries: ["package.json", "index.js"] },
@@ -68,9 +83,33 @@ export const currentSourceRuntimeVersionAuthority = Object.freeze({
   schemaVersion: 1,
   authorityId: "current-source-runtime",
   authoritySource: "source:package.json+fixed-transitive-runtime-contract",
-  runtimeRoles: Object.freeze(["installed", "previous"]),
+  runtimeRoles: Object.freeze(["candidate"]),
   dependencyVersions: Object.freeze(readCurrentSourceRuntimeVersions())
 });
+
+const retainedCurrentRuntimeVersions = {
+  ...legacyLocalRuntimeVersions,
+  protobufjs: "8.6.6"
+};
+
+export const retainedRuntimeVersionAuthorities = Object.freeze([
+  Object.freeze({
+    schemaVersion: 1,
+    authorityId: "retained-runtime-protobufjs-8.6.6",
+    authoritySource: "retained-policy:0.2.0-alpha.2",
+    runtimeRoles: Object.freeze(["installed", "previous"]),
+    dependencyVersions: Object.freeze({ ...retainedCurrentRuntimeVersions })
+  })
+]);
+
+// Lifecycle: before a source dependency bump can be promoted, its exact closure
+// must be appended to this retained allowlist. Remove an entry only after no
+// installed app, previous bundle, or supported rollback can still carry it.
+const defaultRetainedRuntimeAuthorities = Object.freeze([
+  legacyLocalRuntimeVersionAuthority,
+  ...retainedRuntimeVersionAuthorities
+]);
+const candidateRuntimeAuthorityCapabilities = new WeakSet();
 
 export const requiredRuntimeEntries = [
   "/.runtime/build-info.json",
@@ -371,16 +410,23 @@ function normalizeRuntimeVersionAuthority(authority, label) {
 
 function runtimeAuthoritiesForRole(runtimeRole, runtimeAuthorities) {
   if (runtimeAuthorities !== undefined) {
+    if (runtimeRole !== "candidate") {
+      throw new Error(`Runtime role ${runtimeRole} does not accept caller-supplied version authorities`);
+    }
     if (!Array.isArray(runtimeAuthorities) || runtimeAuthorities.length === 0) {
       throw new Error(`Runtime role ${runtimeRole} requires at least one explicit version authority`);
     }
-    return runtimeAuthorities.map((authority, index) => (
-      normalizeRuntimeVersionAuthority(authority, `runtimeAuthorities[${index}]`)
-    ));
+    return runtimeAuthorities.map((authority, index) => {
+      const normalized = normalizeRuntimeVersionAuthority(authority, `runtimeAuthorities[${index}]`);
+      if (runtimeRole === "candidate" && !candidateRuntimeAuthorityCapabilities.has(normalized)) {
+        throw new Error("Candidate runtime authority is not a trusted fixed-package capability");
+      }
+      return normalized;
+    });
   }
   if (runtimeRole === "legacy-retained") return [legacyLocalRuntimeVersionAuthority];
   if (runtimeRole === "installed" || runtimeRole === "previous") {
-    return [legacyLocalRuntimeVersionAuthority, currentSourceRuntimeVersionAuthority];
+    return defaultRetainedRuntimeAuthorities;
   }
   throw new Error(`Runtime role ${runtimeRole} requires explicit manifest/source-bound version authority`);
 }
@@ -466,7 +512,7 @@ function runtimeDependencyVersionsFromEvidence(closure, buildCommit, label) {
   return Object.fromEntries(expectedNames.map((name) => [name, dependencies.get(name)]));
 }
 
-export function createCandidateRuntimeVersionAuthority({
+export function deriveCandidateRuntimeVersionAuthorityDescriptor({
   buildCommit,
   appAsarSha256,
   manifestRuntimeClosure,
@@ -504,6 +550,169 @@ export function createCandidateRuntimeVersionAuthority({
     appAsarSha256,
     dependencyVersions: Object.freeze({ ...manifestVersions })
   });
+}
+
+function createCandidateRuntimeVersionAuthority(evidence) {
+  const authority = deriveCandidateRuntimeVersionAuthorityDescriptor(evidence);
+  candidateRuntimeAuthorityCapabilities.add(authority);
+  return authority;
+}
+
+export function validateCandidatePackageDeclarations({ manifest, proof, expectedHead }) {
+  const errors = [];
+  const requireExact = (actual, expected, label) => {
+    if (actual !== expected) errors.push(`${label} ${actual ?? "missing"} does not match ${expected}`);
+  };
+
+  requireExact(manifest?.appName, fixedTrialPackageContract.appName, "manifest appName");
+  requireExact(manifest?.bundleDisplayName, fixedTrialPackageContract.bundleDisplayName, "manifest bundleDisplayName");
+  requireExact(manifest?.bundleIdentifier, fixedTrialPackageContract.bundleIdentifier, "manifest bundleIdentifier");
+  requireExact(manifest?.platform, fixedTrialPackageContract.platform, "manifest platform");
+  requireExact(manifest?.architecture, fixedTrialPackageContract.architecture, "manifest architecture");
+  requireExact(manifest?.buildCommit, expectedHead, "manifest buildCommit");
+  requireExact(manifest?.packagePath, fixedTrialPackageContract.appPath, "manifest packagePath");
+  requireExact(manifest?.archivePath, fixedTrialPackageContract.archivePath, "manifest archivePath");
+  requireExact(manifest?.proofManifestPath, fixedTrialPackageContract.proofPath, "manifest proofManifestPath");
+  requireExact(manifest?.packagedRuntimeClosure?.asarPath, fixedTrialPackageContract.appAsarPath, "manifest runtime app.asar path");
+
+  requireExact(proof?.appName, manifest?.appName, "proof appName");
+  requireExact(proof?.bundleDisplayName, manifest?.bundleDisplayName, "proof bundleDisplayName");
+  requireExact(proof?.bundleIdentifier, manifest?.bundleIdentifier, "proof bundleIdentifier");
+  requireExact(proof?.bundleShortVersion, manifest?.version, "proof short version");
+  requireExact(proof?.bundleVersion, manifest?.bundleVersion, "proof bundle version");
+  requireExact(proof?.platform, manifest?.platform, "proof platform");
+  requireExact(proof?.architecture, manifest?.architecture, "proof architecture");
+  requireExact(proof?.buildCommit, expectedHead, "proof buildCommit");
+  requireExact(proof?.packagingScaffold?.appBundlePath, fixedTrialPackageContract.appPath, "proof appBundlePath");
+  requireExact(proof?.packagingScaffold?.archivePath, fixedTrialPackageContract.archivePath, "proof archivePath");
+  requireExact(
+    proof?.packagingScaffold?.packagedRuntimeClosure?.asarPath,
+    fixedTrialPackageContract.appAsarPath,
+    "proof runtime app.asar path"
+  );
+
+  if (typeof manifest?.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(manifest.sha256)) {
+    errors.push("manifest archive sha256 must be a 64-character lowercase hexadecimal value");
+  }
+  if (manifest?.productionApproved !== false) errors.push("manifest productionApproved must be false");
+  if (manifest?.distribution?.internalUseOnly !== true) errors.push("manifest distribution.internalUseOnly must be true");
+  if (manifest?.distribution?.unsigned !== true) errors.push("manifest distribution.unsigned must be true");
+  if (manifest?.distribution?.notarized !== false) errors.push("manifest distribution.notarized must be false");
+  if (proof?.distribution?.internalUseOnly !== true) errors.push("proof distribution.internalUseOnly must be true");
+  if (proof?.privacyAudit?.passed !== true) errors.push("proof privacy audit did not pass");
+
+  if (errors.length > 0) throw new Error(`Candidate package evidence failed: ${errors.join("; ")}`);
+  return true;
+}
+
+function assertFixedTrialPath(candidatePath, expectedType, label) {
+  const resolvedTrialRoot = path.resolve(trialRoot);
+  const resolvedCandidate = path.resolve(candidatePath);
+  if (!isInsidePath(resolvedCandidate, resolvedTrialRoot)) {
+    throw new Error(`${label} escapes the fixed trial root`);
+  }
+  const trialStat = lstatSync(resolvedTrialRoot);
+  if (!trialStat.isDirectory() || trialStat.isSymbolicLink()) {
+    throw new Error("Fixed trial root must be a real directory");
+  }
+  const relative = path.relative(resolvedTrialRoot, resolvedCandidate);
+  let current = resolvedTrialRoot;
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    const stat = lstatSync(current);
+    if (stat.isSymbolicLink()) throw new Error(`${label} contains a symbolic-link path component: ${current}`);
+  }
+  const candidateStat = lstatSync(resolvedCandidate);
+  if (expectedType === "directory" && !candidateStat.isDirectory()) {
+    throw new Error(`${label} must be a directory`);
+  }
+  if (expectedType === "file" && (!candidateStat.isFile() || candidateStat.nlink !== 1)) {
+    throw new Error(`${label} must be a unique regular file`);
+  }
+  const realTrialRoot = realpathSync.native(resolvedTrialRoot);
+  const realCandidate = realpathSync.native(resolvedCandidate);
+  if (!isInsidePath(realCandidate, realTrialRoot)) throw new Error(`${label} escapes the canonical trial root`);
+  return resolvedCandidate;
+}
+
+export function readStableArchiveEvidence(archivePath, entryPath, dependencies = {}) {
+  const readArchiveEntry = dependencies.readArchiveEntry ?? ((filePath, archiveEntryPath) => (
+    execFileSync("/usr/bin/unzip", ["-p", filePath, archiveEntryPath], {
+      encoding: null,
+      maxBuffer: 512 * 1024 * 1024,
+      stdio: "pipe"
+    })
+  ));
+  const pathStatBefore = assertRegularUniqueFile(archivePath);
+  if (pathStatBefore.size > 512 * 1024 * 1024) throw new Error("Candidate archive exceeds the inspection byte limit");
+  let descriptor;
+  try {
+    descriptor = openSync(archivePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const descriptorStatBefore = fstatSync(descriptor);
+    assertFileStatIsRegularUnique(descriptorStatBefore, archivePath);
+    assertSameStatIdentity(pathStatBefore, descriptorStatBefore, "Candidate archive");
+    const archiveBytes = readFileSync(descriptor);
+    const descriptorStatAfterHash = fstatSync(descriptor);
+    assertSameStatIdentity(descriptorStatBefore, descriptorStatAfterHash, "Candidate archive");
+    const entryBytes = readArchiveEntry(archivePath, entryPath);
+    if (!Buffer.isBuffer(entryBytes)) throw new Error("Candidate archive entry reader must return bytes");
+    const descriptorStatAfterEntry = fstatSync(descriptor);
+    const pathStatAfter = assertRegularUniqueFile(archivePath);
+    assertSameStatIdentity(descriptorStatAfterHash, descriptorStatAfterEntry, "Candidate archive");
+    assertSameStatIdentity(descriptorStatAfterEntry, pathStatAfter, "Candidate archive");
+    return {
+      archiveSha256: sha256Buffer(archiveBytes),
+      entrySha256: sha256Buffer(entryBytes),
+      archiveObject: statIdentity(descriptorStatBefore),
+      archiveSizeBytes: descriptorStatBefore.size,
+      entrySizeBytes: entryBytes.length
+    };
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function readStableJson(filePath, label) {
+  const input = readNoFollowCriticalFile(filePath, label);
+  return JSON.parse(input.bytes.toString("utf8"));
+}
+
+export function loadFixedTrialCandidateRuntimeAuthority({ expectedHead }) {
+  assertLowerHex(expectedHead, 40, "expected candidate HEAD");
+  const manifestFile = assertFixedTrialPath(path.join(repoRoot, fixedTrialPackageContract.manifestPath), "file", "Candidate manifest");
+  const proofFile = assertFixedTrialPath(path.join(repoRoot, fixedTrialPackageContract.proofPath), "file", "Candidate proof");
+  const sourceApp = assertFixedTrialPath(path.join(repoRoot, fixedTrialPackageContract.appPath), "directory", "Candidate App");
+  const sourceArchive = assertFixedTrialPath(path.join(repoRoot, fixedTrialPackageContract.archivePath), "file", "Candidate archive");
+  const sourceAppAsar = assertFixedTrialPath(path.join(repoRoot, fixedTrialPackageContract.appAsarPath), "file", "Candidate app.asar");
+  const manifest = readStableJson(manifestFile, "Candidate manifest");
+  const proof = readStableJson(proofFile, "Candidate proof");
+  validateCandidatePackageDeclarations({ manifest, proof, expectedHead });
+  const archiveEvidence = readStableArchiveEvidence(
+    sourceArchive,
+    fixedTrialPackageContract.archiveAppAsarEntry
+  );
+  if (archiveEvidence.archiveSha256 !== manifest.sha256) {
+    throw new Error("Candidate archive sha256 does not match the mandatory manifest hash");
+  }
+  const sourceAppAsarInput = readNoFollowCriticalFile(sourceAppAsar, "Candidate app.asar");
+  if (archiveEvidence.entrySha256 !== sourceAppAsarInput.sha256) {
+    throw new Error("Candidate source app.asar does not match the stable archive entry");
+  }
+  const candidateRuntimeAuthority = createCandidateRuntimeVersionAuthority({
+    buildCommit: expectedHead,
+    appAsarSha256: sourceAppAsarInput.sha256,
+    manifestRuntimeClosure: manifest.packagedRuntimeClosure,
+    proofRuntimeClosure: proof.packagingScaffold.packagedRuntimeClosure
+  });
+  return {
+    manifest,
+    proof,
+    sourceApp,
+    sourceArchive,
+    head: expectedHead,
+    archiveEvidence,
+    candidateRuntimeAuthority
+  };
 }
 
 export function readDefaultRuntimeIdentity(asarFile, options = {}) {

@@ -20,10 +20,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   atomicSwapApps,
-  createCandidateRuntimeVersionAuthority,
   inspectAppBundle,
   inspectRecoveryState,
   legacyPreviousAppPathForTarget,
+  loadFixedTrialCandidateRuntimeAuthority,
   previousBackupPathForTarget,
   recoverRollbackTransaction,
   rollbackPreviousApp
@@ -31,10 +31,6 @@ import {
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(scriptPath), "../..");
-const experimentRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web");
-const trialRoot = path.join(experimentRoot, ".artifacts/internal-trial");
-const manifestPath = path.join(trialRoot, "internal-trial-manifest.json");
-const proofPath = path.join(trialRoot, "macos-package-proof.json");
 const localStableRoot = path.join(repoRoot, ".artifacts/local-stable-app");
 const promotionManifestPath = path.join(localStableRoot, "promotion-manifest.json");
 const promotionExchangeManifestRoot = path.join(localStableRoot, "promotion-manifests");
@@ -266,15 +262,6 @@ function readJson(filePath) {
 
 function sha256(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
-}
-
-function sha256ZipEntry(archivePath, entryPath) {
-  const bytes = execFileSync("/usr/bin/unzip", ["-p", archivePath, entryPath], {
-    encoding: null,
-    maxBuffer: 512 * 1024 * 1024,
-    stdio: "pipe"
-  });
-  return createHash("sha256").update(bytes).digest("hex");
 }
 
 function directorySizeBytes(directoryPath) {
@@ -1065,87 +1052,23 @@ function packageInternalTrial() {
 }
 
 function loadAndValidatePackage(options) {
-  if (!existsSync(manifestPath)) {
-    throw new Error(`Missing internal trial manifest: ${manifestPath}`);
-  }
-  if (!existsSync(proofPath)) {
-    throw new Error(`Missing macOS package proof: ${proofPath}`);
-  }
-
-  const manifest = readJson(manifestPath);
-  const proof = readJson(proofPath);
   const head = git(["rev-parse", "HEAD"]);
-  const sourceApp = path.resolve(repoRoot, manifest.packagePath ?? "");
-  const sourceArchive = path.resolve(repoRoot, manifest.archivePath ?? "");
-  const sourceAppAsar = path.join(sourceApp, "Contents/Resources/app.asar");
-  const expectedProofPath = path.relative(repoRoot, proofPath);
-  const expectedAsarEvidencePath = path.join(
-    manifest.packagePath ?? "",
-    "Contents/Resources/app.asar"
-  ).split(path.sep).join("/");
-
-  const errors = [];
-  if (manifest.appName !== "Auto SVGA") errors.push("manifest appName is not Auto SVGA");
-  if (manifest.bundleDisplayName !== "Auto SVGA") errors.push("manifest display name is not Auto SVGA");
-  if (manifest.buildCommit !== head) errors.push(`manifest buildCommit ${manifest.buildCommit} does not match HEAD ${head}`);
-  if (proof.buildCommit !== head) errors.push(`proof buildCommit ${proof.buildCommit} does not match HEAD ${head}`);
-  if (manifest.proofManifestPath !== expectedProofPath) {
-    errors.push(`manifest proof path ${manifest.proofManifestPath ?? "missing"} does not match ${expectedProofPath}`);
-  }
-  if (manifest.packagedRuntimeClosure?.asarPath !== expectedAsarEvidencePath) {
-    errors.push("manifest runtime closure app.asar path does not match packagePath");
-  }
-  if (proof.packagingScaffold?.packagedRuntimeClosure?.asarPath !== expectedAsarEvidencePath) {
-    errors.push("proof runtime closure app.asar path does not match packagePath");
-  }
-  if (manifest.productionApproved !== false) errors.push("manifest productionApproved must be false for D0 internal packages");
-  if (manifest.distribution?.internalUseOnly !== true) errors.push("manifest distribution.internalUseOnly must be true");
-  if (manifest.distribution?.unsigned !== true) errors.push("manifest distribution.unsigned must be true");
-  if (manifest.distribution?.notarized !== false) errors.push("manifest distribution.notarized must be false");
-  if (proof.distribution?.internalUseOnly !== true) errors.push("proof distribution.internalUseOnly must be true");
-  if (proof.privacyAudit?.passed !== true) errors.push("proof privacy audit did not pass");
-  if (!existsSync(sourceApp)) errors.push(`source app bundle missing: ${sourceApp}`);
-  if (!existsSync(sourceArchive)) errors.push(`source app archive missing: ${sourceArchive}`);
-  if (existsSync(sourceArchive) && manifest.sha256 && sha256(sourceArchive) !== manifest.sha256) {
-    errors.push("manifest archive sha256 does not match the archive on disk");
-  }
-  if (!existsSync(sourceAppAsar)) errors.push(`source app.asar missing: ${sourceAppAsar}`);
-
-  let candidateRuntimeAuthority;
-  if (errors.length === 0) {
-    try {
-      const sourceAppAsarSha256 = sha256(sourceAppAsar);
-      const archivedAppAsarSha256 = sha256ZipEntry(
-        sourceArchive,
-        `${manifest.appName}.app/Contents/Resources/app.asar`
-      );
-      if (archivedAppAsarSha256 !== sourceAppAsarSha256) {
-        throw new Error("source app.asar sha256 does not match manifest-bound archive app.asar");
-      }
-      candidateRuntimeAuthority = createCandidateRuntimeVersionAuthority({
-        buildCommit: head,
-        appAsarSha256: sourceAppAsarSha256,
-        manifestRuntimeClosure: manifest.packagedRuntimeClosure,
-        proofRuntimeClosure: proof.packagingScaffold.packagedRuntimeClosure
-      });
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  if (errors.length > 0) {
+  let packageInfo;
+  try {
+    packageInfo = loadFixedTrialCandidateRuntimeAuthority({ expectedHead: head });
+  } catch (error) {
     const hint = options.useExisting
       ? "Run without --use-existing after the source tree is clean to rebuild a fresh internal package."
       : "Rebuild failed validation; the local stable app was not changed.";
-    throw new Error(`${errors.join("\n")}\n${hint}`);
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${hint}`);
   }
 
-  validateAppIdentity(sourceApp);
-  inspectAppBundle(sourceApp, {
+  validateAppIdentity(packageInfo.sourceApp);
+  inspectAppBundle(packageInfo.sourceApp, {
     runtimeRole: "candidate",
-    runtimeAuthorities: [candidateRuntimeAuthority]
+    runtimeAuthorities: [packageInfo.candidateRuntimeAuthority]
   });
-  return { manifest, proof, sourceApp, sourceArchive, head, candidateRuntimeAuthority };
+  return packageInfo;
 }
 
 function validateAppIdentity(appBundle) {
