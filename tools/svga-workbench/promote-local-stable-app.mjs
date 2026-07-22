@@ -21,6 +21,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   atomicSwapApps,
   inspectAppBundle,
+  inspectFixedTrialCandidatePackage,
   inspectRecoveryState,
   legacyPreviousAppPathForTarget,
   previousBackupPathForTarget,
@@ -30,10 +31,6 @@ import {
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(scriptPath), "../..");
-const experimentRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web");
-const trialRoot = path.join(experimentRoot, ".artifacts/internal-trial");
-const manifestPath = path.join(trialRoot, "internal-trial-manifest.json");
-const proofPath = path.join(trialRoot, "macos-package-proof.json");
 const localStableRoot = path.join(repoRoot, ".artifacts/local-stable-app");
 const promotionManifestPath = path.join(localStableRoot, "promotion-manifest.json");
 const promotionExchangeManifestRoot = path.join(localStableRoot, "promotion-manifests");
@@ -44,6 +41,39 @@ const launchServicesRegisterTool = "/System/Library/Frameworks/CoreServices.fram
 export const launchServicesDumpMaxBufferBytes = 64 * 1024 * 1024;
 const launchServicesRecordSettleAttempts = 6;
 const launchServicesRecordSettleDelayMs = 250;
+const fixedPackageInstallOperations = new WeakMap();
+const testInstallDependencyContract = Object.freeze({
+  atomicSwap: "function",
+  checkpoint: "function",
+  clearQuarantine: "function",
+  clearXattr: "function",
+  copyBundle: "function",
+  createOperationId: "function",
+  createStagedAppPath: "function",
+  fsyncDirectory: "function",
+  inspectBundle: "function",
+  launchServicesRecordSettleAttempts: "number",
+  launchServicesRecordSettleDelayMs: "number",
+  listDirectory: "function",
+  now: "function",
+  pathExists: "function",
+  planLaunchServicesInstallState: "function",
+  preflightDestination: "function",
+  promotionTransactionPaths: "function",
+  readBundleIdentifier: "function",
+  readLaunchServicesRecords: "function",
+  readXattr: "function",
+  registerLaunchServices: "function",
+  removeDurably: "function",
+  renameDurably: "function",
+  sleep: "function",
+  unregisterLaunchServicesRecord: "function",
+  updateJournal: "function",
+  validateIdentity: "function",
+  writeJournalInitial: "function",
+  writeManifestExclusive: "function",
+  writeXattr: "function"
+});
 
 function usage() {
   return [
@@ -707,7 +737,7 @@ function assertLaunchServicesUniqueTarget({
   };
 }
 
-function planLaunchServicesInstallState({
+export function planLaunchServicesInstallState({
   target,
   backupTarget = previousBackupPathForTarget(target),
   legacyBackupTarget = legacyPreviousAppPathForTarget(target),
@@ -966,8 +996,8 @@ function updatePromotionJournalPhase(dependencies, journalPath, journal, phase, 
   return nextJournal;
 }
 
-function inspectIfExists(appPath, inspectBundle) {
-  return existsSync(appPath) ? inspectBundle(appPath) : null;
+function inspectIfExists(appPath, inspectBundle, inspection = {}) {
+  return existsSync(appPath) ? inspectBundle(appPath, inspection) : null;
 }
 
 function classifyPromotionTransaction({ installed, previous, legacyPrevious, stage, expected }) {
@@ -993,12 +1023,12 @@ function classifyPromotionTransaction({ installed, previous, legacyPrevious, sta
 }
 
 function inspectPromotionTransaction(journal, inspectBundle) {
-  const installed = inspectIfExists(journal.target, inspectBundle);
-  const previous = inspectIfExists(journal.backupTarget, inspectBundle);
+  const installed = inspectIfExists(journal.target, inspectBundle, { runtimeRole: "installed" });
+  const previous = inspectIfExists(journal.backupTarget, inspectBundle, { runtimeRole: "previous" });
   const legacyPrevious = journal.legacyBackupTarget
-    ? inspectIfExists(journal.legacyBackupTarget, inspectBundle)
+    ? inspectIfExists(journal.legacyBackupTarget, inspectBundle, { runtimeRole: "previous" })
     : null;
-  const stage = inspectIfExists(journal.stagedApp, inspectBundle);
+  const stage = inspectIfExists(journal.stagedApp, inspectBundle, { runtimeRole: "installed" });
   return {
     installed,
     previous,
@@ -1055,44 +1085,19 @@ function packageInternalTrial() {
 }
 
 function loadAndValidatePackage(options) {
-  if (!existsSync(manifestPath)) {
-    throw new Error(`Missing internal trial manifest: ${manifestPath}`);
-  }
-  if (!existsSync(proofPath)) {
-    throw new Error(`Missing macOS package proof: ${proofPath}`);
-  }
-
-  const manifest = readJson(manifestPath);
-  const proof = readJson(proofPath);
   const head = git(["rev-parse", "HEAD"]);
-  const sourceApp = path.resolve(repoRoot, manifest.packagePath ?? "");
-  const sourceArchive = path.resolve(repoRoot, manifest.archivePath ?? "");
-
-  const errors = [];
-  if (manifest.appName !== "Auto SVGA") errors.push("manifest appName is not Auto SVGA");
-  if (manifest.bundleDisplayName !== "Auto SVGA") errors.push("manifest display name is not Auto SVGA");
-  if (manifest.buildCommit !== head) errors.push(`manifest buildCommit ${manifest.buildCommit} does not match HEAD ${head}`);
-  if (manifest.productionApproved !== false) errors.push("manifest productionApproved must be false for D0 internal packages");
-  if (manifest.distribution?.internalUseOnly !== true) errors.push("manifest distribution.internalUseOnly must be true");
-  if (manifest.distribution?.unsigned !== true) errors.push("manifest distribution.unsigned must be true");
-  if (manifest.distribution?.notarized !== false) errors.push("manifest distribution.notarized must be false");
-  if (proof.distribution?.internalUseOnly !== true) errors.push("proof distribution.internalUseOnly must be true");
-  if (proof.privacyAudit?.passed !== true) errors.push("proof privacy audit did not pass");
-  if (!existsSync(sourceApp)) errors.push(`source app bundle missing: ${sourceApp}`);
-  if (!existsSync(sourceArchive)) errors.push(`source app archive missing: ${sourceArchive}`);
-  if (existsSync(sourceArchive) && manifest.sha256 && sha256(sourceArchive) !== manifest.sha256) {
-    errors.push("manifest archive sha256 does not match the archive on disk");
-  }
-
-  if (errors.length > 0) {
+  let packageInfo;
+  try {
+    packageInfo = inspectFixedTrialCandidatePackage({ expectedHead: head });
+  } catch (error) {
     const hint = options.useExisting
       ? "Run without --use-existing after the source tree is clean to rebuild a fresh internal package."
       : "Rebuild failed validation; the local stable app was not changed.";
-    throw new Error(`${errors.join("\n")}\n${hint}`);
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${hint}`);
   }
 
-  validateAppIdentity(sourceApp);
-  return { manifest, proof, sourceApp, sourceArchive, head };
+  validateAppIdentity(packageInfo.sourceApp);
+  return packageInfo;
 }
 
 function validateAppIdentity(appBundle) {
@@ -1211,7 +1216,7 @@ function restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPat
     throw new Error("Promotion journal marked legacy previous migrated without a legacy backup target");
   }
   if (existsSync(journal.legacyBackupTarget)) {
-    const legacyIdentity = dependencies.inspectBundle(journal.legacyBackupTarget);
+    const legacyIdentity = dependencies.inspectBundle(journal.legacyBackupTarget, { runtimeRole: "previous" });
     if (!appPayloadMatches(legacyIdentity, journal.expected.legacyPreviousBefore)) {
       throw new Error("Existing legacy previous app does not match journal authority");
     }
@@ -1231,7 +1236,7 @@ function restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPat
   if (!existsSync(journal.backupTarget)) {
     throw new Error(`Migrated legacy previous bundle is missing: ${journal.backupTarget}`);
   }
-  const migratedIdentity = dependencies.inspectBundle(journal.backupTarget);
+  const migratedIdentity = dependencies.inspectBundle(journal.backupTarget, { runtimeRole: "previous" });
   if (!appPayloadMatches(migratedIdentity, journal.expected.previousBefore)
     || !appPayloadMatches(migratedIdentity, journal.expected.legacyPreviousBefore)
     || !appRootInodeMatches(migratedIdentity, journal.expected.previousBefore)
@@ -1240,7 +1245,7 @@ function restoreLegacyPreviousBeforeExchange({ dependencies, journal, journalPat
   }
   journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "restoring-legacy-previous");
   dependencies.renameDurably(journal.backupTarget, journal.legacyBackupTarget);
-  const restoredIdentity = dependencies.inspectBundle(journal.legacyBackupTarget);
+  const restoredIdentity = dependencies.inspectBundle(journal.legacyBackupTarget, { runtimeRole: "previous" });
   if (!appPayloadMatches(restoredIdentity, journal.expected.legacyPreviousBefore)
     || !appRootInodeMatches(restoredIdentity, journal.expected.legacyPreviousBefore)) {
     throw new Error("Restored legacy previous app does not match journal authority");
@@ -1310,8 +1315,8 @@ export function recoverPromotionTransaction({
   return { disposition: "completed-after-interrupted-exchange", mutationPerformed: true, manifestPath: journal.manifestPath };
 }
 
-export function installApp({ sourceApp, target, dependencies = {} }) {
-  const resolvedDependencies = promotionInstallDependencies(dependencies);
+function executeInstallAppTransaction({ sourceApp, target, dependencies, verifySourceIdentity }) {
+  const resolvedDependencies = dependencies;
   const targetParent = path.dirname(target);
   const backupTarget = previousBackupPathForTarget(target);
   const legacyBackupTarget = legacyPreviousAppPathForTarget(target);
@@ -1330,7 +1335,9 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     assertNoPromotionResidue(targetParent);
     assertNoPromotionTransactionResidue({ journalPath, manifestPath: exchangeManifestPath });
 
-    const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp);
+    const candidateInspection = { runtimeRole: "candidate-copy" };
+    const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp, candidateInspection);
+    verifySourceIdentity(sourceIdentity);
     const installStatePlan = resolvedDependencies.planLaunchServicesInstallState({
       target,
       backupTarget,
@@ -1358,16 +1365,18 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
     resolvedDependencies.copyBundle(sourceApp, stagedApp);
     resolvedDependencies.clearQuarantine(stagedApp);
     resolvedDependencies.validateIdentity(stagedApp);
-    const stagedIdentity = resolvedDependencies.inspectBundle(stagedApp);
+    const stagedIdentity = resolvedDependencies.inspectBundle(stagedApp, candidateInspection);
     assertSameAppPayload(sourceIdentity, stagedIdentity, "Staged candidate");
 
     resolvedDependencies.checkpoint("after-staged-candidate-validation");
-    const installedBefore = existsSync(target) ? resolvedDependencies.inspectBundle(target) : null;
+    const installedBefore = existsSync(target)
+      ? resolvedDependencies.inspectBundle(target, { runtimeRole: "installed" })
+      : null;
     const legacyPreviousBefore = installStatePlan.migrateLegacyPrevious
-      ? resolvedDependencies.inspectBundle(legacyBackupTarget)
+      ? resolvedDependencies.inspectBundle(legacyBackupTarget, { runtimeRole: "previous" })
       : null;
     let previousBefore = existsSync(backupTarget)
-      ? resolvedDependencies.inspectBundle(backupTarget)
+      ? resolvedDependencies.inspectBundle(backupTarget, { runtimeRole: "previous" })
       : legacyPreviousBefore;
     const remediation = {
       targetParent,
@@ -1459,7 +1468,7 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       resolvedDependencies.checkpoint("before-legacy-previous-migration");
       resolvedDependencies.renameDurably(legacyBackupTarget, backupTarget);
       resolvedDependencies.checkpoint("after-legacy-previous-migration");
-      const migratedPrevious = resolvedDependencies.inspectBundle(backupTarget);
+      const migratedPrevious = resolvedDependencies.inspectBundle(backupTarget, { runtimeRole: "previous" });
       assertSameAppPayload(legacyPreviousBefore, migratedPrevious, "Migrated legacy previous bundle");
       previousBefore = migratedPrevious;
       remediation.legacyPrevious.migrated = true;
@@ -1483,8 +1492,8 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       });
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "first-exchange-complete");
       resolvedDependencies.checkpoint("after-first-exchange");
-      const installedAfter = resolvedDependencies.inspectBundle(target);
-      const displacedInstalled = resolvedDependencies.inspectBundle(stagedApp);
+      const installedAfter = resolvedDependencies.inspectBundle(target, { runtimeRole: "installed" });
+      const displacedInstalled = resolvedDependencies.inspectBundle(stagedApp, { runtimeRole: "installed" });
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after promotion");
       assertSameAppPayload(installedBefore, displacedInstalled, "Displaced installed app");
 
@@ -1495,18 +1504,18 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
           rightObject: previousBefore.rootObject
         });
       } else {
-        renameSync(stagedApp, backupTarget);
+        resolvedDependencies.renameDurably(stagedApp, backupTarget);
       }
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
       resolvedDependencies.checkpoint("after-second-exchange");
-      const previousAfter = resolvedDependencies.inspectBundle(backupTarget);
+      const previousAfter = resolvedDependencies.inspectBundle(backupTarget, { runtimeRole: "previous" });
       assertSameAppPayload(installedBefore, previousAfter, "Previous app after promotion");
     } else {
       resolvedDependencies.checkpoint("before-first-install");
-      renameSync(stagedApp, target);
+      resolvedDependencies.renameDurably(stagedApp, target);
       journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
       resolvedDependencies.checkpoint("after-first-install");
-      const installedAfter = resolvedDependencies.inspectBundle(target);
+      const installedAfter = resolvedDependencies.inspectBundle(target, { runtimeRole: "installed" });
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after first promotion");
     }
 
@@ -1523,10 +1532,96 @@ export function installApp({ sourceApp, target, dependencies = {} }) {
       launchServicesPostcheck
     };
   } finally {
-    if (stagingRoot && !journalCreated && !transactionCompleted) {
-      rmSync(stagingRoot, { recursive: true, force: true });
+    if (stagingRoot && !journalCreated && !transactionCompleted && existsSync(stagingRoot)) {
+      resolvedDependencies.removeDurably(stagingRoot);
     }
   }
+}
+
+function isolatedTestInstallDependencies(dependencies) {
+  if (!dependencies || typeof dependencies !== "object" || Array.isArray(dependencies)) {
+    throw new Error("Complete isolated test install dependencies are required; production defaults are not available");
+  }
+  const invalid = [];
+  for (const [name, expectedType] of Object.entries(testInstallDependencyContract)) {
+    const descriptor = Object.getOwnPropertyDescriptor(dependencies, name);
+    if (!descriptor || !("value" in descriptor) || typeof descriptor.value !== expectedType) {
+      invalid.push(name);
+    }
+  }
+  if (invalid.length > 0) {
+    throw new Error(
+      `Complete isolated test install dependencies are required; production defaults are not available: ${invalid.join(", ")}`
+    );
+  }
+  return dependencies;
+}
+
+function createFixedPackageInstallOperation(packageInfo) {
+  const operation = Object.freeze({});
+  fixedPackageInstallOperations.set(operation, Object.freeze({
+    sourceApp: packageInfo.sourceApp,
+    candidateIdentity: packageInfo.candidateIdentity
+  }));
+  return operation;
+}
+
+function consumeFixedPackageInstallOperation(operation) {
+  const binding = fixedPackageInstallOperations.get(operation);
+  if (!binding) {
+    throw new Error("Promotion mutation requires a live private fixed-package production operation");
+  }
+  fixedPackageInstallOperations.delete(operation);
+  return binding;
+}
+
+function installAppTransaction({ fixedPackageOperation, target }) {
+  const { sourceApp, candidateIdentity } = consumeFixedPackageInstallOperation(fixedPackageOperation);
+  if (candidateIdentity?.appPath !== path.resolve(sourceApp)) {
+    throw new Error("Private fixed candidate identity does not match the promotion source App path");
+  }
+  if (candidateIdentity.runtimeClosure?.versionAuthority?.runtimeRole !== "candidate") {
+    throw new Error("Private fixed candidate identity is not authorized for the candidate runtime role");
+  }
+  return executeInstallAppTransaction({
+    sourceApp,
+    target,
+    dependencies: promotionInstallDependencies(),
+    verifySourceIdentity: (sourceIdentity) => {
+      assertSameAppPayload(candidateIdentity, sourceIdentity, "Promotion source candidate");
+      if (candidateIdentity.stabilityFingerprint !== sourceIdentity.stabilityFingerprint) {
+        throw new Error("Promotion source candidate changed after fixed-package inspection");
+      }
+    }
+  });
+}
+
+export function installApp({ candidateIdentity } = {}) {
+  if (candidateIdentity !== undefined) {
+    throw new Error("Caller-supplied candidate identity is not accepted by the promotion transaction");
+  }
+  throw new Error("Direct installApp is disabled; production mutation requires a private fixed-package production operation");
+}
+
+export function installAppWithTestDependencies({ candidateIdentity, dependencies, ...options }) {
+  if (candidateIdentity !== undefined) {
+    throw new Error("Caller-supplied candidate identity is not accepted by the isolated test transaction");
+  }
+  return executeInstallAppTransaction({
+    ...options,
+    dependencies: isolatedTestInstallDependencies(dependencies),
+    verifySourceIdentity: () => {}
+  });
+}
+
+function installFixedTrialPackage(options) {
+  const packageInfo = loadAndValidatePackage(options);
+  const fixedPackageOperation = createFixedPackageInstallOperation(packageInfo);
+  const installInfo = installAppTransaction({
+    target: options.target,
+    fixedPackageOperation
+  });
+  return { packageInfo, installInfo };
 }
 
 function registerLaunchServices(target) {
@@ -1563,11 +1658,17 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
   if (options.inspect) {
     const packageInfo = loadAndValidatePackage({ ...options, useExisting: true });
     const rollbackPaths = options.rollbackId ? rollbackPathsForId(options.rollbackId) : {};
-    console.log(JSON.stringify(inspectRecoveryState({
+    const report = inspectRecoveryState({
       target: options.target,
       candidateApp: packageInfo.sourceApp,
       ...rollbackPaths
-    }), null, 2));
+    });
+    assertSameAppPayload(packageInfo.candidateIdentity, report.candidate, "Read-only candidate inspection");
+    if (packageInfo.candidateIdentity.stabilityFingerprint !== report.candidate.stabilityFingerprint) {
+      throw new Error("Read-only candidate changed after fixed-package inspection");
+    }
+    report.candidate = packageInfo.candidateIdentity;
+    console.log(JSON.stringify(report, null, 2));
     return;
   }
 
@@ -1599,8 +1700,7 @@ export async function runCli(argv = process.argv.slice(2), env = process.env, ho
     packageInternalTrial();
   }
 
-  const packageInfo = loadAndValidatePackage(options);
-  const installInfo = installApp({ sourceApp: packageInfo.sourceApp, target: options.target });
+  const { packageInfo, installInfo } = installFixedTrialPackage(options);
 
   const summary = {
     schemaVersion: 1,

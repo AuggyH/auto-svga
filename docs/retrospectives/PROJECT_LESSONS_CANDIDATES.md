@@ -1504,3 +1504,18 @@ promoted, watched, rejected, or kept historical.
   qualification and duplicate image/text presentation assumptions. The repair
   keeps target identity stable while the full loop validation passes.
 - Status: Candidate pending independent Code Review and merged-candidate QA.
+
+## 2026-07-22: Bind Runtime Closure Versions To Package Role And Identity
+
+- Candidate lesson: A retained installed or rollback bundle and a new package
+  candidate may have different legitimate runtime dependency closures. Keep
+  retained-role versions explicit, but require every candidate closure to bind
+  manifest, proof, source dependency contract, build commit, archive-contained
+  `app.asar`, and inspected `app.asar` before promotion preflight accepts it.
+- Evidence: The global protobufjs `8.6.4` expectation accepted the installed and
+  previous bundles but rejected the exact `6806e137` candidate's legitimate
+  `8.6.6` closure. The repair preserves `8.6.4` for retained roles, admits
+  `8.6.6` only through the candidate authority, rejects unknown versions and
+  role reuse, and adds the focused suite to the required loop validation.
+- Status: Candidate pending independent Code Review; no QA, packaging,
+  promotion, local-stable replacement, or release gate is implied.
