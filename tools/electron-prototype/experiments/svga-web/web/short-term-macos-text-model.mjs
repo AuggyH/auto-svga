@@ -47,7 +47,8 @@ export function runtimeTextListView(model, textPreviewValues) {
         ...item,
         inputValue,
         placeholder: runtimeTextPlaceholder(item),
-        resetDisabled: replacement.resetDisabled
+        resetDisabled: replacement.resetDisabled,
+        replacementState: replacement.replacementState
       };
     }),
     hasTextElements: texts.length > 0,

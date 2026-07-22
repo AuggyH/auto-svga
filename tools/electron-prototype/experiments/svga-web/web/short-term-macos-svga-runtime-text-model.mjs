@@ -1,12 +1,23 @@
+function drawableLayout(layout) {
+  const width = Number(layout?.width);
+  const height = Number(layout?.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return undefined;
+  }
+  const roundedWidth = Math.round(width);
+  const roundedHeight = Math.round(height);
+  return roundedWidth > 0 && roundedHeight > 0
+    ? { width: roundedWidth, height: roundedHeight }
+    : undefined;
+}
+
 function targetLayout(videoItem, imageKey, frame) {
   const sprite = videoItem?.sprites?.find?.((candidate) => candidate?.imageKey === imageKey);
   if (!sprite) return undefined;
   const frames = Array.isArray(sprite.frames) ? sprite.frames : [];
   const safeFrame = Math.max(0, Math.min(frames.length - 1, Number(frame) || 0));
-  const layout = frames[safeFrame]?.layout ?? frames.find(({ layout: value }) => value)?.layout;
-  const width = Math.max(1, Math.round(Number(layout?.width) || 1));
-  const height = Math.max(1, Math.round(Number(layout?.height) || 1));
-  return { width, height };
+  const currentLayout = drawableLayout(frames[safeFrame]?.layout);
+  return currentLayout ?? frames.map(({ layout }) => drawableLayout(layout)).find(Boolean);
 }
 
 function defaultTextSurface() {

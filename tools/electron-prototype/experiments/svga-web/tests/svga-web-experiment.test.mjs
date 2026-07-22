@@ -7471,6 +7471,59 @@ test("SVGA runtime text paints the exact value into the selected imageKey target
   assert.equal(drawCalls.at(-1).dynamicElements.sibling_text, sibling);
 });
 
+test("SVGA runtime text fails closed when its target has no visibly drawable layout", async () => {
+  const { applySvgaRuntimeTextTarget } = await import(
+    pathToFileURL(path.join(experimentRoot, "web/short-term-macos-svga-runtime-text-model.mjs")).href
+  );
+  const unusableLayouts = [
+    undefined,
+    { width: 0, height: 32 },
+    { width: 120, height: 0 },
+    { width: -1, height: 32 },
+    { width: 120, height: -1 },
+    { width: Number.NaN, height: 32 },
+    { width: Number.POSITIVE_INFINITY, height: 32 },
+    { width: 0.4, height: 32 }
+  ];
+
+  for (const layout of unusableLayouts) {
+    let surfaceCreations = 0;
+    let drawCalls = 0;
+    const playback = {
+      player: {
+        currentFrame: 0,
+        renderer: { drawFrame() { drawCalls += 1; } }
+      },
+      videoItem: {
+        images: {},
+        sprites: [{ imageKey: "target", frames: [{ layout }] }],
+        dynamicElements: {},
+        frames: 1
+      }
+    };
+
+    const result = applySvgaRuntimeTextTarget(playback, "target", "必须可见", {
+      createSurface() {
+        surfaceCreations += 1;
+        return {
+          getContext() {
+            return {
+              clearRect() {},
+              fillText() {},
+              measureText() { return { width: 1 }; }
+            };
+          }
+        };
+      }
+    });
+
+    assert.equal(result.applied, false, `layout must fail closed: ${String(layout?.width)} x ${String(layout?.height)}`);
+    assert.equal(surfaceCreations, 0);
+    assert.equal(drawCalls, 0);
+    assert.equal(playback.videoItem.dynamicElements.target, undefined);
+  }
+});
+
 test("0.2 SVGA target-scoped Reset delegation preserves image and text identifiers", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(
     pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href

@@ -120,8 +120,11 @@ export function createTextElementRow(item, _index, options) {
   });
   const { initialValue } = replacement;
   const replacementActive = item.replacementActive === true || options.replacementActive === true;
-  const resetDisabled = replacementActive ? false : replacement.resetDisabled;
-  row.dataset.replacementState = replacementActive ? "preview" : replacement.replacementState;
+  const explicitState = ["source", "preview"].includes(item.replacementState)
+    ? item.replacementState
+    : replacement.replacementState;
+  row.dataset.replacementState = replacementActive ? "preview" : explicitState;
+  const resetDisabled = row.dataset.replacementState === "source";
   row.title = `${label}: ${value || item.initialText || item.textKey}`;
   row.innerHTML = `
     <span class="replaceableIdentity">

@@ -228,14 +228,25 @@ function textTarget(overrides = {}) {
   };
 }
 
-test("ready workspace text Reset follows the current preview value", () => {
+test("ready workspace text Reset preserves explicit preview authority across rerender", () => {
   withFakeDocument(() => {
-    const sourceRow = createTextElementRow(textTarget(), 0, { selected: false });
+    const model = {
+      texts: [{ textKey: "title", displayName: "标题", initialText: "欢迎回来" }]
+    };
+    const [sourceView] = runtimeTextListView(model, {}).texts;
+    const sourceRow = createTextElementRow(sourceView, 0, { selected: false });
     assert.match(sourceRow.innerHTML, /data-initial-value="欢迎回来"/u);
     assert.match(sourceRow.innerHTML, /data-action="runtime-text-reset"[^>]*disabled/u);
     assert.equal(sourceRow.dataset.replacementState, "source");
 
-    const changedRow = createTextElementRow(textTarget({ inputValue: "新的标题" }), 0, { selected: true });
+    const [exactInitialPreview] = runtimeTextListView(model, { title: "欢迎回来" }).texts;
+    assert.equal(exactInitialPreview.replacementState, "preview");
+    const exactInitialRow = createTextElementRow(exactInitialPreview, 0, { selected: true });
+    assert.doesNotMatch(exactInitialRow.innerHTML, /data-action="runtime-text-reset"[^>]*disabled/u);
+    assert.equal(exactInitialRow.dataset.replacementState, "preview");
+
+    const [changedView] = runtimeTextListView(model, { title: "新的标题" }).texts;
+    const changedRow = createTextElementRow(changedView, 0, { selected: true });
     assert.doesNotMatch(changedRow.innerHTML, /data-action="runtime-text-reset"[^>]*disabled/u);
     assert.equal(changedRow.dataset.replacementState, "preview");
   });
