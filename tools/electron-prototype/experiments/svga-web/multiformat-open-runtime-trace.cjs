@@ -2,7 +2,10 @@
 
 const { appendFileSync, existsSync, readFileSync } = require("node:fs");
 const path = require("node:path");
-const { sanitizeRuntimeTraceEntry } = require("./startup-runtime-policy.cjs");
+const {
+  sanitizeRuntimeTraceEntry,
+  serializeStartupRecord
+} = require("./startup-runtime-policy.cjs");
 
 const TRACE_SCHEMA_VERSION = 1;
 const TRACE_MARKER_FILE = "auto-svga-multiformat-trace-run-id";
@@ -39,7 +42,10 @@ function createMultiFormatOpenRuntimeTrace(options = {}) {
       }
       if (!entry) return false;
       try {
-        appendFileSync(tracePath, `${JSON.stringify(entry)}\n`, { encoding: "utf8", mode: 0o600 });
+        appendFileSync(tracePath, serializeStartupRecord("runtime-trace", entry), {
+          encoding: "utf8",
+          mode: 0o600
+        });
         return true;
       } catch {
         return false;

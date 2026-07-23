@@ -236,6 +236,7 @@ test("WP0 inventory mechanically closes every approved startup input, authority,
   );
   const expectedSinkIds = [
     "fatal-console",
+    "placement-summary-console",
     "early-phase-jsonl",
     "early-failure-proof",
     "loaded-placement-accepted",
@@ -243,6 +244,7 @@ test("WP0 inventory mechanically closes every approved startup input, authority,
     "normal-visible-startup",
     "normal-runtime-proof",
     "normal-smoke-parity",
+    "normal-proof-summary-console",
     "product-artifact-index",
     "multi-format-runtime-trace",
     "renderer-probe",
@@ -493,6 +495,21 @@ test("WP2 property: every loaded startup serializer omits arbitrary payloads and
     }, 1000);
     const placementAccepted = buildAcceptanceStartupPlacementProof(acceptedPlacementInput(payload));
     const placementRejected = buildRejectedAcceptanceStartupPlacementProof(acceptedPlacementInput(payload), payload);
+    const placementSummary = startupRuntimePolicy.buildStartupPlacementSummary({
+      status: payload,
+      reason: payload,
+      fileName: payload,
+      proof: { reason: payload },
+      [payload]: payload
+    });
+    const normalProofSummary = startupRuntimePolicy.buildNormalProofSummary({
+      milestoneId: "0.2-multiformat-preview",
+      passed: payload,
+      windowShown: payload,
+      localOnly: payload,
+      noCspViolation: payload,
+      [payload]: payload
+    });
     const index = startupRuntimePolicy.sanitizeProductArtifactIndex({
       milestoneId: "0.2-multiformat-preview",
       title: payload,
@@ -534,6 +551,8 @@ test("WP2 property: every loaded startup serializer omits arbitrary payloads and
       trace,
       placementAccepted,
       placementRejected,
+      placementSummary,
+      normalProofSummary,
       index
     };
     for (const [sink, value] of Object.entries(observations)) {
@@ -567,35 +586,78 @@ test("WP2 property: field-set authority rejects spread or override drift", () =>
 });
 
 test("WP3 mutation gate: early mirror and loaded authority have whole-manifest parity", () => {
-  const start = mainSource.indexOf("const earlyStartupSerializationAuthority");
-  const end = mainSource.indexOf("const safeAcceptanceBootstrapPhases", start);
+  const start = mainSource.indexOf("const earlyStartupSchemaFieldSets");
+  const end = mainSource.indexOf("function safeBootstrapErrorClass", start);
   assert.ok(start >= 0 && end > start);
-  const sandbox = {
-    acceptanceExecutionIdPattern: /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u
+  const loadedEarlyAuthority = startupRuntimePolicy.startupEarlySerializationAuthority;
+  const earlySource = mainSource.slice(start, end);
+  const evaluateEarlyAuthority = (source, overrides = {}) => {
+    const sandbox = {
+      JSON,
+      Object,
+      Set,
+      createHash: require("node:crypto").createHash,
+      acceptanceExecutionIdPattern: /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u,
+      safeStartupProductMilestoneIds: new Set(loadedEarlyAuthority.productMilestoneIds),
+      safeBootstrapSources: new Set(loadedEarlyAuthority.sources),
+      safeBootstrapErrorClasses: new Set(loadedEarlyAuthority.errorClasses),
+      safeBootstrapReasonByErrorCode: loadedEarlyAuthority.reasonByErrorCode,
+      safeBootstrapErrorSyscalls: new Set(loadedEarlyAuthority.errorSyscalls),
+      safeAcceptanceBootstrapReasons: new Set(loadedEarlyAuthority.acceptanceReasons),
+      ...overrides
+    };
+    vm.runInNewContext(
+      `${source}\n      globalThis.authority = earlyStartupSerializationAuthority;`,
+      sandbox
+    );
+    return JSON.parse(JSON.stringify(sandbox.authority));
   };
-  vm.runInNewContext(
-    `${mainSource.slice(start, end)}\n      globalThis.authority = earlyStartupSerializationAuthority;`,
-    sandbox
-  );
+  const earlyAuthority = evaluateEarlyAuthority(earlySource);
   assert.deepEqual(
-    JSON.parse(JSON.stringify(sandbox.authority)),
-    JSON.parse(JSON.stringify(startupRuntimePolicy.startupSerializationAuthority))
+    earlyAuthority,
+    JSON.parse(JSON.stringify(loadedEarlyAuthority))
   );
-  assert.match(mainSource, /assertStartupSerializationAuthorityParity\(earlyStartupSerializationAuthority\)/u);
-  for (const key of Object.keys(startupRuntimePolicy.startupSerializationAuthority)) {
-    const original = startupRuntimePolicy.startupSerializationAuthority[key];
+  assert.match(mainSource, /assertStartupEarlySerializationAuthorityParity\(earlyStartupSerializationAuthority\)/u);
+  for (const key of Object.keys(loadedEarlyAuthority)) {
+    const original = loadedEarlyAuthority[key];
     const mutated = {
-      ...startupRuntimePolicy.startupSerializationAuthority,
+      ...loadedEarlyAuthority,
       [key]: Array.isArray(original)
         ? [...original, "PRIVATE_CLIENT_NAME_SVGA"]
         : typeof original === "string"
           ? `${original}PRIVATE_CLIENT_NAME_SVGA`
-          : Number(original) + 1
+          : typeof original === "number"
+            ? original + 1
+            : { ...original, PRIVATE_CLIENT_NAME_SVGA: "payload" }
     };
     assert.throws(
-      () => startupRuntimePolicy.assertStartupSerializationAuthorityParity(mutated),
+      () => startupRuntimePolicy.assertStartupEarlySerializationAuthorityParity(mutated),
       /startup_serialization_authority_mismatch/u,
       key
+    );
+  }
+  const earlySourceMutations = [
+    earlySource.replace(
+      '"placement-summary": Object.freeze(["status", "reason", "fileName"])',
+      '"placement-summary": Object.freeze(["status", "reason", "fileName", "PRIVATE_CLIENT_NAME_SVGA"])'
+    ),
+    earlySource.replace(
+      '"placement-summary": Object.freeze(["status", "reason", "fileName"])',
+      '"placement-summary": Object.freeze(["reason", "status", "fileName"])'
+    ),
+    earlySource.replace('  "server_started"\n]);', '  "server_started",\n  "PRIVATE_CLIENT_NAME_SVGA"\n]);'),
+    earlySource.replace(
+      '  "early-failure-proof"\n]);',
+      '  "early-failure-proof",\n  "PRIVATE_CLIENT_NAME_SVGA"\n]);'
+    )
+  ];
+  for (const [index, mutatedSource] of earlySourceMutations.entries()) {
+    assert.notEqual(mutatedSource, earlySource, `early-source-mutation-${index}`);
+    const mutatedAuthority = evaluateEarlyAuthority(mutatedSource);
+    assert.throws(
+      () => startupRuntimePolicy.assertStartupEarlySerializationAuthorityParity(mutatedAuthority),
+      /startup_serialization_authority_mismatch/u,
+      `early-source-mutation-${index}`
     );
   }
 });

@@ -8,7 +8,8 @@ const {
   finalizeStartupRecord,
   safeAcceptanceBootstrapReason,
   safeAcceptanceExecutionId,
-  safeStartupProductMilestoneId
+  safeStartupProductMilestoneId,
+  serializeStartupRecord
 } = require("./startup-runtime-policy.cjs");
 
 const ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE = "acceptance-startup-placement-proof.json";
@@ -268,7 +269,8 @@ function writeAcceptanceStartupPlacementProof(input, fsApi = { mkdirSync, openSy
     ? built.proof
     : buildRejectedAcceptanceStartupPlacementProof(input, built.reason);
   const proofPath = path.join(root.root, ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE);
-  const bytes = Buffer.from(`${JSON.stringify(proof, null, 2)}\n`);
+  const schemaId = proof.status === "accepted" ? "placement-accepted" : "placement-rejected";
+  const bytes = Buffer.from(serializeStartupRecord(schemaId, proof, 2));
   let fd;
   try {
     fsApi.mkdirSync(root.root, { recursive: true });

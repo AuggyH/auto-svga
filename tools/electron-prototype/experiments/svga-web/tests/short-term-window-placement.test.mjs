@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { closeSync, existsSync, fsyncSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -814,6 +815,7 @@ test("early fatal, artifact, and phase taxonomy rejects arbitrary payloads", asy
   ].join("\n");
   const sandbox = {
     Buffer,
+    createHash,
     Error,
     Set,
     acceptanceStartupBootstrapPhaseFileName: "acceptance-startup-bootstrap-phases.jsonl",
@@ -1015,6 +1017,7 @@ test("early fatal artifacts omit unvalidated environment identity payloads", asy
   const pathPayload = "/Users/owner/private/client-name.svga";
   const sandbox = {
     Buffer,
+    createHash,
     Error,
     Set,
     acceptanceStartupBootstrapPhaseFileName: "acceptance-startup-bootstrap-phases.jsonl",
@@ -1102,6 +1105,20 @@ test("late app-ready failures use the bounded structured fatal taxonomy", async 
       console: { error: (value) => lines.push(String(value)) },
       createExperimentWindow: () => {},
       describeFatalBootstrapError: startupRuntimePolicy.describeFatalBootstrapError,
+      buildStartupPlacementSummary: startupRuntimePolicy.buildStartupPlacementSummary,
+      emitLoadedStartupConsoleRecord: (sinkId, value) => {
+        const sink = {
+          "loaded-placement-summary-console": {
+            marker: "AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF",
+            schemaId: "placement-summary"
+          },
+          "loaded-fatal-console": {
+            marker: "AUTO_SVGA_WEB_EXPERIMENT_ERROR",
+            schemaId: "fatal-diagnostic"
+          }
+        }[sinkId];
+        lines.push(`${sink.marker} ${startupRuntimePolicy.serializeStartupRecord(sink.schemaId, value).trimEnd()}`);
+      },
       isAcceptanceStartupProofLaunch: () => false,
       sessionRoot: "/private/auto-svga-session",
       writeAcceptanceStartupBootstrapFailureArtifact: () => ({

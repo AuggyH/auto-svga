@@ -55,8 +55,14 @@
     "acceptance-phase",
     "startup-record-serialization"
   ],
+  "actualCallsiteClosure": {
+    "derivation": "package-source-authority+typescript-ast:writer-primitives+enclosing-function+normalized-call-sha256",
+    "sha256": "d4d2396d2698c92997277b2df778bc13bbd7de78d8f992e42569fbb7ba56d85d",
+    "observedCount": 175
+  },
   "sinks": [
     { "id": "fatal-console", "path": "early+loaded", "writer": "console.error", "schema": "fatal-diagnostic" },
+    { "id": "placement-summary-console", "path": "early+loaded", "writer": "emitEarlyStartupConsoleRecord", "schema": "placement-summary" },
     { "id": "early-phase-jsonl", "path": "early", "writer": "writeAcceptanceStartupBootstrapPhase", "schema": "acceptance-phase" },
     { "id": "early-failure-proof", "path": "early", "writer": "writeAcceptanceStartupBootstrapFailureArtifact", "schema": "acceptance-failure" },
     { "id": "loaded-placement-accepted", "path": "loaded", "writer": "buildAcceptanceStartupPlacementProof", "schema": "placement-accepted" },
@@ -64,6 +70,7 @@
     { "id": "normal-visible-startup", "path": "loaded", "writer": "writeVisibleNormalStartupProof", "schema": "normal-visible-startup" },
     { "id": "normal-runtime-proof", "path": "loaded", "writer": "finishNormalProof", "schema": "normal-runtime-proof" },
     { "id": "normal-smoke-parity", "path": "loaded", "writer": "normalSmokeParity", "schema": "normal-smoke-parity" },
+    { "id": "normal-proof-summary-console", "path": "loaded", "writer": "emitLoadedStartupConsoleRecord", "schema": "normal-proof-summary" },
     { "id": "product-artifact-index", "path": "loaded", "writer": "writeProductArtifactIndex", "schema": "product-artifact-index" },
     { "id": "multi-format-runtime-trace", "path": "loaded", "writer": "multiFormatTrace.record", "schema": "runtime-trace" },
     { "id": "renderer-probe", "path": "loaded", "writer": "writeVisibleNormalStartupProof", "schema": "renderer-probe" },

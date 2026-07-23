@@ -16,6 +16,7 @@ const formalStartupProductMilestoneIds = Object.freeze([
 
 const startupRegisteredSinkIds = Object.freeze([
   "fatal-console",
+  "placement-summary-console",
   "early-phase-jsonl",
   "early-failure-proof",
   "loaded-placement-accepted",
@@ -23,16 +24,28 @@ const startupRegisteredSinkIds = Object.freeze([
   "normal-visible-startup",
   "normal-runtime-proof",
   "normal-smoke-parity",
+  "normal-proof-summary-console",
   "product-artifact-index",
   "multi-format-runtime-trace",
   "renderer-probe",
   "blocked-external-requests"
 ]);
 
+const startupEarlyRegisteredSinkIds = Object.freeze([
+  "early-environment-fatal-console",
+  "early-fatal-placement-summary-console",
+  "early-fatal-console",
+  "loaded-placement-summary-console",
+  "loaded-fatal-console",
+  "early-phase-jsonl",
+  "early-failure-proof"
+]);
+
 const startupSchemaFieldSets = Object.freeze({
   "fatal-diagnostic": Object.freeze([
     "source", "acceptanceLaunch", "reason", "errorClass", "errorCode", "errorSyscall"
   ]),
+  "placement-summary": Object.freeze(["status", "reason", "fileName"]),
   "acceptance-phase": Object.freeze([
     "schemaVersion", "proofId", "phase", "phaseSequence", "executionId", "requestedDisplayId",
     "runtimeInstanceId", "pid", "platform", "arch", "generatedAt", "privacy", "reason",
@@ -88,6 +101,9 @@ const startupSchemaFieldSets = Object.freeze({
     "smokeProcessId", "normalRuntimeInstanceId", "smokeRuntimeInstanceId", "passed", "checks",
     "allowedDifferences", "generatedAt"
   ]),
+  "normal-proof-summary": Object.freeze([
+    "milestoneId", "passed", "windowShown", "localOnly", "noCspViolation"
+  ]),
   "product-artifact-index": Object.freeze([
     "milestoneId", "title", "productIdentity", "headCommit", "generatedAt", "humanReviewRequired", "artifacts"
   ]),
@@ -104,6 +120,23 @@ const startupSchemaFieldSets = Object.freeze({
   ]),
   "renderer-probe": Object.freeze(["rendererQuery", "primaryBridge", "localOnly", "externalRequests"]),
   "external-request": Object.freeze(["category"])
+});
+
+const startupEarlySchemaFieldSets = Object.freeze({
+  "fatal-diagnostic": Object.freeze([
+    "source", "acceptanceLaunch", "reason", "errorClass", "errorCode", "errorSyscall"
+  ]),
+  "placement-summary": Object.freeze(["status", "reason", "fileName"]),
+  "acceptance-phase": Object.freeze([
+    "schemaVersion", "proofId", "phase", "phaseSequence", "executionId", "requestedDisplayId",
+    "runtimeInstanceId", "pid", "platform", "arch", "generatedAt", "privacy", "reason",
+    "placementMode", "resolvedDisplayId"
+  ]),
+  "acceptance-failure": Object.freeze([
+    "schemaVersion", "proofId", "status", "phase", "placementMode", "reason", "executionId",
+    "requestedDisplayId", "runtimeInstanceId", "productIdentity", "privacy", "errorClass",
+    "generatedAt", "passed"
+  ])
 });
 
 const startupPolicyErrorCodeByReason = Object.freeze({
@@ -347,6 +380,38 @@ const safeBootstrapSources = new Set([
   "unhandled_rejection"
 ]);
 
+const startupAcceptanceBootstrapPhases = Object.freeze([
+  "app_ready_create_window_begin",
+  "app_ready_create_window_failed",
+  "app_ready_handler_register_begin",
+  "app_ready_handler_registered",
+  "bootstrap_failure_artifact_begin",
+  "bootstrap_failure_artifact_rejected",
+  "bootstrap_failure_artifact_written",
+  "browser_window_construct_begin",
+  "browser_window_constructed",
+  "electron_require_begin",
+  "electron_required",
+  "entrypoint_loaded",
+  "local_requires_begin",
+  "local_requires_complete",
+  "placement_proof_module_require_begin",
+  "placement_proof_module_required",
+  "placement_proof_publish_begin",
+  "placement_proof_published",
+  "placement_proof_rejected",
+  "placement_resolve_begin",
+  "placement_resolved",
+  "placement_revalidate_begin",
+  "placement_revalidate_rejected",
+  "placement_revalidated",
+  "renderer_load_begin",
+  "renderer_load_completed",
+  "server_import_begin",
+  "server_imported",
+  "server_started"
+]);
+
 const acceptanceExecutionIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
 
 const startupFatalDiagnosticTaxonomy = Object.freeze({
@@ -359,6 +424,23 @@ const startupFatalDiagnosticTaxonomy = Object.freeze({
   productMilestoneIds: Object.freeze([...safeStartupProductMilestoneIds].sort())
 });
 
+const startupEarlySerializationAuthority = Object.freeze({
+  schemaVersion: 1,
+  acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
+  productMilestoneIds: Object.freeze([...formalStartupProductMilestoneIds]),
+  registeredSinkIds: Object.freeze([...startupEarlyRegisteredSinkIds]),
+  schemaIds: Object.freeze(Object.keys(startupEarlySchemaFieldSets)),
+  schemaFieldSetsSha256: createHash("sha256")
+    .update(JSON.stringify(startupEarlySchemaFieldSets))
+    .digest("hex"),
+  sources: Object.freeze([...safeBootstrapSources].sort()),
+  errorClasses: Object.freeze([...safeBootstrapErrorClasses].sort()),
+  reasonByErrorCode: Object.freeze({ ...safeBootstrapReasonByErrorCode }),
+  errorSyscalls: Object.freeze([...safeBootstrapErrorSyscalls].sort()),
+  acceptanceReasons: Object.freeze([...safeAcceptanceBootstrapReasons].sort()),
+  phases: Object.freeze([...startupAcceptanceBootstrapPhases])
+});
+
 const startupSerializationAuthority = Object.freeze({
   schemaVersion: 1,
   acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
@@ -367,6 +449,15 @@ const startupSerializationAuthority = Object.freeze({
   schemaIds: Object.freeze(Object.keys(startupSchemaFieldSets)),
   schemaFieldSetsSha256: createHash("sha256").update(JSON.stringify(startupSchemaFieldSets)).digest("hex")
 });
+
+function assertStartupEarlySerializationAuthorityParity(value) {
+  if (JSON.stringify(value) !== JSON.stringify(startupEarlySerializationAuthority)) {
+    const error = new Error("startup_serialization_authority_mismatch");
+    error.code = "AUTO_SVGA_STARTUP_SERIALIZATION_AUTHORITY_MISMATCH";
+    throw error;
+  }
+  return true;
+}
 
 function assertStartupSerializationAuthorityParity(value) {
   if (JSON.stringify(value) !== JSON.stringify(startupSerializationAuthority)) {
@@ -391,6 +482,11 @@ function finalizeStartupRecord(schemaId, value) {
     throw error;
   }
   return Object.fromEntries(fields.filter((field) => value[field] !== undefined).map((field) => [field, value[field]]));
+}
+
+function serializeStartupRecord(schemaId, value, space = 0) {
+  const record = finalizeStartupRecord(schemaId, value);
+  return `${JSON.stringify(record, null, space)}\n`;
 }
 
 function assertStartupFatalDiagnosticTaxonomyParity(value) {
@@ -471,6 +567,29 @@ function describeFatalBootstrapError(input) {
     errorClass: safeBootstrapErrorClass(input.error),
     ...(errorCode ? { errorCode } : {}),
     ...(errorSyscall ? { errorSyscall } : {})
+  });
+}
+
+function buildStartupPlacementSummary(input = {}) {
+  const rawReason = input.reason ?? input.proof?.reason;
+  const status = input.status === "written" ? "written" : "rejected";
+  const fileName = input.fileName === "acceptance-startup-placement-proof.json"
+    ? input.fileName
+    : undefined;
+  return finalizeStartupRecord("placement-summary", {
+    status,
+    ...(rawReason ? { reason: safeAcceptanceBootstrapReason(rawReason) } : {}),
+    ...(fileName ? { fileName } : {})
+  });
+}
+
+function buildNormalProofSummary(input = {}) {
+  return finalizeStartupRecord("normal-proof-summary", {
+    milestoneId: requireStartupProductMilestoneId(input.milestoneId),
+    passed: input.passed === true,
+    windowShown: input.windowShown === true,
+    localOnly: input.localOnly === true,
+    noCspViolation: input.noCspViolation === true
   });
 }
 
@@ -1136,13 +1255,16 @@ function sanitizeRuntimeTraceEntry(input = {}, timestampMs = 0) {
 }
 
 module.exports = {
+  assertStartupEarlySerializationAuthorityParity,
   assertStartupFatalDiagnosticTaxonomyParity,
   assertStartupSerializationAuthorityParity,
   autoSvgaEnvironmentOverrideNames,
   buildNormalRuntimeProof,
+  buildNormalProofSummary,
   buildNormalSmokeParity,
   buildNormalVisibleStartupProof,
   buildRendererProbeEvidence,
+  buildStartupPlacementSummary,
   buildStartupLaunchContext,
   buildStartupRuntimeIdentity,
   describeFatalBootstrapError,
@@ -1160,6 +1282,8 @@ module.exports = {
   safeStartupProductMilestoneId,
   sanitizeProductArtifactIndex,
   sanitizeRuntimeTraceEntry,
+  serializeStartupRecord,
+  startupEarlySerializationAuthority,
   startupFatalDiagnosticTaxonomy,
   startupSerializationAuthority
 };

@@ -174,26 +174,34 @@ const earlyStartupFatalDiagnosticTaxonomy = Object.freeze({
   productMilestoneIds: Object.freeze([...safeStartupProductMilestoneIds].sort())
 });
 
-const earlyStartupSerializationAuthority = Object.freeze({
-  schemaVersion: 1,
-  acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
-  productMilestoneIds: Object.freeze([
-    "0.2-multiformat-preview", "0.3.0-alpha.1", "P2", "P3", "P4", "P5", "P6", "P6-R1", "aeb", "short-term"
+const earlyStartupSchemaFieldSets = Object.freeze({
+  "fatal-diagnostic": Object.freeze([
+    "source", "acceptanceLaunch", "reason", "errorClass", "errorCode", "errorSyscall"
   ]),
-  registeredSinkIds: Object.freeze([
-    "fatal-console", "early-phase-jsonl", "early-failure-proof", "loaded-placement-accepted",
-    "loaded-placement-rejected", "normal-visible-startup", "normal-runtime-proof", "normal-smoke-parity",
-    "product-artifact-index", "multi-format-runtime-trace", "renderer-probe", "blocked-external-requests"
+  "placement-summary": Object.freeze(["status", "reason", "fileName"]),
+  "acceptance-phase": Object.freeze([
+    "schemaVersion", "proofId", "phase", "phaseSequence", "executionId", "requestedDisplayId",
+    "runtimeInstanceId", "pid", "platform", "arch", "generatedAt", "privacy", "reason",
+    "placementMode", "resolvedDisplayId"
   ]),
-  schemaIds: Object.freeze([
-    "fatal-diagnostic", "acceptance-phase", "acceptance-failure", "placement-accepted", "placement-rejected",
-    "runtime-identity", "normal-visible-startup", "normal-runtime-proof", "normal-smoke-parity",
-    "product-artifact-index", "product-artifact-record", "runtime-trace", "renderer-probe", "external-request"
-  ]),
-  schemaFieldSetsSha256: "3ad5f523357786d0d0805ed5d714b56021093bda3b47dec749bb86210f67550c"
+  "acceptance-failure": Object.freeze([
+    "schemaVersion", "proofId", "status", "phase", "placementMode", "reason", "executionId",
+    "requestedDisplayId", "runtimeInstanceId", "productIdentity", "privacy", "errorClass",
+    "generatedAt", "passed"
+  ])
 });
 
-const safeAcceptanceBootstrapPhases = new Set([
+const earlyStartupRegisteredSinkIds = Object.freeze([
+  "early-environment-fatal-console",
+  "early-fatal-placement-summary-console",
+  "early-fatal-console",
+  "loaded-placement-summary-console",
+  "loaded-fatal-console",
+  "early-phase-jsonl",
+  "early-failure-proof"
+]);
+
+const earlyAcceptanceBootstrapPhases = Object.freeze([
   "app_ready_create_window_begin",
   "app_ready_create_window_failed",
   "app_ready_handler_register_begin",
@@ -224,6 +232,25 @@ const safeAcceptanceBootstrapPhases = new Set([
   "server_imported",
   "server_started"
 ]);
+
+const safeAcceptanceBootstrapPhases = new Set(earlyAcceptanceBootstrapPhases);
+
+const earlyStartupSerializationAuthority = Object.freeze({
+  schemaVersion: 1,
+  acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
+  productMilestoneIds: Object.freeze([...safeStartupProductMilestoneIds]),
+  registeredSinkIds: Object.freeze([...earlyStartupRegisteredSinkIds]),
+  schemaIds: Object.freeze(Object.keys(earlyStartupSchemaFieldSets)),
+  schemaFieldSetsSha256: createHash("sha256")
+    .update(JSON.stringify(earlyStartupSchemaFieldSets))
+    .digest("hex"),
+  sources: Object.freeze([...safeBootstrapSources].sort()),
+  errorClasses: Object.freeze([...safeBootstrapErrorClasses].sort()),
+  reasonByErrorCode: Object.freeze({ ...safeBootstrapReasonByErrorCode }),
+  errorSyscalls: Object.freeze([...safeBootstrapErrorSyscalls].sort()),
+  acceptanceReasons: Object.freeze([...safeAcceptanceBootstrapReasons].sort()),
+  phases: Object.freeze([...earlyAcceptanceBootstrapPhases])
+});
 
 function safeBootstrapErrorClass(error) {
   const errorClass = error instanceof Error ? error.name : undefined;
@@ -303,12 +330,87 @@ function safeAcceptanceBootstrapPhaseFields(fields) {
   return safeFields;
 }
 
+function finalizeEarlyStartupRecord(schemaId, value) {
+  const fields = earlyStartupSchemaFieldSets[schemaId];
+  if (!fields || !value || typeof value !== "object" || Array.isArray(value)) {
+    const error = new Error("startup_serialization_schema_invalid");
+    error.code = "AUTO_SVGA_STARTUP_SERIALIZATION_SCHEMA_INVALID";
+    throw error;
+  }
+  if (Object.keys(value).some((field) => !fields.includes(field))) {
+    const error = new Error("startup_serialization_field_set_invalid");
+    error.code = "AUTO_SVGA_STARTUP_SERIALIZATION_FIELD_SET_INVALID";
+    throw error;
+  }
+  return Object.fromEntries(fields.filter((field) => value[field] !== undefined).map((field) => [field, value[field]]));
+}
+
+function serializeEarlyStartupRecord(schemaId, value, space = 0) {
+  return `${JSON.stringify(finalizeEarlyStartupRecord(schemaId, value), null, space)}\n`;
+}
+
+const earlyStartupConsoleSinkById = Object.freeze({
+  "early-environment-fatal-console": Object.freeze({
+    marker: "AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP",
+    schemaId: "fatal-diagnostic"
+  }),
+  "early-fatal-placement-summary-console": Object.freeze({
+    marker: "AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF",
+    schemaId: "placement-summary"
+  }),
+  "early-fatal-console": Object.freeze({
+    marker: "AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP",
+    schemaId: "fatal-diagnostic"
+  }),
+  "loaded-placement-summary-console": Object.freeze({
+    marker: "AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF",
+    schemaId: "placement-summary"
+  }),
+  "loaded-fatal-console": Object.freeze({
+    marker: "AUTO_SVGA_WEB_EXPERIMENT_ERROR",
+    schemaId: "fatal-diagnostic"
+  })
+});
+
+function emitEarlyStartupConsoleRecord(sinkId, value) {
+  const sink = earlyStartupConsoleSinkById[sinkId];
+  if (!sink || !earlyStartupRegisteredSinkIds.includes(sinkId)) {
+    throw new Error("startup_serialization_authority_mismatch");
+  }
+  const serialized = serializeEarlyStartupRecord(sink.schemaId, value).trimEnd();
+  console.error(`${sink.marker} ${serialized}`);
+}
+
+function buildEarlyStartupPlacementSummary(input = {}) {
+  const rawReason = input.reason ?? input.proof?.reason;
+  return finalizeEarlyStartupRecord("placement-summary", {
+    status: input.status === "written" ? "written" : "rejected",
+    ...(rawReason ? { reason: safeAcceptanceBootstrapReason(rawReason) } : {}),
+    ...(input.fileName === acceptanceStartupPlacementProofFileName
+      ? { fileName: input.fileName }
+      : {})
+  });
+}
+
+function writeEarlyStartupFileRecord(fd, sinkId, value, space = 0) {
+  const schemaId = {
+    "early-phase-jsonl": "acceptance-phase",
+    "early-failure-proof": "acceptance-failure"
+  }[sinkId];
+  if (!schemaId || !earlyStartupRegisteredSinkIds.includes(sinkId)) {
+    throw new Error("startup_serialization_authority_mismatch");
+  }
+  const bytes = Buffer.from(serializeEarlyStartupRecord(schemaId, value, space));
+  writeSync(fd, bytes, 0, bytes.length);
+  return bytes.byteLength;
+}
+
 function describeEarlyFatalBootstrapError(input) {
   const errorCode = safeBootstrapErrorCode(input.error);
   const errorSyscall = safeBootstrapErrorSyscall(input.error);
   const acceptanceReason = input.acceptanceProofResult?.proof?.reason
     ?? input.acceptanceProofResult?.reason;
-  return {
+  return finalizeEarlyStartupRecord("fatal-diagnostic", {
     source: safeBootstrapSource(input.source),
     acceptanceLaunch: input.acceptanceLaunch === true,
     reason: input.acceptanceLaunch === true
@@ -317,7 +419,7 @@ function describeEarlyFatalBootstrapError(input) {
     errorClass: safeBootstrapErrorClass(input.error),
     ...(errorCode ? { errorCode } : {}),
     ...(errorSyscall ? { errorSyscall } : {})
-  };
+  });
 }
 
 function validateEarlyEnvironmentProductMilestone() {
@@ -329,11 +431,11 @@ function validateEarlyEnvironmentProductMilestone() {
   }
   const error = new Error("startup_policy_invalid_product_milestone");
   error.code = "AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_MILESTONE";
-  console.error(`AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP ${JSON.stringify(describeEarlyFatalBootstrapError({
+  emitEarlyStartupConsoleRecord("early-environment-fatal-console", describeEarlyFatalBootstrapError({
     source: "bootstrap_source_unknown",
     error,
     acceptanceLaunch: isAcceptanceStartupProofLaunch()
-  }))}`);
+  }));
   process.exit(1);
 }
 
@@ -348,7 +450,7 @@ function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
   const executionId = validatedAcceptanceStartupIdentity?.executionId;
   const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
   const safeFields = safeAcceptanceBootstrapPhaseFields(fields);
-  const record = {
+  const record = finalizeEarlyStartupRecord("acceptance-phase", {
     schemaVersion: 1,
     proofId: "acceptance-startup-bootstrap-phase",
     phase: safeAcceptanceBootstrapPhase(phase),
@@ -368,13 +470,12 @@ function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
       ownerPreferenceMutated: false
     },
     ...safeFields
-  };
+  });
   let fd;
   try {
     mkdirSync(root.root, { recursive: true });
     fd = openSync(phasePath, "a", 0o600);
-    const bytes = Buffer.from(`${JSON.stringify(record)}\n`);
-    writeSync(fd, bytes, 0, bytes.length);
+    writeEarlyStartupFileRecord(fd, "early-phase-jsonl", record);
     fsyncSync(fd);
     return { status: "written", fileName: acceptanceStartupBootstrapPhaseFileName, record };
   } catch (writeError) {
@@ -405,7 +506,7 @@ function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
   const proofPath = path.join(root.root, acceptanceStartupPlacementProofFileName);
   const executionId = validatedAcceptanceStartupIdentity?.executionId;
   const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
-  const proof = {
+  const proof = finalizeEarlyStartupRecord("acceptance-failure", {
     schemaVersion: 1,
     proofId: "acceptance-startup-placement-proof",
     status: "rejected",
@@ -428,13 +529,12 @@ function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
     errorClass: safeBootstrapErrorClass(error),
     generatedAt: new Date().toISOString(),
     passed: false
-  };
+  });
   let fd;
   try {
     mkdirSync(root.root, { recursive: true });
     fd = openSync(proofPath, "wx", 0o600);
-    const bytes = Buffer.from(`${JSON.stringify(proof, null, 2)}\n`);
-    writeSync(fd, bytes, 0, bytes.length);
+    writeEarlyStartupFileRecord(fd, "early-failure-proof", proof, 2);
     fsyncSync(fd);
     writeAcceptanceStartupBootstrapPhase("bootstrap_failure_artifact_written", {
       reason: proof.reason
@@ -466,18 +566,17 @@ function handleAcceptanceStartupFatalError(source, error) {
   const acceptanceLaunch = isAcceptanceStartupProofLaunch();
   const bootstrapProofResult = writeAcceptanceStartupBootstrapFailureArtifact(reason, error);
   if (bootstrapProofResult.status !== "ignored") {
-    console.error(`AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF ${JSON.stringify({
-      status: bootstrapProofResult.status,
-      reason: bootstrapProofResult.reason ?? bootstrapProofResult.proof?.reason ?? null,
-      fileName: bootstrapProofResult.fileName ?? null
-    })}`);
+    emitEarlyStartupConsoleRecord(
+      "early-fatal-placement-summary-console",
+      buildEarlyStartupPlacementSummary(bootstrapProofResult)
+    );
   }
-  console.error(`AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP ${JSON.stringify(describeFatalBootstrapError({
+  emitEarlyStartupConsoleRecord("early-fatal-console", describeFatalBootstrapError({
     source,
     error,
     acceptanceLaunch,
     acceptanceProofResult: bootstrapProofResult
-  }))}`);
+  }));
   try {
     electronAppForFatalExit?.exit?.(1);
   } catch {
@@ -518,23 +617,27 @@ writeAcceptanceStartupBootstrapPhase("electron_required");
 writeAcceptanceStartupBootstrapPhase("local_requires_begin");
 
 const {
+  assertStartupEarlySerializationAuthorityParity,
   assertStartupFatalDiagnosticTaxonomyParity,
-  assertStartupSerializationAuthorityParity,
   buildNormalRuntimeProof,
+  buildNormalProofSummary,
   buildNormalSmokeParity,
   buildNormalVisibleStartupProof,
+  buildStartupPlacementSummary,
   buildStartupRuntimeIdentity,
   describeFatalBootstrapError: describeFatalBootstrapErrorFromPolicy,
   describeFinderEquivalentLaunchEvidence,
+  finalizeStartupRecord,
   productArtifactFileNameForScenario,
   resolveStartupProductIdentity,
   resolveStartupRuntimePolicy,
   safeExternalRequestCategories,
   safeProductArtifactScenario,
-  sanitizeProductArtifactIndex
+  sanitizeProductArtifactIndex,
+  serializeStartupRecord
 } = require("./startup-runtime-policy.cjs");
 assertStartupFatalDiagnosticTaxonomyParity(earlyStartupFatalDiagnosticTaxonomy);
-assertStartupSerializationAuthorityParity(earlyStartupSerializationAuthority);
+assertStartupEarlySerializationAuthorityParity(earlyStartupSerializationAuthority);
 describeFatalBootstrapError = describeFatalBootstrapErrorFromPolicy;
 
 const {
@@ -5166,6 +5269,35 @@ async function finishSmoke(window, result) {
   app.exit(passed ? 0 : 1);
 }
 
+const loadedStartupConsoleSinkById = Object.freeze({
+  "loaded-placement-summary-console": Object.freeze({
+    marker: "AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF",
+    schemaId: "placement-summary",
+    method: "error"
+  }),
+  "loaded-fatal-console": Object.freeze({
+    marker: "AUTO_SVGA_WEB_EXPERIMENT_ERROR",
+    schemaId: "fatal-diagnostic",
+    method: "error"
+  }),
+  "normal-proof-summary-console": Object.freeze({
+    marker: "AUTO_SVGA_DESKTOP_NORMAL_PROOF",
+    schemaId: "normal-proof-summary",
+    method: "log"
+  })
+});
+
+function emitLoadedStartupConsoleRecord(sinkId, value) {
+  const sink = loadedStartupConsoleSinkById[sinkId];
+  if (!sink) throw new Error("startup_serialization_authority_mismatch");
+  const serialized = serializeStartupRecord(sink.schemaId, value).trimEnd();
+  if (sink.method === "log") {
+    console.log(`${sink.marker} ${serialized}`);
+  } else {
+    console.error(`${sink.marker} ${serialized}`);
+  }
+}
+
 async function finishNormalProof(window, result) {
   if (smokeFinished) return;
   smokeFinished = true;
@@ -5189,21 +5321,25 @@ async function finishNormalProof(window, result) {
     passed,
     generatedAt: new Date().toISOString()
   });
-  writeJsonProductArtifact("normal-runtime-proof.json", "normal-runtime-proof", normalProofValue, "normal");
+  writeStartupJsonProductArtifact("normal-runtime-proof.json", "normal-runtime-proof", normalProofValue, "normal");
   try {
     const smokeIdentity = JSON.parse(readFileSync(path.join(productArtifactRoot, "runtime-identity.json"), "utf8"));
-    writeJsonProductArtifact("normal-smoke-parity.json", "normal-smoke-parity", normalSmokeParity(normalIdentity, smokeIdentity));
+    writeStartupJsonProductArtifact(
+      "normal-smoke-parity.json",
+      "normal-smoke-parity",
+      normalSmokeParity(normalIdentity, smokeIdentity)
+    );
   } catch {
     // Smoke identity is produced by the independent smoke run. Missing data is caught by parity validation.
   }
   writeProductArtifactIndex();
-  console.log(`AUTO_SVGA_DESKTOP_NORMAL_PROOF ${JSON.stringify({
+  emitLoadedStartupConsoleRecord("normal-proof-summary-console", buildNormalProofSummary({
     milestoneId: normalProofValue.milestoneId,
     passed: normalProofValue.passed,
     windowShown: normalProofValue.windowShown,
     localOnly: normalProofValue.localOnly,
     noCspViolation: normalProofValue.noCspViolation
-  })}`);
+  }));
   await cleanupRuntime();
   window.destroy();
   app.exit(passed ? 0 : 1);
@@ -5277,13 +5413,13 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
     windowShown: window.isVisible(),
     finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence.reason
   });
-  writeJsonProductArtifact("normal-visible-startup.json", "normal-visible-startup", value, "normal");
+  writeStartupJsonProductArtifact("normal-visible-startup.json", "normal-visible-startup", value, "normal");
 }
 
 function writeProductArtifactIndex() {
   const indexPath = path.join(productArtifactRoot, "artifact-index.json");
   const serializedIndex = sanitizeProductArtifactIndex(productArtifactIndex);
-  writeFileSync(indexPath, `${JSON.stringify(serializedIndex, null, 2)}\n`);
+  writeFileSync(indexPath, serializeStartupRecord("product-artifact-index", serializedIndex, 2));
 }
 
 function stateForScenario(scenario) {
@@ -5511,6 +5647,21 @@ async function forceRendererRepaint(window) {
 
 function artifactFileNameForScenario(scenario) {
   return productArtifactFileNameForScenario(scenario);
+}
+
+const startupJsonArtifactSchemaByScenario = Object.freeze({
+  "normal-runtime-proof": "normal-runtime-proof",
+  "normal-smoke-parity": "normal-smoke-parity",
+  "normal-visible-startup": "normal-visible-startup",
+  "runtime-identity": "runtime-identity"
+});
+
+function writeStartupJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
+  const schemaId = startupJsonArtifactSchemaByScenario[scenario];
+  if (!schemaId || productArtifactFileNameForScenario(scenario) !== fileName) {
+    throw new Error("startup_serialization_authority_mismatch");
+  }
+  return writeJsonProductArtifact(fileName, scenario, finalizeStartupRecord(schemaId, value), mode);
 }
 
 function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
@@ -7963,7 +8114,7 @@ async function createExperimentWindow() {
   const rendererUrl = auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}${rendererPath}${productMode}`;
   if (productSmokeMode) {
     const smokeIdentity = runtimeIdentity("smoke", rendererUrl);
-    writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
+    writeStartupJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
   }
   multiFormatDesktopRendererReady = false;
   writeAcceptanceStartupBootstrapPhase("renderer_load_begin");
@@ -8016,18 +8167,17 @@ app.whenReady().then(createExperimentWindow).catch((error) => {
   });
   const bootstrapProofResult = writeAcceptanceStartupBootstrapFailureArtifact(acceptanceStartupFailureReason(error), error);
   if (bootstrapProofResult.status !== "ignored") {
-    console.error(`AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF ${JSON.stringify({
-      status: bootstrapProofResult.status,
-      reason: bootstrapProofResult.reason ?? bootstrapProofResult.proof?.reason ?? null,
-      fileName: bootstrapProofResult.fileName ?? null
-    })}`);
+    emitLoadedStartupConsoleRecord(
+      "loaded-placement-summary-console",
+      buildStartupPlacementSummary(bootstrapProofResult)
+    );
   }
-  console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${JSON.stringify(describeFatalBootstrapError({
+  emitLoadedStartupConsoleRecord("loaded-fatal-console", describeFatalBootstrapError({
     source: "app_ready_rejection",
     error,
     acceptanceLaunch,
     acceptanceProofResult: bootstrapProofResult
-  }))}`);
+  }));
   app.exit(1);
 });
 writeAcceptanceStartupBootstrapPhase("app_ready_handler_registered");
