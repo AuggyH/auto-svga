@@ -733,7 +733,7 @@ test("packaged normal startup separates writable runtime state from explicit pro
   assert.doesNotMatch(source, /finderEquivalentLaunchCompatible:\s*true/u);
 });
 
-test("early fatal diagnostics and acceptance artifacts redact malicious error names", async () => {
+test("early fatal, artifact, and phase taxonomy rejects arbitrary payloads", async (t) => {
   const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-early-fatal-"));
   const slice = (start, end) => {
@@ -743,15 +743,17 @@ test("early fatal diagnostics and acceptance artifacts redact malicious error na
     return source.slice(startIndex, endIndex);
   };
   const harnessSource = [
-    slice("const safeBootstrapErrorClasses", "function safeAcceptanceBootstrapReason"),
-    slice("function safeAcceptanceBootstrapReason", "function describeEarlyFatalBootstrapError"),
-    slice("function describeEarlyFatalBootstrapError", "let describeFatalBootstrapError"),
+    "let acceptanceStartupBootstrapPhaseSequence = 0;",
+    slice("function acceptanceStartupFailureReason", "const safeBootstrapErrorClasses"),
+    slice("const safeBootstrapErrorClasses", "let describeFatalBootstrapError"),
+    slice("function writeAcceptanceStartupBootstrapPhase", "function writeAcceptanceStartupBootstrapFailureArtifact"),
     slice("function writeAcceptanceStartupBootstrapFailureArtifact", "function handleAcceptanceStartupFatalError")
   ].join("\n");
   const sandbox = {
     Buffer,
     Error,
     Set,
+    acceptanceStartupBootstrapPhaseFileName: "acceptance-startup-bootstrap-phases.jsonl",
     acceptanceStartupPlacementProofFileName: "acceptance-startup-placement-proof.json",
     acceptanceStartupArtifactRoot: () => ({ status: "accepted", root }),
     closeSync,
@@ -771,45 +773,114 @@ test("early fatal diagnostics and acceptance artifacts redact malicious error na
       platform: "darwin"
     },
     strictAcceptanceStartupDisplayArgument: () => 2,
-    writeAcceptanceStartupBootstrapPhase: () => ({ status: "written" }),
     writeSync
   };
 
   try {
     vm.runInNewContext(`${harnessSource}
       globalThis.testApi = {
+        acceptanceStartupFailureReason,
         describeEarlyFatalBootstrapError,
+        writeAcceptanceStartupBootstrapPhase,
         writeAcceptanceStartupBootstrapFailureArtifact
       };`, sandbox);
     const privatePayload = "Failure /Users/owner/private/client-name.svga";
     const error = new Error("message with /Users/owner/private/client-name.svga");
     error.name = privatePayload;
 
-    const diagnostic = sandbox.testApi.describeEarlyFatalBootstrapError({
-      source: "uncaught_exception",
-      error,
-      acceptanceLaunch: false,
-      acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+    await t.test("path-shaped error names stay redacted", () => {
+      const diagnostic = sandbox.testApi.describeEarlyFatalBootstrapError({
+        source: "uncaught_exception",
+        error,
+        acceptanceLaunch: false,
+        acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+      });
+      assert.equal(diagnostic.errorClass, "Error");
+      assert.equal(diagnostic.reason, "bootstrap_error");
+      assert.equal(JSON.stringify(diagnostic).includes(privatePayload), false);
+      assert.equal(JSON.stringify(diagnostic).includes("/Users/owner"), false);
     });
-    assert.equal(diagnostic.errorClass, "Error");
-    assert.equal(diagnostic.reason, "bootstrap_error");
-    assert.equal(JSON.stringify(diagnostic).includes(privatePayload), false);
-    assert.equal(JSON.stringify(diagnostic).includes("/Users/owner"), false);
 
-    const result = sandbox.testApi.writeAcceptanceStartupBootstrapFailureArtifact(
-      privatePayload,
-      error
+    const safeCharacterPayload = "PRIVATE_CLIENT_NAME_SVGA";
+    const syscallPayload = "Users_owner_private";
+    await t.test("safe-character plain-object fields stay redacted", () => {
+      const plainObjectDiagnostic = sandbox.testApi.describeEarlyFatalBootstrapError({
+        source: "uncaught_exception",
+        error: {
+          name: safeCharacterPayload,
+          code: safeCharacterPayload,
+          syscall: syscallPayload
+        },
+        acceptanceLaunch: false,
+        acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+      });
+      assert.deepEqual(JSON.parse(JSON.stringify(plainObjectDiagnostic)), {
+        source: "uncaught_exception",
+        acceptanceLaunch: false,
+        reason: "bootstrap_error",
+        errorClass: "Error"
+      });
+    });
+
+    const policyError = Object.assign(
+      new Error("startup_policy_invalid_product_milestone"),
+      { code: "AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_MILESTONE" }
     );
-    assert.equal(result.status, "written");
-    const artifactText = readFileSync(
-      path.join(root, "acceptance-startup-placement-proof.json"),
-      "utf8"
-    );
-    const artifact = JSON.parse(artifactText);
-    assert.equal(artifact.errorClass, "Error");
-    assert.equal(artifact.reason, "acceptance_startup_bootstrap_failed");
-    assert.equal(artifactText.includes(privatePayload), false);
-    assert.equal(artifactText.includes("/Users/owner"), false);
+    await t.test("early acceptance diagnostics retain fixed policy taxonomy only", () => {
+      const acceptanceDiagnostic = sandbox.testApi.describeEarlyFatalBootstrapError({
+        source: "unhandled_rejection",
+        error: policyError,
+        acceptanceLaunch: true,
+        acceptanceProofResult: {
+          status: "rejected",
+          reason: "acceptance_users_owner_private_client_name_svga"
+        }
+      });
+      assert.equal(acceptanceDiagnostic.reason, "startup_policy_invalid_product_milestone");
+      assert.equal(
+        acceptanceDiagnostic.errorCode,
+        "AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_MILESTONE"
+      );
+      assert.equal(JSON.stringify(acceptanceDiagnostic).includes("users_owner_private"), false);
+    });
+
+    await t.test("acceptance failure artifact retains fixed policy taxonomy only", () => {
+      const result = sandbox.testApi.writeAcceptanceStartupBootstrapFailureArtifact(
+        "acceptance_users_owner_private_client_name_svga",
+        policyError
+      );
+      assert.equal(result.status, "written");
+      const artifactText = readFileSync(
+        path.join(root, "acceptance-startup-placement-proof.json"),
+        "utf8"
+      );
+      const artifact = JSON.parse(artifactText);
+      assert.equal(artifact.errorClass, "Error");
+      assert.equal(artifact.reason, "startup_policy_invalid_product_milestone");
+      assert.equal(artifactText.includes(privatePayload), false);
+      assert.equal(artifactText.includes("/Users/owner"), false);
+      assert.equal(artifactText.includes("users_owner_private"), false);
+    });
+
+    await t.test("window placement and phase reasons use bounded fixed enums", () => {
+      const unboundedPlacementReason = sandbox.testApi.acceptanceStartupFailureReason(
+        new Error(`window_placement_rejected:${"a".repeat(4096)}`)
+      );
+      assert.equal(unboundedPlacementReason, "acceptance_startup_bootstrap_failed");
+      const phaseResult = sandbox.testApi.writeAcceptanceStartupBootstrapPhase(
+        "phase_users_owner_private",
+        { reason: "acceptance_users_owner_private_client_name_svga" }
+      );
+      assert.equal(phaseResult.status, "written");
+      assert.equal(phaseResult.record.phase, "bootstrap_phase_unknown");
+      assert.equal(phaseResult.record.reason, "acceptance_startup_bootstrap_failed");
+      const phaseText = readFileSync(
+        path.join(root, "acceptance-startup-bootstrap-phases.jsonl"),
+        "utf8"
+      );
+      assert.equal(phaseText.includes("users_owner_private"), false);
+      assert.equal(phaseText.length < 4096, true);
+    });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

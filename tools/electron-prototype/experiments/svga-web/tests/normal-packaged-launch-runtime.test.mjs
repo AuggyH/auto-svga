@@ -213,6 +213,87 @@ test("fatal diagnostics never serialize malicious error names or arbitrary accep
   assert.equal(JSON.stringify(acceptance).includes("/Users/owner"), false);
 });
 
+test("fatal taxonomy rejects safe-character code and syscall payloads", () => {
+  const safeCharacterPayload = "PRIVATE_CLIENT_NAME_SVGA";
+  const syscallPayload = "Users_owner_private";
+  const ordinary = describeFatalBootstrapError({
+    source: "uncaught_exception",
+    error: {
+      name: safeCharacterPayload,
+      code: safeCharacterPayload,
+      syscall: syscallPayload
+    },
+    acceptanceLaunch: false,
+    acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+  });
+  assert.deepEqual(ordinary, {
+    source: "uncaught_exception",
+    acceptanceLaunch: false,
+    reason: "bootstrap_error",
+    errorClass: "Error"
+  });
+  assert.equal(JSON.stringify(ordinary).includes(safeCharacterPayload), false);
+  assert.equal(JSON.stringify(ordinary).includes(syscallPayload), false);
+});
+
+test("fatal taxonomy rejects arbitrary safe-character acceptance reasons", () => {
+  const arbitraryAcceptance = describeFatalBootstrapError({
+    source: "unhandled_rejection",
+    error: new Error("private failure"),
+    acceptanceLaunch: true,
+    acceptanceProofResult: {
+      status: "rejected",
+      reason: "acceptance_users_owner_private_client_name_svga"
+    }
+  });
+  assert.equal(arbitraryAcceptance.reason, "acceptance_startup_bootstrap_failed");
+  assert.equal(JSON.stringify(arbitraryAcceptance).includes("users_owner_private"), false);
+});
+
+test("fatal taxonomy distinguishes fixed startup policy failures", () => {
+  const policyInput = {
+    appIsPackaged: true,
+    repoRoot: "/sealed/candidate/app",
+    ownerUserDataRoot: "/owner/user-data",
+    productMilestoneId: "0.2-multiformat-preview",
+    normalVisibleStartupMode: true,
+    acceptanceLaunch: false,
+    environment: {}
+  };
+  const policyCases = [
+    {
+      expectedReason: "startup_policy_invalid_product_milestone",
+      expectedCode: "AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_MILESTONE",
+      run: () => resolveStartupRuntimePolicy({ ...policyInput, productMilestoneId: ".." })
+    },
+    {
+      expectedReason: "startup_policy_invalid_product_artifact_root",
+      expectedCode: "AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_ARTIFACT_ROOT",
+      run: () => resolveStartupRuntimePolicy({
+        ...policyInput,
+        environment: { AUTO_SVGA_PRODUCT_ARTIFACTS: "relative-proof" }
+      })
+    }
+  ];
+  for (const policyCase of policyCases) {
+    let policyError;
+    try {
+      policyCase.run();
+    } catch (error) {
+      policyError = error;
+    }
+    assert.ok(policyError instanceof Error);
+    const diagnostic = describeFatalBootstrapError({
+      source: "uncaught_exception",
+      error: policyError,
+      acceptanceLaunch: false,
+      acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+    });
+    assert.equal(diagnostic.reason, policyCase.expectedReason);
+    assert.equal(diagnostic.errorCode, policyCase.expectedCode);
+  }
+});
+
 test("in-process startup evidence never claims Finder equivalence", () => {
   const acceptanceEvidence = describeFinderEquivalentLaunchEvidence({
     acceptanceLaunch: true,

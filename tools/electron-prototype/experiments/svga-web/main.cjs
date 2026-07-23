@@ -34,9 +34,9 @@ function acceptanceStartupArtifactRoot() {
 }
 
 function acceptanceStartupFailureReason(error) {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : "";
   const match = /^window_placement_rejected:([a-z0-9_]+)$/u.exec(message);
-  return match?.[1] ?? "acceptance_startup_bootstrap_failed";
+  return safeAcceptanceBootstrapReason(match?.[1], error);
 }
 
 const safeBootstrapErrorClasses = new Set([
@@ -50,34 +50,197 @@ const safeBootstrapErrorClasses = new Set([
   "AggregateError"
 ]);
 
+const safeBootstrapReasonByErrorCode = Object.freeze({
+  EACCES: "bootstrap_eacces",
+  EBUSY: "bootstrap_ebusy",
+  EEXIST: "bootstrap_eexist",
+  EINVAL: "bootstrap_einval",
+  EISDIR: "bootstrap_eisdir",
+  ELOOP: "bootstrap_eloop",
+  EMFILE: "bootstrap_emfile",
+  ENAMETOOLONG: "bootstrap_enametoolong",
+  ENFILE: "bootstrap_enfile",
+  ENOENT: "bootstrap_enoent",
+  ENOSPC: "bootstrap_enospc",
+  ENOTDIR: "bootstrap_enotdir",
+  EPERM: "bootstrap_eperm",
+  EROFS: "bootstrap_erofs",
+  AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_MILESTONE: "startup_policy_invalid_product_milestone",
+  AUTO_SVGA_STARTUP_POLICY_INVALID_OWNER_USER_DATA_ROOT: "startup_policy_invalid_owner_user_data_root",
+  AUTO_SVGA_STARTUP_POLICY_INVALID_REPOSITORY_ROOT: "startup_policy_invalid_repository_root",
+  AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_ARTIFACT_ROOT: "startup_policy_invalid_product_artifact_root",
+  AUTO_SVGA_STARTUP_POLICY_OWNER_RUNTIME_ESCAPE: "startup_policy_owner_runtime_escape"
+});
+
+const safeBootstrapErrorSyscalls = new Set([
+  "access",
+  "chmod",
+  "close",
+  "copyfile",
+  "fsync",
+  "lstat",
+  "mkdir",
+  "open",
+  "read",
+  "readdir",
+  "readlink",
+  "realpath",
+  "rename",
+  "rmdir",
+  "stat",
+  "unlink",
+  "write"
+]);
+
+const safeAcceptanceBootstrapReasons = new Set([
+  "acceptance_argument_forbidden",
+  "acceptance_artifact_root_invalid",
+  "acceptance_artifact_root_missing",
+  "acceptance_bootstrap_artifact_write_failed",
+  "acceptance_bootstrap_phase_exists",
+  "acceptance_bootstrap_phase_write_failed",
+  "acceptance_channel_forbidden",
+  "acceptance_display_ambiguous",
+  "acceptance_display_duplicate",
+  "acceptance_display_malformed",
+  "acceptance_display_mismatch",
+  "acceptance_display_missing",
+  "acceptance_display_set_changed",
+  "acceptance_display_set_invalid",
+  "acceptance_display_too_small",
+  "acceptance_display_unknown",
+  "acceptance_execution_malformed",
+  "acceptance_execution_unbound",
+  "acceptance_launch_not_requested",
+  "acceptance_placement_malformed",
+  "acceptance_placement_not_active",
+  "acceptance_placement_proof_exists",
+  "acceptance_placement_proof_failed",
+  "acceptance_placement_proof_module_unavailable",
+  "acceptance_placement_proof_write_failed",
+  "acceptance_primary_overlap",
+  "acceptance_request_invalid",
+  "acceptance_runtime_instance_missing",
+  "acceptance_startup_bootstrap_failed",
+  "acceptance_startup_entrypoint_exception",
+  "acceptance_startup_entrypoint_rejection",
+  "acceptance_window_bounds_drift",
+  "acceptance_window_not_contained",
+  "display_identity_ambiguous",
+  "startup_policy_invalid_product_milestone",
+  "startup_policy_invalid_owner_user_data_root",
+  "startup_policy_invalid_repository_root",
+  "startup_policy_invalid_product_artifact_root",
+  "startup_policy_owner_runtime_escape"
+]);
+
+const safeAcceptanceBootstrapPhases = new Set([
+  "app_ready_create_window_begin",
+  "app_ready_create_window_failed",
+  "app_ready_handler_register_begin",
+  "app_ready_handler_registered",
+  "bootstrap_failure_artifact_begin",
+  "bootstrap_failure_artifact_rejected",
+  "bootstrap_failure_artifact_written",
+  "browser_window_construct_begin",
+  "browser_window_constructed",
+  "electron_require_begin",
+  "electron_required",
+  "entrypoint_loaded",
+  "local_requires_begin",
+  "local_requires_complete",
+  "placement_proof_module_require_begin",
+  "placement_proof_module_required",
+  "placement_proof_publish_begin",
+  "placement_proof_published",
+  "placement_proof_rejected",
+  "placement_resolve_begin",
+  "placement_resolved",
+  "placement_revalidate_begin",
+  "placement_revalidate_rejected",
+  "placement_revalidated",
+  "renderer_load_begin",
+  "renderer_load_completed",
+  "server_import_begin",
+  "server_imported",
+  "server_started"
+]);
+
 function safeBootstrapErrorClass(error) {
   const errorClass = error instanceof Error ? error.name : undefined;
   return safeBootstrapErrorClasses.has(errorClass) ? errorClass : "Error";
 }
 
-function safeAcceptanceBootstrapReason(value) {
-  return typeof value === "string" && /^acceptance_[a-z0-9_]{1,95}$/u.test(value)
+function safeBootstrapErrorField(error, field) {
+  const value = error && typeof error === "object" ? error[field] : undefined;
+  return typeof value === "string" ? value : undefined;
+}
+
+function safeBootstrapErrorCode(error) {
+  const code = safeBootstrapErrorField(error, "code");
+  return code && Object.prototype.hasOwnProperty.call(safeBootstrapReasonByErrorCode, code)
+    ? code
+    : undefined;
+}
+
+function safeBootstrapErrorSyscall(error) {
+  const syscall = safeBootstrapErrorField(error, "syscall");
+  return syscall && safeBootstrapErrorSyscalls.has(syscall) ? syscall : undefined;
+}
+
+function underlyingEarlyBootstrapReason(error) {
+  const code = safeBootstrapErrorCode(error);
+  if (code) return safeBootstrapReasonByErrorCode[code];
+  const reasonByClass = {
+    Error: "error",
+    TypeError: "type_error",
+    RangeError: "range_error",
+    SyntaxError: "syntax_error",
+    ReferenceError: "reference_error",
+    URIError: "uri_error",
+    EvalError: "eval_error",
+    AggregateError: "aggregate_error"
+  };
+  return `bootstrap_${reasonByClass[safeBootstrapErrorClass(error)]}`;
+}
+
+function safeAcceptanceBootstrapReason(value, error) {
+  const underlyingReason = underlyingEarlyBootstrapReason(error);
+  if (underlyingReason.startsWith("startup_policy_")) return underlyingReason;
+  return safeAcceptanceBootstrapReasons.has(value)
     ? value
     : "acceptance_startup_bootstrap_failed";
 }
 
+function safeAcceptanceBootstrapPhase(phase) {
+  return safeAcceptanceBootstrapPhases.has(phase) ? phase : "bootstrap_phase_unknown";
+}
+
+function safeAcceptanceBootstrapPhaseFields(fields) {
+  const safeFields = {};
+  if (fields && Object.prototype.hasOwnProperty.call(fields, "reason")) {
+    safeFields.reason = safeAcceptanceBootstrapReason(fields.reason);
+  }
+  if (["acceptance", "legacy", "normal", "proof"].includes(fields?.placementMode)) {
+    safeFields.placementMode = fields.placementMode;
+  }
+  for (const field of ["requestedDisplayId", "resolvedDisplayId"]) {
+    if (Number.isSafeInteger(fields?.[field])) safeFields[field] = fields[field];
+  }
+  return safeFields;
+}
+
 function describeEarlyFatalBootstrapError(input) {
-  const errorCode = typeof input.error?.code === "string" && /^[A-Z][A-Z0-9_]{0,63}$/u.test(input.error.code)
-    ? input.error.code
-    : undefined;
-  const errorSyscall = typeof input.error?.syscall === "string" && /^[A-Za-z][A-Za-z0-9_]{0,31}$/u.test(input.error.syscall)
-    ? input.error.syscall
-    : undefined;
+  const errorCode = safeBootstrapErrorCode(input.error);
+  const errorSyscall = safeBootstrapErrorSyscall(input.error);
   const acceptanceReason = input.acceptanceProofResult?.proof?.reason
     ?? input.acceptanceProofResult?.reason;
   return {
     source: input.source,
     acceptanceLaunch: input.acceptanceLaunch === true,
     reason: input.acceptanceLaunch === true
-      ? safeAcceptanceBootstrapReason(acceptanceReason)
-      : errorCode
-        ? `bootstrap_${errorCode.toLowerCase()}`
-        : "bootstrap_error",
+      ? safeAcceptanceBootstrapReason(acceptanceReason, input.error)
+      : underlyingEarlyBootstrapReason(input.error),
     errorClass: safeBootstrapErrorClass(input.error),
     ...(errorCode ? { errorCode } : {}),
     ...(errorSyscall ? { errorSyscall } : {})
@@ -97,10 +260,11 @@ function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
     ? process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID
     : undefined;
   const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
+  const safeFields = safeAcceptanceBootstrapPhaseFields(fields);
   const record = {
     schemaVersion: 1,
     proofId: "acceptance-startup-bootstrap-phase",
-    phase,
+    phase: safeAcceptanceBootstrapPhase(phase),
     phaseSequence: ++acceptanceStartupBootstrapPhaseSequence,
     executionId,
     requestedDisplayId,
@@ -116,7 +280,7 @@ function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
       materialNames: false,
       ownerPreferenceMutated: false
     },
-    ...fields
+    ...safeFields
   };
   let fd;
   try {
@@ -143,7 +307,7 @@ function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
 }
 
 function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
-  const safeReason = safeAcceptanceBootstrapReason(reason);
+  const safeReason = safeAcceptanceBootstrapReason(reason, error);
   writeAcceptanceStartupBootstrapPhase("bootstrap_failure_artifact_begin", {
     reason: safeReason
   });
