@@ -5,6 +5,7 @@ const { closeSync, fsyncSync, mkdirSync, openSync, writeSync } = require("node:f
 const path = require("node:path");
 const { isWindowContainedInWorkArea } = require("./short-term-window-bounds-policy.cjs");
 const {
+  finalizeStartupRecord,
   safeAcceptanceBootstrapReason,
   safeAcceptanceExecutionId,
   safeStartupProductMilestoneId
@@ -188,7 +189,7 @@ function buildAcceptanceStartupPlacementProof(input) {
     && proof.disjointFromPrimary === true
     && proof.privacy.pathRedacted === true
     && proof.privacy.ownerPreferenceMutated === false;
-  return { status: "accepted", proof };
+  return { status: "accepted", proof: finalizeStartupRecord("placement-accepted", proof) };
 }
 
 function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
@@ -250,7 +251,7 @@ function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
     runtimeInstanceId,
     productIdentity: proof.productIdentity
   })).digest("hex");
-  return proof;
+  return finalizeStartupRecord("placement-rejected", proof);
 }
 
 function validateArtifactRoot(root) {

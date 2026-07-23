@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "findingId": "ASV-I6-PACKAGED-STARTUP-AUTH-001",
+  "predecessorHead": "c3e47aec3efe889842442de330f5ca450b3c692d",
+  "formalProductMilestoneIds": [
+    "0.2-multiformat-preview",
+    "0.3.0-alpha.1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P6-R1",
+    "aeb",
+    "short-term"
+  ],
+  "inputs": [
+    {
+      "id": "error",
+      "sources": ["Error.name", "Error.message", "Error.code", "Error.syscall"],
+      "authority": "fatal-taxonomy"
+    },
+    {
+      "id": "acceptance-execution-id",
+      "sources": ["AUTO_SVGA_ACCEPTANCE_EXECUTION_ID", "acceptance argv"],
+      "authority": "execution-id"
+    },
+    {
+      "id": "product-milestone-id",
+      "sources": ["AUTO_SVGA_PRODUCT_MILESTONE", "packaged build-info", "default"],
+      "authority": "formal-product-milestone"
+    },
+    {
+      "id": "launch-context",
+      "sources": ["process.argv", "AUTO_SVGA_* names", "AUTO_SVGA_ACTUAL_LAUNCH_COMMAND"],
+      "authority": "launch-context"
+    },
+    {
+      "id": "renderer-probe",
+      "sources": ["renderer resource URL", "renderer probe Error", "blocked request URL"],
+      "authority": "renderer-probe"
+    },
+    {
+      "id": "acceptance-phase",
+      "sources": ["phase", "reason", "placement reason"],
+      "authority": "acceptance-phase"
+    }
+  ],
+  "authorities": [
+    "fatal-taxonomy",
+    "execution-id",
+    "formal-product-milestone",
+    "launch-context",
+    "renderer-probe",
+    "acceptance-phase",
+    "startup-record-serialization"
+  ],
+  "sinks": [
+    { "id": "fatal-console", "path": "early+loaded", "writer": "console.error", "schema": "fatal-diagnostic" },
+    { "id": "early-phase-jsonl", "path": "early", "writer": "writeAcceptanceStartupBootstrapPhase", "schema": "acceptance-phase" },
+    { "id": "early-failure-proof", "path": "early", "writer": "writeAcceptanceStartupBootstrapFailureArtifact", "schema": "acceptance-failure" },
+    { "id": "loaded-placement-accepted", "path": "loaded", "writer": "buildAcceptanceStartupPlacementProof", "schema": "placement-accepted" },
+    { "id": "loaded-placement-rejected", "path": "loaded", "writer": "buildRejectedAcceptanceStartupPlacementProof", "schema": "placement-rejected" },
+    { "id": "normal-visible-startup", "path": "loaded", "writer": "writeVisibleNormalStartupProof", "schema": "normal-visible-startup" },
+    { "id": "normal-runtime-proof", "path": "loaded", "writer": "finishNormalProof", "schema": "normal-runtime-proof" },
+    { "id": "normal-smoke-parity", "path": "loaded", "writer": "normalSmokeParity", "schema": "normal-smoke-parity" },
+    { "id": "product-artifact-index", "path": "loaded", "writer": "writeProductArtifactIndex", "schema": "product-artifact-index" },
+    { "id": "multi-format-runtime-trace", "path": "loaded", "writer": "multiFormatTrace.record", "schema": "runtime-trace" },
+    { "id": "renderer-probe", "path": "loaded", "writer": "writeVisibleNormalStartupProof", "schema": "renderer-probe" },
+    { "id": "blocked-external-requests", "path": "loaded", "writer": "onBeforeRequest", "schema": "external-request" }
+  ],
+  "sideEffectBoundary": [
+    "read",
+    "mkdir",
+    "write",
+    "append",
+    "artifact-index",
+    "runtime-trace"
+  ]
+}

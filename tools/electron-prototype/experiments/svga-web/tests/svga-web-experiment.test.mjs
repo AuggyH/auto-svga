@@ -3046,6 +3046,10 @@ test("macOS internal package avoids unsupported Finder .svga document associatio
     await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
     /"startup-runtime-policy\.cjs"/
   );
+  assert.match(
+    await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
+    /runtimeTrace: "multiformat-open-runtime-trace\.cjs"/
+  );
   assert.doesNotMatch(plist, /CFBundleDocumentTypes/);
   assert.doesNotMatch(plist, /CFBundleTypeRole[\s\S]*Viewer/);
   assert.doesNotMatch(plist, /LSHandlerRank[\s\S]*Alternate/);
@@ -3221,9 +3225,14 @@ test("macOS package proof manifest records audit boundaries without final App ac
     "startup-runtime-policy.cjs"
   );
   assert.ok(requiredPackagedRuntimeEntries.includes("/startup-runtime-policy.cjs"));
+  assert.ok(requiredPackagedRuntimeEntries.includes("/multiformat-open-runtime-trace.cjs"));
   assert.ok(
     proof.privacyAudit.scannedFiles.some((file) => file.endsWith("/startup-runtime-policy.cjs")),
     "startup runtime policy must be included in the package privacy audit"
+  );
+  assert.ok(
+    proof.privacyAudit.scannedFiles.some((file) => file.endsWith("/multiformat-open-runtime-trace.cjs")),
+    "runtime trace serializer must be included in the package privacy audit"
   );
   assert.ok(proof.packagingScaffold.windowPlacementSourceClosure.files.every((file) => (
     typeof file.sourceSha256 === "string"
@@ -3250,8 +3259,8 @@ test("macOS package proof manifest records audit boundaries without final App ac
     .filter((entry) => entry.authority !== "executionBinding");
   assert.throws(() => validateProof(sourcePlist, authorityDrift), /windowPlacementSourceClosure/u);
   assert.match(mainProcess, /packagedBuildCommit\(\) \?\? "unknown"/);
-  assert.match(mainProcess, /const packagedRuntimeBuildInfo = app\.isPackaged \? readPackagedRuntimeBuildInfo\(\) : undefined;/);
-  assert.match(mainProcess, /runtimeBuildInfoProductMilestoneId\(packagedRuntimeBuildInfo\) \?\? "short-term"/);
+  assert.match(mainProcess, /const startupProductIdentity = resolveStartupProductIdentity\(\{/);
+  assert.match(mainProcess, /const \{ packagedRuntimeBuildInfo, productMilestoneId \} = startupProductIdentity;/);
   assert.match(mainProcess, /\.runtime\/build-info\.json/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);
 });
@@ -3508,6 +3517,33 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
     });
     await assert.rejects(
       () => assertPackagedWindowPlacementSourceClosure(staleRuntimePolicy.packagedAsarPath),
+      /windowPlacementSourceClosure/
+    );
+
+    const staleRuntimeTrace = await createPackagedProofFixture({
+      root: path.join(root, "stale-runtime-trace"),
+      buildCommit: expectedBuildCommit,
+      windowPlacementSourceTransforms: {
+        "multiformat-open-runtime-trace.cjs": (source) => `${source}\n// packaged drift\n`
+      }
+    });
+    await assert.rejects(
+      () => assertPackagedWindowPlacementSourceClosure(staleRuntimeTrace.packagedAsarPath),
+      /windowPlacementSourceClosure/
+    );
+
+    const missingRuntimeTrace = await createPackagedProofFixture({
+      root: path.join(root, "missing-runtime-trace"),
+      buildCommit: expectedBuildCommit,
+      omitRuntimeEntries: ["/multiformat-open-runtime-trace.cjs"],
+      omitWindowPlacementSourceFiles: ["multiformat-open-runtime-trace.cjs"]
+    });
+    assert.throws(
+      () => assertPackagedRuntimeClosure(missingRuntimeTrace.packagedAsarPath, expectedBuildCommit),
+      /multiformat-open-runtime-trace\.cjs/
+    );
+    await assert.rejects(
+      () => assertPackagedWindowPlacementSourceClosure(missingRuntimeTrace.packagedAsarPath),
       /windowPlacementSourceClosure/
     );
 
@@ -4436,19 +4472,19 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
 
 test("0.2 alpha package runtime identity selects the multi-format desktop product before defaulting to 0.1", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const startupRuntimePolicy = await readFile(path.join(experimentRoot, "startup-runtime-policy.cjs"), "utf8");
   const packageScript = await readFile(path.join(experimentRoot, "scripts/package-internal-trial.mjs"), "utf8");
 
   assert.match(packageScript, /const internalTrialProductMilestoneId = "0\.2-multiformat-preview";/);
   assert.match(packageScript, /productMilestoneId: internalTrialProductMilestoneId/);
   assert.match(packageScript, /writeRuntimeBuildInfo\(buildCommit, internalTrialProductMilestoneId\)/);
-  assert.match(main, /function runtimeBuildInfoProductMilestoneId\(buildInfo\)/);
-  assert.match(main, /if \(buildInfo\?\.productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID\)/);
-  assert.match(main, /if \(buildInfo\?\.productMilestoneId === "short-term"\)/);
-  assert.match(main, /const packagedRuntimeBuildInfo = app\.isPackaged \? readPackagedRuntimeBuildInfo\(\) : undefined;/);
-  assert.match(
-    main,
-    /const productMilestoneId = process\.env\.AUTO_SVGA_PRODUCT_MILESTONE \?\? runtimeBuildInfoProductMilestoneId\(packagedRuntimeBuildInfo\) \?\? "short-term";/
-  );
+  assert.match(main, /const startupProductIdentity = resolveStartupProductIdentity\(\{/);
+  assert.match(startupRuntimePolicy, /function resolveStartupProductIdentity\(input = \{\}\)/);
+  assert.match(startupRuntimePolicy, /const formalStartupProductMilestoneIds = Object\.freeze\(\[/);
+  assert.match(startupRuntimePolicy, /"short-term"/);
+  assert.match(startupRuntimePolicy, /"0\.2-multiformat-preview"/);
+  assert.match(main, /readPackagedRuntimeBuildInfo/);
+  assert.match(main, /const \{ packagedRuntimeBuildInfo, productMilestoneId \} = startupProductIdentity;/);
 });
 
 test("formal 0.1 direct multi-format IPC calls are guarded before host side effects", async () => {
@@ -10224,6 +10260,7 @@ test("server exposes a token-bound read-only SVGA image edit session API", async
 
 test("main process keeps sandboxed Electron security settings", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const startupRuntimePolicy = await readFile(path.join(experimentRoot, "startup-runtime-policy.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
@@ -10563,16 +10600,17 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /sourceFilePaths/);
   assert.match(main, /fsyncSync/);
   assert.match(main, /actualLaunchCommand/);
-  assert.match(main, /actualArgvSanitized/);
-  assert.match(main, /pathRedactionsApplied/);
+  assert.match(main, /buildStartupRuntimeIdentity\(runtimeIdentityInput\(mode, rendererUrl\)\)/);
+  assert.match(startupRuntimePolicy, /actualArgvSanitized: safeLaunchArguments\(input\.argv\)/);
+  assert.match(startupRuntimePolicy, /pathRedactionsApplied: true/);
   assert.match(main, /normalVisibleStartupMode/);
   assert.match(main, /normalVisibleStartup/);
-  assert.match(main, /finderEquivalentLaunchCompatible/);
-  assert.match(main, /fileOpenTargets: \["primary-svga", "secondary-svga", "reference-media"\]/);
+  assert.match(startupRuntimePolicy, /finderEquivalentLaunchCompatible: false/);
+  assert.match(startupRuntimePolicy, /const startupHostOpenTargets = Object\.freeze\(\["primary-svga", "secondary-svga", "reference-media"\]\)/);
   assert.match(main, /const hostMenuActions = Object\.freeze/);
   assert.match(main, /"copy"/);
   assert.match(main, /"select-all"/);
-  assert.match(main, /menuActions: hostMenuActions/);
+  assert.match(startupRuntimePolicy, /menuActions: startupHostMenuActions/);
   assert.match(main, /blockedExternalRequests/);
   assert.match(main, /writeVisibleNormalStartupProof/);
   assert.match(main, /normal-visible-startup\.json/);
@@ -10597,20 +10635,20 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /scenario === "short-term-general-compare"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-settings-dialog"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-edit-reserved"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/);
-	  assert.match(main, /"short-term-preview-overview-wide",/);
+	  assert.match(startupRuntimePolicy, /"short-term-preview-overview-wide"/);
 	  assert.match(main, /scenario === "short-term-drag-decision-supported"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-drag-decision-unsupported"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/);
-	  assert.match(main, /"short-term-drag-decision-supported",/);
-	  assert.match(main, /"short-term-drag-decision-unsupported",/);
+	  assert.match(startupRuntimePolicy, /"short-term-drag-decision-supported"/);
+	  assert.match(startupRuntimePolicy, /"short-term-drag-decision-unsupported"/);
 	  assert.match(main, /scenario === "desktop-1280x800"\) window\.setContentSize\(macosWorkbenchWindowSizing\.comfortable\.width, macosWorkbenchWindowSizing\.comfortable\.height\)/);
 	  assert.match(main, /minWidth:\s*usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.width[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.width/);
 	  assert.match(main, /minHeight:\s*usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.height[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.height/);
-	  assert.match(main, /environmentOverrides: launchEnvironmentOverrides\(\)/);
-  assert.match(main, /rendererQuery: rendererProbe\.rendererQuery/);
-  assert.match(main, /noProofMode: true/);
-  assert.match(main, /noSmokeMode: true/);
-  assert.match(main, /noProofArguments/);
-  assert.match(main, /orphanProcessPolicy/);
+	  assert.match(startupRuntimePolicy, /environmentOverrides: runtimeIdentity\.environmentOverrides/);
+  assert.match(startupRuntimePolicy, /rendererQuery: rendererProbe\.rendererQuery/);
+  assert.match(startupRuntimePolicy, /noProofMode: true/);
+  assert.match(startupRuntimePolicy, /noSmokeMode: true/);
+  assert.match(startupRuntimePolicy, /noProofArguments/);
+  assert.match(startupRuntimePolicy, /orphanProcessPolicy/);
   assert.match(main, /AUTO_SVGA_RUNTIME_CLEANUP/);
   assert.match(main, /AUTO_SVGA_SMOKE_RESULT_REJECTED/);
   assert.match(main, /describeP6InteractionTraceValidationFailure/);
@@ -10816,6 +10854,7 @@ test("desktop latest-artifact catalog returns Web-shaped non-empty and safe-empt
 test("P6 normal App proof launches without smoke query mode and uses Web baseline fixture bytes", async () => {
   const runner = await readFile(path.join(experimentRoot, "scripts/run-canonical-normal-proof.mjs"), "utf8");
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const startupRuntimePolicy = await readFile(path.join(experimentRoot, "startup-runtime-policy.cjs"), "utf8");
   const prototype = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
   const p2Fixture = await readFile(path.join(experimentRoot, "scripts/p2-fixture.mjs"), "utf8");
@@ -10829,16 +10868,17 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /show:\s*false/);
   assert.match(main, /window\.showInactive\(\)/);
   assert.match(main, /writeVisibleNormalStartupProof\(window, rendererUrl\)/);
-  assert.match(main, /runtimeIdentity\("normal-visible", rendererUrl\)/);
-  assert.match(main, /actualLaunchCommand: normalIdentity\.actualLaunchCommand/);
-  assert.match(main, /windowShown: window\.isVisible\(\)/);
-  assert.match(main, /normalVisibleStartup: true/);
-  assert.match(main, /environmentOverrides: launchEnvironmentOverrides\(\)/);
-  assert.match(main, /finderEquivalentLaunchCompatible: finderEquivalentLaunchEvidence\.compatible/);
-  assert.match(main, /finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence\.reason/);
-  assert.match(main, /rendererQuery: rendererProbe\.rendererQuery/);
-  assert.match(main, /externalRequests: \[\.\.\.new Set/);
-  assert.match(main, /expectedExit: "window-all-closed -> cleanupRuntime -> app\.quit"/);
+  assert.match(main, /buildNormalVisibleStartupProof\(\{/);
+  assert.match(main, /runtimeIdentityInput: runtimeIdentityInput\("normal-visible", rendererUrl\)/);
+  assert.match(startupRuntimePolicy, /actualLaunchCommand: runtimeIdentity\.actualLaunchCommand/);
+  assert.match(startupRuntimePolicy, /windowShown: input\.windowShown === true/);
+  assert.match(startupRuntimePolicy, /normalVisibleStartup: true/);
+  assert.match(startupRuntimePolicy, /environmentOverrides: runtimeIdentity\.environmentOverrides/);
+  assert.match(startupRuntimePolicy, /finderEquivalentLaunchCompatible: false/);
+  assert.match(startupRuntimePolicy, /finderEquivalentLaunchEvidenceReason: finderReason/);
+  assert.match(startupRuntimePolicy, /rendererQuery: rendererProbe\.rendererQuery/);
+  assert.match(startupRuntimePolicy, /externalRequests: rendererProbe\.externalRequests/);
+  assert.match(startupRuntimePolicy, /expectedExit: "window-all-closed -> cleanupRuntime -> app\.quit"/);
   assert.match(main, /const isCanvasNonBlank = \(\) =>/);
   assert.match(main, /const canvasStartedAt = performance\.now\(\)/);
   assert.match(main, /const width = context\.canvas\.width/);
@@ -10848,7 +10888,7 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /window\.autoSvgaElectronHost/);
   assert.match(main, /__autoSvgaShortTermActions/);
   assert.match(main, /openFromHostDialog/);
-  assert.match(main, /fileOpenMechanism: "macOS File > Open SVGA menu item -> short-term host dialog IPC"/);
+  assert.match(startupRuntimePolicy, /fileOpenMechanism: "macOS File > Open SVGA menu item -> short-term host dialog IPC"/);
   assert.match(main, /document\.querySelector\("#primaryCanvas"\)/);
   assert.match(main, /document\.querySelector\("#factGrid"\)/);
   assert.match(main, /document\.querySelector\("#assetList"\)/);
@@ -10880,7 +10920,7 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
     "desktop-local-minimum-size",
     "desktop-recovered-from-invalid"
   ]) {
-    assert.match(main, new RegExp(scenario));
+    assert.match(startupRuntimePolicy, new RegExp(scenario));
   }
   assert.match(prepareRuntime, /examples\/avatar_frame_basic\/output\/avatar_frame_basic\.svga/);
   assert.match(prepareRuntime, /"node", \["dist\/cli\.js", "export", "examples\/avatar_frame_basic"\]/);
@@ -10925,6 +10965,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermAppearanceModel = await readFile(path.join(experimentRoot, "web/short-term-macos-appearance-model.mjs"), "utf8");
   const shortTermSettingsSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-settings-surface.mjs"), "utf8");
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const startupRuntimePolicy = await readFile(path.join(experimentRoot, "startup-runtime-policy.cjs"), "utf8");
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const shortTermTokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
   const shortTermAtoms = await readFile(path.join(experimentRoot, "web/short-term-macos.atoms.css"), "utf8");
@@ -12806,20 +12847,25 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /resetButtonEnabledAfterApply/);
   assert.match(main, /resetClearedOverlay/);
   assert.match(main, /productCompleteClaimed !== true/);
-  assert.match(main, /short-term-launch/);
-  assert.match(main, /short-term-sequence-thumbnails/);
-  assert.match(main, /short-term-optimization-result/);
-  assert.match(main, /short-term-rename-dirty/);
-  assert.match(main, /short-term-replacement-dirty/);
-  assert.match(main, /short-term-replacement-reset/);
-  assert.match(main, /short-term-runtime-text-applied/);
-  assert.match(main, /short-term-preview-minimum/);
-  assert.match(main, /short-term-settings-dialog/);
-  assert.match(main, /short-term-appearance-dark/);
-  assert.match(main, /short-term-appearance-light/);
-  assert.match(main, /short-term-load-failed/);
-  assert.match(main, /short-term-save-failed/);
-  assert.match(main, /short-term-playback-failed/);
+  assert.match(main, /safeProductArtifactScenario\(value\)/);
+  for (const scenario of [
+    "short-term-launch",
+    "short-term-sequence-thumbnails",
+    "short-term-optimization-result",
+    "short-term-rename-dirty",
+    "short-term-replacement-dirty",
+    "short-term-replacement-reset",
+    "short-term-runtime-text-applied",
+    "short-term-preview-minimum",
+    "short-term-settings-dialog",
+    "short-term-appearance-dark",
+    "short-term-appearance-light",
+    "short-term-load-failed",
+    "short-term-save-failed",
+    "short-term-playback-failed"
+  ]) {
+    assert.match(startupRuntimePolicy, new RegExp(`"${scenario}"`));
+  }
   assert.match(main, /enabled: menuState\.canOverwrite/);
   assert.match(main, /enabled: menuState\.canSaveAs/);
   assert.match(main, /enabled: menuState\.canRenameImageKey/);
@@ -12932,6 +12978,7 @@ test("P5 batch PNG mapping review stays isolated in the desktop prototype", asyn
 
 test("P3 image replacement prototype stays isolated and records verified Save As evidence", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const startupRuntimePolicy = await readFile(path.join(experimentRoot, "startup-runtime-policy.cjs"), "utf8");
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
   const runtimePrep = await readFile(path.join(experimentRoot, "../../scripts/prepare-runtime.mjs"), "utf8");
@@ -12950,8 +12997,9 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.match(main, /writeJsonProductArtifact\("thumbnail-evidence\.json", "p3-thumbnail-evidence"/);
   assert.match(main, /validateP3ThumbnailEvidence/);
   assert.match(main, /schemaVersion:\s*2/);
-  assert.match(main, /"p3-resource-list"/);
-  assert.match(main, /"p3-original-edited-comparison": "original-edited-comparison\.png"/);
+  assert.match(main, /productArtifactFileNameForScenario\(scenario\)/);
+  assert.match(startupRuntimePolicy, /"p3-resource-list"/);
+  assert.match(startupRuntimePolicy, /"p3-original-edited-comparison": "original-edited-comparison\.png"/);
   assert.equal(typeof preloadApi.openSvgaFile, "function");
   assert.equal(typeof preloadApi.saveEditedSvga, "function");
   assert.equal(typeof preloadApi.reportP3EditResult, "function");

@@ -798,6 +798,7 @@ test("packaged normal startup separates writable runtime state from explicit pro
 test("early fatal, artifact, and phase taxonomy rejects arbitrary payloads", async (t) => {
   const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-early-fatal-"));
+  let currentRoot = root;
   const slice = (start, end) => {
     const startIndex = source.indexOf(start);
     const endIndex = source.indexOf(end, startIndex);
@@ -817,7 +818,7 @@ test("early fatal, artifact, and phase taxonomy rejects arbitrary payloads", asy
     Set,
     acceptanceStartupBootstrapPhaseFileName: "acceptance-startup-bootstrap-phases.jsonl",
     acceptanceStartupPlacementProofFileName: "acceptance-startup-placement-proof.json",
-    acceptanceStartupArtifactRoot: () => ({ status: "accepted", root }),
+    acceptanceStartupArtifactRoot: () => ({ status: "accepted", root: currentRoot }),
     closeSync,
     earlyAcceptanceRuntimeInstanceId: "early-runtime-test",
     fsyncSync,
@@ -944,6 +945,50 @@ test("early fatal, artifact, and phase taxonomy rejects arbitrary payloads", asy
       );
       assert.equal(phaseText.includes("users_owner_private"), false);
       assert.equal(phaseText.length < 4096, true);
+    });
+
+    await t.test("early phase and failure proof reject Unicode, NUL, and overlong payloads", () => {
+      const payloads = [
+        "PRIVATE_CLIENT_NAME_SVGA",
+        "/Users/owner/private/client-name.svga",
+        "用户隐私素材",
+        "PRIVATE\0CLIENT",
+        "x".repeat(4096)
+      ];
+      const containsPayload = (value, payload) => {
+        if (typeof value === "string") return value.includes(payload);
+        if (Array.isArray(value)) return value.some((entry) => containsPayload(entry, payload));
+        return value && typeof value === "object"
+          ? Object.entries(value).some(([key, entry]) => key.includes(payload) || containsPayload(entry, payload))
+          : false;
+      };
+      for (const [index, payload] of payloads.entries()) {
+        currentRoot = path.join(root, `payload-${index}`);
+        const payloadError = Object.assign(new Error(payload), {
+          name: payload,
+          code: payload,
+          syscall: payload,
+          path: payload
+        });
+        const phase = sandbox.testApi.writeAcceptanceStartupBootstrapPhase(payload, {
+          reason: payload,
+          placementMode: payload
+        });
+        const failure = sandbox.testApi.writeAcceptanceStartupBootstrapFailureArtifact(payload, payloadError);
+        assert.equal(phase.status, "written");
+        assert.equal(failure.status, "written");
+        assert.equal(containsPayload(phase.record, payload), false, JSON.stringify(payload));
+        assert.equal(containsPayload(failure.proof, payload), false, JSON.stringify(payload));
+        const serialized = [
+          readFileSync(path.join(currentRoot, "acceptance-startup-bootstrap-phases.jsonl"), "utf8")
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line)),
+          JSON.parse(readFileSync(path.join(currentRoot, "acceptance-startup-placement-proof.json"), "utf8"))
+        ];
+        assert.equal(containsPayload(serialized, payload), false, JSON.stringify(payload));
+      }
+      currentRoot = root;
     });
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -15,8 +15,8 @@
       "severity": "blocking",
       "currentStatus": "open",
       "repairBudget": "exhausted",
-      "implementationStatus": "owner_contract_approved_phase_minus_1",
-      "closureStage": "postmortem_record_pending_evidence_review",
+      "implementationStatus": "implementation_self_tested_pending_independent_cr",
+      "closureStage": "machine_resolved_pending_integration",
       "primaryRecoveryWorkPackage": "WP-STARTUP-AUTHORITY-CENTRALIZATION",
       "reviewedRounds": [
         {
@@ -77,7 +77,7 @@
         "The path-safe milestone segment validator is weaker than the formal 10-ID product milestone identity authority and is consumed earlier."
       ],
       "closureRule": "Do not mark this finding closed at source review. Closure requires failure-first and mutation evidence, exact-head CI, independent source review with zero Blocking findings, reviewed merge, and later fresh packaged no-environment runtime evidence that does not reproduce the finding.",
-      "nextGate": "Independent Evidence Owner review of the exact Phase -1 three-file durable-record commit; production source work remains unauthorized until a separate PM WP0-WP4 authorization."
+      "nextGate": "Fresh independent exact-head Code Review with live authority readback; source self-test does not authorize merge, packaged QA, Owner acceptance, promotion, Issue closure, or release."
     }
   ],
   "findingCount": 1

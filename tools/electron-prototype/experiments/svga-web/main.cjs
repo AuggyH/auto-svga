@@ -71,7 +71,10 @@ const safeBootstrapReasonByErrorCode = Object.freeze({
   AUTO_SVGA_STARTUP_POLICY_INVALID_OWNER_USER_DATA_ROOT: "startup_policy_invalid_owner_user_data_root",
   AUTO_SVGA_STARTUP_POLICY_INVALID_REPOSITORY_ROOT: "startup_policy_invalid_repository_root",
   AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_ARTIFACT_ROOT: "startup_policy_invalid_product_artifact_root",
-  AUTO_SVGA_STARTUP_POLICY_OWNER_RUNTIME_ESCAPE: "startup_policy_owner_runtime_escape"
+  AUTO_SVGA_STARTUP_POLICY_OWNER_RUNTIME_ESCAPE: "startup_policy_owner_runtime_escape",
+  AUTO_SVGA_STARTUP_SERIALIZATION_AUTHORITY_MISMATCH: "startup_serialization_authority_mismatch",
+  AUTO_SVGA_STARTUP_SERIALIZATION_SCHEMA_INVALID: "startup_serialization_schema_invalid",
+  AUTO_SVGA_STARTUP_SERIALIZATION_FIELD_SET_INVALID: "startup_serialization_field_set_invalid"
 });
 
 const safeBootstrapErrorSyscalls = new Set([
@@ -133,7 +136,10 @@ const safeAcceptanceBootstrapReasons = new Set([
   "startup_policy_invalid_owner_user_data_root",
   "startup_policy_invalid_repository_root",
   "startup_policy_invalid_product_artifact_root",
-  "startup_policy_owner_runtime_escape"
+  "startup_policy_owner_runtime_escape",
+  "startup_serialization_authority_mismatch",
+  "startup_serialization_schema_invalid",
+  "startup_serialization_field_set_invalid"
 ]);
 
 const safeBootstrapSources = new Set([
@@ -166,6 +172,25 @@ const earlyStartupFatalDiagnosticTaxonomy = Object.freeze({
   acceptanceReasons: Object.freeze([...safeAcceptanceBootstrapReasons].sort()),
   acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
   productMilestoneIds: Object.freeze([...safeStartupProductMilestoneIds].sort())
+});
+
+const earlyStartupSerializationAuthority = Object.freeze({
+  schemaVersion: 1,
+  acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
+  productMilestoneIds: Object.freeze([
+    "0.2-multiformat-preview", "0.3.0-alpha.1", "P2", "P3", "P4", "P5", "P6", "P6-R1", "aeb", "short-term"
+  ]),
+  registeredSinkIds: Object.freeze([
+    "fatal-console", "early-phase-jsonl", "early-failure-proof", "loaded-placement-accepted",
+    "loaded-placement-rejected", "normal-visible-startup", "normal-runtime-proof", "normal-smoke-parity",
+    "product-artifact-index", "multi-format-runtime-trace", "renderer-probe", "blocked-external-requests"
+  ]),
+  schemaIds: Object.freeze([
+    "fatal-diagnostic", "acceptance-phase", "acceptance-failure", "placement-accepted", "placement-rejected",
+    "runtime-identity", "normal-visible-startup", "normal-runtime-proof", "normal-smoke-parity",
+    "product-artifact-index", "product-artifact-record", "runtime-trace", "renderer-probe", "external-request"
+  ]),
+  schemaFieldSetsSha256: "3ad5f523357786d0d0805ed5d714b56021093bda3b47dec749bb86210f67550c"
 });
 
 const safeAcceptanceBootstrapPhases = new Set([
@@ -254,7 +279,7 @@ function underlyingEarlyBootstrapReason(error) {
 
 function safeAcceptanceBootstrapReason(value, error) {
   const underlyingReason = underlyingEarlyBootstrapReason(error);
-  if (underlyingReason.startsWith("startup_policy_")) return underlyingReason;
+  if (underlyingReason.startsWith("startup_")) return underlyingReason;
   return safeAcceptanceBootstrapReasons.has(value)
     ? value
     : "acceptance_startup_bootstrap_failed";
@@ -293,6 +318,23 @@ function describeEarlyFatalBootstrapError(input) {
     ...(errorCode ? { errorCode } : {}),
     ...(errorSyscall ? { errorSyscall } : {})
   };
+}
+
+function validateEarlyEnvironmentProductMilestone() {
+  if (!Object.prototype.hasOwnProperty.call(process.env, "AUTO_SVGA_PRODUCT_MILESTONE")) return;
+  const productMilestoneId = safeStartupProductMilestoneId(process.env.AUTO_SVGA_PRODUCT_MILESTONE);
+  if (productMilestoneId) {
+    validatedStartupProductMilestoneId = productMilestoneId;
+    return;
+  }
+  const error = new Error("startup_policy_invalid_product_milestone");
+  error.code = "AUTO_SVGA_STARTUP_POLICY_INVALID_PRODUCT_MILESTONE";
+  console.error(`AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP ${JSON.stringify(describeEarlyFatalBootstrapError({
+    source: "bootstrap_source_unknown",
+    error,
+    acceptanceLaunch: isAcceptanceStartupProofLaunch()
+  }))}`);
+  process.exit(1);
 }
 
 let describeFatalBootstrapError = describeEarlyFatalBootstrapError;
@@ -465,6 +507,7 @@ function scheduleAcceptanceStartupFatalHandlerRelease() {
   });
 }
 
+validateEarlyEnvironmentProductMilestone();
 process.once("uncaughtException", acceptanceStartupUncaughtExceptionHandler);
 process.once("unhandledRejection", acceptanceStartupUnhandledRejectionHandler);
 writeAcceptanceStartupBootstrapPhase("entrypoint_loaded");
@@ -476,11 +519,22 @@ writeAcceptanceStartupBootstrapPhase("local_requires_begin");
 
 const {
   assertStartupFatalDiagnosticTaxonomyParity,
+  assertStartupSerializationAuthorityParity,
+  buildNormalRuntimeProof,
+  buildNormalSmokeParity,
+  buildNormalVisibleStartupProof,
+  buildStartupRuntimeIdentity,
   describeFatalBootstrapError: describeFatalBootstrapErrorFromPolicy,
   describeFinderEquivalentLaunchEvidence,
-  resolveStartupRuntimePolicy
+  productArtifactFileNameForScenario,
+  resolveStartupProductIdentity,
+  resolveStartupRuntimePolicy,
+  safeExternalRequestCategories,
+  safeProductArtifactScenario,
+  sanitizeProductArtifactIndex
 } = require("./startup-runtime-policy.cjs");
 assertStartupFatalDiagnosticTaxonomyParity(earlyStartupFatalDiagnosticTaxonomy);
+assertStartupSerializationAuthorityParity(earlyStartupSerializationAuthority);
 describeFatalBootstrapError = describeFatalBootstrapErrorFromPolicy;
 
 const {
@@ -549,15 +603,6 @@ function readPackagedRuntimeBuildInfo() {
     return undefined;
   }
 }
-function runtimeBuildInfoProductMilestoneId(buildInfo) {
-  if (buildInfo?.productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID) {
-    return MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;
-  }
-  if (buildInfo?.productMilestoneId === "short-term") {
-    return "short-term";
-  }
-  return undefined;
-}
 const hostMenuActions = Object.freeze([
   "open-primary-svga",
   "open-secondary-svga",
@@ -607,8 +652,12 @@ const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
-const packagedRuntimeBuildInfo = app.isPackaged ? readPackagedRuntimeBuildInfo() : undefined;
-const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? runtimeBuildInfoProductMilestoneId(packagedRuntimeBuildInfo) ?? "short-term";
+const startupProductIdentity = resolveStartupProductIdentity({
+  appIsPackaged: app.isPackaged,
+  environment: process.env,
+  readPackagedRuntimeBuildInfo
+});
+const { packagedRuntimeBuildInfo, productMilestoneId } = startupProductIdentity;
 const isShortTermProduct = productMilestoneId === "short-term";
 const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;
 const isInternalMultiFormatCandidate = app.isPackaged
@@ -666,7 +715,7 @@ const startupRuntimePolicy = resolveStartupRuntimePolicy({
   acceptanceLaunch: isAcceptanceStartupProofLaunch(),
   environment: process.env
 });
-validatedStartupProductMilestoneId = safeStartupProductMilestoneId(productMilestoneId);
+validatedStartupProductMilestoneId = productMilestoneId;
 const productArtifactRoot = startupRuntimePolicy.productArtifactRoot;
 const canonicalFixtureRuntimePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
 const canonicalFixtureSourcePath = "examples/avatar_frame_basic/output/avatar_frame_basic.svga";
@@ -3767,118 +3816,7 @@ async function performP6SmokeInput(webContents, value) {
 }
 
 function validateArtifactScenario(value) {
-  const allowed = new Set([
-    "desktop-empty",
-    "desktop-loading",
-    "desktop-loaded",
-    "desktop-inspection",
-    "desktop-invalid",
-    "desktop-playing",
-    "desktop-paused",
-    "desktop-latest-artifact-loaded",
-    "desktop-reference-media-loaded",
-    "desktop-local-compare-loaded",
-    "desktop-responsive-local-compare-at-900-x-720",
-    "desktop-responsive-local-compare-at-minimum-size",
-    "desktop-responsive-local-preview-at-900-x-720",
-    "short-term-launch",
-    "short-term-preview-overview",
-    "short-term-preview-optimization",
-    "short-term-preview-replaceable",
-    "short-term-sequence-thumbnails",
-    "short-term-optimization-result",
-    "short-term-rename-dirty",
-    "short-term-replacement-dirty",
-    "short-term-replacement-reset",
-    "short-term-runtime-text-applied",
-    "short-term-general-compare",
-    "short-term-edit-reserved",
-    "short-term-preview-minimum",
-    "short-term-settings-dialog",
-    "short-term-appearance-dark",
-    "short-term-appearance-light",
-    "short-term-preview-overview-wide",
-    "short-term-drag-decision-supported",
-    "short-term-drag-decision-unsupported",
-    "short-term-save-failed",
-    "short-term-load-failed",
-    "short-term-playback-failed",
-    "desktop-local-info-overview-open",
-    "desktop-local-info-assets-open",
-    "desktop-local-source-resources-open",
-    "desktop-local-source-layers-open",
-    "desktop-local-inspector-actions-open",
-    "desktop-local-logs-hidden-default",
-    "desktop-local-minimum-size",
-    "desktop-info-diagnostics-open",
-    "desktop-local-info-diagnostics-open",
-    "desktop-local-logs-open",
-    "desktop-local-settings-open",
-    "desktop-recovered-from-invalid",
-    "desktop-sequence-review-proof",
-    "desktop-sequence-repair-preview-proof",
-    "desktop-sequence-no-write-simulation-proof",
-    "desktop-sequence-bounded-repair-prototype-proof",
-    "desktop-sequence-prototype-rendered-boundary-proof",
-    "desktop-sequence-noop-round-trip-proof",
-    "desktop-sequence-product-repair-proof",
-    "desktop-replacement-preview-proof",
-    "desktop-replacement-undo-redo-proof",
-    "desktop-multi-replacement-proof",
-    "desktop-optimized-reopen-proof",
-    "actual-normal-loaded",
-    "smoke-loaded",
-    "desktop-1280x800",
-    "desktop-1440x900",
-    "desktop-responsive-export-review-loaded-at-900-x-720",
-    "p3-original-loaded",
-    "p3-resource-list",
-    "p3-replacement-selected",
-    "p3-replacement-preview",
-    "p3-dirty-state",
-    "p3-reset-to-original",
-    "p3-export-success",
-    "p3-reopened-export",
-    "p3-invalid-png-state",
-    "p3-original-edited-comparison",
-    "p4-multi-resource-original",
-    "p4-multi-resource-list",
-    "p4-first-replacement",
-    "p4-two-replacements",
-    "p4-undo-second-replacement",
-    "p4-redo-second-replacement",
-    "p4-reset-selected",
-    "p4-undo-reset-selected",
-    "p4-reset-all",
-    "p4-undo-reset-all",
-    "p4-dirty-two-edits",
-    "p4-save-point-clean",
-    "p4-post-save-new-edit",
-    "p4-reopened-multi-resource-export",
-    "p4-invalid-second-png",
-    "p4-multi-resource-comparison",
-    "p5-batch-entry",
-    "p5-batch-files-selected",
-    "p5-mapping-exact-matches",
-    "p5-mapping-unmatched-conflict",
-    "p5-mapping-manual-resolution",
-    "p5-mapping-ready-to-apply",
-    "p5-batch-preview",
-    "p5-batch-dirty-state",
-    "p5-batch-undo",
-    "p5-batch-redo",
-    "p5-batch-export-success",
-    "p5-batch-reopened-export",
-    "p5-corrupt-png-state",
-    "p5-dimension-warning",
-    "p5-batch-original-edited-comparison"
-  ]);
-  if (allowed.has(value)) return value;
-  if (/^desktop-(mode-menu-open|info-overview-open|info-assets-open|logs-open|settings-open|accessibility-toggles-on|settings-closed-by-escape|synchronized-playback-toggled-by-space|local-compare-empty|asset-preview-modal-open)$/.test(value)) {
-    return value;
-  }
-  if (/^desktop-motion-[a-zA-Z0-9_-]+-(start|mid|end)$/.test(value)) return value;
-  return undefined;
+  return safeProductArtifactScenario(value);
 }
 
 function validateEditedSvgaSaveInput(value) {
@@ -4916,130 +4854,63 @@ function scenarioFixtureMetadata(scenario) {
   };
 }
 
-function sanitizeRuntimeArgument(value) {
-  return redactLocalPaths(String(value)
-    .replaceAll(appRoot, "<experiment-root>")
-    .replaceAll(repoRoot, "<repo-root>"), "<local-path>");
-}
-
-function sanitizedRuntimeArgv() {
-  return process.argv.map((argument) => sanitizeRuntimeArgument(argument));
-}
-
-function launchEnvironmentOverrides() {
-  return Object.fromEntries(
-    startupRuntimePolicy.autoSvgaOverrides.map((name) => [name, "<redacted>"])
-  );
-}
-
 function defaultActualLaunchCommand() {
   if (normalProofMode) return "npm run desktop:dev";
   if (normalVisibleStartupMode) return "open -n <Auto SVGA.app>";
   return "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev";
 }
 
-function runtimeIdentity(mode, rendererUrl) {
+function sanitizeRuntimeArgument(value) {
+  return redactLocalPaths(String(value)
+    .replaceAll(appRoot, "<experiment-root>")
+    .replaceAll(repoRoot, "<repo-root>"), "<local-path>");
+}
+
+function runtimeIdentityInput(mode, rendererUrl) {
   const finderEquivalentLaunchEvidence = describeFinderEquivalentLaunchEvidence({
     acceptanceLaunch: isAcceptanceStartupProofLaunch(),
     environment: process.env,
     argv: process.argv
   });
   return {
-    schemaVersion: 1,
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
-    entryCommand: "npm run desktop:dev",
-    actualLaunchCommand: process.env.AUTO_SVGA_ACTUAL_LAUNCH_COMMAND ?? defaultActualLaunchCommand(),
-    actualArgvSanitized: sanitizedRuntimeArgv(),
-    executableBasename: path.basename(process.argv[0] ?? ""),
-    pathRedactionsApplied: true,
-    environmentOverrides: launchEnvironmentOverrides(),
-    mainEntry: `tools/electron-prototype/experiments/svga-web/${mainEntry}`,
-    preloadEntry: `tools/electron-prototype/experiments/svga-web/${preloadEntry}`,
-    rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
+    launchContext: {
+      actualLaunchCommand: process.env.AUTO_SVGA_ACTUAL_LAUNCH_COMMAND,
+      defaultActualLaunchCommand: defaultActualLaunchCommand(),
+      argv: process.argv,
+      environment: process.env
+    },
+    rendererEntry,
     rendererUrl,
-    windowTitle: productIdentity,
-    documentTitle: "Auto SVGA — Desktop Preview",
-    productIdentity,
     mode,
     processId: process.pid,
     runtimeInstanceId,
-    player: playerIdentity,
-    csp,
-    security: {
-      contentSecurityPolicy: csp,
-      remoteNavigationAllowed: false,
-      newWindowsAllowed: false,
-      permissionsDenied: true,
-      telemetryEnabled: false,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      arbitraryFileServing: false,
-      persistedAbsolutePaths: false
-    },
-    hostRuntime: {
-      normalVisibleStartup: normalVisibleStartupMode,
-      finderEquivalentLaunchCompatible: finderEquivalentLaunchEvidence.compatible,
-      finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence.reason,
-      fileOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
-      menuActions: hostMenuActions,
-      sessionRootRedacted: sanitizeRuntimeArgument(sessionRoot),
-      tempCleanupOnExit: true
-    },
-    ...canonicalFixtureMetadata(),
+    normalVisibleStartup: normalVisibleStartupMode,
+    finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence.reason,
+    fixtureMetadata: canonicalFixtureMetadata(),
     indexHtmlSha256: sha256RelativeFile(rendererHtmlEntry),
     rendererJsSha256: sha256RelativeFile(rendererEntry),
     stylesCssSha256: sha256RelativeFile(stylesEntry),
     preloadSha256: sha256RelativeFile(preloadEntry),
     mainSha256: sha256RelativeFile(mainEntry),
-    loadingPipelineIdentity: "loadSvgaFile -> loadSvgaBytes -> Parser.do -> Player.mount -> inspection report",
-    cleanupPipelineIdentity: "cleanupPlayer -> clearCanvas -> reset active player/parser/video/status",
-    externalRequests: blockedExternalRequests.slice(),
+    externalRequests: blockedExternalRequests,
     generatedAt: new Date().toISOString()
   };
 }
 
+function runtimeIdentity(mode, rendererUrl) {
+  return buildStartupRuntimeIdentity(runtimeIdentityInput(mode, rendererUrl));
+}
+
 function normalSmokeParity(normalIdentity, smokeIdentity) {
-  const checks = {
-    separateProcessId: normalIdentity.processId !== smokeIdentity.processId,
-    separateRuntimeInstanceId: normalIdentity.runtimeInstanceId !== smokeIdentity.runtimeInstanceId,
-    mainEntry: normalIdentity.mainEntry === smokeIdentity.mainEntry,
-    preloadEntry: normalIdentity.preloadEntry === smokeIdentity.preloadEntry,
-    rendererEntry: normalIdentity.rendererEntry === smokeIdentity.rendererEntry,
-    indexHtmlSha256: normalIdentity.indexHtmlSha256 === smokeIdentity.indexHtmlSha256,
-    rendererJsSha256: normalIdentity.rendererJsSha256 === smokeIdentity.rendererJsSha256,
-    stylesCssSha256: normalIdentity.stylesCssSha256 === smokeIdentity.stylesCssSha256,
-    preloadSha256: normalIdentity.preloadSha256 === smokeIdentity.preloadSha256,
-    mainSha256: normalIdentity.mainSha256 === smokeIdentity.mainSha256,
-    productIdentity: normalIdentity.productIdentity === smokeIdentity.productIdentity,
-    player: normalIdentity.player === smokeIdentity.player,
-    csp: normalIdentity.csp === smokeIdentity.csp,
-    loadingPipelineIdentity: normalIdentity.loadingPipelineIdentity === smokeIdentity.loadingPipelineIdentity,
-    cleanupPipelineIdentity: normalIdentity.cleanupPipelineIdentity === smokeIdentity.cleanupPipelineIdentity
-  };
-  return {
-    schemaVersion: 1,
+  return buildNormalSmokeParity({
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
-    normalMode: normalIdentity.mode,
-    smokeMode: smokeIdentity.mode,
-    normalProcessId: normalIdentity.processId,
-    smokeProcessId: smokeIdentity.processId,
-    normalRuntimeInstanceId: normalIdentity.runtimeInstanceId,
-    smokeRuntimeInstanceId: smokeIdentity.runtimeInstanceId,
-    passed: Object.values(checks).every(Boolean),
-    checks,
-    allowedDifferences: [
-      "mode",
-      "rendererUrl query parameters",
-      "test-only automation trigger",
-      "deterministic fixture selection",
-      "screenshot capture",
-      "process cleanup"
-    ],
+    normalIdentity,
+    smokeIdentity,
     generatedAt: new Date().toISOString()
-  };
+  });
 }
 
 function addProductArtifactRecord(record) {
@@ -5306,32 +5177,19 @@ async function finishNormalProof(window, result) {
   if (result.shortTermSaveProof) {
     writeJsonProductArtifact("short-term-save-proof.json", "short-term-save-proof", result.shortTermSaveProof, "normal");
   }
-  writeJsonProductArtifact("normal-runtime-proof.json", "normal-runtime-proof", {
-    schemaVersion: 1,
+  const normalProofValue = buildNormalRuntimeProof({
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
-    runtimeIdentity: normalIdentity,
-    actualLaunchCommand: normalIdentity.actualLaunchCommand,
-    actualArgvSanitized: normalIdentity.actualArgvSanitized,
-    executableBasename: normalIdentity.executableBasename,
-    pathRedactionsApplied: true,
-    environmentOverrides: normalIdentity.environmentOverrides,
-    rendererUrl: normalIdentity.rendererUrl,
-    rendererQuery: "",
+    runtimeIdentityInput: runtimeIdentityInput("normal", `${expectedOrigin}/`),
     processId: normalIdentity.processId,
     runtimeInstanceId: normalIdentity.runtimeInstanceId,
-    windowShown: false,
-    automationMechanism: "host bridge button click in canonical renderer",
-    fileOpenMechanism: "macOS File > Open SVGA menu item -> short-term host dialog IPC",
-    fixture: canonicalFixtureMetadata().fixtureLabel,
-    ...canonicalFixtureMetadata(),
+    fixtureMetadata: canonicalFixtureMetadata(),
     screenshotHash: productArtifactIndex.artifacts.find((artifact) => artifact.scenario === "actual-normal-loaded")?.sha256 ?? null,
-    processExitCode: passed ? 0 : 1,
-    externalRequests: [],
-    ...result,
+    result,
     passed,
     generatedAt: new Date().toISOString()
-  }, "normal");
+  });
+  writeJsonProductArtifact("normal-runtime-proof.json", "normal-runtime-proof", normalProofValue, "normal");
   try {
     const smokeIdentity = JSON.parse(readFileSync(path.join(productArtifactRoot, "runtime-identity.json"), "utf8"));
     writeJsonProductArtifact("normal-smoke-parity.json", "normal-smoke-parity", normalSmokeParity(normalIdentity, smokeIdentity));
@@ -5339,7 +5197,13 @@ async function finishNormalProof(window, result) {
     // Smoke identity is produced by the independent smoke run. Missing data is caught by parity validation.
   }
   writeProductArtifactIndex();
-  console.log(`AUTO_SVGA_DESKTOP_NORMAL_PROOF ${JSON.stringify({ ...result, passed })}`);
+  console.log(`AUTO_SVGA_DESKTOP_NORMAL_PROOF ${JSON.stringify({
+    milestoneId: normalProofValue.milestoneId,
+    passed: normalProofValue.passed,
+    windowShown: normalProofValue.windowShown,
+    localOnly: normalProofValue.localOnly,
+    noCspViolation: normalProofValue.noCspViolation
+  })}`);
   await cleanupRuntime();
   window.destroy();
   app.exit(passed ? 0 : 1);
@@ -5351,7 +5215,7 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
     rendererQuery: "",
     primaryBridge: false,
     localOnly: false,
-    externalRequests: ["renderer probe unavailable"]
+    externalRequests: ["renderer_probe_unavailable"]
   };
   try {
     rendererProbe = await window.webContents.executeJavaScript(`
@@ -5380,72 +5244,46 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
         };
       })()
     `);
-  } catch (error) {
-    rendererProbe.externalRequests = [`renderer probe failed: ${redactLogMessage(error instanceof Error ? error.message : error)}`];
+  } catch {
+    rendererProbe.externalRequests = ["renderer_probe_failed"];
   }
-  const normalIdentity = runtimeIdentity("normal-visible", rendererUrl);
   const finderEquivalentLaunchEvidence = describeFinderEquivalentLaunchEvidence({
     acceptanceLaunch: isAcceptanceStartupProofLaunch(),
     environment: process.env,
     argv: process.argv
   });
-  const noProofArguments = !JSON.stringify(normalIdentity.actualArgvSanitized).includes("--p2-normal-proof")
-    && !JSON.stringify(normalIdentity.actualArgvSanitized).includes("--smoke");
-  const value = {
-    schemaVersion: 1,
+  const rendererExternalRequestCategories = Array.isArray(rendererProbe.externalRequests)
+    && rendererProbe.externalRequests.length > 0
+    ? rendererProbe.externalRequests.every((value) => value === "renderer_probe_failed" || value === "renderer_probe_unavailable")
+      ? rendererProbe.externalRequests
+      : ["external_request_blocked"]
+    : [];
+  const value = buildNormalVisibleStartupProof({
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
-    runtimeIdentity: normalIdentity,
-    actualLaunchCommand: normalIdentity.actualLaunchCommand,
-    actualArgvSanitized: normalIdentity.actualArgvSanitized,
-    executableBasename: normalIdentity.executableBasename,
-    pathRedactionsApplied: true,
-    environmentOverrides: launchEnvironmentOverrides(),
+    runtimeIdentityInput: runtimeIdentityInput("normal-visible", rendererUrl),
     proofOutputMode: startupRuntimePolicy.outputMode,
-    rendererUrl,
-    rendererQuery: rendererProbe.rendererQuery,
+    rendererProbe: {
+      rendererQuery: rendererProbe.rendererQuery,
+      primaryBridge: rendererProbe.primaryBridge,
+      localOnly: rendererProbe.localOnly,
+      externalRequests: safeExternalRequestCategories([
+        ...blockedExternalRequests,
+        ...rendererExternalRequestCategories
+      ])
+    },
     processId: process.pid,
     runtimeInstanceId,
     windowShown: window.isVisible(),
-    normalVisibleStartup: true,
-    finderEquivalentLaunchCompatible: finderEquivalentLaunchEvidence.compatible,
-    finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence.reason,
-    noProofMode: true,
-    noSmokeMode: true,
-    noProofArguments,
-    bridgeLocalOnly: rendererProbe.primaryBridge === true,
-    localOnly: rendererProbe.localOnly === true && blockedExternalRequests.length === 0,
-    externalRequests: [...new Set([...blockedExternalRequests, ...(rendererProbe.externalRequests ?? []).map((value) => redactLogMessage(value))])],
-    hostOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
-    hostMenuActions,
-    processLifecycle: {
-      windowAllClosedCleanup: true,
-      quitMenuInstalled: true,
-      expectedExit: "window-all-closed -> cleanupRuntime -> app.quit",
-      orphanProcessPolicy: "no background child processes are spawned by the normal visible app"
-    },
-    tempCleanup: {
-      sessionRoot: sanitizeRuntimeArgument(sessionRoot),
-      cleanupRuntimeInstalled: true,
-      tempRemovedOnExit: true
-    }
-  };
-  value.passed = value.windowShown === true
-    && value.normalVisibleStartup === true
-    && value.rendererQuery === ""
-    && value.proofOutputMode === "explicit-proof"
-    && value.noProofMode === true
-    && value.noSmokeMode === true
-    && value.noProofArguments === true
-    && value.bridgeLocalOnly === true
-    && value.localOnly === true
-    && value.externalRequests.length === 0;
+    finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence.reason
+  });
   writeJsonProductArtifact("normal-visible-startup.json", "normal-visible-startup", value, "normal");
 }
 
 function writeProductArtifactIndex() {
   const indexPath = path.join(productArtifactRoot, "artifact-index.json");
-  writeFileSync(indexPath, `${JSON.stringify(productArtifactIndex, null, 2)}\n`);
+  const serializedIndex = sanitizeProductArtifactIndex(productArtifactIndex);
+  writeFileSync(indexPath, `${JSON.stringify(serializedIndex, null, 2)}\n`);
 }
 
 function stateForScenario(scenario) {
@@ -5672,59 +5510,7 @@ async function forceRendererRepaint(window) {
 }
 
 function artifactFileNameForScenario(scenario) {
-  return {
-    "p3-original-loaded": "original-loaded.png",
-    "p3-resource-list": "resource-list.png",
-    "p3-replacement-selected": "replacement-selected.png",
-    "p3-replacement-preview": "replacement-preview.png",
-    "desktop-sequence-review-proof": "desktop-sequence-review-proof.png",
-    "desktop-sequence-repair-preview-proof": "desktop-sequence-repair-preview-proof.png",
-    "desktop-sequence-no-write-simulation-proof": "desktop-sequence-no-write-simulation-proof.png",
-    "desktop-sequence-bounded-repair-prototype-proof": "desktop-sequence-bounded-repair-prototype-proof.png",
-    "desktop-sequence-prototype-rendered-boundary-proof": "desktop-sequence-prototype-rendered-boundary-proof.png",
-    "desktop-sequence-noop-round-trip-proof": "desktop-sequence-noop-round-trip-proof.png",
-    "desktop-sequence-product-repair-proof": "desktop-sequence-product-repair-proof.png",
-    "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
-    "desktop-replacement-undo-redo-proof": "desktop-replacement-undo-redo-proof.png",
-    "desktop-multi-replacement-proof": "desktop-multi-replacement-proof.png",
-    "p3-dirty-state": "dirty-state.png",
-    "p3-reset-to-original": "reset-to-original.png",
-    "p3-export-success": "export-success.png",
-    "p3-reopened-export": "reopened-export.png",
-    "p3-invalid-png-state": "invalid-png-state.png",
-    "p3-original-edited-comparison": "original-edited-comparison.png",
-    "p4-multi-resource-original": "multi-resource-original.png",
-    "p4-multi-resource-list": "multi-resource-list.png",
-    "p4-first-replacement": "first-replacement.png",
-    "p4-two-replacements": "two-replacements.png",
-    "p4-undo-second-replacement": "undo-second-replacement.png",
-    "p4-redo-second-replacement": "redo-second-replacement.png",
-    "p4-reset-selected": "reset-selected.png",
-    "p4-undo-reset-selected": "undo-reset-selected.png",
-    "p4-reset-all": "reset-all.png",
-    "p4-undo-reset-all": "undo-reset-all.png",
-    "p4-dirty-two-edits": "dirty-two-edits.png",
-    "p4-save-point-clean": "save-point-clean.png",
-    "p4-post-save-new-edit": "post-save-new-edit.png",
-    "p4-reopened-multi-resource-export": "reopened-multi-resource-export.png",
-    "p4-invalid-second-png": "invalid-second-png.png",
-    "p4-multi-resource-comparison": "multi-resource-comparison.png",
-    "p5-batch-entry": "batch-entry.png",
-    "p5-batch-files-selected": "batch-files-selected.png",
-    "p5-mapping-exact-matches": "mapping-exact-matches.png",
-    "p5-mapping-unmatched-conflict": "mapping-unmatched-conflict.png",
-    "p5-mapping-manual-resolution": "mapping-manual-resolution.png",
-    "p5-mapping-ready-to-apply": "mapping-ready-to-apply.png",
-    "p5-batch-preview": "batch-preview.png",
-    "p5-batch-dirty-state": "batch-dirty-state.png",
-    "p5-batch-undo": "batch-undo.png",
-    "p5-batch-redo": "batch-redo.png",
-    "p5-batch-export-success": "batch-export-success.png",
-    "p5-batch-reopened-export": "batch-reopened-export.png",
-    "p5-corrupt-png-state": "corrupt-png-state.png",
-    "p5-dimension-warning": "dimension-warning.png",
-    "p5-batch-original-edited-comparison": "batch-original-edited-comparison.png"
-  }[scenario] ?? `${scenario}.png`;
+  return productArtifactFileNameForScenario(scenario);
 }
 
 function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
@@ -7663,7 +7449,7 @@ async function createExperimentWindow() {
       allowBlob: true,
       allowDevtools: true
     });
-    if (!allowed) blockedExternalRequests.push(sanitizeRuntimeArgument(details.url));
+    if (!allowed) blockedExternalRequests.push("external_request_blocked");
     callback({
       cancel: !allowed
     });
