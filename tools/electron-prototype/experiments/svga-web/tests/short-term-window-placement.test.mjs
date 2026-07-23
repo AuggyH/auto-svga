@@ -23,8 +23,10 @@ const {
 const {
   ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE,
   buildAcceptanceStartupPlacementProof,
+  buildRejectedAcceptanceStartupPlacementProof,
   writeAcceptanceStartupPlacementProof
 } = require("../acceptance-startup-placement-proof.cjs");
+const startupRuntimePolicy = require("../startup-runtime-policy.cjs");
 
 const launchSize = { width: 640, height: 640 };
 const minimumSize = { width: 640, height: 640 };
@@ -576,6 +578,66 @@ test("acceptance startup placement proof rejects unsafe or inexact launches befo
   }
 });
 
+test("acceptance startup proof writers never serialize unvalidated identity or reason payloads", () => {
+  const invalidExecutionPayload = "PRIVATE";
+  const pathPayload = "/Users/owner/private/client-name.svga";
+  const milestonePayload = "Users_owner_private_client_name_svga";
+  const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-acceptance-proof-adversarial-"));
+  try {
+    const result = writeAcceptanceStartupPlacementProof(acceptedProofInput({
+      artifactRoot: root,
+      placement: {
+        ...acceptedProofPlacement,
+        executionId: pathPayload
+      },
+      productMilestoneId: milestonePayload
+    }));
+    assert.equal(result.status, "written");
+    assert.equal(result.proof.status, "rejected");
+    assert.equal(result.proof.reason, "acceptance_execution_malformed");
+    assert.equal(result.proof.executionId, undefined);
+    assert.equal(result.proof.productIdentity.productMilestoneId, undefined);
+    const text = readFileSync(path.join(root, ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE), "utf8");
+    for (const payload of [pathPayload, milestonePayload]) {
+      assert.equal(text.includes(payload), false, payload);
+    }
+
+    const rejected = buildRejectedAcceptanceStartupPlacementProof(
+      acceptedProofInput({
+        placement: { ...acceptedProofPlacement, executionId: invalidExecutionPayload },
+        productMilestoneId: milestonePayload,
+        headCommit: "PRIVATE_CLIENT_BUILD_COMMIT",
+        runtimeInstanceId: "/Users/owner/private/runtime-instance",
+        generatedAt: "PRIVATE_GENERATED_AT",
+        packagedRuntimeBuildInfo: {
+          buildCommit: "PRIVATE_PACKAGED_BUILD_COMMIT",
+          source: "PRIVATE_CLIENT_SOURCE",
+          productMilestoneId: milestonePayload
+        }
+      }),
+      "acceptance_users_owner_private_client_name_svga"
+    );
+    const rejectedText = JSON.stringify(rejected);
+    assert.equal(rejected.reason, "acceptance_startup_bootstrap_failed");
+    assert.equal(rejected.executionId, undefined);
+    assert.equal(rejected.productIdentity.productMilestoneId, undefined);
+    for (const payload of [
+      invalidExecutionPayload,
+      milestonePayload,
+      "users_owner_private",
+      "PRIVATE_CLIENT_BUILD_COMMIT",
+      "/Users/owner/private/runtime-instance",
+      "PRIVATE_GENERATED_AT",
+      "PRIVATE_PACKAGED_BUILD_COMMIT",
+      "PRIVATE_CLIENT_SOURCE"
+    ]) {
+      assert.equal(rejectedText.includes(payload), false, payload);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("only normal owner bounds become a placement preference", () => {
   const saved = windowPlacementRecordFromBounds({
     bounds: { x: 1500, y: 80, width: 1280, height: 800 },
@@ -773,6 +835,8 @@ test("early fatal, artifact, and phase taxonomy rejects arbitrary payloads", asy
       platform: "darwin"
     },
     strictAcceptanceStartupDisplayArgument: () => 2,
+    validatedAcceptanceStartupIdentity: { executionId: "ASV-EARLY-FATAL-TEST" },
+    validatedStartupProductMilestoneId: "0.2-multiformat-preview",
     writeSync
   };
 
@@ -883,6 +947,214 @@ test("early fatal, artifact, and phase taxonomy rejects arbitrary payloads", asy
     });
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("early fatal artifacts omit unvalidated environment identity payloads", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-early-identity-"));
+  const slice = (start, end) => {
+    const startIndex = source.indexOf(start);
+    const endIndex = source.indexOf(end, startIndex);
+    assert.ok(startIndex >= 0 && endIndex > startIndex, `missing source slice ${start} -> ${end}`);
+    return source.slice(startIndex, endIndex);
+  };
+  const harnessSource = [
+    "let acceptanceStartupBootstrapPhaseSequence = 0;",
+    slice("const safeBootstrapErrorClasses", "let describeFatalBootstrapError"),
+    slice("function writeAcceptanceStartupBootstrapPhase", "function writeAcceptanceStartupBootstrapFailureArtifact"),
+    slice("function writeAcceptanceStartupBootstrapFailureArtifact", "function handleAcceptanceStartupFatalError")
+  ].join("\n");
+  const executionPayload = "PRIVATE_CLIENT_NAME_SVGA";
+  const milestonePayload = "Users_owner_private_client_name_svga";
+  const pathPayload = "/Users/owner/private/client-name.svga";
+  const sandbox = {
+    Buffer,
+    Error,
+    Set,
+    acceptanceStartupBootstrapPhaseFileName: "acceptance-startup-bootstrap-phases.jsonl",
+    acceptanceStartupPlacementProofFileName: "acceptance-startup-placement-proof.json",
+    acceptanceStartupArtifactRoot: () => ({ status: "accepted", root }),
+    closeSync,
+    earlyAcceptanceRuntimeInstanceId: "early-runtime-test",
+    fsyncSync,
+    isAcceptanceStartupProofLaunch: () => true,
+    mkdirSync,
+    openSync,
+    path,
+    process: {
+      arch: "arm64",
+      env: {
+        AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: executionPayload,
+        AUTO_SVGA_PRODUCT_MILESTONE: milestonePayload
+      },
+      pid: 42,
+      platform: "darwin"
+    },
+    strictAcceptanceStartupDisplayArgument: () => undefined,
+    validatedAcceptanceStartupIdentity: undefined,
+    validatedStartupProductMilestoneId: undefined,
+    writeSync
+  };
+
+  try {
+    vm.runInNewContext(`${harnessSource}
+      globalThis.testApi = {
+        writeAcceptanceStartupBootstrapPhase,
+        writeAcceptanceStartupBootstrapFailureArtifact
+      };`, sandbox);
+    const phase = sandbox.testApi.writeAcceptanceStartupBootstrapPhase("entrypoint_loaded");
+    assert.equal(phase.status, "written");
+    assert.equal(phase.record.executionId, undefined);
+    const error = Object.assign(new Error(pathPayload), {
+      code: executionPayload,
+      syscall: milestonePayload
+    });
+    error.name = pathPayload;
+    const artifact = sandbox.testApi.writeAcceptanceStartupBootstrapFailureArtifact(
+      "acceptance_users_owner_private_client_name_svga",
+      error
+    );
+    assert.equal(artifact.status, "written");
+    assert.equal(artifact.proof.executionId, undefined);
+    assert.equal(artifact.proof.productIdentity.productMilestoneId, undefined);
+    const serialized = [
+      readFileSync(path.join(root, "acceptance-startup-bootstrap-phases.jsonl"), "utf8"),
+      readFileSync(path.join(root, "acceptance-startup-placement-proof.json"), "utf8")
+    ].join("\n");
+    for (const payload of [executionPayload, milestonePayload, pathPayload, "users_owner_private"]) {
+      assert.equal(serialized.includes(payload), false, payload);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("late app-ready failures use the bounded structured fatal taxonomy", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const redactorStart = source.indexOf("const LOCAL_PATH_PATTERNS");
+  const redactorEnd = source.indexOf("function gitHeadCommit", redactorStart);
+  const catchStart = source.indexOf("app.whenReady().then(createExperimentWindow).catch");
+  const catchEnd = source.indexOf("\n});", catchStart) + 4;
+  assert.ok(redactorStart >= 0 && redactorEnd > redactorStart);
+  assert.ok(catchStart >= 0 && catchEnd > catchStart);
+
+  const observe = (error) => {
+    const lines = [];
+    const sandbox = {
+      Error,
+      acceptanceStartupFailureReason: () => "acceptance_startup_bootstrap_failed",
+      app: {
+        exit: () => {},
+        whenReady: () => ({
+          then: () => ({
+            catch: (handler) => {
+              sandbox.catchHandler = handler;
+            }
+          })
+        })
+      },
+      console: { error: (value) => lines.push(String(value)) },
+      createExperimentWindow: () => {},
+      describeFatalBootstrapError: startupRuntimePolicy.describeFatalBootstrapError,
+      isAcceptanceStartupProofLaunch: () => false,
+      sessionRoot: "/private/auto-svga-session",
+      writeAcceptanceStartupBootstrapFailureArtifact: () => ({
+        status: "ignored",
+        reason: "acceptance_launch_not_requested"
+      }),
+      writeAcceptanceStartupBootstrapPhase: () => ({ status: "ignored" })
+    };
+    vm.runInNewContext(
+      `${source.slice(redactorStart, redactorEnd)}\n${source.slice(catchStart, catchEnd)}`,
+      sandbox
+    );
+    sandbox.catchHandler(error);
+    return lines;
+  };
+
+  const safePayload = "PRIVATE_CLIENT_NAME_SVGA";
+  const filesystemError = Object.assign(new Error(safePayload), {
+    code: "EACCES",
+    syscall: "mkdir"
+  });
+  filesystemError.name = "/Users/owner/private/client-name.svga";
+  const filesystemLines = observe(filesystemError);
+  const prefix = "AUTO_SVGA_WEB_EXPERIMENT_ERROR ";
+  const filesystemLine = filesystemLines.find((line) => line.startsWith(prefix));
+  assert.ok(filesystemLine);
+  const filesystemDiagnostic = JSON.parse(filesystemLine.slice(prefix.length));
+  assert.deepEqual(filesystemDiagnostic, {
+    source: "app_ready_rejection",
+    acceptanceLaunch: false,
+    reason: "bootstrap_eacces",
+    errorClass: "Error",
+    errorCode: "EACCES",
+    errorSyscall: "mkdir"
+  });
+  assert.equal(filesystemLine.includes(safePayload), false);
+  assert.equal(filesystemLine.includes("/Users/owner"), false);
+
+  const pathPayload = "/Users/owner/private/client-name.svga";
+  const plainLines = observe({
+    name: safePayload,
+    message: pathPayload,
+    code: safePayload,
+    syscall: "Users_owner_private"
+  });
+  const plainLine = plainLines.find((line) => line.startsWith(prefix));
+  assert.ok(plainLine);
+  const plainDiagnostic = JSON.parse(plainLine.slice(prefix.length));
+  assert.deepEqual(plainDiagnostic, {
+    source: "app_ready_rejection",
+    acceptanceLaunch: false,
+    reason: "bootstrap_error",
+    errorClass: "Error"
+  });
+  for (const payload of [safePayload, pathPayload, "Users_owner_private"]) {
+    assert.equal(plainLine.includes(payload), false, payload);
+  }
+});
+
+test("early and loaded fatal taxonomy have a complete fail-closed parity invariant", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const taxonomyStart = source.indexOf("const safeBootstrapErrorClasses");
+  const taxonomyEnd = source.indexOf("const safeAcceptanceBootstrapPhases", taxonomyStart);
+  assert.ok(taxonomyStart >= 0 && taxonomyEnd > taxonomyStart);
+  const sandbox = {};
+  vm.runInNewContext(
+    `${source.slice(taxonomyStart, taxonomyEnd)};
+      globalThis.earlyTaxonomy = earlyStartupFatalDiagnosticTaxonomy;`,
+    sandbox
+  );
+  assert.equal(typeof startupRuntimePolicy.startupFatalDiagnosticTaxonomy, "object");
+  assert.equal(typeof startupRuntimePolicy.assertStartupFatalDiagnosticTaxonomyParity, "function");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(sandbox.earlyTaxonomy)),
+    JSON.parse(JSON.stringify(startupRuntimePolicy.startupFatalDiagnosticTaxonomy))
+  );
+  assert.match(
+    source,
+    /assertStartupFatalDiagnosticTaxonomyParity\(earlyStartupFatalDiagnosticTaxonomy\)/u
+  );
+  assert.doesNotThrow(() => startupRuntimePolicy.assertStartupFatalDiagnosticTaxonomyParity(
+    startupRuntimePolicy.startupFatalDiagnosticTaxonomy
+  ));
+  for (const key of Object.keys(startupRuntimePolicy.startupFatalDiagnosticTaxonomy)) {
+    const value = startupRuntimePolicy.startupFatalDiagnosticTaxonomy[key];
+    const mutated = {
+      ...startupRuntimePolicy.startupFatalDiagnosticTaxonomy,
+      [key]: Array.isArray(value)
+        ? value.slice(1)
+        : typeof value === "string"
+          ? `${value}PRIVATE_CLIENT_NAME_SVGA`
+          : { ...value, PRIVATE_CLIENT_NAME_SVGA: "bootstrap_error" }
+    };
+    assert.throws(
+      () => startupRuntimePolicy.assertStartupFatalDiagnosticTaxonomyParity(mutated),
+      /startup_fatal_diagnostic_taxonomy_mismatch/u,
+      key
+    );
   }
 });
 

@@ -4,6 +4,11 @@ const { createHash } = require("node:crypto");
 const { closeSync, fsyncSync, mkdirSync, openSync, writeSync } = require("node:fs");
 const path = require("node:path");
 const { isWindowContainedInWorkArea } = require("./short-term-window-bounds-policy.cjs");
+const {
+  safeAcceptanceBootstrapReason,
+  safeAcceptanceExecutionId,
+  safeStartupProductMilestoneId
+} = require("./startup-runtime-policy.cjs");
 
 const ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE = "acceptance-startup-placement-proof.json";
 
@@ -74,9 +79,29 @@ function snapshotDisplay(display) {
 function publicBuildInfo(buildInfo) {
   if (!buildInfo || typeof buildInfo !== "object") return undefined;
   return {
-    buildCommit: typeof buildInfo.buildCommit === "string" ? buildInfo.buildCommit : undefined,
-    source: typeof buildInfo.source === "string" ? buildInfo.source : undefined,
-    productMilestoneId: typeof buildInfo.productMilestoneId === "string" ? buildInfo.productMilestoneId : undefined
+    buildCommit: safeHeadCommit(buildInfo.buildCommit),
+    source: buildInfo.source === "package-internal-trial" ? buildInfo.source : undefined,
+    productMilestoneId: safeStartupProductMilestoneId(buildInfo.productMilestoneId)
+  };
+}
+
+function safeHeadCommit(value) {
+  return typeof value === "string" && /^[a-f0-9]{40}$/u.test(value) ? value : undefined;
+}
+
+function safeGeneratedAt(value) {
+  if (typeof value !== "string") return new Date().toISOString();
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value
+    ? value
+    : new Date().toISOString();
+}
+
+function publicProductIdentity(input) {
+  return {
+    productMilestoneId: safeStartupProductMilestoneId(input?.productMilestoneId),
+    headCommit: safeHeadCommit(input?.headCommit),
+    packagedRuntimeBuildInfo: publicBuildInfo(input?.packagedRuntimeBuildInfo)
   };
 }
 
@@ -88,10 +113,12 @@ function buildAcceptanceStartupPlacementProof(input) {
   if (input?.placement?.mode !== "acceptance" || input.placement.status !== "accepted") {
     return rejected("acceptance_placement_not_active");
   }
-  const executionId = input.placement.executionId;
-  if (typeof executionId !== "string" || executionId.length === 0) {
+  const rawExecutionId = input.placement.executionId;
+  if (typeof rawExecutionId !== "string" || rawExecutionId.length === 0) {
     return rejected("acceptance_execution_unbound");
   }
+  const executionId = safeAcceptanceExecutionId(rawExecutionId);
+  if (!executionId) return rejected("acceptance_execution_malformed");
   const requestedDisplayId = input.requestedDisplayId ?? input.placement.displayId;
   if (!Number.isSafeInteger(requestedDisplayId)) return rejected("acceptance_display_malformed");
   const resolvedDisplayId = input.placement.displayId;
@@ -117,8 +144,8 @@ function buildAcceptanceStartupPlacementProof(input) {
   if (!disjointFromPrimary) return rejected("acceptance_primary_overlap");
   const displayScale = displayScaleReadiness(selectedDisplay, primaryDisplay);
 
-  const generatedAt = typeof input.generatedAt === "string" ? input.generatedAt : new Date().toISOString();
-  const runtimeInstanceId = typeof input.runtimeInstanceId === "string" ? input.runtimeInstanceId : undefined;
+  const generatedAt = safeGeneratedAt(input.generatedAt);
+  const runtimeInstanceId = safeAcceptanceExecutionId(input.runtimeInstanceId);
   if (!runtimeInstanceId) return rejected("acceptance_runtime_instance_missing");
   const proof = {
     schemaVersion: 1,
@@ -136,11 +163,7 @@ function buildAcceptanceStartupPlacementProof(input) {
     containment,
     disjointFromPrimary,
     runtimeInstanceId,
-    productIdentity: {
-      productMilestoneId: typeof input.productMilestoneId === "string" ? input.productMilestoneId : undefined,
-      headCommit: typeof input.headCommit === "string" ? input.headCommit : undefined,
-      packagedRuntimeBuildInfo: publicBuildInfo(input.packagedRuntimeBuildInfo)
-    },
+    productIdentity: publicProductIdentity(input),
     privacy: {
       pathRedacted: true,
       screenshots: false,
@@ -169,9 +192,7 @@ function buildAcceptanceStartupPlacementProof(input) {
 }
 
 function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
-  const executionId = typeof input?.placement?.executionId === "string" && input.placement.executionId.length > 0
-    ? input.placement.executionId
-    : undefined;
+  const executionId = safeAcceptanceExecutionId(input?.placement?.executionId);
   const requestedDisplayId = Number.isSafeInteger(input?.requestedDisplayId ?? input?.placement?.requestedDisplayId ?? input?.placement?.displayId)
     ? input.requestedDisplayId ?? input.placement.requestedDisplayId ?? input.placement.displayId
     : undefined;
@@ -186,16 +207,14 @@ function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
     && selectedDisplay.id !== primaryDisplay.id
     && rectIntersectionArea(windowBounds, primaryDisplay.bounds) === 0);
   const displayScale = displayScaleReadiness(selectedDisplay, primaryDisplay);
-  const generatedAt = typeof input?.generatedAt === "string" ? input.generatedAt : new Date().toISOString();
-  const runtimeInstanceId = typeof input?.runtimeInstanceId === "string" && input.runtimeInstanceId.length > 0
-    ? input.runtimeInstanceId
-    : undefined;
+  const generatedAt = safeGeneratedAt(input?.generatedAt);
+  const runtimeInstanceId = safeAcceptanceExecutionId(input?.runtimeInstanceId);
   const proof = {
     schemaVersion: 1,
     proofId: "acceptance-startup-placement-proof",
     status: "rejected",
     placementMode: input?.placement?.mode === "acceptance" ? "acceptance" : "unknown",
-    reason: typeof reason === "string" && reason.length > 0 ? reason : "acceptance_placement_proof_failed",
+    reason: safeAcceptanceBootstrapReason(reason),
     executionId,
     requestedDisplayId,
     resolvedDisplayId,
@@ -207,11 +226,7 @@ function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
     containment,
     disjointFromPrimary,
     runtimeInstanceId,
-    productIdentity: {
-      productMilestoneId: typeof input?.productMilestoneId === "string" ? input.productMilestoneId : undefined,
-      headCommit: typeof input?.headCommit === "string" ? input.headCommit : undefined,
-      packagedRuntimeBuildInfo: publicBuildInfo(input?.packagedRuntimeBuildInfo)
-    },
+    productIdentity: publicProductIdentity(input),
     privacy: {
       pathRedacted: true,
       screenshots: false,

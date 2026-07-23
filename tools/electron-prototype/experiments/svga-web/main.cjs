@@ -11,6 +11,8 @@ const earlyAcceptanceRuntimeInstanceId = randomBytes(12).toString("hex");
 let acceptanceStartupFatalHandlerReleaseScheduled = false;
 let acceptanceStartupBootstrapPhaseSequence = 0;
 let electronAppForFatalExit;
+let validatedAcceptanceStartupIdentity;
+let validatedStartupProductMilestoneId;
 
 function strictAcceptanceStartupDisplayArgument(argv = process.argv) {
   const displayArguments = argv.filter((argument) => argument.startsWith("--auto-svga-acceptance-display-id="));
@@ -134,6 +136,38 @@ const safeAcceptanceBootstrapReasons = new Set([
   "startup_policy_owner_runtime_escape"
 ]);
 
+const safeBootstrapSources = new Set([
+  "app_ready_rejection",
+  "bootstrap_source_unknown",
+  "uncaught_exception",
+  "unhandled_rejection"
+]);
+
+const safeStartupProductMilestoneIds = new Set([
+  "0.2-multiformat-preview",
+  "0.3.0-alpha.1",
+  "P2",
+  "P3",
+  "P4",
+  "P5",
+  "P6",
+  "P6-R1",
+  "aeb",
+  "short-term"
+]);
+
+const acceptanceExecutionIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+
+const earlyStartupFatalDiagnosticTaxonomy = Object.freeze({
+  sources: Object.freeze([...safeBootstrapSources].sort()),
+  errorClasses: Object.freeze([...safeBootstrapErrorClasses].sort()),
+  reasonByErrorCode: Object.freeze({ ...safeBootstrapReasonByErrorCode }),
+  errorSyscalls: Object.freeze([...safeBootstrapErrorSyscalls].sort()),
+  acceptanceReasons: Object.freeze([...safeAcceptanceBootstrapReasons].sort()),
+  acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
+  productMilestoneIds: Object.freeze([...safeStartupProductMilestoneIds].sort())
+});
+
 const safeAcceptanceBootstrapPhases = new Set([
   "app_ready_create_window_begin",
   "app_ready_create_window_failed",
@@ -169,6 +203,20 @@ const safeAcceptanceBootstrapPhases = new Set([
 function safeBootstrapErrorClass(error) {
   const errorClass = error instanceof Error ? error.name : undefined;
   return safeBootstrapErrorClasses.has(errorClass) ? errorClass : "Error";
+}
+
+function safeBootstrapSource(value) {
+  return safeBootstrapSources.has(value) ? value : "bootstrap_source_unknown";
+}
+
+function safeAcceptanceExecutionId(value) {
+  return typeof value === "string" && acceptanceExecutionIdPattern.test(value)
+    ? value
+    : undefined;
+}
+
+function safeStartupProductMilestoneId(value) {
+  return safeStartupProductMilestoneIds.has(value) ? value : undefined;
 }
 
 function safeBootstrapErrorField(error, field) {
@@ -236,7 +284,7 @@ function describeEarlyFatalBootstrapError(input) {
   const acceptanceReason = input.acceptanceProofResult?.proof?.reason
     ?? input.acceptanceProofResult?.reason;
   return {
-    source: input.source,
+    source: safeBootstrapSource(input.source),
     acceptanceLaunch: input.acceptanceLaunch === true,
     reason: input.acceptanceLaunch === true
       ? safeAcceptanceBootstrapReason(acceptanceReason, input.error)
@@ -255,10 +303,7 @@ function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
   if (root.status !== "accepted") return root;
 
   const phasePath = path.join(root.root, acceptanceStartupBootstrapPhaseFileName);
-  const executionId = typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string"
-    && process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID.length > 0
-    ? process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID
-    : undefined;
+  const executionId = validatedAcceptanceStartupIdentity?.executionId;
   const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
   const safeFields = safeAcceptanceBootstrapPhaseFields(fields);
   const record = {
@@ -316,10 +361,7 @@ function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
   if (root.status !== "accepted") return root;
 
   const proofPath = path.join(root.root, acceptanceStartupPlacementProofFileName);
-  const executionId = typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string"
-    && process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID.length > 0
-    ? process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID
-    : undefined;
+  const executionId = validatedAcceptanceStartupIdentity?.executionId;
   const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
   const proof = {
     schemaVersion: 1,
@@ -332,9 +374,7 @@ function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
     requestedDisplayId,
     runtimeInstanceId: earlyAcceptanceRuntimeInstanceId,
     productIdentity: {
-      productMilestoneId: typeof process.env.AUTO_SVGA_PRODUCT_MILESTONE === "string"
-        ? process.env.AUTO_SVGA_PRODUCT_MILESTONE
-        : undefined
+      productMilestoneId: validatedStartupProductMilestoneId
     },
     privacy: {
       pathRedacted: true,
@@ -435,10 +475,12 @@ writeAcceptanceStartupBootstrapPhase("electron_required");
 writeAcceptanceStartupBootstrapPhase("local_requires_begin");
 
 const {
+  assertStartupFatalDiagnosticTaxonomyParity,
   describeFatalBootstrapError: describeFatalBootstrapErrorFromPolicy,
   describeFinderEquivalentLaunchEvidence,
   resolveStartupRuntimePolicy
 } = require("./startup-runtime-policy.cjs");
+assertStartupFatalDiagnosticTaxonomyParity(earlyStartupFatalDiagnosticTaxonomy);
 describeFatalBootstrapError = describeFatalBootstrapErrorFromPolicy;
 
 const {
@@ -624,6 +666,7 @@ const startupRuntimePolicy = resolveStartupRuntimePolicy({
   acceptanceLaunch: isAcceptanceStartupProofLaunch(),
   environment: process.env
 });
+validatedStartupProductMilestoneId = safeStartupProductMilestoneId(productMilestoneId);
 const productArtifactRoot = startupRuntimePolicy.productArtifactRoot;
 const canonicalFixtureRuntimePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
 const canonicalFixtureSourcePath = "examples/avatar_frame_basic/output/avatar_frame_basic.svga";
@@ -791,6 +834,11 @@ function resolveInitialMultiFormatWindowPlacement() {
   });
   if (acceptanceRequest.status === "rejected") {
     throw new Error(`window_placement_rejected:${acceptanceRequest.reason}`);
+  }
+  if (acceptanceRequest.status === "accepted") {
+    const executionId = safeAcceptanceExecutionId(acceptanceRequest.executionId);
+    if (!executionId) throw new Error("window_placement_rejected:acceptance_execution_malformed");
+    validatedAcceptanceStartupIdentity = Object.freeze({ executionId });
   }
 
   let placement;
@@ -8176,6 +8224,7 @@ function handleMultiFormatOpenFileEvent(event, filePath) {
 
 writeAcceptanceStartupBootstrapPhase("app_ready_handler_register_begin");
 app.whenReady().then(createExperimentWindow).catch((error) => {
+  const acceptanceLaunch = isAcceptanceStartupProofLaunch();
   writeAcceptanceStartupBootstrapPhase("app_ready_create_window_failed", {
     reason: acceptanceStartupFailureReason(error)
   });
@@ -8187,7 +8236,12 @@ app.whenReady().then(createExperimentWindow).catch((error) => {
       fileName: bootstrapProofResult.fileName ?? null
     })}`);
   }
-  console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+  console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${JSON.stringify(describeFatalBootstrapError({
+    source: "app_ready_rejection",
+    error,
+    acceptanceLaunch,
+    acceptanceProofResult: bootstrapProofResult
+  }))}`);
   app.exit(1);
 });
 writeAcceptanceStartupBootstrapPhase("app_ready_handler_registered");

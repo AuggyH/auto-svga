@@ -206,9 +206,64 @@ const safeAcceptanceBootstrapReasons = new Set([
   "startup_policy_owner_runtime_escape"
 ]);
 
+const safeBootstrapSources = new Set([
+  "app_ready_rejection",
+  "bootstrap_source_unknown",
+  "uncaught_exception",
+  "unhandled_rejection"
+]);
+
+const safeStartupProductMilestoneIds = new Set([
+  "0.2-multiformat-preview",
+  "0.3.0-alpha.1",
+  "P2",
+  "P3",
+  "P4",
+  "P5",
+  "P6",
+  "P6-R1",
+  "aeb",
+  "short-term"
+]);
+
+const acceptanceExecutionIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+
+const startupFatalDiagnosticTaxonomy = Object.freeze({
+  sources: Object.freeze([...safeBootstrapSources].sort()),
+  errorClasses: Object.freeze([...safeBootstrapErrorClasses].sort()),
+  reasonByErrorCode: Object.freeze({ ...safeBootstrapReasonByErrorCode }),
+  errorSyscalls: Object.freeze([...safeBootstrapErrorSyscalls].sort()),
+  acceptanceReasons: Object.freeze([...safeAcceptanceBootstrapReasons].sort()),
+  acceptanceExecutionIdPattern: acceptanceExecutionIdPattern.source,
+  productMilestoneIds: Object.freeze([...safeStartupProductMilestoneIds].sort())
+});
+
+function assertStartupFatalDiagnosticTaxonomyParity(value) {
+  if (JSON.stringify(value) !== JSON.stringify(startupFatalDiagnosticTaxonomy)) {
+    const error = new Error("startup_fatal_diagnostic_taxonomy_mismatch");
+    error.code = "AUTO_SVGA_STARTUP_FATAL_DIAGNOSTIC_TAXONOMY_MISMATCH";
+    throw error;
+  }
+  return true;
+}
+
 function safeBootstrapErrorClass(error) {
   const errorClass = error instanceof Error ? error.name : undefined;
   return safeBootstrapErrorClasses.has(errorClass) ? errorClass : "Error";
+}
+
+function safeBootstrapSource(value) {
+  return safeBootstrapSources.has(value) ? value : "bootstrap_source_unknown";
+}
+
+function safeAcceptanceExecutionId(value) {
+  return typeof value === "string" && acceptanceExecutionIdPattern.test(value)
+    ? value
+    : undefined;
+}
+
+function safeStartupProductMilestoneId(value) {
+  return safeStartupProductMilestoneIds.has(value) ? value : undefined;
 }
 
 function safeBootstrapErrorCode(error) {
@@ -253,7 +308,7 @@ function describeFatalBootstrapError(input) {
   const errorCode = safeBootstrapErrorCode(input.error);
   const errorSyscall = safeBootstrapErrorSyscall(input.error);
   return {
-    source: input.source,
+    source: safeBootstrapSource(input.source),
     acceptanceLaunch: input.acceptanceLaunch === true,
     reason: input.acceptanceLaunch === true
       ? safeAcceptanceBootstrapReason(acceptanceReason, input.error)
@@ -284,9 +339,14 @@ function describeFinderEquivalentLaunchEvidence(input) {
 }
 
 module.exports = {
+  assertStartupFatalDiagnosticTaxonomyParity,
   autoSvgaEnvironmentOverrideNames,
   describeFatalBootstrapError,
   describeFinderEquivalentLaunchEvidence,
   resolveStartupRuntimePolicy,
-  safeBootstrapErrorClass
+  safeAcceptanceBootstrapReason,
+  safeAcceptanceExecutionId,
+  safeBootstrapErrorClass,
+  safeStartupProductMilestoneId,
+  startupFatalDiagnosticTaxonomy
 };

@@ -236,6 +236,18 @@ test("fatal taxonomy rejects safe-character code and syscall payloads", () => {
   assert.equal(JSON.stringify(ordinary).includes(syscallPayload), false);
 });
 
+test("fatal taxonomy rejects arbitrary source payloads", () => {
+  const sourcePayload = "PRIVATE_CLIENT_NAME_SVGA";
+  const diagnostic = describeFatalBootstrapError({
+    source: sourcePayload,
+    error: new Error("private failure"),
+    acceptanceLaunch: false,
+    acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+  });
+  assert.equal(diagnostic.source, "bootstrap_source_unknown");
+  assert.equal(JSON.stringify(diagnostic).includes(sourcePayload), false);
+});
+
 test("fatal taxonomy rejects arbitrary safe-character acceptance reasons", () => {
   const arbitraryAcceptance = describeFatalBootstrapError({
     source: "unhandled_rejection",

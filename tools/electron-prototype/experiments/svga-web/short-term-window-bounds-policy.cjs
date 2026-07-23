@@ -1,5 +1,7 @@
 "use strict";
 
+const { safeAcceptanceExecutionId } = require("./startup-runtime-policy.cjs");
+
 const ACCEPTANCE_DISPLAY_ARGUMENT = "--auto-svga-acceptance-display-id=";
 const ACCEPTANCE_ARGUMENT_PREFIX = "--auto-svga-acceptance-";
 const ACCEPTANCE_EXECUTION_ENV = "AUTO_SVGA_ACCEPTANCE_EXECUTION_ID";
@@ -252,7 +254,8 @@ function parseAcceptanceDisplayRequest({ argv, environment, internalCandidate })
   if (displayArguments.length !== 1) return { status: "rejected", reason: "acceptance_display_duplicate" };
   if (!internalCandidate) return { status: "rejected", reason: "acceptance_channel_forbidden" };
   if (!hasExecutionBinding || rawExecutionId === "") return { status: "rejected", reason: "acceptance_execution_unbound" };
-  if (typeof rawExecutionId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(rawExecutionId)) {
+  const executionId = safeAcceptanceExecutionId(rawExecutionId);
+  if (!executionId) {
     return { status: "rejected", reason: "acceptance_execution_malformed" };
   }
 
@@ -266,7 +269,7 @@ function parseAcceptanceDisplayRequest({ argv, environment, internalCandidate })
   return {
     status: "accepted",
     displayId,
-    executionId: rawExecutionId
+    executionId
   };
 }
 
@@ -296,7 +299,7 @@ function resolveAcceptanceLaunchPlacement({ request, displays, defaultSize, mini
 function revalidateAcceptanceLaunchPlacement({ placement, displays, minimumSize }) {
   if (placement?.status !== "accepted"
     || boundedDisplayId(placement.displayId) === undefined
-    || typeof placement.executionId !== "string"
+    || !safeAcceptanceExecutionId(placement.executionId)
     || typeof placement.displaySetIdentity !== "string"
     || !strictRect(placement.bounds)
     || !strictRect(placement.workArea)) {
