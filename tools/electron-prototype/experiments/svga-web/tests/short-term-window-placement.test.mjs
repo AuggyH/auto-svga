@@ -706,6 +706,19 @@ test("entrypoint bootstrap rejection guard survives current-turn async local req
   assert.doesNotMatch(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)\.catch\([\s\S]*?\}\);\s*releaseAcceptanceStartupFatalHandlers\(\);/u);
 });
 
+test("packaged normal startup separates writable runtime state from explicit proof output", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  assert.match(source, /require\("\.\/startup-runtime-policy\.cjs"\)/u);
+  assert.match(source, /resolveStartupRuntimePolicy\(/u);
+  assert.match(source, /visibleStartupProofEnabled/u);
+  assert.match(source, /describeFatalBootstrapError\(/u);
+  assert.doesNotMatch(
+    source,
+    /productSmokeMode \|\| normalProofMode \|\| normalVisibleStartupMode\) mkdirSync\(productArtifactRoot/u
+  );
+  assert.doesNotMatch(source, /finderEquivalentLaunchCompatible:\s*true/u);
+});
+
 test("acceptance startup bootstrap phase trace distinguishes no-proof startup stops", async () => {
   const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const phaseFileIndex = source.indexOf('const acceptanceStartupBootstrapPhaseFileName = "acceptance-startup-bootstrap-phases.jsonl"');

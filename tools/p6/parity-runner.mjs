@@ -657,17 +657,18 @@ function normalAppProofFlags(input) {
     visibleStartup?.actualLaunchCommand,
     visibleStartup?.runtimeIdentity?.actualLaunchCommand
   ].filter(Boolean));
+  const autoSvgaEnvironmentOverrides = Object.keys(environmentOverrides)
+    .filter((name) => name.startsWith("AUTO_SVGA_"));
   const proofOnlyPattern = /proof\/smoke|proof-only|smoke-only|AUTO_SVGA_P2_NORMAL_PROOF|AUTO_SVGA_PRODUCT_SMOKE|--p2-normal-proof|--smoke|mode=smoke|npm run desktop:dev/i;
   return proof?.passed === true
     && visibleStartup.normalVisibleStartup === true
     && visibleStartup.windowShown === true
+    && visibleStartup.finderEquivalentLaunchCompatible === true
     && visibleStartup.noProofMode === true
     && visibleStartup.noSmokeMode === true
     && visibleStartup.noProofArguments === true
     && visibleStartup.rendererQuery === ""
-    && !("AUTO_SVGA_PRODUCT_SMOKE" in environmentOverrides)
-    && !("AUTO_SVGA_SMOKE" in environmentOverrides)
-    && !("AUTO_SVGA_P2_NORMAL_PROOF" in environmentOverrides)
+    && autoSvgaEnvironmentOverrides.length === 0
     && !proofOnlyPattern.test(argv)
     && !proofOnlyPattern.test(launchText);
 }

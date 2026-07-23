@@ -39,6 +39,33 @@ function acceptanceStartupFailureReason(error) {
   return match?.[1] ?? "acceptance_startup_bootstrap_failed";
 }
 
+function describeEarlyFatalBootstrapError(input) {
+  const errorCode = typeof input.error?.code === "string" && /^[A-Z0-9_]+$/u.test(input.error.code)
+    ? input.error.code
+    : undefined;
+  const errorSyscall = typeof input.error?.syscall === "string" && /^[A-Za-z0-9_]+$/u.test(input.error.syscall)
+    ? input.error.syscall
+    : undefined;
+  const acceptanceReason = input.acceptanceProofResult?.proof?.reason
+    ?? input.acceptanceProofResult?.reason;
+  return {
+    source: input.source,
+    acceptanceLaunch: input.acceptanceLaunch === true,
+    reason: input.acceptanceLaunch === true && typeof acceptanceReason === "string"
+      ? acceptanceReason
+      : errorCode
+        ? `bootstrap_${errorCode.toLowerCase()}`
+        : "bootstrap_error",
+    errorClass: input.error instanceof Error && typeof input.error.name === "string"
+      ? input.error.name
+      : "Error",
+    ...(errorCode ? { errorCode } : {}),
+    ...(errorSyscall ? { errorSyscall } : {})
+  };
+}
+
+let describeFatalBootstrapError = describeEarlyFatalBootstrapError;
+
 function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
   if (!isAcceptanceStartupProofLaunch()) return { status: "ignored", reason: "acceptance_launch_not_requested" };
   const root = acceptanceStartupArtifactRoot();
@@ -169,6 +196,7 @@ function handleAcceptanceStartupFatalError(source, error) {
   const reason = source === "uncaught_exception"
     ? "acceptance_startup_entrypoint_exception"
     : "acceptance_startup_entrypoint_rejection";
+  const acceptanceLaunch = isAcceptanceStartupProofLaunch();
   const bootstrapProofResult = writeAcceptanceStartupBootstrapFailureArtifact(reason, error);
   if (bootstrapProofResult.status !== "ignored") {
     console.error(`AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF ${JSON.stringify({
@@ -177,11 +205,12 @@ function handleAcceptanceStartupFatalError(source, error) {
       fileName: bootstrapProofResult.fileName ?? null
     })}`);
   }
-  console.error(`AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP ${JSON.stringify({
+  console.error(`AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP ${JSON.stringify(describeFatalBootstrapError({
     source,
-    acceptanceLaunch: isAcceptanceStartupProofLaunch(),
-    reason: bootstrapProofResult.proof?.reason ?? bootstrapProofResult.reason ?? acceptanceStartupFailureReason(error)
-  })}`);
+    error,
+    acceptanceLaunch,
+    acceptanceProofResult: bootstrapProofResult
+  }))}`);
   try {
     electronAppForFatalExit?.exit?.(1);
   } catch {
@@ -219,6 +248,13 @@ const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, session } 
 electronAppForFatalExit = app;
 writeAcceptanceStartupBootstrapPhase("electron_required");
 writeAcceptanceStartupBootstrapPhase("local_requires_begin");
+
+const {
+  describeFatalBootstrapError: describeFatalBootstrapErrorFromPolicy,
+  describeFinderEquivalentLaunchEvidence,
+  resolveStartupRuntimePolicy
+} = require("./startup-runtime-policy.cjs");
+describeFatalBootstrapError = describeFatalBootstrapErrorFromPolicy;
 
 const {
   IPC_CHANNELS,
@@ -394,9 +430,16 @@ const productMilestoneTitle = {
   P4: "Multi-Resource Editing, Undo/Redo And Export Integrity",
   P5: "Batch PNG Mapping And Live Product Evidence"
 }[productMilestoneId] ?? "Auto SVGA Product Milestone";
-const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
-  ? path.resolve(process.env.AUTO_SVGA_PRODUCT_ARTIFACTS)
-  : path.join(repoRoot, ".artifacts/product", productMilestoneId);
+const startupRuntimePolicy = resolveStartupRuntimePolicy({
+  appIsPackaged: app.isPackaged,
+  repoRoot,
+  ownerUserDataRoot: ownerPersistentUserDataRoot,
+  productMilestoneId,
+  normalVisibleStartupMode,
+  acceptanceLaunch: isAcceptanceStartupProofLaunch(),
+  environment: process.env
+});
+const productArtifactRoot = startupRuntimePolicy.productArtifactRoot;
 const canonicalFixtureRuntimePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
 const canonicalFixtureSourcePath = "examples/avatar_frame_basic/output/avatar_frame_basic.svga";
 const referenceMediaTypes = new Map([
@@ -494,12 +537,19 @@ const productArtifactIndex = {
 };
 if (productSmokeMode && productMilestoneId === "P5") {
   rmSync(productArtifactRoot, { recursive: true, force: true });
-} else {
+} else if (startupRuntimePolicy.productEvidenceEnabled) {
   mergeExistingProductArtifactIndex();
 }
 
 mkdirSync(sessionRoot, { recursive: true });
-if (productSmokeMode || normalProofMode || normalVisibleStartupMode) mkdirSync(productArtifactRoot, { recursive: true });
+if (
+  productSmokeMode
+  || normalProofMode
+  || startupRuntimePolicy.outputMode === "owner-runtime"
+  || startupRuntimePolicy.visibleStartupProofEnabled
+) {
+  mkdirSync(productArtifactRoot, { recursive: true });
+}
 if (!usesShortTermPreviewShell || smokeMode || auditMode || normalProofMode) {
   app.setPath("userData", path.join(sessionRoot, "user-data"));
   app.setPath("sessionData", path.join(sessionRoot, "session-data"));
@@ -4644,7 +4694,9 @@ function sanitizedRuntimeArgv() {
 }
 
 function launchEnvironmentOverrides() {
-  return normalProofMode ? { AUTO_SVGA_P2_NORMAL_PROOF: "1" } : {};
+  return Object.fromEntries(
+    startupRuntimePolicy.autoSvgaOverrides.map((name) => [name, "<redacted>"])
+  );
 }
 
 function defaultActualLaunchCommand() {
@@ -4654,6 +4706,11 @@ function defaultActualLaunchCommand() {
 }
 
 function runtimeIdentity(mode, rendererUrl) {
+  const finderEquivalentLaunchEvidence = describeFinderEquivalentLaunchEvidence({
+    acceptanceLaunch: isAcceptanceStartupProofLaunch(),
+    environment: process.env,
+    argv: process.argv
+  });
   return {
     schemaVersion: 1,
     milestoneId: productMilestoneId,
@@ -4690,7 +4747,8 @@ function runtimeIdentity(mode, rendererUrl) {
     },
     hostRuntime: {
       normalVisibleStartup: normalVisibleStartupMode,
-      finderEquivalentLaunchCompatible: true,
+      finderEquivalentLaunchCompatible: finderEquivalentLaunchEvidence.compatible,
+      finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence.reason,
       fileOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
       menuActions: hostMenuActions,
       sessionRootRedacted: sanitizeRuntimeArgument(sessionRoot),
@@ -5055,7 +5113,7 @@ async function finishNormalProof(window, result) {
 }
 
 async function writeVisibleNormalStartupProof(window, rendererUrl) {
-  if (!normalVisibleStartupMode) return;
+  if (!startupRuntimePolicy.visibleStartupProofEnabled) return;
   let rendererProbe = {
     rendererQuery: "",
     primaryBridge: false,
@@ -5093,6 +5151,11 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
     rendererProbe.externalRequests = [`renderer probe failed: ${redactLogMessage(error instanceof Error ? error.message : error)}`];
   }
   const normalIdentity = runtimeIdentity("normal-visible", rendererUrl);
+  const finderEquivalentLaunchEvidence = describeFinderEquivalentLaunchEvidence({
+    acceptanceLaunch: isAcceptanceStartupProofLaunch(),
+    environment: process.env,
+    argv: process.argv
+  });
   const noProofArguments = !JSON.stringify(normalIdentity.actualArgvSanitized).includes("--p2-normal-proof")
     && !JSON.stringify(normalIdentity.actualArgvSanitized).includes("--smoke");
   const value = {
@@ -5104,14 +5167,16 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
     actualArgvSanitized: normalIdentity.actualArgvSanitized,
     executableBasename: normalIdentity.executableBasename,
     pathRedactionsApplied: true,
-    environmentOverrides: {},
+    environmentOverrides: launchEnvironmentOverrides(),
+    proofOutputMode: startupRuntimePolicy.outputMode,
     rendererUrl,
     rendererQuery: rendererProbe.rendererQuery,
     processId: process.pid,
     runtimeInstanceId,
     windowShown: window.isVisible(),
     normalVisibleStartup: true,
-    finderEquivalentLaunchCompatible: true,
+    finderEquivalentLaunchCompatible: finderEquivalentLaunchEvidence.compatible,
+    finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence.reason,
     noProofMode: true,
     noSmokeMode: true,
     noProofArguments,
@@ -5135,7 +5200,7 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
   value.passed = value.windowShown === true
     && value.normalVisibleStartup === true
     && value.rendererQuery === ""
-    && Object.keys(value.environmentOverrides).length === 0
+    && value.proofOutputMode === "explicit-proof"
     && value.noProofMode === true
     && value.noSmokeMode === true
     && value.noProofArguments === true

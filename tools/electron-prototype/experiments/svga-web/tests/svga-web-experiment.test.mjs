@@ -10549,7 +10549,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /scenario === "desktop-1280x800"\) window\.setContentSize\(macosWorkbenchWindowSizing\.comfortable\.width, macosWorkbenchWindowSizing\.comfortable\.height\)/);
 	  assert.match(main, /minWidth:\s*usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.width[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.width/);
 	  assert.match(main, /minHeight:\s*usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.height[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.height/);
-	  assert.match(main, /environmentOverrides: \{\}/);
+	  assert.match(main, /environmentOverrides: launchEnvironmentOverrides\(\)/);
   assert.match(main, /rendererQuery: rendererProbe\.rendererQuery/);
   assert.match(main, /noProofMode: true/);
   assert.match(main, /noSmokeMode: true/);
@@ -10777,7 +10777,9 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /actualLaunchCommand: normalIdentity\.actualLaunchCommand/);
   assert.match(main, /windowShown: window\.isVisible\(\)/);
   assert.match(main, /normalVisibleStartup: true/);
-  assert.match(main, /environmentOverrides: \{\}/);
+  assert.match(main, /environmentOverrides: launchEnvironmentOverrides\(\)/);
+  assert.match(main, /finderEquivalentLaunchCompatible: finderEquivalentLaunchEvidence\.compatible/);
+  assert.match(main, /finderEquivalentLaunchEvidenceReason: finderEquivalentLaunchEvidence\.reason/);
   assert.match(main, /rendererQuery: rendererProbe\.rendererQuery/);
   assert.match(main, /externalRequests: \[\.\.\.new Set/);
   assert.match(main, /expectedExit: "window-all-closed -> cleanupRuntime -> app\.quit"/);
@@ -12686,7 +12688,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   );
   assert.match(main, /rendererEntry = usesShortTermPreviewShell \? "web\/short-term-macos-app\.mjs"/);
   assert.match(main, /rendererPath = usesShortTermPreviewShell \? "\/" : "\/workbench\.html"/);
-  assert.match(main, /const productArtifactRoot = process\.env\.AUTO_SVGA_PRODUCT_ARTIFACTS[\s\S]*path\.join\(repoRoot, "\.artifacts\/product", productMilestoneId\)/);
+  assert.match(main, /const startupRuntimePolicy = resolveStartupRuntimePolicy\([\s\S]*const productArtifactRoot = startupRuntimePolicy\.productArtifactRoot/);
   assert.match(main, /path: `\.artifacts\/product\/\$\{productMilestoneId\}\/\$\{fileName\}`/);
   assert.doesNotMatch(main, /productArtifactRoot[\s\S]{0,160}\.artifacts\/internal-trial/);
   assert.match(main, /installShortTermApplicationMenu/);

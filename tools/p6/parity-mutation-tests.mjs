@@ -529,6 +529,16 @@ test("normal App proof flags fail when proof is smoke flavored", () => {
   assertItemFailed(report, "desktopRuntimeProof", "packaged-app-launch", "normal-app-proof-flags");
 });
 
+test("normal App proof flags reject caller-supplied AUTO_SVGA evidence roots", () => {
+  const facts = goodFacts();
+  facts.package.normalProof.normalVisibleStartup.environmentOverrides = {
+    AUTO_SVGA_PRODUCT_ARTIFACTS: "<redacted>"
+  };
+
+  const report = buildP6ParityReportFromRuntimeFacts(facts);
+  assertItemFailed(report, "desktopRuntimeProof", "packaged-app-launch", "normal-app-proof-flags");
+});
+
 test("WP5 normal App proof rejects proof-only launch targets", () => {
   const facts = goodFacts();
   facts.package.normalProof.launchTarget = "proof/smoke packaged path";
@@ -1156,6 +1166,7 @@ function goodFacts() {
         normalVisibleStartup: {
           normalVisibleStartup: true,
           windowShown: true,
+          finderEquivalentLaunchCompatible: true,
           noProofMode: true,
           noSmokeMode: true,
           noProofArguments: true,
