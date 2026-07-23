@@ -39,11 +39,33 @@ function acceptanceStartupFailureReason(error) {
   return match?.[1] ?? "acceptance_startup_bootstrap_failed";
 }
 
+const safeBootstrapErrorClasses = new Set([
+  "Error",
+  "TypeError",
+  "RangeError",
+  "SyntaxError",
+  "ReferenceError",
+  "URIError",
+  "EvalError",
+  "AggregateError"
+]);
+
+function safeBootstrapErrorClass(error) {
+  const errorClass = error instanceof Error ? error.name : undefined;
+  return safeBootstrapErrorClasses.has(errorClass) ? errorClass : "Error";
+}
+
+function safeAcceptanceBootstrapReason(value) {
+  return typeof value === "string" && /^acceptance_[a-z0-9_]{1,95}$/u.test(value)
+    ? value
+    : "acceptance_startup_bootstrap_failed";
+}
+
 function describeEarlyFatalBootstrapError(input) {
-  const errorCode = typeof input.error?.code === "string" && /^[A-Z0-9_]+$/u.test(input.error.code)
+  const errorCode = typeof input.error?.code === "string" && /^[A-Z][A-Z0-9_]{0,63}$/u.test(input.error.code)
     ? input.error.code
     : undefined;
-  const errorSyscall = typeof input.error?.syscall === "string" && /^[A-Za-z0-9_]+$/u.test(input.error.syscall)
+  const errorSyscall = typeof input.error?.syscall === "string" && /^[A-Za-z][A-Za-z0-9_]{0,31}$/u.test(input.error.syscall)
     ? input.error.syscall
     : undefined;
   const acceptanceReason = input.acceptanceProofResult?.proof?.reason
@@ -51,14 +73,12 @@ function describeEarlyFatalBootstrapError(input) {
   return {
     source: input.source,
     acceptanceLaunch: input.acceptanceLaunch === true,
-    reason: input.acceptanceLaunch === true && typeof acceptanceReason === "string"
-      ? acceptanceReason
+    reason: input.acceptanceLaunch === true
+      ? safeAcceptanceBootstrapReason(acceptanceReason)
       : errorCode
         ? `bootstrap_${errorCode.toLowerCase()}`
         : "bootstrap_error",
-    errorClass: input.error instanceof Error && typeof input.error.name === "string"
-      ? input.error.name
-      : "Error",
+    errorClass: safeBootstrapErrorClass(input.error),
     ...(errorCode ? { errorCode } : {}),
     ...(errorSyscall ? { errorSyscall } : {})
   };
@@ -123,8 +143,9 @@ function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
 }
 
 function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
+  const safeReason = safeAcceptanceBootstrapReason(reason);
   writeAcceptanceStartupBootstrapPhase("bootstrap_failure_artifact_begin", {
-    reason: typeof reason === "string" && reason.length > 0 ? reason : "acceptance_startup_bootstrap_failed"
+    reason: safeReason
   });
   if (!isAcceptanceStartupProofLaunch()) return { status: "ignored", reason: "acceptance_launch_not_requested" };
   const root = acceptanceStartupArtifactRoot();
@@ -142,7 +163,7 @@ function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
     status: "rejected",
     phase: "bootstrap",
     placementMode: "acceptance",
-    reason: typeof reason === "string" && reason.length > 0 ? reason : "acceptance_startup_bootstrap_failed",
+    reason: safeReason,
     executionId,
     requestedDisplayId,
     runtimeInstanceId: earlyAcceptanceRuntimeInstanceId,
@@ -158,7 +179,7 @@ function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
       materialNames: false,
       ownerPreferenceMutated: false
     },
-    errorClass: error instanceof Error && typeof error.name === "string" ? error.name : undefined,
+    errorClass: safeBootstrapErrorClass(error),
     generatedAt: new Date().toISOString(),
     passed: false
   };

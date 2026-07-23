@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { closeSync, existsSync, fsyncSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 const require = createRequire(import.meta.url);
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -708,15 +709,110 @@ test("entrypoint bootstrap rejection guard survives current-turn async local req
 
 test("packaged normal startup separates writable runtime state from explicit proof output", async () => {
   const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const policyResolutionIndex = source.indexOf("const startupRuntimePolicy = resolveStartupRuntimePolicy");
+  const productMergeIndex = source.indexOf("mergeExistingProductArtifactIndex();");
+  const productMkdirIndex = source.indexOf("mkdirSync(productArtifactRoot", productMergeIndex);
   assert.match(source, /require\("\.\/startup-runtime-policy\.cjs"\)/u);
   assert.match(source, /resolveStartupRuntimePolicy\(/u);
   assert.match(source, /visibleStartupProofEnabled/u);
   assert.match(source, /describeFatalBootstrapError\(/u);
+  assert.ok(policyResolutionIndex >= 0, "startup runtime policy must be resolved");
+  assert.ok(productMergeIndex > policyResolutionIndex, "runtime policy must reject before product proof merge/read");
+  assert.ok(productMkdirIndex > policyResolutionIndex, "runtime policy must reject before product proof mkdir/write");
+  assert.match(source, /function safeBootstrapErrorClass\(/u);
+  assert.match(source, /errorClass: safeBootstrapErrorClass\(input\.error\)/u);
+  assert.match(source, /errorClass: safeBootstrapErrorClass\(error\)/u);
+  assert.doesNotMatch(
+    source.slice(0, source.indexOf('require("./startup-runtime-policy.cjs")')),
+    /errorClass:[\s\S]{0,120}\.name/u
+  );
   assert.doesNotMatch(
     source,
     /productSmokeMode \|\| normalProofMode \|\| normalVisibleStartupMode\) mkdirSync\(productArtifactRoot/u
   );
   assert.doesNotMatch(source, /finderEquivalentLaunchCompatible:\s*true/u);
+});
+
+test("early fatal diagnostics and acceptance artifacts redact malicious error names", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-early-fatal-"));
+  const slice = (start, end) => {
+    const startIndex = source.indexOf(start);
+    const endIndex = source.indexOf(end, startIndex);
+    assert.ok(startIndex >= 0 && endIndex > startIndex, `missing source slice ${start} -> ${end}`);
+    return source.slice(startIndex, endIndex);
+  };
+  const harnessSource = [
+    slice("const safeBootstrapErrorClasses", "function safeAcceptanceBootstrapReason"),
+    slice("function safeAcceptanceBootstrapReason", "function describeEarlyFatalBootstrapError"),
+    slice("function describeEarlyFatalBootstrapError", "let describeFatalBootstrapError"),
+    slice("function writeAcceptanceStartupBootstrapFailureArtifact", "function handleAcceptanceStartupFatalError")
+  ].join("\n");
+  const sandbox = {
+    Buffer,
+    Error,
+    Set,
+    acceptanceStartupPlacementProofFileName: "acceptance-startup-placement-proof.json",
+    acceptanceStartupArtifactRoot: () => ({ status: "accepted", root }),
+    closeSync,
+    earlyAcceptanceRuntimeInstanceId: "early-runtime-test",
+    fsyncSync,
+    isAcceptanceStartupProofLaunch: () => true,
+    mkdirSync,
+    openSync,
+    path,
+    process: {
+      arch: "arm64",
+      env: {
+        AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: "ASV-EARLY-FATAL-TEST",
+        AUTO_SVGA_PRODUCT_MILESTONE: "0.2-multiformat-preview"
+      },
+      pid: 42,
+      platform: "darwin"
+    },
+    strictAcceptanceStartupDisplayArgument: () => 2,
+    writeAcceptanceStartupBootstrapPhase: () => ({ status: "written" }),
+    writeSync
+  };
+
+  try {
+    vm.runInNewContext(`${harnessSource}
+      globalThis.testApi = {
+        describeEarlyFatalBootstrapError,
+        writeAcceptanceStartupBootstrapFailureArtifact
+      };`, sandbox);
+    const privatePayload = "Failure /Users/owner/private/client-name.svga";
+    const error = new Error("message with /Users/owner/private/client-name.svga");
+    error.name = privatePayload;
+
+    const diagnostic = sandbox.testApi.describeEarlyFatalBootstrapError({
+      source: "uncaught_exception",
+      error,
+      acceptanceLaunch: false,
+      acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+    });
+    assert.equal(diagnostic.errorClass, "Error");
+    assert.equal(diagnostic.reason, "bootstrap_error");
+    assert.equal(JSON.stringify(diagnostic).includes(privatePayload), false);
+    assert.equal(JSON.stringify(diagnostic).includes("/Users/owner"), false);
+
+    const result = sandbox.testApi.writeAcceptanceStartupBootstrapFailureArtifact(
+      privatePayload,
+      error
+    );
+    assert.equal(result.status, "written");
+    const artifactText = readFileSync(
+      path.join(root, "acceptance-startup-placement-proof.json"),
+      "utf8"
+    );
+    const artifact = JSON.parse(artifactText);
+    assert.equal(artifact.errorClass, "Error");
+    assert.equal(artifact.reason, "acceptance_startup_bootstrap_failed");
+    assert.equal(artifactText.includes(privatePayload), false);
+    assert.equal(artifactText.includes("/Users/owner"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("acceptance startup bootstrap phase trace distinguishes no-proof startup stops", async () => {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { chmod } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -44,6 +44,78 @@ test("sealed packaged normal launch without AUTO_SVGA environment uses owner-wri
     assert.equal(existsSync(path.join(sealedCandidateRoot, ".artifacts")), false);
   } finally {
     await chmod(sealedCandidateRoot, 0o755);
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("runtime and proof paths reject traversal before any filesystem side effect", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-startup-policy-"));
+  const ownerUserDataRoot = path.join(root, "owner-user-data");
+  const repoRoot = path.join(root, "repo");
+  const validMilestone = "0.2-multiformat-preview";
+  const input = {
+    appIsPackaged: true,
+    repoRoot,
+    ownerUserDataRoot,
+    productMilestoneId: validMilestone,
+    normalVisibleStartupMode: true,
+    acceptanceLaunch: false,
+    environment: {}
+  };
+
+  try {
+    const ordinary = resolveStartupRuntimePolicy(input);
+    assert.equal(
+      ordinary.ownerRuntimeRoot,
+      path.join(ownerUserDataRoot, "runtime", validMilestone)
+    );
+    assert.equal(ordinary.productArtifactRoot, ordinary.ownerRuntimeRoot);
+    assert.deepEqual(readdirSync(root), []);
+
+    for (const productMilestoneId of [
+      "",
+      ".",
+      "..",
+      "../escape",
+      "nested/escape",
+      "nested\\escape",
+      path.join(root, "absolute")
+    ]) {
+      assert.throws(
+        () => resolveStartupRuntimePolicy({ ...input, productMilestoneId }),
+        /startup_policy_invalid_product_milestone/u,
+        productMilestoneId || "<empty>"
+      );
+      assert.deepEqual(readdirSync(root), []);
+    }
+
+    const absoluteProofRoot = path.join(root, "explicit-proof");
+    const explicit = resolveStartupRuntimePolicy({
+      ...input,
+      acceptanceLaunch: true,
+      environment: {
+        AUTO_SVGA_PRODUCT_ARTIFACTS: absoluteProofRoot
+      }
+    });
+    assert.equal(explicit.productArtifactRoot, absoluteProofRoot);
+    assert.equal(existsSync(absoluteProofRoot), false);
+    assert.deepEqual(readdirSync(root), []);
+
+    for (const proofRoot of ["", ".", "..", "relative-proof", "../escape"]) {
+      assert.throws(
+        () => resolveStartupRuntimePolicy({
+          ...input,
+          acceptanceLaunch: true,
+          environment: {
+            AUTO_SVGA_PRODUCT_ARTIFACTS: proofRoot
+          }
+        }),
+        /startup_policy_invalid_product_artifact_root/u,
+        proofRoot || "<empty>"
+      );
+      assert.deepEqual(readdirSync(root), []);
+    }
+  } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
@@ -108,6 +180,37 @@ test("explicit acceptance fatal diagnostics retain the acceptance reason and und
   assert.equal(diagnostic.reason, "acceptance_startup_entrypoint_rejection");
   assert.equal(diagnostic.errorClass, "Error");
   assert.equal(diagnostic.errorCode, "EINVAL");
+});
+
+test("fatal diagnostics never serialize malicious error names or arbitrary acceptance reasons", () => {
+  const privatePayload = "Failure /Users/owner/private/client-name.svga";
+  const error = new Error("private path is present only in the raw error");
+  error.name = privatePayload;
+
+  const ordinary = describeFatalBootstrapError({
+    source: "uncaught_exception",
+    error,
+    acceptanceLaunch: false,
+    acceptanceProofResult: { status: "ignored", reason: "acceptance_launch_not_requested" }
+  });
+  assert.equal(ordinary.errorClass, "Error");
+  assert.equal(ordinary.reason, "bootstrap_error");
+  assert.equal(JSON.stringify(ordinary).includes(privatePayload), false);
+  assert.equal(JSON.stringify(ordinary).includes("/Users/owner"), false);
+
+  const acceptance = describeFatalBootstrapError({
+    source: "unhandled_rejection",
+    error,
+    acceptanceLaunch: true,
+    acceptanceProofResult: {
+      status: "rejected",
+      reason: privatePayload
+    }
+  });
+  assert.equal(acceptance.errorClass, "Error");
+  assert.equal(acceptance.reason, "acceptance_startup_bootstrap_failed");
+  assert.equal(JSON.stringify(acceptance).includes(privatePayload), false);
+  assert.equal(JSON.stringify(acceptance).includes("/Users/owner"), false);
 });
 
 test("in-process startup evidence never claims Finder equivalence", () => {

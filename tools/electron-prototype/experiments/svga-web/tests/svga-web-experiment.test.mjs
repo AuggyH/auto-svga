@@ -2941,13 +2941,19 @@ async function createPackagedProofFixture({
   );
 
   const omitted = new Set(omitRuntimeEntries);
+  const omittedWindowPlacementSources = new Set(omitWindowPlacementSourceFiles);
   const asarSource = path.join(root, "asar-source");
   for (const entry of requiredPackagedRuntimeEntries) {
-    if (omitted.has(entry)) continue;
     const relativeEntry = entry.replace(/^\//, "");
+    if (omitted.has(entry) || omittedWindowPlacementSources.has(relativeEntry)) continue;
     const entryPath = path.join(asarSource, relativeEntry);
     await mkdir(path.dirname(entryPath), { recursive: true });
-    if (relativeEntry === nativePickerSourceRelativePath) {
+    if (windowPlacementPackagedSourceFiles.includes(relativeEntry)) {
+      const source = await readFile(path.join(experimentRoot, relativeEntry));
+      const transform = windowPlacementSourceTransforms[relativeEntry];
+      const packagedSource = transform ? Buffer.from(transform(source.toString("utf8")), "utf8") : source;
+      await writeFile(entryPath, packagedSource);
+    } else if (relativeEntry === nativePickerSourceRelativePath) {
       await copyFile(path.join(experimentRoot, nativePickerSourceRelativePath), entryPath);
     } else if (relativeEntry === ".runtime/build-info.json") {
       await writeFile(entryPath, `${JSON.stringify({ schemaVersion: 1, buildCommit, source: "test-package-proof" }, null, 2)}\n`);
@@ -2980,7 +2986,12 @@ async function createPackagedProofFixture({
     }
   }
   for (const relativePath of windowPlacementPackagedSourceFiles) {
-    if (omitWindowPlacementSourceFiles.includes(relativePath)) continue;
+    if (
+      omittedWindowPlacementSources.has(relativePath)
+      || requiredPackagedRuntimeEntries.includes(`/${relativePath}`)
+    ) {
+      continue;
+    }
     const source = await readFile(path.join(experimentRoot, relativePath));
     const transform = windowPlacementSourceTransforms[relativePath];
     const packagedSource = transform ? Buffer.from(transform(source.toString("utf8")), "utf8") : source;
@@ -3030,6 +3041,10 @@ test("macOS internal package avoids unsupported Finder .svga document associatio
   assert.match(
     await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
     /"short-term-window-placement-store\.cjs"/
+  );
+  assert.match(
+    await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
+    /"startup-runtime-policy\.cjs"/
   );
   assert.doesNotMatch(plist, /CFBundleDocumentTypes/);
   assert.doesNotMatch(plist, /CFBundleTypeRole[\s\S]*Viewer/);
@@ -3195,6 +3210,20 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.ok(
     proof.packagingScaffold.windowPlacementSourceClosure.files.some((file) => file.path === "acceptance-startup-placement-proof.cjs"),
     "acceptance startup proof helper must be part of the package source closure"
+  );
+  assert.ok(
+    proof.packagingScaffold.windowPlacementSourceClosure.files.some((file) => file.path === "startup-runtime-policy.cjs"),
+    "startup runtime policy must be part of the package source closure"
+  );
+  assert.equal(
+    proof.packagingScaffold.windowPlacementSourceClosure.authorities
+      .find((entry) => entry.authority === "runtimePolicy")?.path,
+    "startup-runtime-policy.cjs"
+  );
+  assert.ok(requiredPackagedRuntimeEntries.includes("/startup-runtime-policy.cjs"));
+  assert.ok(
+    proof.privacyAudit.scannedFiles.some((file) => file.endsWith("/startup-runtime-policy.cjs")),
+    "startup runtime policy must be included in the package privacy audit"
   );
   assert.ok(proof.packagingScaffold.windowPlacementSourceClosure.files.every((file) => (
     typeof file.sourceSha256 === "string"
@@ -3467,6 +3496,33 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
     });
     await assert.rejects(
       () => assertPackagedWindowPlacementSourceClosure(missingPlacementProof.packagedAsarPath),
+      /windowPlacementSourceClosure/
+    );
+
+    const staleRuntimePolicy = await createPackagedProofFixture({
+      root: path.join(root, "stale-runtime-policy"),
+      buildCommit: expectedBuildCommit,
+      windowPlacementSourceTransforms: {
+        "startup-runtime-policy.cjs": (source) => `${source}\n// packaged drift\n`
+      }
+    });
+    await assert.rejects(
+      () => assertPackagedWindowPlacementSourceClosure(staleRuntimePolicy.packagedAsarPath),
+      /windowPlacementSourceClosure/
+    );
+
+    const missingRuntimePolicy = await createPackagedProofFixture({
+      root: path.join(root, "missing-runtime-policy"),
+      buildCommit: expectedBuildCommit,
+      omitRuntimeEntries: ["/startup-runtime-policy.cjs"],
+      omitWindowPlacementSourceFiles: ["startup-runtime-policy.cjs"]
+    });
+    assert.throws(
+      () => assertPackagedRuntimeClosure(missingRuntimePolicy.packagedAsarPath, expectedBuildCommit),
+      /startup-runtime-policy\.cjs/
+    );
+    await assert.rejects(
+      () => assertPackagedWindowPlacementSourceClosure(missingRuntimePolicy.packagedAsarPath),
       /windowPlacementSourceClosure/
     );
 

@@ -46,11 +46,13 @@ const nativePickerSourcePath = path.join(experimentRoot, nativePickerSourceRelat
 const legacyNativePickerHelperPackagedRelativePath = "native/Auto SVGA File Picker.app";
 export const windowPlacementPackagedSourceFiles = [
   "main.cjs",
+  "startup-runtime-policy.cjs",
   "acceptance-startup-placement-proof.cjs",
   "short-term-window-bounds-policy.cjs",
   "short-term-window-placement-store.cjs"
 ];
 export const windowPlacementPackagedSourceAuthorities = Object.freeze({
+  runtimePolicy: "startup-runtime-policy.cjs",
   acceptanceParser: "short-term-window-bounds-policy.cjs",
   startupProof: "acceptance-startup-placement-proof.cjs",
   boundsPolicy: "short-term-window-bounds-policy.cjs",
@@ -137,6 +139,7 @@ export const packagedRuntimeDependencies = [
 ];
 export const requiredPackagedRuntimeEntries = [
   `/${nativePickerSourceRelativePath}`,
+  "/startup-runtime-policy.cjs",
   "/.runtime/build-info.json",
   "/.runtime/manifest.json",
   ...packagedRuntimeDependencies.flatMap((dependency) => (
