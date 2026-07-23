@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "issue": {
+    "repository": "AuggyH/auto-svga",
+    "number": 6,
+    "state": "OPEN/HOLD"
+  },
+  "createdFromHead": "fdf7c7e38957fa387214a0bfaa3494a2160a18dd",
+  "ownerDecision": "APPROVE_ISSUE6_PACKAGED_STARTUP_AUTH_SUCCESSOR_CONTRACT",
+  "findings": [
+    {
+      "findingId": "ASV-I6-PACKAGED-STARTUP-AUTH-001",
+      "title": "Packaged startup identity and proof serialization authority is incomplete across raw sinks",
+      "category": "startup_runtime_privacy_authority",
+      "severity": "blocking",
+      "currentStatus": "open",
+      "repairBudget": "exhausted",
+      "implementationStatus": "owner_contract_approved_phase_minus_1",
+      "closureStage": "postmortem_record_pending_evidence_review",
+      "primaryRecoveryWorkPackage": "WP-STARTUP-AUTHORITY-CENTRALIZATION",
+      "reviewedRounds": [
+        {
+          "round": "R1",
+          "reviewedHead": "a8c1962203623262a769ac20d14eb7ef23277ec4",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5058897824",
+          "evidence": [
+            "Dot and traversal milestone values and relative proof roots were not rejected before write authority was derived.",
+            "Raw Error.name and derived reason payloads could enter fatal diagnostics.",
+            "startup-runtime-policy.cjs was absent from package source, runtime, hash, and privacy closure."
+          ],
+          "attemptedFix": "Route ordinary packaged runtime state to writable Electron userData, introduce startup-runtime-policy, and distinguish fatal proof handling from acceptance proof output.",
+          "whyFailed": "The new policy treated path shape as sufficient identity authority, diagnostics copied raw fields, and packaging authorities were not updated as one fail-closed closure."
+        },
+        {
+          "round": "R2",
+          "reviewedHead": "434045b716ee3561859a218d74bd4629a58bd9e4",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5059253198",
+          "evidence": [
+            "Arbitrary safe-token code, syscall, acceptance reason, and unbounded phase payloads still survived serialization.",
+            "Fixed startup_policy_invalid_* categories were collapsed and lost required diagnostic distinction.",
+            "The R1 runtime-root and package-closure findings were closed and had to remain protected."
+          ],
+          "attemptedFix": "Harden runtime and proof roots, add startup policy source/hash/runtime/privacy closure, and cap diagnostic string shapes.",
+          "whyFailed": "Syntactic token safety was substituted for finite semantic authority, while early and loaded writers retained independent taxonomies and serializers."
+        },
+        {
+          "round": "R3",
+          "reviewedHead": "27ef52473187344298539af7e737f5893de3ac3c",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5059602952",
+          "evidence": [
+            "The late app-ready catch still emitted raw Error.message through path-only redaction.",
+            "Early phase and failure proof still serialized raw environment execution ID and milestone identity.",
+            "No complete early-versus-loaded taxonomy and serialization parity invariant existed."
+          ],
+          "attemptedFix": "Define a finite fatal taxonomy, bound phase mapping, preserve approved fixed startup-policy categories, and add adversarial early, late, artifact, and phase coverage.",
+          "whyFailed": "The repair targeted enumerated call sites instead of establishing a complete ingress-to-sink serialization boundary."
+        },
+        {
+          "round": "R4",
+          "reviewedHead": "fdf7c7e38957fa387214a0bfaa3494a2160a18dd",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5060097222",
+          "evidence": [
+            "normal-visible-startup.json still emitted raw milestone, raw AUTO_SVGA_ACTUAL_LAUNCH_COMMAND, and renderer-probe Error.message payloads.",
+            "The captured source harness payload contained milestoneId=PRIVATE_CLIENT_NAME_SVGA, actualLaunchCommand=PRIVATE_LAUNCH_COMMAND, and a matching renderer-probe externalRequests payload.",
+            "productMilestonePathSegment accepted safe unknown and 4096-character values, and the raw milestone also flowed into artifact-index and runtime trace."
+          ],
+          "attemptedFix": "Repair the five R3 discriminators, share execution and milestone proof validators, and add early-versus-loaded taxonomy parity.",
+          "whyFailed": "The inventory was scoped to fatal and placement proof by name rather than every serialization sink; parity omitted identity ingestion, schema fields, legacy product writers, artifact index, and trace serializers."
+        }
+      ],
+      "rootAuthoritySplits": [
+        "Early bootstrap, loaded proof builders, and legacy product/index/trace writers do not share one startup serialization authority.",
+        "The path-safe milestone segment validator is weaker than the formal 10-ID product milestone identity authority and is consumed earlier."
+      ],
+      "closureRule": "Do not mark this finding closed at source review. Closure requires failure-first and mutation evidence, exact-head CI, independent source review with zero Blocking findings, reviewed merge, and later fresh packaged no-environment runtime evidence that does not reproduce the finding.",
+      "nextGate": "Independent Evidence Owner review of the exact Phase -1 three-file durable-record commit; production source work remains unauthorized until a separate PM WP0-WP4 authorization."
+    }
+  ],
+  "findingCount": 1
+}
