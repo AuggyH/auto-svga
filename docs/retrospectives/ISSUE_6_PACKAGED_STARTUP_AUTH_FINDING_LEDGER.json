@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "issue": {
+    "repository": "AuggyH/auto-svga",
+    "number": 6,
+    "state": "OPEN/HOLD"
+  },
+  "recordAuthority": {
+    "recordTaskId": "019f9202-a413-7101-b38e-40f8f9cb353e",
+    "architectureDispositionTaskId": "019f91f7-0a08-7af0-bb73-84109bd17fa3",
+    "pmTaskId": "019f8575-8054-7580-9050-0c1011e85afd",
+    "exactMainBase": "d5d309b0ebd39b328077c69f7bfffe26c32db34c",
+    "rejectedPullRequest": 21,
+    "rejectedHead": "83fbd17aab38a401f5ab145d914983eef8de0d80",
+    "rejectedTree": "8b44251911c35a937c151856a6edd516cbbe08d9",
+    "finalCodeReview": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5062337639",
+    "recordStatus": "supersession_pending_independent_dr0_review"
+  },
+  "ownerDecision": "APPROVE_ONE_MODULE_PRIVATE_STARTUP_SERIALIZATION_OUTPUT_CAPABILITY",
+  "ownerApproval": {
+    "status": "approved",
+    "normalizedDirection": "One module-private high-level startup serialization and output capability owns all startup evidence output.",
+    "newOwnerDecisionRequired": false,
+    "reaskOnlyIf": [
+      "product artifact retention or diagnostic semantics would change",
+      "supported product scope would change",
+      "release or installed-build identity would change"
+    ]
+  },
+  "findings": [
+    {
+      "findingId": "ASV-I6-PACKAGED-STARTUP-AUTH-001",
+      "title": "Packaged startup identity and proof serialization authority is incomplete across raw sinks",
+      "category": "startup_runtime_privacy_authority",
+      "severity": "blocking",
+      "currentStatus": "open",
+      "repairBudget": "exhausted",
+      "implementationStatus": "architecture_disposition_approved_pending_successor_implementation",
+      "closureStage": "machine_gate_rejected_pending_fresh_implementation",
+      "implementationRoundsConsumed": 1,
+      "correctionRoundsConsumed": 1,
+      "maxCorrectionRounds": 1,
+      "primaryRecoveryWorkPackage": "WP0-WP5_PRIVATE_STARTUP_OUTPUT_CAPABILITY",
+      "reviewedRounds": [
+        {
+          "round": "R1",
+          "reviewedHead": "a8c1962203623262a769ac20d14eb7ef23277ec4",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5058897824",
+          "evidence": [
+            "Dot and traversal milestone values and relative proof roots were not rejected before write authority was derived.",
+            "Raw Error.name and derived reason payloads could enter fatal diagnostics.",
+            "startup-runtime-policy.cjs was absent from package source, runtime, hash, and privacy closure."
+          ],
+          "attemptedFix": "Route ordinary packaged runtime state to writable Electron userData, introduce startup-runtime-policy, and distinguish fatal proof handling from acceptance proof output.",
+          "whyFailed": "The new policy treated path shape as sufficient identity authority, diagnostics copied raw fields, and packaging authorities were not updated as one fail-closed closure."
+        },
+        {
+          "round": "R2",
+          "reviewedHead": "434045b716ee3561859a218d74bd4629a58bd9e4",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5059253198",
+          "evidence": [
+            "Arbitrary safe-token code, syscall, acceptance reason, and unbounded phase payloads still survived serialization.",
+            "Fixed startup_policy_invalid_* categories were collapsed and lost required diagnostic distinction.",
+            "The R1 runtime-root and package-closure findings were closed and had to remain protected."
+          ],
+          "attemptedFix": "Harden runtime and proof roots, add startup policy source/hash/runtime/privacy closure, and cap diagnostic string shapes.",
+          "whyFailed": "Syntactic token safety was substituted for finite semantic authority, while early and loaded writers retained independent taxonomies and serializers."
+        },
+        {
+          "round": "R3",
+          "reviewedHead": "27ef52473187344298539af7e737f5893de3ac3c",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5059602952",
+          "evidence": [
+            "The late app-ready catch still emitted raw Error.message through path-only redaction.",
+            "Early phase and failure proof still serialized raw environment execution ID and milestone identity.",
+            "No complete early-versus-loaded taxonomy and serialization parity invariant existed."
+          ],
+          "attemptedFix": "Define a finite fatal taxonomy, bound phase mapping, preserve approved fixed startup-policy categories, and add adversarial early, late, artifact, and phase coverage.",
+          "whyFailed": "The repair targeted enumerated call sites instead of establishing a complete ingress-to-sink serialization boundary."
+        },
+        {
+          "round": "R4",
+          "reviewedHead": "fdf7c7e38957fa387214a0bfaa3494a2160a18dd",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5060097222",
+          "evidence": [
+            "normal-visible-startup.json still emitted raw milestone, raw AUTO_SVGA_ACTUAL_LAUNCH_COMMAND, and renderer-probe Error.message payloads.",
+            "The captured source harness payload contained milestoneId=PRIVATE_CLIENT_NAME_SVGA, actualLaunchCommand=PRIVATE_LAUNCH_COMMAND, and a matching renderer-probe externalRequests payload.",
+            "productMilestonePathSegment accepted safe unknown and 4096-character values, and the raw milestone also flowed into artifact-index and runtime trace."
+          ],
+          "attemptedFix": "Repair the five R3 discriminators, share execution and milestone proof validators, and add early-versus-loaded taxonomy parity.",
+          "whyFailed": "The inventory was scoped to fatal and placement proof by name rather than every serialization sink; parity omitted identity ingestion, schema fields, legacy product writers, artifact index, and trace serializers."
+        },
+        {
+          "round": "R5",
+          "reviewedHead": "5aa8db412f023d45a005e07b2bb112353414a27e",
+          "externalOutcome": "Changes Requested",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5061736163",
+          "evidence": [
+            "The WP0 inventory repeated a hand-authored 12-sink list and checked writer-name presence instead of deriving actual startup-sensitive writer callsites.",
+            "The WP3 mutations changed the self-reported manifest and selected source strings but did not mutate real callsites, early record field sets, or alternate writer primitives.",
+            "Early phase and failure writers bypassed finalizeStartupRecord, while the early manifest copied the loaded schema-field hash instead of independently deriving its own field authority.",
+            "Two live placement-summary console JSON records were outside an explicit bounded schema and registered actual sink.",
+            "A raw fatal-handler console mutation serializing Error.message still passed the complete focused 50/50 suite, and the exact-c3 visible-startup row failed from successor-extractor incompatibility instead of observed predecessor bytes."
+          ],
+          "attemptedFix": "Centralize formal identity, finite serializers, logical sink registration, early-loaded manifest parity, and package source/runtime/privacy closure across startup proof, index, and trace output.",
+          "whyFailed": "The repair made declared serializers finite but trusted a self-reported logical inventory; it did not make actual writer callsites, early field sets, and independent early-loaded authority derivation the fail-closed machine oracle."
+        },
+        {
+          "round": "R6",
+          "reviewedHead": "83fbd17aab38a401f5ab145d914983eef8de0d80",
+          "reviewedTree": "8b44251911c35a937c151856a6edd516cbbe08d9",
+          "externalOutcome": "Changes Requested / MANDATORY STOP",
+          "review": "https://github.com/AuggyH/auto-svga/pull/21#issuecomment-5062337639",
+          "evidence": [
+            "The syntax-derived oracle reported 175 observations and digest d4d2396d2698c92997277b2df778bc13bbd7de78d8f992e42569fbb7ba56d85d with zero bypasses.",
+            "An identifier alias of console.error leaked raw Error.message while the callsite suite remained 8/8 and the focused authority suite remained 50/50.",
+            "Computed-property, renamed-destructuring, aliased-optional-call, nested-alias, and Reflect-wrapper mutations also leaked raw payloads without changing observation count, digest, or bypass set.",
+            "An unrelated console.info changed the observation count to 176 and changed the digest with zero architectural bypasses."
+          ],
+          "attemptedFix": "Replace the hand-authored sink list with a package-source-derived TypeScript AST oracle over 175 normalized writer/builder/finalizer callsites and a fixed digest.",
+          "whyFailed": "The oracle enumerated direct syntax rather than proving semantic writer reachability. It was underbroad for alias, computed, destructured, optional, nested, and wrapper calls and overbroad for unrelated logging. The sole correction was therefore rejected and correction 1/1 was exhausted."
+        }
+      ],
+      "rootCause": [
+        "This is an authority-topology failure, not one missing AST pattern.",
+        "Early bootstrap, loaded proof builders, product/index writers, trace writers, and main.cjs retain multiple writer capabilities and field authorities.",
+        "A syntax inventory cannot prove that all semantic startup output is reachable only through a trusted boundary."
+      ],
+      "rejectedHistoricalImplementation": {
+        "pullRequest": 21,
+        "head": "83fbd17aab38a401f5ab145d914983eef8de0d80",
+        "tree": "8b44251911c35a937c151856a6edd516cbbe08d9",
+        "sourceAndTestsStatus": "historical_rejected_superseded",
+        "machineOracleStatus": "historical_rejected_superseded_not_a_gate",
+        "oracleObservedCallsites": 175,
+        "oracleDigest": "d4d2396d2698c92997277b2df778bc13bbd7de78d8f992e42569fbb7ba56d85d",
+        "prohibitedReuse": [
+          "Do not treat startup-callsite-closure.mjs, its digest, its count, or actualCallsiteClosure as a gate.",
+          "Do not cherry-pick 83fbd17 or reuse its source/test implementation wholesale.",
+          "Do not reuse startup-runtime-policy.cjs wholesale."
+        ]
+      },
+      "recommendedDisposition": {
+        "name": "SPLIT+SUPERSEDE",
+        "sequence": [
+          "Open one DR0 durable-record-only PR from exact main d5d309b0ebd39b328077c69f7bfffe26c32db34c, limited to the finding ledger, postmortem, and one task-retro append.",
+          "After that DR0 PR exists and links PR #21, close PR #21 unmerged as superseded.",
+          "Independently review and merge the exact DR0 record PR.",
+          "Start one fresh implementation PR from the exact DR0 merge commit on main."
+        ]
+      },
+      "successorContract": {
+        "WP0": "Behavioral failure-first with sealed-root, no-environment, and capability-host spies; no syntax enumeration.",
+        "WP1": "Create one validated frozen tagged StartupContext before any read, mkdir, write, append, index, trace, proof, or other side effect.",
+        "WP2": "Create one module-private high-level output capability; export no generic writer, serializer, finalizer, raw fs, or stdio capability.",
+        "WP3": "Limit pre-module output to one constant-only stderr record and make one canonical packaged-runtime manifest the source/hash/required-entry/runtime/privacy authority.",
+        "WP4": "Use API and side-effect behavioral tests plus package mutation tests; startup-callsite-closure, its count, and its digest are not gates.",
+        "WP5": "Run exact-head validation and CI, then fresh independent high-risk Code Review with zero Blocking findings."
+      },
+      "selectiveReuse": {
+        "allowedOnlyByDeliberatePortFromFreshMain": [
+          "formal milestone set and early rejection",
+          "owner Electron userData runtime routing",
+          "explicit-proof separation",
+          "productEvidence=false for ordinary packaged launch",
+          "finite diagnostic categories",
+          "no in-process Finder-equivalence claim"
+        ],
+        "notAllowed": [
+          "cherry-picking 83fbd17",
+          "wholesale reuse of its runtime policy",
+          "reuse of the AST callsite scanner, observation count, digest, self-reported sink inventory, raw writer modules, or large early mirror"
+        ]
+      },
+      "budgetAndStops": {
+        "implementationRounds": 1,
+        "maxBoundedCorrections": 1,
+        "secondCorrectionAllowed": false,
+        "mandatoryStop": "If the same finding remains after the one bounded correction, or any required machine gate is untrusted, stop implementation, merge, package, QA, and acceptance routing."
+      },
+      "gateSeparation": [
+        "implementation self-test is not source Code Review",
+        "reviewed merge is not a fresh package",
+        "package integrity is not packaged no-environment smoke",
+        "packaged no-environment smoke is not QA",
+        "QA is not Product Owner acceptance",
+        "Product Owner acceptance is not promotion",
+        "local promotion is not release"
+      ],
+      "rollback": {
+        "preMerge": "Abandon the fresh implementation PR; keep reviewed main unchanged.",
+        "postMerge": "Use a new reviewed revert PR; never patch a package in place.",
+        "packageFailure": "Discard the fresh candidate and keep the installed cc9 build, frozen 6806 candidate, previous.bundle, and LaunchServices untouched."
+      },
+      "protectedIdentity": {
+        "installedBuildCommit": "cc9ddbc9796254be0094bd5c580a1ce8ad3cd93d",
+        "frozenCandidateBuildCommit": "6806e1370cd411fce8362c317e7f30543da889b1",
+        "installedAndFrozenState": "untouched",
+        "baselineDrift": "Installed cc9 metadata reports Auto SVGA 0.2.0-alpha.2 internal while the PRD names the owner baseline Auto SVGA 0.1.0-alpha local. This remains an unresolved Release coordination item and is not resolved by DR0."
+      },
+      "closureRule": "Keep the finding open. A trusted source gate requires fresh implementation from the exact DR0 merge main, exact-head CI, and independent high-risk Code Review with zero Blocking findings. Later package, no-environment smoke, QA, Owner acceptance, promotion, and release remain separate gates.",
+      "nextGate": "Independent exact-head DR0 evidence review of the three-file supersession record; no production source implementation starts until the DR0 record is reviewed and merged and PM binds the exact merge main."
+    }
+  ],
+  "findingCount": 1
+}
